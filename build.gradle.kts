@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     `java-library`
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.errorprone)
 }
 
 repositories {
@@ -29,6 +33,11 @@ dependencies {
     testImplementation(libs.junit.jupiter)
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    errorprone(libs.nullaway)
+    api(libs.jspecify)
+
+    errorprone(libs.google.errorprone.core)
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -42,3 +51,35 @@ tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Static Analysis Tasks
+
+spotless {
+    java {
+        // note: you can use an empty string for all the imports you didn't specify explicitly, '|' to join group without blank line, and '\\#` prefix for static imports
+        importOrder("java|javax", "org.hibernate", "com.mongo", "", "\\#")
+
+        removeUnusedImports()
+
+        // Cleanthat will refactor your code, but it may break your style: apply it before your formatter
+        cleanthat()
+
+        palantirJavaFormat(libs.versions.palantir.get()).style("GOOGLE").formatJavadoc(true)
+        formatAnnotations()  // fixes formatting of type annotations, see below
+
+        licenseHeaderFile("copyright.txt") // contains '$YEAR' parameter
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.errorprone {
+        disableWarningsInGeneratedCode.set(true)
+        option("NullAway:AnnotatedPackages", "com.mongo.hibernate")
+    }
+}
+tasks.compileJava {
+    // The check defaults to a warning, bump it up to an error for the main sources
+    options.errorprone.error("NullAway")
+}
+
