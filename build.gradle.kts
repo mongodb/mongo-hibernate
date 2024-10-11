@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2024 MongoDB, Inc.
+ * Copyright 2024-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ tasks.named<Test>("test") {
 spotless {
     java {
         // note: you can use an empty string for all the imports you didn't specify explicitly, '|' to join group without blank line, and '\\#` prefix for static imports
-        importOrder("java|javax", "org.hibernate", "com.mongo", "", "\\#")
+        importOrder("java|javax", "org.hibernate", "com.mongodb", "", "\\#")
 
         removeUnusedImports()
 
@@ -75,7 +75,7 @@ spotless {
 tasks.withType<JavaCompile>().configureEach {
     options.errorprone {
         disableWarningsInGeneratedCode.set(true)
-        option("NullAway:AnnotatedPackages", "com.mongo.hibernate")
+        option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
     }
 }
 tasks.compileJava {
