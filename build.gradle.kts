@@ -62,9 +62,6 @@ spotless {
 
         removeUnusedImports()
 
-        // Cleanthat will refactor your code, but it may break your style: apply it before your formatter
-        cleanthat()
-
         palantirJavaFormat(libs.versions.palantir.get()).style("GOOGLE").formatJavadoc(true)
         formatAnnotations()  // fixes formatting of type annotations, see below
 
