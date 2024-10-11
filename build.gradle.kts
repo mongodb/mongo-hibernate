@@ -58,7 +58,7 @@ tasks.named<Test>("test") {
 spotless {
     java {
         // note: you can use an empty string for all the imports you didn't specify explicitly, '|' to join group without blank line, and '\\#` prefix for static imports
-        importOrder("java|javax", "org.hibernate", "com.mongodb", "", "\\#")
+        importOrder("java|javax", "", "\\#")
 
         removeUnusedImports()
 
