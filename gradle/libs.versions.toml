@@ -8,11 +8,9 @@ palantir = "2.50.0"
 errorprone = "4.0.1"
 google-errorprone-core = "2.9.0"
 nullaway = "0.10.26"
-jspecify = "0.3.0"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 google-errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "google-errorprone-core" }
 

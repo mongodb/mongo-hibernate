@@ -35,8 +35,6 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     errorprone(libs.nullaway)
-    api(libs.jspecify)
-
     errorprone(libs.google.errorprone.core)
 }
 
@@ -63,9 +61,10 @@ spotless {
         removeUnusedImports()
 
         palantirJavaFormat(libs.versions.palantir.get()).style("GOOGLE").formatJavadoc(true)
-        formatAnnotations()  // fixes formatting of type annotations, see below
 
-        licenseHeaderFile("copyright.txt") // contains '$YEAR' parameter
+        formatAnnotations()
+
+        licenseHeaderFile("copyright.txt") // contains '$YEAR' placeholder
     }
 }
 
