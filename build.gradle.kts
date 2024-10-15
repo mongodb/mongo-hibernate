@@ -35,6 +35,8 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     errorprone(libs.nullaway)
+    api(libs.jspecify)
+
     errorprone(libs.google.errorprone.core)
 }
 
