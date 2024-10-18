@@ -14,7 +14,6 @@ functions:
         working_dir: src
         shell: bash
         script: |
-          ${PREPARE_SHELL}
           ${file}
 
 pre:
