@@ -1,3 +1,5 @@
+define: &script-folder : .evergreen
+
 functions:
   fetch source:
     # Executes git clone
