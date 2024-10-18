@@ -12,3 +12,5 @@ echo "mongo-hibernate: static checking ..."
 
 ./gradlew -version
 ./gradlew -PxmlReports.enabled=true --info clean test
+
+## just for test GitHub integration purposes
