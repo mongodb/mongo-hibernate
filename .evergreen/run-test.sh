@@ -8,7 +8,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 ############################################
 source ./.evergreen/java-config.sh
 
-echo "mongo-hibernate: static checking ..."
+echo "mongo-hibernate: running tests ..."
 
 ./gradlew -version
 ./gradlew -PxmlReports.enabled=true --info clean test
