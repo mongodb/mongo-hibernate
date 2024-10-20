@@ -40,7 +40,7 @@ buildvariants:
 
   - name: linux-rhel
     tags: ["ci"]
-    display_name: Redhat Linux
+    display_name: Linux
     run_on: rhel80-small
     tasks:
     - name: ".ci"
