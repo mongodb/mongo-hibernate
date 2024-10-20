@@ -13,8 +13,10 @@ functions:
       params:
         working_dir: src
         shell: bash
+        add_to_path:
+          - .evergreen
         script: |
-          ${file}
+          ${script}
 
 pre:
   - func: fetch source
@@ -27,14 +29,14 @@ tasks:
     commands:
       - func: exec script
         vars:
-          file: .evergreen/static-check.sh
+          script: static-check.sh
 
   - name: run-test
     tags: ["ci"]
     commands:
       - func: exec script
         vars:
-          file: .evergreen/run-test.sh
+          script: run-test.sh
 
 buildvariants:
 

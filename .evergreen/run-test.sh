@@ -6,7 +6,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 ############################################
 #            Main Program                  #
 ############################################
-source ./.evergreen/java-config.sh
+source java-config.sh
 
 echo "mongo-hibernate: running tests ..."
 
