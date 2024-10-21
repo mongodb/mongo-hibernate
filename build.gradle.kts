@@ -62,7 +62,7 @@ spotless {
 
         removeUnusedImports()
 
-        palantirJavaFormat(libs.versions.palantir.get()).style("GOOGLE").formatJavadoc(true)
+        palantirJavaFormat(libs.versions.palantir.get()).formatJavadoc(true)
 
         formatAnnotations()
 
