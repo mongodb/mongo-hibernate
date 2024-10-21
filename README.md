@@ -4,7 +4,7 @@ This project aims to provide a library to seamlessly integrate MongoDB with Hibe
 
 ## Overview
 
-MongoDB speaks _MQL_ (**M**ongoDB **Q**uery **L**anguage in JSON format) instead of SQL, and lacks a full-fledged JDBC Driver currently. However, MongoDB does support db transaction and table joins simulation. This project will create a NoSQL Hibernate Dialect by bridging the gaps, particularly:
+MongoDB speaks _MQL_ (**M**ongoDB **Q**uery **L**anguage in JSON format) instead of SQL. This project will create a NoSQL Hibernate Dialect by:
 
 - create a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/)
 - translate Hibernate's internal SQL AST into MQL
