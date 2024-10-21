@@ -3,6 +3,19 @@
 
 [versions]
 junit-jupiter = "5.10.3"
+spotless = "6.25.0"
+palantir = "2.50.0"
+errorprone = "4.0.1"
+google-errorprone-core = "2.9.0"
+nullaway = "0.10.26"
+jspecify = "0.3.0"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+google-errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "google-errorprone-core" }
+
+[plugins]
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone" }
