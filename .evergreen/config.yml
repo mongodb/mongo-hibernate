@@ -1,0 +1,48 @@
+functions:
+  fetch source:
+    # Executes git clone
+    - command: git.get_project
+      params:
+        directory: src
+    # Applies the submitted patch, if any
+    - command: git.apply_patch
+
+  exec script:
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        shell: bash
+        add_to_path:
+          - .evergreen
+        script: |
+          ${script}
+
+pre:
+  - func: fetch source
+
+post:
+
+tasks:
+  - name: static-check
+    tags: ["ci"]
+    commands:
+      - func: exec script
+        vars:
+          script: static-check.sh
+
+  - name: run-test
+    tags: ["ci"]
+    commands:
+      - func: exec script
+        vars:
+          script: run-test.sh
+
+buildvariants:
+
+  - name: linux-rhel
+    tags: ["ci"]
+    display_name: Linux
+    run_on: rhel80-small
+    tasks:
+    - name: ".ci"
