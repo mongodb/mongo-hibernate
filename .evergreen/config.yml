@@ -1,13 +1,44 @@
+# default command type
+command_type: system
+
+# 1 hour default timeout
+exec_timeout_secs: 3600
+
+# run the same task in the previous revision if the current task fails
+stepback: true
+
+include:
+  - filename: .evergreen/buildvariants.yml
+
+#######################################
+#              Functions              #
+#######################################
 functions:
-  fetch source:
-    # Executes git clone
+  "fetch source":
+    # Executes git clone and applies the submitted patch, if any.
     - command: git.get_project
       params:
         directory: src
-    # Applies the submitted patch, if any
-    - command: git.apply_patch
 
-  exec script:
+  "create expansions":
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: bash
+        add_to_path:
+          - .evergreen
+        args:
+          - create-expansions.sh
+        include_expansions_in_env:
+          - is_patch
+          - version_id
+          - project
+          - LIBMONGOCRYPT_OS
+    - command: expansions.update
+      params:
+        file: src/expansion.yml
+
+  "exec script":
     - command: shell.exec
       type: test
       params:
@@ -16,33 +47,99 @@ functions:
         add_to_path:
           - .evergreen
         script: |
+          ${PREPARE_SHELL}
           ${script}
 
+  "prepare resources":
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: bash
+        add_to_path:
+          - .evergreen
+        args:
+          - fetch-drivers-tools.sh
+        include_expansions_in_env:
+          - DRIVERS_TOOLS
+    - command: shell.exec
+      params:
+        script: |
+          ${PREPARE_SHELL}
+          echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
+
+  "bootstrap mongo-orchestration":
+    - command: subprocess.exec
+      params:
+        binary: sh
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
+        include_expansions_in_env:
+          - AUTH
+          - SSL
+          - TOPOLOGY
+          - LOAD_BALANCER
+          - REQUIRE_API_VERSION
+          - MONGODB_VERSION
+          - ORCHESTRATION_FILE
+          - MONGODB_BINARIES
+    - command: expansions.update
+      params:
+        file: mo-expansion.yml
+
+  "stop mongo orchestration":
+    - command: shell.exec
+      params:
+        script: |
+          ${PREPARE_SHELL}
+
+          cd ${MONGO_ORCHESTRATION_HOME}
+          # source the mongo-orchestration virtualenv if it exists
+          if [ -f venv/bin/activate ]; then
+            . venv/bin/activate
+          elif [ -f venv/Scripts/activate ]; then
+            . venv/Scripts/activate
+          fi
+          mongo-orchestration stop || true
+
+  "cleanup":
+    - command: shell.exec
+      params:
+        script: |
+          ${PREPARE_SHELL}
+          rm -rf $DRIVERS_TOOLS || true
+
+# Functions to run before all tasks (except those in task groups).
 pre:
-  - func: fetch source
+  - func: "fetch source"
+  - func: "create expansions"
+  - func: "prepare resources"
 
+# Functions to run after all tasks (except those in task groups).
 post:
+  - func: "stop mongo orchestration"
+  - func: "cleanup"
 
+#######################################
+#                Tasks                #
+#######################################
 tasks:
   - name: static-check
-    tags: ["ci"]
+    type: test
+    tags:
+      - ci
+      - static-check
     commands:
-      - func: exec script
-        vars:
+      - func: "exec script"
+        params:
           script: static-check.sh
 
   - name: run-test
-    tags: ["ci"]
+    type: test
+    tags:
+      - ci
+      - test
     commands:
-      - func: exec script
-        vars:
+      - func: "bootstrap mongo-orchestration"
+      - func: "exec script"
+        params:
           script: run-test.sh
-
-buildvariants:
-
-  - name: linux-rhel
-    tags: ["ci"]
-    display_name: Linux
-    run_on: rhel80-small
-    tasks:
-    - name: ".ci"
