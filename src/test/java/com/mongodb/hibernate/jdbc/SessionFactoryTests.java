@@ -19,7 +19,7 @@ package com.mongodb.hibernate.jdbc;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.mongodb.hibernate.exception.ConfigurationException;
+import com.mongodb.hibernate.cfg.ConfigurationException;
 import java.util.Map;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;

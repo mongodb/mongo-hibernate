@@ -14,13 +14,24 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.exception;
+package com.mongodb.hibernate.cfg;
 
-public class NotYetImplementedException extends RuntimeException {
+public class ConfigurationException extends RuntimeException {
 
-    public NotYetImplementedException() {}
+    private final String property;
 
-    public NotYetImplementedException(String message) {
+    public ConfigurationException(String property, String message) {
         super(message);
+        this.property = property;
+    }
+
+    public ConfigurationException(String property, String message, Throwable cause) {
+        super(message, cause);
+        this.property = property;
+    }
+
+    @Override
+    public String getMessage() {
+        return String.format("Invalid '%s' configuration: %s", property, super.getMessage());
     }
 }

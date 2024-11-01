@@ -18,7 +18,6 @@ package com.mongodb.hibernate.cfg;
 
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
-import com.mongodb.hibernate.exception.ConfigurationException;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
