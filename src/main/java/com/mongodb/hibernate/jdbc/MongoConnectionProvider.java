@@ -38,24 +38,25 @@ import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * MongoDB dialect's customized JDBC {@link ConnectionProvider} spi implementation, whose class name is supposed to be
+ * MongoDB dialect's customized JDBC {@link ConnectionProvider} SPI implementation, whose class name is supposed to be
  * provided as the following Hibernate property to kick off MongoDB dialect's JDBC flow:
  *
  * <ul>
- *   <li>hibernate.connection.provider_class
+ *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#CONNECTION_PROVIDER hibernate.connection.provider_class}
  * </ul>
  *
- * <p>The following Hibernate JDBC properties will be relied upon by Hibernate's {@link Configurable} spi mechanism:
+ * <p>The following Hibernate JDBC properties will be relied upon by Hibernate's {@link Configurable} SPI mechanism:
  *
  * <ul>
- *   <li>jakarta.persistence.jdbc.url
- *   <li>jakarta.persistence.jdbc.user
- *   <li>jakarta.persistence.jdbc.password
+ *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}
+ *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}
+ *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}
  * </ul>
  *
- * <p><code>jakarta.persistence.jdbc.url</code> property is mandatory and it maps to MongoDB's {@link ConnectionString},
- * in which database name must be provided to align with JDBC URL's convention. The other two JDBC properties are
- * optional.
+ * <p>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url} property is mandatory
+ * and it maps to MongoDB's <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection
+ * string</a>, in which database name must be provided to align with JDBC URL's convention. The other two JDBC
+ * properties are optional.
  *
  * @see ConnectionProvider
  * @see Configurable
