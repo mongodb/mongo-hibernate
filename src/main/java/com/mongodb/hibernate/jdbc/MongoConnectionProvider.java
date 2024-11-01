@@ -17,7 +17,6 @@
 package com.mongodb.hibernate.jdbc;
 
 import static org.hibernate.cfg.JdbcSettings.*;
-import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -32,7 +31,6 @@ import java.util.Map;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownUnwrapTypeException;
 import org.hibernate.service.spi.Configurable;
-import org.hibernate.service.spi.Startable;
 import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
@@ -60,17 +58,9 @@ import org.jspecify.annotations.Nullable;
  * @see ConnectionProvider
  * @see Configurable
  */
-public class MongoConnectionProvider implements ConnectionProvider, Configurable, Startable, Stoppable {
+public class MongoConnectionProvider implements ConnectionProvider, Configurable, Stoppable {
 
-    // non-null after configure(Map<String, Object>) method is invoked successfully
-    private @Nullable ConnectionString connectionString;
-    private @Nullable String database;
-
-    // non-null after start() method is invoked successfully
     private @Nullable MongoClient mongoClient;
-
-    private @Nullable String user;
-    private @Nullable String password;
 
     @Override
     public Connection getConnection() {
@@ -100,31 +90,24 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
     @Override
     public void configure(Map<String, Object> configurationValues) {
         var jdbcUrl = ConfigurationHelper.getRequiredConfiguration(configurationValues, JAKARTA_JDBC_URL);
+        ConnectionString connectionString;
         try {
-            this.connectionString = new ConnectionString(jdbcUrl);
+            connectionString = new ConnectionString(jdbcUrl);
         } catch (IllegalArgumentException iae) {
             throw new ConfigurationException(JAKARTA_JDBC_URL, "invalid MongoDB connection string", iae);
         }
-        var database = this.connectionString.getDatabase();
+        var database = connectionString.getDatabase();
         if (database == null) {
             throw new ConfigurationException(JAKARTA_JDBC_URL, "database must be provided");
         }
-        this.database = database;
-        this.user = ConfigurationHelper.getOptionalConfiguration(configurationValues, JAKARTA_JDBC_USER);
-        this.password = ConfigurationHelper.getOptionalConfiguration(configurationValues, JAKARTA_JDBC_PASSWORD);
-    }
-
-    @Override
-    public void start() {
-        // connectionString and database are set as mandatory values in the above configure method
-        // if either is unset, exception would have been thrown and this method invocation would have be skipped
-        castNonNull(this.connectionString);
-        castNonNull(this.database);
 
         var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
-        if (this.user != null) {
-            var password = this.password == null ? null : this.password.toCharArray();
-            var credential = MongoCredential.createCredential(this.user, this.database, password);
+
+        var user = ConfigurationHelper.getOptionalConfiguration(configurationValues, JAKARTA_JDBC_USER);
+        if (user != null) {
+            var password = ConfigurationHelper.getOptionalConfiguration(configurationValues, JAKARTA_JDBC_PASSWORD);
+            var credential =
+                    MongoCredential.createCredential(user, database, password == null ? null : password.toCharArray());
             clientSettingsBuilder.credential(credential);
         }
 
