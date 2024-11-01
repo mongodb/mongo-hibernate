@@ -84,22 +84,17 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
 
     @Override
     public boolean supportsAggressiveRelease() {
-        return false; // won't be used in container
+        return false;
     }
 
     @Override
     public boolean isUnwrappableAs(Class<?> unwrapType) {
-        return ConnectionProvider.class.equals(unwrapType)
-                || MongoConnectionProvider.class.isAssignableFrom(unwrapType);
+        return false;
     }
 
     @Override
     public <T> T unwrap(Class<T> unwrapType) {
-        if (isUnwrappableAs(unwrapType)) {
-            return unwrapType.cast(this);
-        } else {
-            throw new UnknownUnwrapTypeException(unwrapType);
-        }
+        throw new UnknownUnwrapTypeException(unwrapType);
     }
 
     @Override
