@@ -24,7 +24,7 @@ import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
  * A MongoDB {@linkplain Dialect dialect} for version 6.0 and above.
  *
  * <p>Usually Hibernate dialect represents some SQL RDBMS and speaks SQL with vendor-specific difference. MongoDB is a
- * document NoSQL DB and speaks MQL in JSON format, but it is still possible to integrate with Hibernate seamlessly by
+ * document NoSQL DB and speaks <i>MQL</i> (<b>M</b>ongoDB <b>Q</b>uery <b>L</b>anguage) in JSON format, but it is still possible to integrate with Hibernate seamlessly by
  * creating a JDBC adaptor on top of MongoDB's Java client library.
  *
  * <p>Some MongoDB-specific customization examples include:
