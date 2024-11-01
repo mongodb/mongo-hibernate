@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.hibernate.cfg.JdbcSettings.*;
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
@@ -133,9 +132,6 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
             var credential = MongoCredential.createCredential(this.user, this.database, password);
             clientSettingsBuilder.credential(credential);
         }
-
-        var codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry());
-        clientSettingsBuilder.codecRegistry(codecRegistry);
 
         var clientSettings = clientSettingsBuilder.build();
         this.mongoClient = MongoClients.create(clientSettings);
