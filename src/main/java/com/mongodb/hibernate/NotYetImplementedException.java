@@ -16,6 +16,16 @@
 
 package com.mongodb.hibernate;
 
+/**
+ * A temporary marker exception to denote that the feature in question is in the scope of MongoDB dialect but has not
+ * been implemented yet.
+ *
+ * <p>Ultimately all of its references should be eliminated sooner or later, and then this class is supposed to be
+ * deleted prior to product release.
+ *
+ * <p>It is recommended to provide some message to explain when it will be implemented (e.g. JIRA ticket id is a good
+ * idea), but that is optional.
+ */
 public class NotYetImplementedException extends RuntimeException {
 
     public NotYetImplementedException() {}
