@@ -19,8 +19,8 @@ package com.mongodb.hibernate.jdbc;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.mongodb.hibernate.cfg.ConfigurationException;
 import java.util.Map;
+import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.service.spi.ServiceException;
@@ -38,14 +38,14 @@ class SessionFactoryTests {
         var exception = assertThrows(
                 ServiceException.class,
                 () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test")));
-        assertInstanceOf(ConfigurationException.class, exception.getCause());
+        assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
     @Test
     void test_when_database_absent() {
         var exception = assertThrows(
                 ServiceException.class, () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost")));
-        assertInstanceOf(ConfigurationException.class, exception.getCause());
+        assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
     private void buildSessionFactory(Map<String, String> configurationValues) throws ServiceException {

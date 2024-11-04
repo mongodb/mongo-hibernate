@@ -16,17 +16,16 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.JdbcSettings.*;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.NotYetImplementedException;
-import com.mongodb.hibernate.cfg.ConfigurationException;
-import com.mongodb.hibernate.cfg.ConfigurationHelper;
 import java.sql.Connection;
 import java.util.Map;
+import org.hibernate.HibernateException;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownUnwrapTypeException;
@@ -86,20 +85,31 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
     }
 
     @Override
-    public void configure(Map<String, Object> configurationValues) {
-        var jdbcUrl = ConfigurationHelper.getRequiredConfiguration(configurationValues, JAKARTA_JDBC_URL);
+    public void configure(Map<String, Object> configValues) {
+        var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
+        if (jdbcUrl == null) {
+            throw new HibernateException("property is required: " + JAKARTA_JDBC_URL);
+        }
+        if (!(jdbcUrl instanceof String)) {
+            throw new HibernateException(
+                    String.format("property ('%s') value ('%s') not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+        }
         ConnectionString connectionString;
         try {
-            connectionString = new ConnectionString(jdbcUrl);
+            connectionString = new ConnectionString((String) jdbcUrl);
         } catch (IllegalArgumentException iae) {
-            throw new ConfigurationException(JAKARTA_JDBC_URL, "invalid MongoDB connection string", iae);
+            throw new HibernateException("invalid MongoDB connection string: " + jdbcUrl, iae);
         }
         var database = connectionString.getDatabase();
         if (database == null) {
-            throw new ConfigurationException(JAKARTA_JDBC_URL, "database must be provided");
+            throw new HibernateException("database must be provided in connection string: " + jdbcUrl);
         }
 
         var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
+
+        if (configValues.get(JAKARTA_JDBC_USER) != null || configValues.get(JAKARTA_JDBC_PASSWORD) != null) {
+            throw new NotYetImplementedException("to be implemented after auth could be tested in CI");
+        }
 
         var clientSettings = clientSettingsBuilder.build();
         this.mongoClient = MongoClients.create(clientSettings);
