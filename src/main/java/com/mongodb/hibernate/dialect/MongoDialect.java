@@ -38,9 +38,10 @@ import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
  */
 public class MongoDialect extends Dialect {
     public static final int MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED = 6;
+    public static final int MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED = 3;
 
     private static final DatabaseVersion MINIMUM_VERSION =
-            DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED);
+            DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED, MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED);
 
     public MongoDialect() {
         this(MINIMUM_VERSION);
