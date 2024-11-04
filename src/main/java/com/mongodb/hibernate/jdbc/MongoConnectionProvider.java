@@ -16,11 +16,10 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.hibernate.cfg.JdbcSettings.*;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
-import com.mongodb.MongoCredential;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.NotYetImplementedException;
@@ -28,6 +27,7 @@ import com.mongodb.hibernate.cfg.ConfigurationException;
 import com.mongodb.hibernate.cfg.ConfigurationHelper;
 import java.sql.Connection;
 import java.util.Map;
+import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownUnwrapTypeException;
 import org.hibernate.service.spi.Configurable;
@@ -35,12 +35,8 @@ import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * MongoDB dialect's customized JDBC {@link ConnectionProvider} SPI implementation, whose class name is supposed to be
- * provided as the following Hibernate property to kick off MongoDB dialect's JDBC flow:
- *
- * <ul>
- *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#CONNECTION_PROVIDER hibernate.connection.provider_class}
- * </ul>
+ * MongoDB dialect's customized JDBC {@link ConnectionProvider} SPI implementation, whose class name could be provided
+ * using configuration property {@value org.hibernate.cfg.JdbcSettings#CONNECTION_PROVIDER}.
  *
  * <p>The following Hibernate JDBC properties will be relied upon by Hibernate's {@link Configurable} SPI mechanism:
  *
@@ -50,13 +46,15 @@ import org.jspecify.annotations.Nullable;
  *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}
  * </ul>
  *
- * <p>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url} property is mandatory
- * and it maps to MongoDB's <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection
- * string</a>, in which database name must be provided to align with JDBC URL's convention. The other two JDBC
- * properties are optional.
+ * <p>{@value org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL} property is mandatory and it maps to MongoDB's <a
+ * href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>, in which database name
+ * must be provided to align with JDBC URL's convention. The other two JDBC properties are optional.
  *
  * @see ConnectionProvider
  * @see Configurable
+ * @see JdbcSettings#JAKARTA_JDBC_URL
+ * @see JdbcSettings#JAKARTA_JDBC_USER
+ * @see JdbcSettings#JAKARTA_JDBC_PASSWORD
  */
 public class MongoConnectionProvider implements ConnectionProvider, Configurable, Stoppable {
 
@@ -64,12 +62,12 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
 
     @Override
     public Connection getConnection() {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("to be implemented at https://jira.mongodb.org/browse/HIBERNATE-29");
     }
 
     @Override
     public void closeConnection(Connection connection) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("to be implemented at https://jira.mongodb.org/browse/HIBERNATE-29");
     }
 
     @Override
@@ -102,14 +100,6 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
         }
 
         var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
-
-        var user = ConfigurationHelper.getOptionalConfiguration(configurationValues, JAKARTA_JDBC_USER);
-        if (user != null) {
-            var password = ConfigurationHelper.getOptionalConfiguration(configurationValues, JAKARTA_JDBC_PASSWORD);
-            var credential =
-                    MongoCredential.createCredential(user, database, password == null ? null : password.toCharArray());
-            clientSettingsBuilder.credential(credential);
-        }
 
         var clientSettings = clientSettingsBuilder.build();
         this.mongoClient = MongoClients.create(clientSettings);

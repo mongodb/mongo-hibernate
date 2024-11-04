@@ -28,8 +28,18 @@ package com.mongodb.hibernate;
  */
 public class NotYetImplementedException extends RuntimeException {
 
+    /**
+     * Default constructor.
+     *
+     * @deprecated use {@link NotYetImplementedException(String)} instead.
+     */
     public NotYetImplementedException() {}
 
+    /**
+     * Constructor with message parameter.
+     *
+     * @param message explanation on when the feature is to be implemented
+     */
     public NotYetImplementedException(String message) {
         super(message);
     }
