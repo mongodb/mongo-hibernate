@@ -18,7 +18,6 @@ package com.mongodb.hibernate.dialect;
 
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 
 /**
  * A MongoDB {@linkplain Dialect dialect}.
@@ -44,14 +43,6 @@ public class MongoDialect extends Dialect {
             DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED, MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED);
 
     public MongoDialect() {
-        this(MINIMUM_VERSION);
-    }
-
-    public MongoDialect(final DatabaseVersion version) {
-        super(version);
-    }
-
-    public MongoDialect(final DialectResolutionInfo dialectResolutionInfo) {
-        super(dialectResolutionInfo);
+        super(MINIMUM_VERSION);
     }
 }
