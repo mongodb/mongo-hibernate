@@ -14,6 +14,18 @@
  * limitations under the License.
  */
 
+/**
+ * The root package for MongoDB Dialect library, whose main sub-packages include:
+ *
+ * <dl>
+ *   <dt>dialect
+ *   <dd>MongoDB Dialect related classes
+ *   <dt>jdbc
+ *   <dd>various JDBC API implementation classes
+ *   <dt>translate
+ *   <dd>MQL translation (from Hibernate's SQL AST) classes
+ * </dl>
+ */
 @NullMarked
 package com.mongodb.hibernate;
 

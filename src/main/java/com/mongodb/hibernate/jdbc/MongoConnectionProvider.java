@@ -67,7 +67,8 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
 
     @Override
     public void closeConnection(Connection connection) {
-        throw new NotYetImplementedException("to be implemented at https://jira.mongodb.org/browse/HIBERNATE-29");
+        throw new NotYetImplementedException(
+                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-29");
     }
 
     @Override
