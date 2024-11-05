@@ -17,4 +17,4 @@ echo "Running tests with Java ${JAVA_VERSION}"
 
 ./gradlew -version
 
-./gradlew -PjavaVersion=${JAVA_VERSION} --stacktrace --info --continue clean integrationTest
+./gradlew -PjavaVersion=${JAVA_VERSION} --stacktrace --info --continue clean test
