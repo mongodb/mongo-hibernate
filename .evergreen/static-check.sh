@@ -11,4 +11,4 @@ source java-config.sh
 echo "mongo-hibernate: static checking ..."
 
 ./gradlew -version
-./gradlew -PxmlReports.enabled=true --info -x test clean check
+./gradlew -PxmlReports.enabled=true --info -x test clean check compileJava

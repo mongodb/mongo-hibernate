@@ -14,6 +14,24 @@
  * limitations under the License.
  */
 
+/**
+ * Support for implementing various JDBC APIs for MongoDB Dialect's JDBC adapter.
+ *
+ * <p>The JDBC adapter is only meant for Hibernate ORM integration purposes, so only those JDBC API methods really
+ * called by Hibernate will be implemented. To make code maintainable, some common JDBC API implementation pattern is
+ * adopted.
+ *
+ * <p>Take {@link java.sql.Connection} JDBC API implementation as an example,
+ *
+ * <ul>
+ *   <li>an {@link com.mongodb.hibernate.jdbc.AbstractMongoConnection} dummy implementation class will be created,
+ *       implementing all the API methods Hibernate won't use by throwing exceptions;
+ *   <li>a {@link com.mongodb.hibernate.jdbc.MongoConnection} class will inherit from {@code AbstractMongoConnection}
+ *       and focuses on implementing those API methods Hibernate really uses.
+ * </ul>
+ *
+ * <p>Note that all the {@code sql} API method parameters have been renamed to {@code mql}.
+ */
 @NullMarked
 package com.mongodb.hibernate.jdbc;
 
