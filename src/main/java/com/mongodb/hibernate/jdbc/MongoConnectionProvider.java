@@ -90,27 +90,27 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
     public void configure(Map<String, Object> configValues) {
         var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
         if (jdbcUrl == null) {
-            throw new HibernateException("property is required: " + JAKARTA_JDBC_URL);
+            throw new HibernateException("Property is required: " + JAKARTA_JDBC_URL);
         }
         if (!(jdbcUrl instanceof String)) {
             throw new HibernateException(
-                    String.format("property ('%s') value ('%s') not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+                    String.format("Property ('%s') value ('%s') not of string type", JAKARTA_JDBC_URL, jdbcUrl));
         }
         ConnectionString connectionString;
         try {
             connectionString = new ConnectionString((String) jdbcUrl);
         } catch (IllegalArgumentException iae) {
-            throw new HibernateException("invalid MongoDB connection string: " + jdbcUrl, iae);
+            throw new HibernateException("Invalid MongoDB connection string: " + jdbcUrl, iae);
         }
         var database = connectionString.getDatabase();
         if (database == null) {
-            throw new HibernateException("database must be provided in connection string: " + jdbcUrl);
+            throw new HibernateException("Database must be provided in connection string: " + jdbcUrl);
         }
 
         var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
 
         if (configValues.get(JAKARTA_JDBC_USER) != null || configValues.get(JAKARTA_JDBC_PASSWORD) != null) {
-            throw new NotYetImplementedException("to be implemented after auth could be tested in CI");
+            throw new NotYetImplementedException("To be implemented after auth could be tested in CI");
         }
 
         var clientSettings = clientSettingsBuilder.build();
