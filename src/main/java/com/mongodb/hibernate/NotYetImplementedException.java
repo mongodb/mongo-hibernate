@@ -31,6 +31,7 @@ public class NotYetImplementedException extends RuntimeException {
     /**
      * Default constructor.
      *
+     * <p>It is recommended to use the other constructor with some explanation.
      */
     public NotYetImplementedException() {}
 
