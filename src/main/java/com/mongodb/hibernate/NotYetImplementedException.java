@@ -31,7 +31,6 @@ public class NotYetImplementedException extends RuntimeException {
     /**
      * Default constructor.
      *
-     * @deprecated use {@link NotYetImplementedException(String)} instead.
      */
     public NotYetImplementedException() {}
 

@@ -2,13 +2,13 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-junit-jupiter = "5.10.3"
+junit-jupiter = "5.11.3"
 spotless = "6.25.0"
 palantir = "2.50.0"
-errorprone = "4.0.1"
-google-errorprone-core = "2.9.0"
-nullaway = "0.10.26"
-jspecify = "0.3.0"
+errorprone = "4.1.0"
+google-errorprone-core = "2.35.1"
+nullaway = "0.12.1"
+jspecify = "1.0.0"
 hibernate-core = "6.6.1.Final"
 mongo-java-driver-sync = "5.2.0"
 
