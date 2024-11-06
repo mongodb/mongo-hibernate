@@ -28,6 +28,7 @@ repositories {
 
 dependencies {
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.logback.classic)
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
@@ -38,6 +39,7 @@ dependencies {
 
     implementation(libs.hibernate.core)
     implementation(libs.mongo.java.driver.sync)
+    implementation(libs.sl4j.api)
 }
 
 java {
