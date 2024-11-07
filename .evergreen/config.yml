@@ -7,9 +7,6 @@ exec_timeout_secs: 3600
 # run the same task in the previous revision if the current task fails
 stepback: true
 
-include:
-  - filename: .evergreen/buildvariants.yml
-
 #######################################
 #              Functions              #
 #######################################
@@ -33,7 +30,6 @@ functions:
           - is_patch
           - version_id
           - project
-          - LIBMONGOCRYPT_OS
     - command: expansions.update
       params:
         file: src/expansion.yml
@@ -77,7 +73,6 @@ functions:
           - AUTH
           - SSL
           - TOPOLOGY
-          - LOAD_BALANCER
           - REQUIRE_API_VERSION
           - MONGODB_VERSION
           - ORCHESTRATION_FILE
@@ -91,7 +86,6 @@ functions:
       params:
         script: |
           ${PREPARE_SHELL}
-
           cd ${MONGO_ORCHESTRATION_HOME}
           # source the mongo-orchestration virtualenv if it exists
           if [ -f venv/bin/activate ]; then
@@ -143,3 +137,52 @@ tasks:
       - func: "exec script"
         params:
           script: run-test.sh
+
+########################################
+#           Build Variants             #
+########################################
+buildvariants:
+
+  - name: static-checker
+    tags:
+      - ci
+    display_name: Static Check
+    run_on: rhel80-small
+    tasks:
+      - name: .static-check
+
+  - name: mongodb_v6.0_replicaset
+    tags:
+      - ci
+      - "6.0"
+    display_name: MongoDB v6.0 (replicaset)
+    expansions:
+      MONGODB_VERSION: 6.0
+      TOPOLOGY: replica_set
+    run_on: rhel80-small
+    tasks:
+      - name: .test
+
+  - name: mongodb_v7.0_replicaset
+    tags:
+      - ci
+      - "7.0"
+    display_name: MongoDB v7.0 (replicaset)
+    expansions:
+      MONGODB_VERSION: 7.0
+      TOPOLOGY: replica_set
+    run_on: rhel80-small
+    tasks:
+      - name: .test
+
+  - name: mongodb_v8.0_replicaset
+    tags:
+      - ci
+      - "8.0"
+    display_name: MongoDB v8.0 (replicaset)
+    expansions:
+      MONGODB_VERSION: 8.0
+      TOPOLOGY: replica_set
+    run_on: rhel80-small
+    tasks:
+      - name: .test
