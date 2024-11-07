@@ -42,7 +42,19 @@ public class MongoDialect extends Dialect {
     private static final DatabaseVersion MINIMUM_VERSION =
             DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED, MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED);
 
+    /**
+     * Default constructor used when no version info is available.
+     *
+     * <p>Note that {@link Dialect} abstract class has two overloaded constructors accepting sole parameter, and only
+     * one accepts {@code null} value. Explicitly downcast to make the intention clear.
+     */
     public MongoDialect() {
-        super(MINIMUM_VERSION);
+        super((DatabaseVersion) null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected DatabaseVersion getMinimumSupportedVersion() {
+        return MINIMUM_VERSION;
     }
 }
