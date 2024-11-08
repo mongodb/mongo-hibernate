@@ -21,26 +21,17 @@ Initially Hibernate ORM v6.6 is the dependency version.
 
 #### Static code analysis
 
-Both of the following analysis tasks will be included by running:
-```console
-$./gradlew -x test clean check
-```
+#### Code style check
 
-##### Code style check
+We chose [Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) as a general-purpose formatting plugin, and [Palantir Java Format](https://github.com/palantir/palantir-java-format) as a Java-specific formatting tool integrated with it.
 
-[Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) is a general-purpose formatting gradle plugin; [Palantir Java Format](https://github.com/palantir/palantir-java-format) is a Java-specific auto-formatting plugin integrated with Spotless.
+To check whether any format violation exists, run `spotlessCheck` gradle task. If any format violation is found during the previous step, run `spotlessApply` auto-formatting task to fix it automatically.
 
-You can run auto-formatting task whenever format violation is found:
+#### Code quality check
 
-```console
-$./gradlew spotlessApply
-```
+[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis during Java compiling phrase. [NullAway](https://github.com/uber/NullAway) is a Java NPE prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
 
-##### Code quality check
-
-[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis. [NullAway](https://github.com/uber/NullAway) is a Java NPE prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
-
-####
+Both plugins are enabled on gradle's `compileJava` task.
 
 ## References
 
