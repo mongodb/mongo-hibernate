@@ -50,10 +50,10 @@ import org.jspecify.annotations.Nullable;
  * must be provided to align with JDBC URL's convention. The other two JDBC properties are optional.
  *
  * @see ConnectionProvider
- * @see Configurable
  * @see JdbcSettings#JAKARTA_JDBC_URL
  * @see JdbcSettings#JAKARTA_JDBC_USER
  * @see JdbcSettings#JAKARTA_JDBC_PASSWORD
+ * @see <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>
  */
 public class MongoConnectionProvider implements ConnectionProvider, Configurable, Stoppable {
 
@@ -90,11 +90,11 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
     public void configure(Map<String, Object> configValues) {
         var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
         if (jdbcUrl == null) {
-            throw new HibernateException("Property is required: " + JAKARTA_JDBC_URL);
+            throw new HibernateException("Configuration is required: " + JAKARTA_JDBC_URL);
         }
         if (!(jdbcUrl instanceof String)) {
             throw new HibernateException(
-                    String.format("Property ('%s') value ('%s') not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+                    String.format("Configuration ('%s') value ('%s') not of string type", JAKARTA_JDBC_URL, jdbcUrl));
         }
         ConnectionString connectionString;
         try {

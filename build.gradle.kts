@@ -30,7 +30,7 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.logback.classic)
 
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     errorprone(libs.nullaway)
     api(libs.jspecify)
@@ -57,8 +57,7 @@ tasks.named<Test>("test") {
 
 spotless {
     java {
-        // note: you can use an empty string for all the imports you didn't specify explicitly, '|' to join group without blank line, and '\\#` prefix for static imports
-        importOrder("java|javax", "", "\\#")
+        importOrder()
 
         removeUnusedImports()
 
