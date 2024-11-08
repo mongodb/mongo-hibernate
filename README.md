@@ -27,22 +27,23 @@ The following gradle plugins are chosen for static code analysis:
 To check whether format violation exists, run:
 
 ```console
-$ ./gradlew spotlessCheck
+$./gradlew spotlessCheck
 ```
 
 If format violation found during the previous step, you can run auto-formatting task as:
 
 ```console
-$ ./gradlew spotlessApply
+$./gradlew spotlessApply
 ```
 
 #### Code quality check
 
 [Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis during compiling phrase. [NullAway](https://github.com/uber/NullAway) is a Java NPE prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
 
-To check whether either plugin complains, simply run the compiling gradle task:
+####
+Both static analysis steps will be included by running:
 ```console
-$ ./gradlew compileJava
+$./gradlew -x test clean check
 ```
 
 ## References
