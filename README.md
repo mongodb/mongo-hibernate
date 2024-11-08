@@ -18,33 +18,29 @@ Java 17 is the JDK version for development.
 Initially Hibernate ORM v6.6 is the dependency version.
 
 ### Build from source
-The following gradle plugins are chosen for static code analysis:
 
-#### Code style check
+#### Static code analysis
 
-[Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) is a general-purpose formatting plugin; [Palantir Java Format](https://github.com/palantir/palantir-java-format) is a Java-specific auto-formatting plugin integrated with Spotless.
-
-To check whether format violation exists, run:
-
+Both of the following analysis tasks will be included by running:
 ```console
-$./gradlew spotlessCheck
+$./gradlew -x test clean check
 ```
 
-If format violation found during the previous step, you can run auto-formatting task as:
+##### Code style check
+
+[Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) is a general-purpose formatting gradle plugin; [Palantir Java Format](https://github.com/palantir/palantir-java-format) is a Java-specific auto-formatting plugin integrated with Spotless.
+
+You can run auto-formatting task whenever format violation is found:
 
 ```console
 $./gradlew spotlessApply
 ```
 
-#### Code quality check
+##### Code quality check
 
-[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis during compiling phrase. [NullAway](https://github.com/uber/NullAway) is a Java NPE prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
+[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis. [NullAway](https://github.com/uber/NullAway) is a Java NPE prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
 
 ####
-Both static analysis steps will be included by running:
-```console
-$./gradlew -x test clean check
-```
 
 ## References
 
