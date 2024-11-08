@@ -95,6 +95,11 @@ functions:
           fi
           mongo-orchestration stop || true
 
+  "upload test results":
+    - command: attach.xunit_results
+      params:
+        file: ./src/*/build/test-results/*/TEST-*.xml
+
   "cleanup":
     - command: shell.exec
       params:
@@ -111,6 +116,7 @@ pre:
 # Functions to run after all tasks (except those in task groups).
 post:
   - func: "stop mongo orchestration"
+  - func: "upload test results"
   - func: "cleanup"
 
 #######################################
