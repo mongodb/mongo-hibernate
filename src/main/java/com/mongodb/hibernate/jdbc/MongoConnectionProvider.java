@@ -22,7 +22,8 @@ import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.hibernate.NotYetImplementedException;
+import com.mongodb.hibernate.internal.NotYetImplementedException;
+import java.io.Serial;
 import java.sql.Connection;
 import java.util.Map;
 import org.hibernate.HibernateException;
@@ -31,13 +32,14 @@ import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownUnwrapTypeException;
 import org.hibernate.service.spi.Configurable;
 import org.hibernate.service.spi.Stoppable;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
- * MongoDB dialect's customized JDBC {@link ConnectionProvider} SPI implementation, whose class name could be provided
- * using configuration property {@value org.hibernate.cfg.JdbcSettings#CONNECTION_PROVIDER}.
+ * {@linkplain com.mongodb.hibernate.dialect.MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider}
+ * SPI implementation.
  *
- * <p>The following Hibernate JDBC properties will be relied upon by Hibernate's {@link Configurable} SPI mechanism:
+ * <p>{@link MongoConnectionProvider} uses the following Hibernate properties:
  *
  * <ul>
  *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}
@@ -55,7 +57,11 @@ import org.jspecify.annotations.Nullable;
  * @see JdbcSettings#JAKARTA_JDBC_PASSWORD
  * @see <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>
  */
-public class MongoConnectionProvider implements ConnectionProvider, Configurable, Stoppable {
+@NullMarked
+public final class MongoConnectionProvider implements ConnectionProvider, Configurable, Stoppable {
+
+    @Serial
+    private static final long serialVersionUID = -1666024601592368426L;
 
     private @Nullable MongoClient mongoClient;
 
@@ -99,12 +105,18 @@ public class MongoConnectionProvider implements ConnectionProvider, Configurable
         ConnectionString connectionString;
         try {
             connectionString = new ConnectionString((String) jdbcUrl);
-        } catch (IllegalArgumentException iae) {
-            throw new HibernateException("Invalid MongoDB connection string: " + jdbcUrl, iae);
+        } catch (RuntimeException e) {
+            throw new HibernateException(
+                    String.format(
+                            "Failed to create ConnectionString from configuration ('%s') with value ('%s')",
+                            JAKARTA_JDBC_URL, jdbcUrl),
+                    e);
         }
         var database = connectionString.getDatabase();
         if (database == null) {
-            throw new HibernateException("Database must be provided in connection string: " + jdbcUrl);
+            throw new HibernateException(String.format(
+                    "Database must be provided in ConnectionString from configuration ('%s') with value ('%s')",
+                    JAKARTA_JDBC_URL, jdbcUrl));
         }
 
         var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);

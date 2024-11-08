@@ -18,43 +18,35 @@ package com.mongodb.hibernate.dialect;
 
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.jspecify.annotations.NullMarked;
 
 /**
- * A MongoDB {@linkplain Dialect} for version 6.0 and above.
+ * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}.
  *
  * <p>Usually Hibernate dialect represents some SQL RDBMS and speaks SQL with vendor-specific difference. MongoDB is a
- * document DB and speaks <i>MQL</i> (MongoDB Query Language) in JSON format, but it is still possible to integrate with
- * Hibernate seamlessly by creating a JDBC adaptor on top of MongoDB's Java client library.
- *
- * <p>Some MongoDB-specific customization examples include:
- *
- * <ul>
- *   <li>MQL translation extension point
- *   <li>SQL {@linkplain java.sql.Types#ARRAY ARRAY} and {@linkplain java.sql.Types#STRUCT STRUCT} extension points to
- *       support MongoDB's embedding array and document
- *   <li>MQL parameterization customization
- * </ul>
+ * document DB and speaks <i>MQL</i> (MongoDB Query Language), but it is still possible to integrate with Hibernate by
+ * creating a JDBC adaptor on top of MongoDB's Java Driver.
  */
-public class MongoDialect extends Dialect {
-    public static final int MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED = 6;
-    public static final int MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED = 0;
+@NullMarked
+public final class MongoDialect extends Dialect {
 
-    private static final DatabaseVersion MINIMUM_VERSION =
-            DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED, MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED);
-
-    /**
-     * Default constructor used when no version info is available.
-     *
-     * <p>Note that {@link Dialect} abstract class has two overloaded constructors accepting sole parameter, and only
-     * one accepts {@code null} value. Explicitly downcast to make the intention clear.
-     */
+    /** Default constructor used when no version info is available. */
     public MongoDialect() {
         super((DatabaseVersion) null);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * Constructor used when actual metadata info is available.
+     *
+     * @param info MongoDB metadata
+     */
+    public MongoDialect(DialectResolutionInfo info) {
+        super(info);
+    }
+
     @Override
-    protected DatabaseVersion getMinimumSupportedVersion() {
-        return MINIMUM_VERSION;
+    public DatabaseVersion getMinimumSupportedVersion() {
+        return DatabaseVersion.make(6);
     }
 }

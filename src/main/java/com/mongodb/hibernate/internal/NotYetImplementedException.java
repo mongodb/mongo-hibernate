@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.internal;
+
+import org.jspecify.annotations.NullMarked;
 
 /**
  * A temporary marker exception to denote that the feature in question is in the scope of MongoDB dialect but has not
@@ -25,8 +27,11 @@ package com.mongodb.hibernate;
  *
  * <p>It is recommended to provide some message to explain when it will be implemented (e.g. JIRA ticket id is a good
  * idea), but that is optional.
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time.
  */
-public class NotYetImplementedException extends RuntimeException {
+@NullMarked
+public final class NotYetImplementedException extends RuntimeException {
 
     /**
      * Default constructor.
