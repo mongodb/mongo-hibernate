@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.hibernate.cfg.JdbcSettings.*;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_PASSWORD;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_USER;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -42,12 +44,31 @@ import org.jspecify.annotations.Nullable;
  * <p>{@link MongoConnectionProvider} uses the following Hibernate properties:
  *
  * <ul>
- *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}
- *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}
- *   <li>{@linkplain org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}
+ *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}
+ *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}
+ *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}
  * </ul>
- *
- * <p>{@value org.hibernate.cfg.JdbcSettings#JAKARTA_JDBC_URL} property is mandatory and it maps to MongoDB's <a
+ * <p>
+ * as follows:
+ * <p>
+ * <table>
+ *     <tr><th>Property</th><th>Description</th></tr>
+ *     <tr>
+ *         <td>{@linkplain JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}</td>
+ *         <td>MongoDB
+ *         <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a></td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@linkplain JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}</td>
+ *         <td>{@code userName} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
+ *     </tr>
+ *     <tr>
+ *         <td>{@linkplain JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}</td>
+ *         <td>{@code password} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
+ *     </tr>
+ * </table>
+ * <p>
+ * {@value JdbcSettings#JAKARTA_JDBC_URL} property is mandatory and it maps to MongoDB's <a
  * href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>, in which database name
  * must be provided to align with JDBC URL's convention. The other two JDBC properties are optional.
  *
@@ -100,7 +121,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
         }
         if (!(jdbcUrl instanceof String)) {
             throw new HibernateException(
-                    String.format("Configuration ('%s') value ('%s') not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+                    String.format("Configuration [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
         }
         ConnectionString connectionString;
         try {
@@ -108,14 +129,14 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
         } catch (RuntimeException e) {
             throw new HibernateException(
                     String.format(
-                            "Failed to create ConnectionString from configuration ('%s') with value ('%s')",
+                            "Failed to create ConnectionString from configuration [%s] with value [%s]",
                             JAKARTA_JDBC_URL, jdbcUrl),
                     e);
         }
         var database = connectionString.getDatabase();
         if (database == null) {
             throw new HibernateException(String.format(
-                    "Database must be provided in ConnectionString from configuration ('%s') with value ('%s')",
+                    "Database must be provided in ConnectionString from configuration [%s] with value [%s]",
                     JAKARTA_JDBC_URL, jdbcUrl));
         }
 
