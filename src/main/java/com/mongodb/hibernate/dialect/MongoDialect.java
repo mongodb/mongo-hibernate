@@ -30,6 +30,11 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 public final class MongoDialect extends Dialect {
+    public static final int MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED = 6;
+    public static final int MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED = 0;
+
+    private static final DatabaseVersion MINIMUM_VERSION =
+            DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED, MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED);
 
     /** Default constructor used when no version info is available. */
     public MongoDialect() {
@@ -37,16 +42,16 @@ public final class MongoDialect extends Dialect {
     }
 
     /**
-     * Constructor used when actual metadata info is available.
+     * Constructor used when MongoDB meta data is available.
      *
-     * @param info MongoDB metadata
+     * @param info MongoDB meta data
      */
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
     }
 
     @Override
-    public DatabaseVersion getMinimumSupportedVersion() {
-        return DatabaseVersion.make(6);
+    protected DatabaseVersion getMinimumSupportedVersion() {
+        return MINIMUM_VERSION;
     }
 }

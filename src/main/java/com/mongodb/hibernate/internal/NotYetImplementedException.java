@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal;
 
+import java.io.Serial;
 import org.jspecify.annotations.NullMarked;
 
 /**
@@ -32,6 +33,9 @@ import org.jspecify.annotations.NullMarked;
  */
 @NullMarked
 public final class NotYetImplementedException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = -1642331376287373147L;
 
     /**
      * Default constructor.
