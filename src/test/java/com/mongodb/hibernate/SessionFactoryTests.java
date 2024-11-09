@@ -17,24 +17,29 @@
 package com.mongodb.hibernate;
 
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.mongodb.hibernate.dialect.MongoDialect;
+import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import java.util.HashMap;
 import java.util.Map;
 import org.hibernate.HibernateException;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Test;
 
 class SessionFactoryTests {
 
     @Test
-    void test_success() {
+    void testSuccess() {
         buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost/test"));
     }
 
     @Test
-    void test_invalid_connection_String() {
+    void testInvalidConnectionString() {
         var exception = assertThrows(
                 ServiceException.class,
                 () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test")));
@@ -42,16 +47,24 @@ class SessionFactoryTests {
     }
 
     @Test
-    void test_when_database_absent() {
+    void testWhenDatabaseAbsent() {
         var exception = assertThrows(
                 ServiceException.class, () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost")));
         assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
-    private void buildSessionFactory(Map<String, String> configurationValues) throws ServiceException {
-        var cfg = new Configuration(); // default properties will be loaded from conventional resource
-        configurationValues.forEach(cfg::setProperty); // override
-        try (SessionFactory ignored = cfg.buildSessionFactory()) {
+    private void buildSessionFactory(Map<String, Object> jdbcSettings) throws ServiceException {
+        var settings = new HashMap<>(jdbcSettings);
+        settings.put(AvailableSettings.DIALECT, MongoDialect.class.getName());
+        settings.put(AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
+
+        var standardServiceRegistry =
+                new StandardServiceRegistryBuilder().applySettings(settings).build();
+        var sessionFactoryBuilder = new MetadataSources(standardServiceRegistry)
+                .getMetadataBuilder()
+                .build()
+                .getSessionFactoryBuilder();
+        try (var ignored = sessionFactoryBuilder.build()) {
             // no-op
         }
     }
