@@ -29,6 +29,7 @@ repositories {
 dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.logback.classic)
+    testImplementation(libs.mockito.junit.jupiter)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 

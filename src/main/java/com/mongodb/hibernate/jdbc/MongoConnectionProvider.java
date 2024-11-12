@@ -16,24 +16,23 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_PASSWORD;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_USER;
+import static org.hibernate.cfg.JdbcSettings.*;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.io.Serial;
 import java.sql.Connection;
 import java.util.Map;
 import org.hibernate.HibernateException;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
+import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.UnknownUnwrapTypeException;
-import org.hibernate.service.spi.Configurable;
-import org.hibernate.service.spi.Stoppable;
+import org.hibernate.service.spi.*;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -81,10 +80,13 @@ import org.jspecify.annotations.Nullable;
  * @see <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>
  */
 @NullMarked
-public final class MongoConnectionProvider implements ConnectionProvider, Configurable, Stoppable {
+public final class MongoConnectionProvider
+        implements ConnectionProvider, Configurable, Stoppable, ServiceRegistryAwareService {
 
     @Serial
     private static final long serialVersionUID = -1666024601592368426L;
+
+    private @Nullable MongoClientCustomizer mongoClientCustomizer;
 
     private @Nullable MongoClient mongoClient;
 
@@ -148,14 +150,30 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
             throw new NotYetImplementedException("To be implemented after auth could be tested in CI");
         }
 
-        var clientSettings = clientSettingsBuilder.build();
-        this.mongoClient = MongoClients.create(clientSettings);
+        // serviceRegistry should have been injected
+        if (mongoClientCustomizer != null) {
+            try {
+                mongoClientCustomizer.customize(clientSettingsBuilder);
+            } catch (Exception e) {
+                throw new ServiceException("Error during customizing Mongo client", e);
+            }
+        }
+        this.mongoClient = MongoClients.create(clientSettingsBuilder.build());
     }
 
     @Override
     public void stop() {
         if (this.mongoClient != null) {
             this.mongoClient.close();
+        }
+    }
+
+    @Override
+    public void injectServices(ServiceRegistryImplementor serviceRegistry) {
+        try {
+            this.mongoClientCustomizer = serviceRegistry.getService(MongoClientCustomizer.class);
+        } catch (UnknownServiceException ignored) {
+            // no-op
         }
     }
 }
