@@ -17,19 +17,21 @@ Java 17 is the JDK version for development.
 
 Initially Hibernate ORM v6.6 is the dependency version.
 
-### Build from source
+MongoDB v6 is the minimal version this dialect supports.
 
-#### Static code analysis
+### Build from Source
 
-#### Code style check
+#### Static Code Analysis
+
+#### Code Style Check
 
 We chose [Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) as a general-purpose formatting plugin, and [Palantir Java Format](https://github.com/palantir/palantir-java-format) as a Java-specific formatting tool integrated with it.
 
 To check whether any format violation exists, run `spotlessCheck` gradle task. If any format violation is found during the previous step, run `spotlessApply` auto-formatting task to fix it automatically.
 
-#### Code quality check
+#### Code Quality Check
 
-[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis during Java compiling phrase. [NullAway](https://github.com/uber/NullAway) is a Java NPE prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
+[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis during Java compiling phrase. [NullAway](https://github.com/uber/NullAway) is a Java `NullPointerException`s (NPEs) prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
 
 Both plugins are enabled on gradle's `compileJava` task.
 
