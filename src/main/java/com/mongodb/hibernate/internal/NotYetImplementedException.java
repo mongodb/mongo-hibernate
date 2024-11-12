@@ -17,7 +17,6 @@
 package com.mongodb.hibernate.internal;
 
 import java.io.Serial;
-import org.jspecify.annotations.NullMarked;
 
 /**
  * A temporary marker exception to denote that the feature in question is in the scope of MongoDB dialect but has not
@@ -31,7 +30,6 @@ import org.jspecify.annotations.NullMarked;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time.
  */
-@NullMarked
 public final class NotYetImplementedException extends RuntimeException {
 
     @Serial

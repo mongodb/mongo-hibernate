@@ -19,7 +19,6 @@ package com.mongodb.hibernate.dialect;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
-import org.jspecify.annotations.NullMarked;
 
 /**
  * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}.
@@ -28,7 +27,6 @@ import org.jspecify.annotations.NullMarked;
  * document DB and speaks <i>MQL</i> (MongoDB Query Language), but it is still possible to integrate with Hibernate by
  * creating a JDBC adaptor on top of MongoDB's Java Driver.
  */
-@NullMarked
 public final class MongoDialect extends Dialect {
     public static final int MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED = 6;
     public static final int MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED = 0;
