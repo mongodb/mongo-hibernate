@@ -16,11 +16,16 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.hibernate.cfg.JdbcSettings.*;
+
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
+import java.io.Serial;
+import java.sql.Connection;
+import java.util.Map;
 import org.hibernate.HibernateException;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
@@ -28,12 +33,6 @@ import org.hibernate.service.UnknownUnwrapTypeException;
 import org.hibernate.service.spi.Configurable;
 import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
-
-import java.io.Serial;
-import java.sql.Connection;
-import java.util.Map;
-
-import static org.hibernate.cfg.JdbcSettings.*;
 
 /**
  * {@linkplain com.mongodb.hibernate.dialect.MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider}
