@@ -48,9 +48,11 @@ import org.jspecify.annotations.Nullable;
  *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}
  *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}
  * </ul>
+ *
+ * <p>as follows:
+ *
  * <p>
- * as follows:
- * <p>
+ *
  * <table>
  *     <tr><th>Property</th><th>Description</th></tr>
  *     <tr>
@@ -67,8 +69,8 @@ import org.jspecify.annotations.Nullable;
  *         <td>{@code password} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
  *     </tr>
  * </table>
- * <p>
- * {@value JdbcSettings#JAKARTA_JDBC_URL} property is mandatory and it maps to MongoDB's <a
+ *
+ * <p>{@value JdbcSettings#JAKARTA_JDBC_URL} property is mandatory and it maps to MongoDB's <a
  * href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>, in which database name
  * must be provided to align with JDBC URL's convention. The other two JDBC properties are optional.
  *
