@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.hibernate.cfg.JdbcSettings.*;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_PASSWORD;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_USER;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
