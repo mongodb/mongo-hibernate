@@ -25,14 +25,10 @@ import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
  *
  * <p>Usually Hibernate dialect represents some SQL RDBMS and speaks SQL with vendor-specific difference. MongoDB is a
  * document DB and speaks <i>MQL</i> (MongoDB Query Language), but it is still possible to integrate with Hibernate by
- * creating a JDBC adaptor on top of MongoDB's Java Driver.
+ * creating a JDBC adaptor on top of MongoDB Java Driver.
  */
 public final class MongoDialect extends Dialect {
-    public static final int MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED = 6;
-    public static final int MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED = 0;
-
-    private static final DatabaseVersion MINIMUM_VERSION =
-            DatabaseVersion.make(MINIMUM_MONGODB_MAJOR_VERSION_SUPPORTED, MINIMUM_MONGODB_MINOR_VERSION_SUPPORTED);
+    private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);
 
     /** Default constructor used when no version info is available. */
     public MongoDialect() {
