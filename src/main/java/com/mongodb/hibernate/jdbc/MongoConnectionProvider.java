@@ -40,36 +40,27 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>{@link MongoConnectionProvider} uses the following Hibernate properties:
  *
- * <ul>
- *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}
- *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}
- *   <li>{@linkplain JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}
- * </ul>
- *
- * <p>as follows:
- *
- * <p>
- *
  * <table>
- *     <tr><th>Property</th><th>Description</th></tr>
+ *     <tr><th>Property</th><th>Description</th><th>Required</th></tr>
  *     <tr>
- *         <td>{@linkplain JdbcSettings#JAKARTA_JDBC_URL jakarta.persistence.jdbc.url}</td>
+ *         <td>{@value JdbcSettings#JAKARTA_JDBC_URL}</td>
  *         <td>MongoDB
- *         <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a></td>
+ *         <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>,
+ *         which must specify the database name for authentication
+ *         if {@value JdbcSettings#JAKARTA_JDBC_USER} is specified.</td>
+ *         <td>✓</td>
  *     </tr>
  *     <tr>
- *         <td>{@linkplain JdbcSettings#JAKARTA_JDBC_USER jakarta.persistence.jdbc.user}</td>
+ *         <td>{@value JdbcSettings#JAKARTA_JDBC_USER}</td>
  *         <td>{@code userName} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
+ *         <td></td>
  *     </tr>
  *     <tr>
- *         <td>{@linkplain JdbcSettings#JAKARTA_JDBC_PASSWORD jakarta.persistence.jdbc.password}</td>
+ *         <td>{@value JdbcSettings#JAKARTA_JDBC_PASSWORD}</td>
  *         <td>{@code password} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
+ *         <td></td>
  *     </tr>
  * </table>
- *
- * <p>{@value JdbcSettings#JAKARTA_JDBC_URL} property is mandatory and it maps to MongoDB's <a
- * href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>, in which database name
- * must be provided to align with JDBC URL's convention. The other two JDBC properties are optional.
  *
  * @see ConnectionProvider
  * @see JdbcSettings#JAKARTA_JDBC_URL
