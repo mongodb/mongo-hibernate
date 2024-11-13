@@ -25,6 +25,9 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.sql.Connection;
 import java.util.Map;
@@ -75,7 +78,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private transient @Nullable MongoClient mongoClient;
+    private @Nullable MongoClient mongoClient;
 
     @Override
     public Connection getConnection() {
@@ -140,5 +143,11 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
         if (this.mongoClient != null) {
             this.mongoClient.close();
         }
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        throw new NotSerializableException(
+                "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 }
