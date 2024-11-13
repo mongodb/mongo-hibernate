@@ -122,12 +122,6 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
                             JAKARTA_JDBC_URL, jdbcUrl),
                     e);
         }
-        var database = connectionString.getDatabase();
-        if (database == null) {
-            throw new HibernateException(String.format(
-                    "Database must be provided in ConnectionString from configuration [%s] with value [%s]",
-                    JAKARTA_JDBC_URL, jdbcUrl));
-        }
 
         var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
 

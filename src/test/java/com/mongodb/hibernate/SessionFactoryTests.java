@@ -46,13 +46,6 @@ class SessionFactoryTests {
         assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
-    @Test
-    void testWhenDatabaseAbsent() {
-        var exception = assertThrows(
-                ServiceException.class, () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost")));
-        assertInstanceOf(HibernateException.class, exception.getCause());
-    }
-
     private void buildSessionFactory(Map<String, Object> jdbcSettings) {
         var settings = new HashMap<>(jdbcSettings);
         settings.put(AvailableSettings.DIALECT, MongoDialect.class.getName());
