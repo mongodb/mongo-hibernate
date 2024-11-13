@@ -20,9 +20,9 @@ import com.mongodb.MongoClientSettings;
 import org.hibernate.service.Service;
 
 /**
- * A Hibernate {@link Service} focusing on customizing {@link com.mongodb.client.MongoClient} creation by invoking
- * {@link MongoClientSettings.Builder}'s various methods prior to its {@link MongoClientSettings.Builder#build()}
- * invocation.
+ * A Hibernate {@link Service} focusing on customizing {@link com.mongodb.client.MongoClient} creation programmatically
+ * by invoking {@link MongoClientSettings.Builder}'s various methods prior to its
+ * {@link MongoClientSettings.Builder#build()} invocation.
  *
  * <p>An example usage is as follows:
  *
@@ -31,7 +31,7 @@ import org.hibernate.service.Service;
  *     ... ... // configure cfg as you normally do (e.g. add entity classes, etc.)
  *
  *     var clientCustomizer = builder -> {
- *         ... ... // customize client to your heart's content
+ *         ... ... // customize client settings to your heart's content
  *     };
  *
  *     var serviceRegistryBuilder = cfg.getStandardServiceRegistryBuilder();
@@ -43,6 +43,8 @@ import org.hibernate.service.Service;
  * </pre>
  *
  * <p>Internally the {@code clientCustomizer} will be fetched and do its due diligence.
+ *
+ * @see com.mongodb.hibernate.jdbc.MongoConnectionProvider#configure(java.util.Map)
  */
 @FunctionalInterface
 public interface MongoClientCustomizer extends Service {
