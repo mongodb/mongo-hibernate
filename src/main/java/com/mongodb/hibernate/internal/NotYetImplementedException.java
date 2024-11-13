@@ -33,7 +33,7 @@ import java.io.Serial;
 public final class NotYetImplementedException extends RuntimeException {
 
     @Serial
-    private static final long serialVersionUID = -1642331376287373147L;
+    private static final long serialVersionUID = 1L;
 
     /**
      * Default constructor.

@@ -53,7 +53,7 @@ class SessionFactoryTests {
         assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
-    private void buildSessionFactory(Map<String, Object> jdbcSettings) throws ServiceException {
+    private void buildSessionFactory(Map<String, Object> jdbcSettings) {
         var settings = new HashMap<>(jdbcSettings);
         settings.put(AvailableSettings.DIALECT, MongoDialect.class.getName());
         settings.put(AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
