@@ -6,10 +6,10 @@ This project aims to provide a library to seamlessly integrate MongoDB with Hibe
 
 MongoDB speaks _MQL_ (**M**ongoDB **Q**uery **L**anguage in JSON format) instead of SQL. This project creates a MongoDB Hibernate Dialect by:
 
-- create a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/)
-- translate Hibernate's internal SQL AST into MQL
+- creating a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/);
+- translating Hibernate's internal SQL AST into MQL.
 
-<img src="hibernate-dialects.png" alt="MongoDB Dialect" width="800"/>
+<img src="hibernate-dialects.png" alt="Hibernate Dialects" />
 
 ## Development
 
