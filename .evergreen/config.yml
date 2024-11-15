@@ -160,8 +160,8 @@ buildvariants:
   - name: mongodb_v6.0_replicaset
     tags:
       - ci
-      - "6.0"
-    display_name: MongoDB v6.0 (replicaset)
+      - v6
+    display_name: MongoDB v6.0
     expansions:
       MONGODB_VERSION: 6.0
       TOPOLOGY: replica_set
@@ -172,8 +172,8 @@ buildvariants:
   - name: mongodb_v7.0_replicaset
     tags:
       - ci
-      - "7.0"
-    display_name: MongoDB v7.0 (replicaset)
+      - v7
+    display_name: MongoDB v7.0
     expansions:
       MONGODB_VERSION: 7.0
       TOPOLOGY: replica_set
@@ -184,8 +184,8 @@ buildvariants:
   - name: mongodb_v8.0_replicaset
     tags:
       - ci
-      - "8.0"
-    display_name: MongoDB v8.0 (replicaset)
+      - v8
+    display_name: MongoDB v8.0
     expansions:
       MONGODB_VERSION: 8.0
       TOPOLOGY: replica_set
