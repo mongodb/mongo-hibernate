@@ -2,19 +2,28 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-junit-jupiter = "5.10.3"
+junit-jupiter = "5.11.3"
 spotless = "6.25.0"
 palantir = "2.50.0"
-errorprone = "4.0.1"
-google-errorprone-core = "2.9.0"
-nullaway = "0.10.26"
-jspecify = "0.3.0"
+errorprone = "4.1.0"
+google-errorprone-core = "2.35.1"
+nullaway = "0.12.1"
+jspecify = "1.0.0"
+hibernate-core = "6.6.1.Final"
+mongo-java-driver-sync = "5.2.0"
+slf4j-api = "2.0.16"
+logback-classic = "1.5.12"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 google-errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "google-errorprone-core" }
+hibernate-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-core" }
+mongo-java-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongo-java-driver-sync" }
+sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

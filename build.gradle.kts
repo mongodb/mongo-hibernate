@@ -17,30 +17,31 @@
 import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
-    // Apply the java-library plugin for API and implementation separation.
     `java-library`
     alias(libs.plugins.spotless)
     alias(libs.plugins.errorprone)
 }
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
 dependencies {
-    // Use JUnit Jupiter for testing.
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.logback.classic)
 
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     errorprone(libs.nullaway)
     api(libs.jspecify)
 
     errorprone(libs.google.errorprone.core)
+
+    implementation(libs.hibernate.core)
+    implementation(libs.mongo.java.driver.sync)
+    implementation(libs.sl4j.api)
 }
 
-// Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
@@ -48,7 +49,6 @@ java {
 }
 
 tasks.named<Test>("test") {
-    // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
 
@@ -57,8 +57,7 @@ tasks.named<Test>("test") {
 
 spotless {
     java {
-        // note: you can use an empty string for all the imports you didn't specify explicitly, '|' to join group without blank line, and '\\#` prefix for static imports
-        importOrder("java|javax", "", "\\#")
+        importOrder()
 
         removeUnusedImports()
 
