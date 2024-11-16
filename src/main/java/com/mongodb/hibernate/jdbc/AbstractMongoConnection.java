@@ -16,11 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.Savepoint;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -29,139 +26,135 @@ import java.util.concurrent.Executor;
 abstract class AbstractMongoConnection implements Connection {
 
     @Override
-    public String nativeSQL(String sql) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public String nativeSQL(String sql) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setReadOnly(boolean readOnly) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setReadOnly(boolean readOnly) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public boolean isReadOnly() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public boolean isReadOnly() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setCatalog(String catalog) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setCatalog(String catalog) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public String getCatalog() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public Map<String, Class<?>> getTypeMap() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public Map<String, Class<?>> getTypeMap() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setTypeMap(Map<String, Class<?>> map) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setHoldability(int holdability) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setHoldability(int holdability) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public int getHoldability() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public int getHoldability() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public Savepoint setSavepoint() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public Savepoint setSavepoint() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public Savepoint setSavepoint(String name) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public Savepoint setSavepoint(String name) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void rollback(Savepoint savepoint) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void rollback(Savepoint savepoint) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void releaseSavepoint(Savepoint savepoint) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void releaseSavepoint(Savepoint savepoint) {
-        throw new IllegalStateException("Hibernate won't use this method");
-    }
-
-    @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
+            throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
     public PreparedStatement prepareStatement(
-            String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
-        throw new IllegalStateException("Hibernate won't use this method");
+            String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
     public CallableStatement prepareCall(
-            String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) {
-        throw new IllegalStateException("Hibernate won't use this method");
+            String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int[] columnIndexes) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public boolean isValid(int timeout) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public boolean isValid(int timeout) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setClientInfo(String name, String value) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setClientInfo(String name, String value) throws SQLClientInfoException {
+        throw new SQLClientInfoException("Hibernate won't use this method", Collections.emptyMap());
     }
 
     @Override
-    public void setClientInfo(Properties properties) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setClientInfo(Properties properties) throws SQLClientInfoException {
+        throw new SQLClientInfoException("Hibernate won't use this method", Collections.emptyMap());
     }
 
     @Override
-    public String getClientInfo(String name) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public String getClientInfo(String name) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public Properties getClientInfo() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public Properties getClientInfo() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setSchema(String schema) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setSchema(String schema) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public String getSchema() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public String getSchema() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void abort(Executor executor) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void abort(Executor executor) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public void setNetworkTimeout(Executor executor, int milliseconds) {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 
     @Override
-    public int getNetworkTimeout() {
-        throw new IllegalStateException("Hibernate won't use this method");
+    public int getNetworkTimeout() throws SQLException {
+        throw new SQLException("Hibernate won't use this method");
     }
 }

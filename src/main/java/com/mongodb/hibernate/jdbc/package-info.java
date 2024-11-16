@@ -31,6 +31,9 @@
  * </ul>
  *
  * <p>Note that all the {@code sql} API method parameters have been renamed to {@code mql}.
+ *
+ * <p>As a good practise keep from throwing {@link java.lang.RuntimeException} when implementing various JDBC API
+ * methods , which invariably throw checked exception and Hibernate expects the contract to go about code logic.
  */
 @NullMarked
 package com.mongodb.hibernate.jdbc;
