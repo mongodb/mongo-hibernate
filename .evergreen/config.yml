@@ -22,10 +22,8 @@ functions:
       params:
         working_dir: src
         binary: bash
-        add_to_path:
-          - .evergreen
         args:
-          - create-expansions.sh
+          - .evergreen/create-expansions.sh
         include_expansions_in_env:
           - is_patch
           - version_id
@@ -34,27 +32,13 @@ functions:
       params:
         file: src/expansion.yml
 
-  "exec script":
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        shell: bash
-        add_to_path:
-          - .evergreen
-        script: |
-          ${PREPARE_SHELL}
-          ${script}
-
   "prepare resources":
     - command: subprocess.exec
       params:
         working_dir: src
         binary: bash
-        add_to_path:
-          - .evergreen
         args:
-          - fetch-drivers-tools.sh
+          - .evergreen/fetch-drivers-tools.sh
         include_expansions_in_env:
           - DRIVERS_TOOLS
     - command: shell.exec
@@ -98,7 +82,7 @@ functions:
   "upload test results":
     - command: attach.xunit_results
       params:
-        file: ./src/*/build/test-results/*/TEST-*.xml
+        file: src/build/test-results/test/TEST-*.xml
 
   "cleanup":
     - command: shell.exec
@@ -129,9 +113,14 @@ tasks:
       - ci
       - static-check
     commands:
-      - func: "exec script"
+      - command: subprocess.exec
         params:
-          script: static-check.sh
+          working_dir: src
+          binary: bash
+          add_to_path:
+            - .evergreen
+          args:
+            - static-check.sh
 
   - name: run-test
     type: test
@@ -140,9 +129,14 @@ tasks:
       - test
     commands:
       - func: "bootstrap mongo-orchestration"
-      - func: "exec script"
+      - command: subprocess.exec
         params:
-          script: run-test.sh
+          working_dir: src
+          binary: bash
+          add_to_path:
+            - .evergreen
+          args:
+            - run-test.sh
 
 ########################################
 #           Build Variants             #

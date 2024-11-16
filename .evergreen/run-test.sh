@@ -9,7 +9,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 source java-config.sh
 
-echo "${PROJECT}: running tests ..."
+echo "mongo-hibernate: running tests ..."
 
 echo "MongoDB version: ${MONGODB_VERSION}; topology: ${TOPOLOGY}"
 
