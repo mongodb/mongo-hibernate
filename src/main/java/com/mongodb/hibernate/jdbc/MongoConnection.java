@@ -33,8 +33,12 @@ import java.sql.Struct;
 import org.hibernate.service.UnknownUnwrapTypeException;
 import org.jspecify.annotations.Nullable;
 
-/** MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class. */
-final class MongoConnection extends AbstractMongoConnection {
+/**
+ * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
+ *
+ * <p>Only focused on API methods Hibernate ever used. All the unused methods are dealt with in its parent class.
+ */
+final class MongoConnection extends DummyConnection {
 
     private final ClientSession clientSession;
 
@@ -88,7 +92,7 @@ final class MongoConnection extends AbstractMongoConnection {
 
     @Override
     public void close() throws SQLException {
-        if (!this.closed) { // no-op if closed
+        if (!this.closed) {
             try {
                 this.clientSession.close();
                 this.closed = true;

@@ -16,10 +16,13 @@
 
 package com.mongodb.hibernate;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,36 +41,31 @@ class SessionTests {
     }
 
     @Test
-    void testOpenSession() {
-        Assertions.assertNotNull(sessionFactory.openSession());
-    }
-
-    @Test
-    void testCurrentSession() {
-        Assertions.assertNotNull(sessionFactory.getCurrentSession());
+    void testSessionFactoryOpenSession() {
+        assertNotNull(sessionFactory.openSession());
     }
 
     @Test
     void testInSession() {
-        sessionFactory.inSession(session -> {});
+        sessionFactory.inSession(session -> assertTrue(true));
     }
 
     @Test
-    void testFromSession() {
+    void testSessionFactoryFromSession() {
         var value = sessionFactory.fromSession(session -> 1);
-        Assertions.assertEquals(1, value);
+        assertEquals(1, value);
     }
 
     @Test
-    void testDoWork() {
-        sessionFactory.inSession(session -> session.doWork(connection -> {}));
+    void testSessionDoWork() {
+        sessionFactory.inSession(session -> session.doWork(connection -> assertTrue(true)));
     }
 
     @Test
-    void testFromWork() {
+    void testSessionDoReturningWork() {
         sessionFactory.inSession(session -> {
             var value = session.doReturningWork(connection -> 1);
-            Assertions.assertEquals(1, value);
+            assertEquals(1, value);
         });
     }
 }

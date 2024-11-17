@@ -21,19 +21,22 @@
  * called by Hibernate will be implemented. To make code maintainable, some common JDBC API implementation pattern is
  * adopted.
  *
- * <p>Take {@link java.sql.Connection} JDBC API implementation as an example,
+ * <p>Take {@link java.sql.Connection} JDBC API implementation as an example:
  *
  * <ul>
- *   <li>an {@link com.mongodb.hibernate.jdbc.AbstractMongoConnection} dummy implementation class will be created,
- *       implementing all the API methods Hibernate won't use by throwing exceptions;
- *   <li>a {@link com.mongodb.hibernate.jdbc.MongoConnection} class will inherit from {@code AbstractMongoConnection}
- *       and focuses on implementing those API methods Hibernate really uses.
+ *   <li>a dummy {@link com.mongodb.hibernate.jdbc.DummyConnection} implementation class will simply throw exceptions
+ *       for all the API methods;
+ *   <li>a {@link com.mongodb.hibernate.jdbc.MongoConnection} class will inherit from the dummy parent class by
+ *       overriding those API methods Hibernate really uses.
  * </ul>
  *
- * <p>Note that all the {@code sql} API method parameters have been renamed to {@code mql}.
+ * In that way we could focus on Hibernate integration business logic without distraction. It is also a good idea to
+ * apply nullness annotations to the dummy class methods, if applicable.
  *
- * <p>As a good practise keep from throwing {@link java.lang.RuntimeException} when implementing various JDBC API
- * methods , which invariably throw checked exception and Hibernate expects the contract to go about code logic.
+ * <p>All the {@code sql} API method parameters have been renamed to {@code mql}.
+ *
+ * <p><B>Note: </B> keep from throwing {@link java.lang.RuntimeException} when implementing various JDBC API methods,
+ * which invariably throw checked exceptions and Hibernate expects the exception contract to go about code logic.
  */
 @NullMarked
 package com.mongodb.hibernate.jdbc;
