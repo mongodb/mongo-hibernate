@@ -31,12 +31,14 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
 import org.hibernate.service.UnknownUnwrapTypeException;
+import org.hibernate.type.descriptor.java.JavaType;
 import org.jspecify.annotations.Nullable;
 
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
- * <p>Only focused on API methods Hibernate ever used. All the unused methods are dealt with in its parent class.
+ * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
+ * in its parent dummy class.
  */
 final class MongoConnection extends DummyConnection {
 
@@ -185,46 +187,64 @@ final class MongoConnection extends DummyConnection {
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-37");
     }
 
+    /**
+     * Used during Hibernate's DDL step for Information Extraction purposes.
+     *
+     * @see org.hibernate.tool.schema.extract.internal.AbstractInformationExtractorImpl
+     */
+    @Override
+    public @Nullable String getCatalog() {
+        return null;
+    }
+
+    /**
+     * Used during Hibernate's DDL step for Information Extraction purposes.
+     *
+     * @see org.hibernate.tool.schema.extract.internal.AbstractInformationExtractorImpl
+     */
+    @Override
+    public @Nullable String getSchema() {
+        return null;
+    }
+
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // unsupported operations
 
+    // stored procedure equivalence in MongoDB won't be supported
+    // see https://www.mongodb.com/resources/products/capabilities/stored-procedures
+
     @Override
     public CallableStatement prepareCall(String mql) throws SQLException {
-        throw new UnsupportedOperationSQLException(
-                "MongoDB's JSON server function has been deprecated in favour of 'aggregate' pipeline");
+        throw new UnsupportedOperationSQLException("Stored procedure equivalence in MongoDB unsupported");
     }
 
     @Override
     public CallableStatement prepareCall(String mql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new UnsupportedOperationSQLException(
-                "MongoDB's JSON server function has been deprecated in favour of 'aggregate' pipeline");
+        throw new UnsupportedOperationSQLException("Stored procedure equivalence in MongoDB unsupported");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // dummy implementations
 
+    /**
+     * Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}.
+     *
+     * <p>Currently no need arises to record warning in this connection class.
+     */
     @Override
     public @Nullable SQLWarning getWarnings() {
         return null;
     }
 
+    /** Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}. */
     @Override
     public void clearWarnings() {
         // no-op
     }
 
+    /** Only used in {@link org.hibernate.dialect.OracleArrayJdbcType#getBinder(JavaType)} */
     @Override
     public <T> T unwrap(Class<T> unwrapType) {
         throw new UnknownUnwrapTypeException(unwrapType);
-    }
-
-    @Override
-    public boolean isWrapperFor(Class<?> unwrapType) {
-        return false;
-    }
-
-    @Override
-    public @Nullable String getCatalog() {
-        return null;
     }
 }

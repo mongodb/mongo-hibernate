@@ -275,7 +275,7 @@ abstract class DummyConnection implements Connection {
     }
 
     @Override
-    public String getSchema() throws SQLException {
+    public @Nullable String getSchema() throws SQLException {
         throw new SQLException("won't be used");
     }
 

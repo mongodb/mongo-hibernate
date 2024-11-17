@@ -37,6 +37,8 @@
  *
  * <p><B>Note: </B> keep from throwing {@link java.lang.RuntimeException} when implementing various JDBC API methods,
  * which invariably throw checked exceptions and Hibernate expects the exception contract to go about code logic.
+ *
+ * @see org.hibernate.engine.jdbc.spi.SqlExceptionHelper
  */
 @NullMarked
 package com.mongodb.hibernate.jdbc;

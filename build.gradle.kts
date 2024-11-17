@@ -29,6 +29,7 @@ repositories {
 dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.logback.classic)
+    testImplementation(libs.mockito.junit.jupiter)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 
@@ -73,6 +74,8 @@ tasks.withType<JavaCompile>().configureEach {
     options.errorprone {
         disableWarningsInGeneratedCode.set(true)
         option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+        option("NullAway:ExcludedFieldAnnotations", "org.mockito.Mock")
+        option("NullAway:ExcludedFieldAnnotations", "org.mockito.InjectMocks")
     }
 }
 tasks.compileJava {
