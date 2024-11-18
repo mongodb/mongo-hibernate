@@ -19,24 +19,52 @@ package com.mongodb.hibernate.service;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.same;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class MongoClientCustomizerTests {
 
     @Test
-    void testMongoClientCustomizerTakeEffect(@Mock MongoClientCustomizer customizer) {
-        buildSessionFactory(customizer);
-        verify(customizer).customize(any(MongoClientSettings.Builder.class));
+    void testMongoClientCustomizerTakeEffect(
+            @Mock MongoClientCustomizer customizer,
+            @Mock MongoClientSettings clientSettings,
+            @Mock MongoClient mongoClient) {
+
+        // given
+        var builder = Mockito.spy(MongoClientSettings.Builder.class);
+
+        try (var mongoClientSettings = mockStatic(MongoClientSettings.class);
+                var mongoClients = mockStatic(MongoClients.class)) {
+
+            mongoClientSettings.when(MongoClientSettings::builder).thenReturn(builder);
+            when(builder.build()).thenReturn(clientSettings);
+            mongoClients
+                    .when(() -> MongoClients.create(any(MongoClientSettings.class)))
+                    .thenReturn(mongoClient);
+
+            // when
+            buildSessionFactory(customizer);
+
+            // then
+            verify(customizer).customize(same(builder)); // ensure customizing existing builder
+            mongoClientSettings.verify(MongoClientSettings::builder, times(1));
+        }
     }
 
     @Test
