@@ -19,7 +19,7 @@ Initially Hibernate ORM v6.6 is the dependency version.
 
 MongoDB v6 is the minimal version this dialect supports.
 
-> [Standalone instance](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) will not be supported. It is recommended to [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
+> [Standalone instance](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) is not supported. It is recommended to [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
 
 ### Build from Source
 
