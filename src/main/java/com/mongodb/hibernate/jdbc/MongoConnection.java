@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
  * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
  * in its parent dummy class.
  */
-final class MongoConnection extends DummyConnection {
+final class MongoConnection extends ConnectionAdapter {
 
     private final ClientSession clientSession;
 

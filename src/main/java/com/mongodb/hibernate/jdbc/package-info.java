@@ -24,7 +24,7 @@
  * <p>Take {@link java.sql.Connection} JDBC API implementation as an example:
  *
  * <ul>
- *   <li>a dummy {@link com.mongodb.hibernate.jdbc.DummyConnection} implementation class will simply throw exceptions
+ *   <li>a dummy {@link com.mongodb.hibernate.jdbc.ConnectionAdapter} implementation class will simply throw exceptions
  *       for all the API methods;
  *   <li>a {@link com.mongodb.hibernate.jdbc.MongoConnection} class will inherit from the dummy parent class by
  *       overriding those API methods Hibernate really uses.

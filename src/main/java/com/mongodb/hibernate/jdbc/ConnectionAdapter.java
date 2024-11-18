@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @see MongoConnection
  */
-abstract class DummyConnection implements Connection {
+abstract class ConnectionAdapter implements Connection {
 
     @Override
     public Statement createStatement() throws SQLException {
