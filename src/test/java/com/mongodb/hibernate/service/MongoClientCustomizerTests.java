@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,13 +22,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 import com.mongodb.MongoClientSettings;
-import com.mongodb.hibernate.dialect.MongoDialect;
-import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
-import com.mongodb.hibernate.service.MongoClientCustomizer;
-import java.util.Map;
 import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.Configuration;
 import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,13 +45,9 @@ class MongoClientCustomizerTests {
         assertThrows(ServiceException.class, () -> buildSessionFactory(customizer));
     }
 
-    private void buildSessionFactory(MongoClientCustomizer mongoClientCustomizer) {
-        var settings = Map.<String, Object>of(
-                AvailableSettings.JAKARTA_JDBC_URL, "mongodb://localhost/test",
-                AvailableSettings.DIALECT, MongoDialect.class.getName(),
-                AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
-        var standardServiceRegistry = new StandardServiceRegistryBuilder()
-                .applySettings(settings)
+    private void buildSessionFactory(MongoClientCustomizer mongoClientCustomizer) throws ServiceException {
+        var cfg = new Configuration();
+        var standardServiceRegistry = cfg.getStandardServiceRegistryBuilder()
                 .addService(MongoClientCustomizer.class, mongoClientCustomizer)
                 .build();
         var sessionFactoryBuilder = new MetadataSources(standardServiceRegistry)

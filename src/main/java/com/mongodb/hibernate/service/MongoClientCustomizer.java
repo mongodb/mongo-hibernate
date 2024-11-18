@@ -24,21 +24,30 @@ import org.hibernate.service.Service;
  * by invoking the various methods of {@link MongoClientSettings.Builder} before its
  * {@link MongoClientSettings.Builder#build()} invocation.
  *
+ * <p>Note that this service is only needed when normal connection string, user and password configurations are not
+ * enough.
+ *
  * <p>An example usage is as follows:
  *
  * <pre>
- *     var cfg = new Configuration();
- *     ... ... // configure cfg as you normally do (e.g. add entity classes, etc.)
+ * var cfg = new Configuration();
  *
- *     var clientCustomizer = builder -> {
- *         ... ... // customize client settings to your heart's content
- *     };
+ * // configure cfg as you normally do (e.g. add entity classes)
+ * ...
  *
- *     var serviceRegistryBuilder = cfg.getStandardServiceRegistryBuilder();
- *     serviceRegistryBuilder.addService(MongoClientCustomizer.class, clientCustomizer);
+ * // connection string, user and password have been applied to the builder already
+ * var clientCustomizer = builder -> {
+ *     // customize client settings to your heart's content
+ *     ...
+ * };
  *
- *     var sessionFactory = cfg.buildSessionFactory();
- *     ... ... // start using sessionFactory as normal
+ * var serviceRegistryBuilder = cfg.getStandardServiceRegistryBuilder();
+ * serviceRegistryBuilder.addService(MongoClientCustomizer.class, clientCustomizer);
+ *
+ * var sessionFactory = cfg.buildSessionFactory();
+ *
+ * // start using sessionFactory as normal
+ * ...
  *
  * </pre>
  *
