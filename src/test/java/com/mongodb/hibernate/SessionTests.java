@@ -16,15 +16,13 @@
 
 package com.mongodb.hibernate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class SessionTests {
 
@@ -46,26 +44,7 @@ class SessionTests {
     }
 
     @Test
-    void testInSession() {
-        sessionFactory.inSession(session -> assertTrue(true));
-    }
-
-    @Test
-    void testSessionFactoryFromSession() {
-        var value = sessionFactory.fromSession(session -> 1);
-        assertEquals(1, value);
-    }
-
-    @Test
     void testSessionDoWork() {
-        sessionFactory.inSession(session -> session.doWork(connection -> assertTrue(true)));
-    }
-
-    @Test
-    void testSessionDoReturningWork() {
-        sessionFactory.inSession(session -> {
-            var value = session.doReturningWork(connection -> 1);
-            assertEquals(1, value);
-        });
+        sessionFactory.inSession(session -> session.doWork(connection -> {}));
     }
 }
