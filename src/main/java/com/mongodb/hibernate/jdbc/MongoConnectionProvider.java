@@ -25,6 +25,7 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.hibernate.internal.MongoAssertions;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.io.IOException;
 import java.io.NotSerializableException;
@@ -33,7 +34,6 @@ import java.io.Serial;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.Objects;
 import org.hibernate.HibernateException;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
@@ -86,7 +86,8 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
     @Override
     public Connection getConnection() throws SQLException {
         try {
-            ClientSession clientSession = Objects.requireNonNull(mongoClient).startSession();
+            ClientSession clientSession =
+                    MongoAssertions.assertNotNull(mongoClient).startSession();
             return new MongoConnection(clientSession);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to start session", e);
