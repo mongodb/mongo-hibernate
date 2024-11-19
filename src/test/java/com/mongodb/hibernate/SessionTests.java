@@ -16,13 +16,13 @@
 
 package com.mongodb.hibernate;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class SessionTests {
 
