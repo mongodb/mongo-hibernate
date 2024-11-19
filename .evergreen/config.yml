@@ -1,4 +1,6 @@
-# default command type
+# Mark a failure as a system/bootstrap failure (purple box) rather then a task
+# failure by default.
+# Actual testing tasks are marked with `type: test`
 command_type: system
 
 # 1 hour default timeout
