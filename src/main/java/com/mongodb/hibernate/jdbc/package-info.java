@@ -18,7 +18,7 @@
  * Support for implementing various program elements from the JDBC API for MongoDB Dialect's JDBC adapter.
  *
  * <p>The JDBC adapter is only meant for Hibernate ORM integration purposes, so only those JDBC API methods really
- * called by Hibernate will be implemented. To make code maintainable, some common JDBC API implementation pattern is
+ * called by Hibernate are be implemented. To make code maintainable, some common JDBC API implementation pattern is
  * adopted.
  *
  * <p>Take {@link java.sql.Connection} JDBC API implementation as an example:
