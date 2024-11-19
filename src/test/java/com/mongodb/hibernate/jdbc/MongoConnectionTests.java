@@ -21,26 +21,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.mongodb.client.ClientSession;
+import com.mongodb.hibernate.internal.mockito.MongoMockito;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
 
-@ExtendWith(MockitoExtension.class)
 class MongoConnectionTests {
-
-    @Mock
-    private ClientSession clientSession;
-
-    @InjectMocks
-    private MongoConnection mongoConnection;
 
     @Test
     void testNoopWhenCloseAgain() throws SQLException {
 
         // given
+        ClientSession clientSession = MongoMockito.mock(ClientSession.class);
+        MongoConnection mongoConnection = new MongoConnection(clientSession);
+
+        Mockito.doNothing().when(clientSession).close();
+
         mongoConnection.close();
         assertTrue(mongoConnection.isClosed());
 

@@ -16,35 +16,29 @@
 
 package com.mongodb.hibernate;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-import org.hibernate.SessionFactory;
+import org.hibernate.Session;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class SessionTests {
 
-    private SessionFactory sessionFactory;
+    private Session session;
 
     @BeforeEach
     void setUp() {
-        sessionFactory = new Configuration().buildSessionFactory();
+        session = new Configuration().buildSessionFactory().openSession();
     }
 
     @AfterEach
     void tearDown() {
-        sessionFactory.close();
+        session.close();
     }
 
     @Test
-    void testSessionFactoryOpenSession() {
-        assertNotNull(sessionFactory.openSession());
-    }
-
-    @Test
-    void testSessionDoWork() {
-        sessionFactory.inSession(session -> session.doWork(connection -> {}));
+    void testDoWork() {
+        Assertions.assertDoesNotThrow(() -> session.doWork(connection -> {}));
     }
 }
