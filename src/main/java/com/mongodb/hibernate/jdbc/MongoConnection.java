@@ -95,10 +95,10 @@ final class MongoConnection extends ConnectionAdapter {
 
     @Override
     public void close() throws SQLException {
-        if (!this.closed) {
+        if (!closed) {
             try {
-                this.clientSession.close();
-                this.closed = true;
+                clientSession.close();
+                closed = true;
             } catch (RuntimeException e) {
                 throw new SQLException("Error closing connection", e);
             }
@@ -107,7 +107,7 @@ final class MongoConnection extends ConnectionAdapter {
 
     @Override
     public boolean isClosed() {
-        return this.closed;
+        return closed;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

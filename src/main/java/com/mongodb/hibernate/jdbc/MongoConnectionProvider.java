@@ -147,8 +147,8 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
 
     @Override
     public void stop() {
-        if (this.mongoClient != null) {
-            this.mongoClient.close();
+        if (mongoClient != null) {
+            mongoClient.close();
         }
     }
 
