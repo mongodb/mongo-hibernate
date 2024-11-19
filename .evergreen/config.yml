@@ -3,7 +3,7 @@
 # Actual testing tasks are marked with `type: test`
 command_type: system
 
-# 1 hour default timeout
+# Protect ourselves against rogue test case, or curl gone wild, that runs forever
 exec_timeout_secs: 3600
 
 # run the same task in the previous revision if the current task fails
