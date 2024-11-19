@@ -1,10 +1,13 @@
-# default command type
+# Mark a failure as a system/bootstrap failure (purple box) rather then a task
+# failure by default.
+# Actual testing tasks are marked with `type: test`
 command_type: system
 
-# 1 hour default timeout
+# Protect ourselves against rogue test case, or curl gone wild, that runs forever
 exec_timeout_secs: 3600
 
-# run the same task in the previous revision if the current task fails
+# When a task that used to pass starts to fail, go through all versions that may have been skipped
+# to detect when the task started failing
 stepback: true
 
 #######################################
