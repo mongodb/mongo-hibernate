@@ -37,14 +37,14 @@ class SessionFactoryTests {
 
     @Test
     void testSuccess() {
-        buildSessionFactory(Map.of());
+        buildSessionFactory(Map.of()).close();
     }
 
     @Test
     void testInvalidConnectionString() {
         var exception = assertThrows(
                 ServiceException.class,
-                () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test")));
+                () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test")).close());
         assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
