@@ -34,7 +34,9 @@ class SessionTests {
 
     @AfterEach
     void tearDown() {
-        session.close();
+        if (session != null) {
+            session.close();
+        }
     }
 
     @Test
