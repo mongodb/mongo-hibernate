@@ -149,15 +149,15 @@ public final class MongoConnectionProvider
 
     @Override
     public void stop() {
-        if (this.mongoClient != null) {
-            this.mongoClient.close();
+        if (mongoClient != null) {
+            mongoClient.close();
         }
     }
 
     @Override
     public void injectServices(ServiceRegistryImplementor serviceRegistry) {
         try {
-            this.mongoClientCustomizer = serviceRegistry.getService(MongoClientCustomizer.class);
+            mongoClientCustomizer = serviceRegistry.getService(MongoClientCustomizer.class);
         } catch (UnknownServiceException ignored) {
             // no-op
         }
@@ -167,5 +167,10 @@ public final class MongoConnectionProvider
     private void writeObject(ObjectOutputStream out) throws IOException {
         throw new NotSerializableException(
                 "This class is not designed to be serialized despite it having to implement `Serializable`");
+    }
+
+    // only for testing purpose
+    @Nullable MongoClient getMongoClient() {
+        return mongoClient;
     }
 }
