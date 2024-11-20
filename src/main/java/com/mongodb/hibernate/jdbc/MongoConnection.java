@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
  * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
- * in its parent dummy class.
+ * in its parent class.
  */
 final class MongoConnection extends ConnectionAdapter {
 
