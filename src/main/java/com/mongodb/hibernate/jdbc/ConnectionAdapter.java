@@ -38,7 +38,7 @@ import java.util.concurrent.Executor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A dummy {@link java.sql.Connection} implementation class throwing exceptions for all its API methods.
+ * A {@link java.sql.Connection} implementation class throwing exceptions for all its API methods.
  *
  * @see MongoConnection
  */
