@@ -17,19 +17,36 @@
 package com.mongodb.hibernate;
 
 import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class SessionTests {
 
+    private static SessionFactory sessionFactory;
+
     private Session session;
+
+    @BeforeAll
+    static void beforeAll() {
+        sessionFactory = new Configuration().buildSessionFactory();
+    }
+
+    @AfterAll
+    static void afterAll() {
+        if (sessionFactory != null) {
+            sessionFactory.close();
+        }
+    }
 
     @BeforeEach
     void setUp() {
-        session = new Configuration().buildSessionFactory().openSession();
+        session = sessionFactory.openSession();
     }
 
     @AfterEach
