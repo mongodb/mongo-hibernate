@@ -51,7 +51,7 @@ class SessionFactoryTests {
     @Test
     void testOpenSession() {
         try (var sessionFactory = buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost/test"))) {
-            Assertions.assertDoesNotThrow(sessionFactory::openSession);
+            Assertions.assertDoesNotThrow(() -> sessionFactory.openSession().close());
         }
     }
 
