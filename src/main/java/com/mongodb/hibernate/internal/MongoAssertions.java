@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal;
 import com.mongodb.lang.Nullable;
 
 /**
- * Util class for assertion purposes.
+ * Util class for various assertion purposes.
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  */
@@ -28,14 +28,14 @@ public final class MongoAssertions {
     private MongoAssertions() {}
 
     /**
-     * Assert that some value is not null.
+     * Asserts that some value is not {@code null}.
      *
      * @param value A value to check.
      * @param <T> The type of {@code value}.
      * @return {@code value}
      * @throws AssertionError If {@code value} is {@code null}.
      */
-    public static <T> T assertNotNull(@Nullable final T value) throws AssertionError {
+    public static <T> T assertNotNull(@Nullable T value) throws AssertionError {
         if (value == null) {
             throw new AssertionError();
         }
