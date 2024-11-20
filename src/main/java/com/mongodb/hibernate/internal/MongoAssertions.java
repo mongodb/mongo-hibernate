@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal;
 
-import com.mongodb.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Util class for various assertion purposes.
