@@ -142,7 +142,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
         }
 
         var clientSettings = clientSettingsBuilder.build();
-        this.mongoClient = MongoClients.create(clientSettings);
+        mongoClient = MongoClients.create(clientSettings);
     }
 
     @Override
