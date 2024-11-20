@@ -51,8 +51,8 @@ import org.hibernate.service.Service;
  *
  * </pre>
  *
- * <p>The injected {@code clientCustomizer} will be fetched and do its due diligence at later stage of Hibernate
- * launching.
+ * <p>The injected {@code clientCustomizer} service will be applied at later stage (in
+ * {@link com.mongodb.hibernate.jdbc.MongoConnectionProvider}) of Hibernate bootstrapping.
  *
  * @see com.mongodb.hibernate.jdbc.MongoConnectionProvider#configure(java.util.Map)
  */
