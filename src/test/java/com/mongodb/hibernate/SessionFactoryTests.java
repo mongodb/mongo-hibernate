@@ -37,7 +37,7 @@ class SessionFactoryTests {
 
     @Test
     void testSuccess() {
-        buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost/test"));
+        buildSessionFactory(Map.of());
     }
 
     @Test
@@ -50,7 +50,7 @@ class SessionFactoryTests {
 
     @Test
     void testOpenSession() {
-        try (var sessionFactory = buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost/test"))) {
+        try (var sessionFactory = buildSessionFactory(Map.of())) {
             Assertions.assertDoesNotThrow(() -> sessionFactory.openSession().close());
         }
     }
