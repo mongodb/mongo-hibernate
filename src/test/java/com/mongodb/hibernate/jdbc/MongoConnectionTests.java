@@ -17,26 +17,30 @@
 package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.*;
 
 import com.mongodb.client.ClientSession;
-import com.mongodb.hibernate.internal.mockito.MongoMockito;
 import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class MongoConnectionTests {
+
+    @Mock(answer = Answers.RETURNS_SMART_NULLS)
+    private ClientSession clientSession;
+
+    @InjectMocks
+    private MongoConnection mongoConnection;
 
     @Test
     void testNoopWhenCloseAgain() throws SQLException {
 
         // given
-        ClientSession clientSession = MongoMockito.mock(ClientSession.class);
-        MongoConnection mongoConnection = new MongoConnection(clientSession);
-
-        Mockito.doNothing().when(clientSession).close();
-
         mongoConnection.close();
         assertTrue(mongoConnection.isClosed());
 
