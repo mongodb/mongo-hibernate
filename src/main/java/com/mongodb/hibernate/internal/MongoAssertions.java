@@ -41,4 +41,27 @@ public final class MongoAssertions {
         }
         return value;
     }
+
+    /**
+     * Fails invariably.
+     *
+     * @throws AssertionError Always
+     * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
+     *     fail()}. This may be helpful in non-{@code void} methods.
+     */
+    public static AssertionError fail() throws AssertionError {
+        throw new AssertionError();
+    }
+
+    /**
+     * Fails invariably with message.
+     *
+     * @param msg The failure message.
+     * @throws AssertionError Always
+     * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
+     *     fail("failure message")}. This may be helpful in non-{@code void} methods.
+     */
+    public static AssertionError fail(String msg) throws AssertionError {
+        throw new AssertionError(assertNotNull(msg));
+    }
 }

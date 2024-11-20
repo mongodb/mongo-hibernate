@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import com.mongodb.client.ClientSession;
+import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -31,15 +32,14 @@ import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
-import org.hibernate.service.UnknownUnwrapTypeException;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.jspecify.annotations.Nullable;
 
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
- * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
- * in its parent class.
+ * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by failure in its
+ * parent class.
  */
 final class MongoConnection extends ConnectionAdapter {
 
@@ -57,42 +57,42 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public void setAutoCommit(boolean autoCommit) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
     }
 
     @Override
     public boolean getAutoCommit() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
     }
 
     @Override
     public void commit() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
     }
 
     @Override
     public void rollback() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
     }
 
     @Override
     public void setTransactionIsolation(int level) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
     }
 
     @Override
     public int getTransactionIsolation() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
     }
 
@@ -134,7 +134,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
     }
 
@@ -142,7 +142,7 @@ final class MongoConnection extends ConnectionAdapter {
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
     }
 
@@ -164,37 +164,37 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Clob createClob() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public Blob createBlob() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public NClob createNClob() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,7 +203,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-37");
     }
 
@@ -271,12 +271,17 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public <T> T unwrap(Class<T> unwrapType) throws SQLException {
         checkClosed();
-        throw new UnknownUnwrapTypeException(unwrapType);
+        throw new SQLFeatureNotSupportedException("Unwrap() unsupported");
+    }
+
+    @Override
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        return false;
     }
 
     private void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("Connection closed");
+            throw new SQLException("Connection has been closed");
         }
     }
 }
