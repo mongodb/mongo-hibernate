@@ -24,7 +24,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.mongodb.client.ClientSession;
 import java.sql.SQLException;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -68,6 +67,5 @@ class MongoConnectionTests {
 
         // then
         assertTrue(mongoConnection.isClosed());
-
     }
 }
