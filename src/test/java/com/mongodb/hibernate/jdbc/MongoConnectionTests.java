@@ -16,11 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.mongodb.client.ClientSession;
 import java.sql.SQLException;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -51,5 +55,19 @@ class MongoConnectionTests {
 
         // then
         verifyNoMoreInteractions(clientSession);
+    }
+
+    @Test
+    void testClosedWhenSessionClosingThrowsException() {
+
+        // given
+        doThrow(new RuntimeException()).when(clientSession).close();
+
+        // when
+        assertThrows(SQLException.class, () -> mongoConnection.close());
+
+        // then
+        assertTrue(mongoConnection.isClosed());
+
     }
 }
