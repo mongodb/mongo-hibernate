@@ -102,9 +102,9 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public void close() throws SQLException {
         if (!closed) {
+            closed = true;
             try {
                 clientSession.close();
-                closed = true;
             } catch (RuntimeException e) {
                 throw new SQLException("Error closing connection", e);
             }
