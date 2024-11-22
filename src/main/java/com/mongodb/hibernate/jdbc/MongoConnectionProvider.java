@@ -48,19 +48,16 @@ import org.jspecify.annotations.Nullable;
  * {@linkplain com.mongodb.hibernate.dialect.MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider}
  * SPI implementation.
  *
- * <p>{@link MongoConnectionProvider} uses the following Hibernate property:
- *
- * <table>
- *     <tr><th>Property</th><th>Description</th><th>Required</th></tr>
- *     <tr>
- *         <td>{@value JdbcSettings#JAKARTA_JDBC_URL}</td>
- *         <td>MongoDB <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>/td>
- *         <td>✓</td>
- *     </tr>
- * </table>
+ * <p>{@link MongoConnectionProvider} uses the {@value JdbcSettings#JAKARTA_JDBC_URL} to create a MongoDB <a
+ * href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>. The configuration is
+ * mandatory if {@link MongoClientCustomizer} service is not used. Otherwise, a {@link ConnectionString} instance will
+ * be provided to {@link MongoClientCustomizer#customize(MongoClientSettings.Builder, ConnectionString)} method as a
+ * reference ({@code null} if {@value JdbcSettings#JAKARTA_JDBC_URL} is not configured), and it is up to the
+ * {@code MongoClientCustomizer} to use it or not.
  *
  * @see ConnectionProvider
  * @see JdbcSettings#JAKARTA_JDBC_URL
+ * @see MongoClientCustomizer
  * @see <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>
  */
 public final class MongoConnectionProvider
