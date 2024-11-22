@@ -29,7 +29,7 @@ import org.hibernate.service.Service;
  *
  * <p>An example usage is as follows:
  *
- * <pre>
+ * <pre>{@code
  * var cfg = new Configuration();
  *
  * // configure cfg as you normally do (e.g. add entity classes)
@@ -48,8 +48,7 @@ import org.hibernate.service.Service;
  *
  * // start using sessionFactory as normal
  * ...
- *
- * </pre>
+ * }</pre>
  *
  * <p>The injected {@code clientCustomizer} service will be applied at later stage (in
  * {@link com.mongodb.hibernate.jdbc.MongoConnectionProvider}) of Hibernate bootstrapping.
