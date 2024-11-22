@@ -38,7 +38,7 @@ class MongoClientCustomizerTests {
         // given
         var applicationName = UUID.randomUUID().toString();
 
-        MongoClientCustomizer customizer = builder -> builder.applicationName(applicationName);
+        MongoClientCustomizer customizer = (builder, connectionString) -> builder.applicationName(applicationName);
 
         // when
         try (var sessionFactory = buildSessionFactory(customizer)) {
@@ -61,7 +61,7 @@ class MongoClientCustomizerTests {
     @Test
     void testMongoClientCustomizerThrowException() {
         assertThrows(ServiceException.class, () -> {
-            try (var ignored = buildSessionFactory(builder -> {
+            try (var ignored = buildSessionFactory((builder, connectionString) -> {
                 throw new NullPointerException();
             })) {}
         });

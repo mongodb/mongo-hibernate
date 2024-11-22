@@ -16,16 +16,16 @@
 
 package com.mongodb.hibernate.service;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.service.Service;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A Hibernate {@link Service} focusing on customizing {@link com.mongodb.client.MongoClient} creation programmatically
  * by invoking the various methods of {@link MongoClientSettings.Builder} before its
  * {@link MongoClientSettings.Builder#build()} invocation.
- *
- * <p>Note that this service is only needed when normal connection string, user and password configurations are not
- * enough.
  *
  * <p>An example usage is as follows:
  *
@@ -35,8 +35,7 @@ import org.hibernate.service.Service;
  * // configure cfg as you normally do (e.g. add entity classes)
  * ...
  *
- * // connection string, user and password have been applied to the builder already
- * var clientCustomizer = builder -> {
+ * var clientCustomizer = (clientSettingsBuilder, connectionString) -> {
  *     // customize client settings to your heart's content
  *     ...
  * };
@@ -49,13 +48,18 @@ import org.hibernate.service.Service;
  * // start using sessionFactory as normal
  * ...
  * }</pre>
- *
- * <p>The injected {@code clientCustomizer} service will be applied at later stage (in
- * {@link com.mongodb.hibernate.jdbc.MongoConnectionProvider}) of Hibernate bootstrapping.
- *
- * @see com.mongodb.hibernate.jdbc.MongoConnectionProvider#configure(java.util.Map)
  */
 @FunctionalInterface
 public interface MongoClientCustomizer extends Service {
-    void customize(MongoClientSettings.Builder builder);
+
+    /**
+     * Customize {@link MongoClientSettings} building.
+     *
+     * @param builder a {@link MongoClientSettings.Builder} instance which has been created with blank state (without
+     *     applying the connectionString parameter if provided)
+     * @param connectionString the {@link ConnectionString} created from {@value JdbcSettings#JAKARTA_JDBC_URL}
+     *     configuration if provided; provided for reference alone; could be null
+     * @see com.mongodb.hibernate.jdbc.MongoConnectionProvider#configure(java.util.Map)
+     */
+    void customize(MongoClientSettings.Builder builder, @Nullable ConnectionString connectionString);
 }

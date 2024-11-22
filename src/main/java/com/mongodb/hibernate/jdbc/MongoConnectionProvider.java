@@ -16,15 +16,16 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_PASSWORD;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
+import static java.lang.String.format;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_USER;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.io.IOException;
 import java.io.NotSerializableException;
@@ -47,34 +48,19 @@ import org.jspecify.annotations.Nullable;
  * {@linkplain com.mongodb.hibernate.dialect.MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider}
  * SPI implementation.
  *
- * <p>{@link MongoConnectionProvider} uses the following Hibernate properties:
+ * <p>{@link MongoConnectionProvider} uses the following Hibernate property:
  *
  * <table>
  *     <tr><th>Property</th><th>Description</th><th>Required</th></tr>
  *     <tr>
  *         <td>{@value JdbcSettings#JAKARTA_JDBC_URL}</td>
- *         <td>MongoDB
- *         <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>,
- *         which must specify the database name for authentication
- *         if {@value JdbcSettings#JAKARTA_JDBC_USER} is specified.</td>
+ *         <td>MongoDB <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>/td>
  *         <td>✓</td>
- *     </tr>
- *     <tr>
- *         <td>{@value JdbcSettings#JAKARTA_JDBC_USER}</td>
- *         <td>{@code userName} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
- *         <td></td>
- *     </tr>
- *     <tr>
- *         <td>{@value JdbcSettings#JAKARTA_JDBC_PASSWORD}</td>
- *         <td>{@code password} for {@link com.mongodb.MongoCredential#createCredential(String, String, char[])}</td>
- *         <td></td>
  *     </tr>
  * </table>
  *
  * @see ConnectionProvider
  * @see JdbcSettings#JAKARTA_JDBC_URL
- * @see JdbcSettings#JAKARTA_JDBC_USER
- * @see JdbcSettings#JAKARTA_JDBC_PASSWORD
  * @see <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>
  */
 public final class MongoConnectionProvider
@@ -117,34 +103,38 @@ public final class MongoConnectionProvider
     @Override
     public void configure(Map<String, Object> configValues) {
         var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
-        if (jdbcUrl == null) {
-            throw new HibernateException("Configuration is required: " + JAKARTA_JDBC_URL);
+
+        if (mongoClientCustomizer == null && jdbcUrl == null) {
+            throw new HibernateException(format(
+                    "Configuration [%s] is required unless MongoClientCustomizer is provided", JAKARTA_JDBC_URL));
         }
+
+        var connectionString = jdbcUrl == null ? null : getConnectionString(jdbcUrl);
+
+        final MongoClientSettings.Builder clientSettingsBuilder;
+        if (mongoClientCustomizer != null) {
+            clientSettingsBuilder = MongoClientSettings.builder();
+            mongoClientCustomizer.customize(clientSettingsBuilder, connectionString);
+        } else {
+            clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
+        }
+        mongoClient = MongoClients.create(clientSettingsBuilder.build());
+    }
+
+    private ConnectionString getConnectionString(Object jdbcUrl) {
         if (!(jdbcUrl instanceof String)) {
             throw new HibernateException(
-                    String.format("Configuration [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+                    format("Configuration [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
         }
-        ConnectionString connectionString;
         try {
-            connectionString = new ConnectionString((String) jdbcUrl);
+            return new ConnectionString((String) jdbcUrl);
         } catch (RuntimeException e) {
             throw new HibernateException(
-                    String.format(
+                    format(
                             "Failed to create ConnectionString from configuration [%s] with value [%s]",
                             JAKARTA_JDBC_URL, jdbcUrl),
                     e);
         }
-
-        var clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
-
-        if (configValues.get(JAKARTA_JDBC_USER) != null || configValues.get(JAKARTA_JDBC_PASSWORD) != null) {
-            throw new NotYetImplementedException("To be implemented after auth could be tested in CI");
-        }
-
-        if (mongoClientCustomizer != null) {
-            mongoClientCustomizer.customize(clientSettingsBuilder);
-        }
-        this.mongoClient = MongoClients.create(clientSettingsBuilder.build());
     }
 
     @Override
@@ -169,7 +159,7 @@ public final class MongoConnectionProvider
                 "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
-    // only for testing purpose
+    @VisibleForTesting(otherwise = PRIVATE)
     @Nullable MongoClient getMongoClient() {
         return mongoClient;
     }
