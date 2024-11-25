@@ -56,7 +56,8 @@ public interface MongoClientCustomizer extends Service {
      * Customize {@link MongoClientSettings} building.
      *
      * @param builder a {@link MongoClientSettings.Builder} instance which has been created with blank state (without
-     *     applying the connectionString parameter if provided)
+     *     {@linkplain MongoClientSettings.Builder#applyConnectionString(ConnectionString) applying}
+     *     the {@code connectionString} argument)
      * @param connectionString the {@link ConnectionString} created from {@value JdbcSettings#JAKARTA_JDBC_URL}
      *     configuration if provided; provided for reference alone; could be null
      * @see com.mongodb.hibernate.jdbc.MongoConnectionProvider#configure(java.util.Map)
