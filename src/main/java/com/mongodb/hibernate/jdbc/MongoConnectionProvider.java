@@ -50,7 +50,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>{@link MongoConnectionProvider} uses the {@value JdbcSettings#JAKARTA_JDBC_URL} configuration property to create a
  * MongoDB <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>. The
- * configuration is mandatory if {@link MongoClientCustomizer} service is not used. Otherwise, a
+ * configuration property is mandatory if {@link MongoClientCustomizer} service is not used. Otherwise, a
  * {@link ConnectionString} instance will be provided to the
  * {@link MongoClientCustomizer#customize(MongoClientSettings.Builder, ConnectionString)} method as a reference
  * ({@code null} if {@value JdbcSettings#JAKARTA_JDBC_URL} is not configured), and it is up to the
