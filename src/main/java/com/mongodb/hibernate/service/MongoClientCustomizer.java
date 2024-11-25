@@ -35,9 +35,8 @@ import org.jspecify.annotations.Nullable;
  *     ...
  * };
  *
- * var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
- * standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, clientCustomizer);
- *
+ * var standardServiceRegistryBuilder =
+ *         new StandardServiceRegistryBuilder().addService(MongoClientCustomizer.class, clientCustomizer);
  * var metadataBuilder = new MetadataSources(standardServiceRegistryBuilder.build()).getMetadataBuilder();
  *
  * // add metadata (e.g. annotated Entity classes)

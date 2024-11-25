@@ -100,11 +100,11 @@ class MongoClientCustomizerTests {
 
     private SessionFactory buildSessionFactory(
             MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString) throws ServiceException {
-        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
+        var standardServiceRegistryBuilder =
+                new StandardServiceRegistryBuilder().addService(MongoClientCustomizer.class, mongoClientCustomizer);
         if (connectionString != null) {
             standardServiceRegistryBuilder.applySetting(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
         }
-        standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, mongoClientCustomizer);
         return new MetadataSources(standardServiceRegistryBuilder.build())
                 .getMetadataBuilder()
                 .build()
