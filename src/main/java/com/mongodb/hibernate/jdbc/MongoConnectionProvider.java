@@ -123,7 +123,7 @@ public final class MongoConnectionProvider
     private static ConnectionString getConnectionString(Object jdbcUrl) {
         if (!(jdbcUrl instanceof String)) {
             throw new HibernateException(
-                    format("Configuration [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+                    format("Configuration property [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
         }
         try {
             return new ConnectionString((String) jdbcUrl);
