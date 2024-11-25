@@ -25,28 +25,37 @@ import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
 import java.util.HashMap;
 import java.util.Map;
 import org.hibernate.HibernateException;
+import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.service.spi.ServiceException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class SessionFactoryTests {
 
     @Test
     void testSuccess() {
-        buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "mongodb://localhost/test"));
+        buildSessionFactory(Map.of()).close();
     }
 
     @Test
     void testInvalidConnectionString() {
-        var exception = assertThrows(
-                ServiceException.class,
-                () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test")));
+        var exception = assertThrows(ServiceException.class, () -> buildSessionFactory(
+                        Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test"))
+                .close());
         assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
-    private void buildSessionFactory(Map<String, Object> jdbcSettings) throws ServiceException {
+    @Test
+    void testOpenSession() {
+        try (var sessionFactory = buildSessionFactory(Map.of())) {
+            Assertions.assertDoesNotThrow(() -> sessionFactory.openSession().close());
+        }
+    }
+
+    private SessionFactory buildSessionFactory(Map<String, Object> jdbcSettings) throws ServiceException {
         var settings = new HashMap<>(jdbcSettings);
         settings.put(AvailableSettings.DIALECT, MongoDialect.class.getName());
         settings.put(AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
@@ -57,8 +66,6 @@ class SessionFactoryTests {
                 .getMetadataBuilder()
                 .build()
                 .getSessionFactoryBuilder();
-        try (var ignored = sessionFactoryBuilder.build()) {
-            // no-op
-        }
+        return sessionFactoryBuilder.build();
     }
 }

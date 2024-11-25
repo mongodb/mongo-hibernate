@@ -22,14 +22,17 @@ import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_USER;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.hibernate.internal.MongoAssertions;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Map;
 import org.hibernate.HibernateException;
 import org.hibernate.cfg.JdbcSettings;
@@ -81,15 +84,19 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
     private @Nullable MongoClient mongoClient;
 
     @Override
-    public Connection getConnection() {
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-29");
+    public Connection getConnection() throws SQLException {
+        try {
+            ClientSession clientSession =
+                    MongoAssertions.assertNotNull(mongoClient).startSession();
+            return new MongoConnection(clientSession);
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to start session", e);
+        }
     }
 
     @Override
-    public void closeConnection(Connection connection) {
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-29");
+    public void closeConnection(Connection connection) throws SQLException {
+        connection.close();
     }
 
     @Override
@@ -135,13 +142,13 @@ public final class MongoConnectionProvider implements ConnectionProvider, Config
         }
 
         var clientSettings = clientSettingsBuilder.build();
-        this.mongoClient = MongoClients.create(clientSettings);
+        mongoClient = MongoClients.create(clientSettings);
     }
 
     @Override
     public void stop() {
-        if (this.mongoClient != null) {
-            this.mongoClient.close();
+        if (mongoClient != null) {
+            mongoClient.close();
         }
     }
 
