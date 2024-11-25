@@ -59,7 +59,7 @@ public interface MongoClientCustomizer extends Service {
      *     {@linkplain MongoClientSettings.Builder#applyConnectionString(ConnectionString) applying}
      *     the {@code connectionString} argument)
      * @param connectionString the {@link ConnectionString} created from {@value JdbcSettings#JAKARTA_JDBC_URL}
-     *     configuration if provided; provided for reference alone; could be null
+     *     configuration property if provided; provided for reference alone; could be null
      * @see com.mongodb.hibernate.jdbc.MongoConnectionProvider#configure(java.util.Map)
      */
     void customize(MongoClientSettings.Builder builder, @Nullable ConnectionString connectionString);
