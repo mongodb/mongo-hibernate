@@ -119,7 +119,7 @@ public final class MongoConnectionProvider
         mongoClient = MongoClients.create(clientSettingsBuilder.build());
     }
 
-    private ConnectionString getConnectionString(Object jdbcUrl) {
+    private static ConnectionString getConnectionString(Object jdbcUrl) {
         if (!(jdbcUrl instanceof String)) {
             throw new HibernateException(
                     format("Configuration [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
