@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
 public @interface VisibleForTesting {
     VisibleForTesting.AccessModifier otherwise();
 
-    public static enum AccessModifier {
+    enum AccessModifier {
         PRIVATE,
         PACKAGE,
         PROTECTED;
