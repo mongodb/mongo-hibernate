@@ -22,7 +22,6 @@ import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
-import org.hibernate.boot.MetadataSources;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -69,13 +68,7 @@ class MongoClientCustomizerTests {
 
     private SessionFactory buildSessionFactory(MongoClientCustomizer mongoClientCustomizer) throws ServiceException {
         var cfg = new Configuration();
-        var standardServiceRegistry = cfg.getStandardServiceRegistryBuilder()
-                .addService(MongoClientCustomizer.class, mongoClientCustomizer)
-                .build();
-        var sessionFactoryBuilder = new MetadataSources(standardServiceRegistry)
-                .getMetadataBuilder()
-                .build()
-                .getSessionFactoryBuilder();
-        return sessionFactoryBuilder.build();
+        cfg.getStandardServiceRegistryBuilder().addService(MongoClientCustomizer.class, mongoClientCustomizer);
+        return cfg.buildSessionFactory();
     }
 }
