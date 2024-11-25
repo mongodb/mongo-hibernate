@@ -104,7 +104,7 @@ public final class MongoConnectionProvider
 
         if (mongoClientCustomizer == null && jdbcUrl == null) {
             throw new HibernateException(format(
-                    "Configuration [%s] is required unless %s is provided",
+                    "Configuration property [%s] is required unless %s is provided",
                     JAKARTA_JDBC_URL, MongoClientCustomizer.class.getName()));
         }
 
