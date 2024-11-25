@@ -16,8 +16,10 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -34,11 +36,14 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.service.spi.ServiceException;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoClientCustomizerTests {
 
-    @Test
-    void testMongoClientCustomizerTakeEffect() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testMongoClientCustomizerTakeEffect(boolean customizerAppliesConnectionString) {
 
         // given
 
@@ -47,7 +52,14 @@ class MongoClientCustomizerTests {
 
         var applicationName = "test_" + UUID.randomUUID();
 
-        MongoClientCustomizer customizer = (builder, cs) -> builder.applicationName(applicationName);
+        MongoClientCustomizer customizer = (builder, cs) -> {
+            builder.applicationName(applicationName);
+
+            assertNotNull(cs);
+            if (customizerAppliesConnectionString) {
+                builder.applyConnectionString(cs);
+            }
+        };
 
         // when
         try (var sessionFactory = buildSessionFactory(customizer, connectionString)) {
@@ -61,11 +73,14 @@ class MongoClientCustomizerTests {
             var mongoClient = (MongoClientImpl) mongoConnectionProvider.getMongoClient();
             assertNotNull(mongoClient);
 
-            // verify ConnectionString won't be applied implicitly in customizer
             var hosts = mongoClient.getCluster().getSettings().getHosts().stream()
                     .map(ServerAddress::getHost)
-                    .toList();
-            assertFalse(hosts.contains(hostInConnectionString));
+                    .collect(toSet());
+            if (customizerAppliesConnectionString) {
+                assertEquals(singleton(hostInConnectionString), hosts);
+            } else {
+                assertNotEquals(singleton(hostInConnectionString), hosts);
+            }
 
             var clusterDescription = mongoClient.getCluster().getClusterId().getDescription();
             assertEquals(applicationName, clusterDescription);
