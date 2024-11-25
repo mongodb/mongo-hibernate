@@ -25,7 +25,6 @@ import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
@@ -122,13 +121,15 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        return createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        throw new NotYetImplementedException(
+                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
     }
 
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        return prepareStatement(mql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        throw new NotYetImplementedException(
+                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
     }
 
     @Override
