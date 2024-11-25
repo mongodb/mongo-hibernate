@@ -17,17 +17,21 @@
 package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.mongodb.ServerAddress;
 import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.service.spi.ServiceException;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class MongoClientCustomizerTests {
@@ -36,12 +40,16 @@ class MongoClientCustomizerTests {
     void testMongoClientCustomizerTakeEffect() {
 
         // given
-        var applicationName = UUID.randomUUID().toString();
 
-        MongoClientCustomizer customizer = (builder, connectionString) -> builder.applicationName(applicationName);
+        var hostInConnectionString = "my-host";
+        var connectionString = "mongodb://" + hostInConnectionString;
+
+        var applicationName = "test_" + UUID.randomUUID();
+
+        MongoClientCustomizer customizer = (builder, cs) -> builder.applicationName(applicationName);
 
         // when
-        try (var sessionFactory = buildSessionFactory(customizer)) {
+        try (var sessionFactory = buildSessionFactory(customizer, connectionString)) {
 
             // then
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
@@ -49,11 +57,16 @@ class MongoClientCustomizerTests {
                     .getServiceRegistry()
                     .requireService(ConnectionProvider.class);
 
-            var mongoClient = mongoConnectionProvider.getMongoClient();
+            var mongoClient = (MongoClientImpl) mongoConnectionProvider.getMongoClient();
             assertNotNull(mongoClient);
 
-            var clusterDescription =
-                    ((MongoClientImpl) mongoClient).getCluster().getClusterId().getDescription();
+            // verify ConnectionString won't be applied implicitly in customizer
+            var hosts = mongoClient.getCluster().getSettings().getHosts().stream()
+                    .map(ServerAddress::getHost)
+                    .toList();
+            assertFalse(hosts.contains(hostInConnectionString));
+
+            var clusterDescription = mongoClient.getCluster().getClusterId().getDescription();
             assertEquals(applicationName, clusterDescription);
         }
     }
@@ -61,14 +74,20 @@ class MongoClientCustomizerTests {
     @Test
     void testMongoClientCustomizerThrowException() {
         assertThrows(ServiceException.class, () -> {
-            try (var ignored = buildSessionFactory((builder, connectionString) -> {
-                throw new NullPointerException();
-            })) {}
+            try (var ignored = buildSessionFactory(
+                    (builder, connectionString) -> {
+                        throw new NullPointerException();
+                    },
+                    null)) {}
         });
     }
 
-    private SessionFactory buildSessionFactory(MongoClientCustomizer mongoClientCustomizer) throws ServiceException {
+    private SessionFactory buildSessionFactory(
+            MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString) throws ServiceException {
         var cfg = new Configuration();
+        if (connectionString != null) {
+            cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
+        }
         cfg.getStandardServiceRegistryBuilder().addService(MongoClientCustomizer.class, mongoClientCustomizer);
         return cfg.buildSessionFactory();
     }
