@@ -39,7 +39,5 @@ public @interface VisibleForTesting {
         PRIVATE,
         PACKAGE,
         PROTECTED;
-
-        private AccessModifier() {}
     }
 }
