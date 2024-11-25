@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.client.internal.MongoClientImpl;
@@ -26,7 +28,6 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.service.spi.ServiceException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class MongoClientCustomizerTests {
@@ -49,11 +50,11 @@ class MongoClientCustomizerTests {
                     .requireService(ConnectionProvider.class);
 
             var mongoClient = mongoConnectionProvider.getMongoClient();
-            Assertions.assertNotNull(mongoClient);
+            assertNotNull(mongoClient);
 
             var clusterDescription =
                     ((MongoClientImpl) mongoClient).getCluster().getClusterId().getDescription();
-            Assertions.assertEquals(applicationName, clusterDescription);
+            assertEquals(applicationName, clusterDescription);
         }
     }
 
