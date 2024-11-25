@@ -26,7 +26,8 @@ import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.util.UUID;
 import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -84,11 +85,15 @@ class MongoClientCustomizerTests {
 
     private SessionFactory buildSessionFactory(
             MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString) throws ServiceException {
-        var cfg = new Configuration();
+        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
         if (connectionString != null) {
-            cfg.setProperty(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
+            standardServiceRegistryBuilder.applySetting(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
         }
-        cfg.getStandardServiceRegistryBuilder().addService(MongoClientCustomizer.class, mongoClientCustomizer);
-        return cfg.buildSessionFactory();
+        standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, mongoClientCustomizer);
+        return new MetadataSources(standardServiceRegistryBuilder.build())
+                .getMetadataBuilder()
+                .build()
+                .getSessionFactoryBuilder()
+                .build();
     }
 }

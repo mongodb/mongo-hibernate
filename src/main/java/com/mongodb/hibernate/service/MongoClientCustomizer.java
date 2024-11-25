@@ -30,20 +30,20 @@ import org.jspecify.annotations.Nullable;
  * <p>An example usage is as follows:
  *
  * <pre>{@code
- * var cfg = new Configuration();
- *
- * // configure cfg as you normally do (e.g. add entity classes)
- * ...
- *
  * var clientCustomizer = (clientSettingsBuilder, connectionString) -> {
  *     // customize client settings to your heart's content
  *     ...
  * };
  *
- * var serviceRegistryBuilder = cfg.getStandardServiceRegistryBuilder();
- * serviceRegistryBuilder.addService(MongoClientCustomizer.class, clientCustomizer);
+ * var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
+ * standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, clientCustomizer);
  *
- * var sessionFactory = cfg.buildSessionFactory();
+ * var metadataBuilder = new MetadataSources(standardServiceRegistryBuilder.build()).getMetadataBuilder();
+ *
+ * // add metadata (e.g. annotated Entity classes)
+ * ...
+ *
+ * var sessionFactory = metadataBuilder().build().getSessionFactoryBuilder().build();
  *
  * // start using sessionFactory as normal
  * ...
