@@ -130,7 +130,7 @@ public final class MongoConnectionProvider
         } catch (RuntimeException e) {
             throw new HibernateException(
                     format(
-                            "Failed to create ConnectionString from configuration [%s] with value [%s]",
+                            "Failed to create ConnectionString from configuration property [%s] with value [%s]",
                             JAKARTA_JDBC_URL, jdbcUrl),
                     e);
         }
