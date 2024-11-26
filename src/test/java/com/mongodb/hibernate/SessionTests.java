@@ -18,6 +18,7 @@ package com.mongodb.hibernate;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import java.sql.Connection;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -65,5 +66,11 @@ class SessionTests {
     @Test
     void testBeginTransaction() {
         assertDoesNotThrow(() -> session.beginTransaction().commit());
+        assertDoesNotThrow(() -> session.doWork(connection -> {}));
+    }
+
+    @Test
+    void testCreateStatement() {
+        assertDoesNotThrow(() -> session.doWork(Connection::createStatement));
     }
 }
