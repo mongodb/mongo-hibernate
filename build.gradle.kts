@@ -29,6 +29,7 @@ repositories {
 dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.logback.classic)
+    testImplementation(libs.mockito.junit.jupiter)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 
@@ -65,7 +66,9 @@ spotless {
 
         formatAnnotations()
 
-        licenseHeaderFile("copyright.txt") // contains '$YEAR' placeholder
+        // need to add license header manually to package-info.java
+        // due to the bug: https://github.com/diffplug/spotless/issues/532
+        licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
     }
 }
 
@@ -73,6 +76,8 @@ tasks.withType<JavaCompile>().configureEach {
     options.errorprone {
         disableWarningsInGeneratedCode.set(true)
         option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+        option("NullAway:ExcludedFieldAnnotations", "org.mockito.Mock")
+        option("NullAway:ExcludedFieldAnnotations", "org.mockito.InjectMocks")
     }
 }
 tasks.compileJava {
