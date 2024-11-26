@@ -37,6 +37,13 @@ To check whether any format violation exists, run `spotlessCheck` gradle task. I
 
 Both plugins are enabled on gradle's `compileJava` task.
 
+### Testing
+Most of the testing cases are based on integration test, which will connect to a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) configured as below at [hibernate.properties](src/test/resources/hibernate.properties):
+
+```properties
+jakarta.persistence.jdbc.url=mongodb://localhost/mongo-hibernate-test?directConnection=false
+```
+
 ## References
 
 - [An Introduction to Hibernate 6](https://docs.jboss.org/hibernate/orm/6.6/introduction/html_single/Hibernate_Introduction.html)

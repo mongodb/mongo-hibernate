@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.Blob;
@@ -37,18 +38,20 @@ import org.jspecify.annotations.Nullable;
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
- * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by failure in its
- * parent class.
+ * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
+ * in its parent class.
  */
 final class MongoConnection extends ConnectionAdapter {
 
+    private final MongoClient mongoClient;
     private final ClientSession clientSession;
 
     private boolean closed;
 
     private boolean autoCommit;
 
-    MongoConnection(ClientSession clientSession) {
+    MongoConnection(MongoClient mongoClient, ClientSession clientSession) {
+        this.mongoClient = mongoClient;
         this.clientSession = clientSession;
         autoCommit = true;
     }
@@ -146,8 +149,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
+        return new MongoStatement(mongoClient, clientSession, this);
     }
 
     @Override
@@ -160,8 +162,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
+        return new MongoStatement(mongoClient, clientSession, this);
     }
 
     @Override
@@ -297,17 +298,37 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public <T> T unwrap(Class<T> unwrapType) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("Unwrap() unsupported");
+        throw new SQLFeatureNotSupportedException("unwrap unsupported");
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkClosed();
         return false;
     }
 
     private void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("Connection has been closed");
+        }
+    }
+
+    /**
+     * Starts transaction for the first {@link java.sql.Statement} executing when {@code autoCommit} field value is
+     * {@code false}.
+     *
+     * @see MongoStatement#executeQuery(String)
+     * @see MongoStatement#executeUpdate(String)
+     * @see MongoStatement#execute(String)
+     * @see MongoStatement#executeBatch()
+     */
+    void startTransactionIfNeeded() throws SQLException {
+        if (!autoCommit && !clientSession.hasActiveTransaction()) {
+            try {
+                clientSession.startTransaction();
+            } catch (RuntimeException e) {
+                throw new SQLException("Failed to start transaction", e);
+            }
         }
     }
 }
