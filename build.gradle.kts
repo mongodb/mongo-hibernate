@@ -76,8 +76,6 @@ tasks.withType<JavaCompile>().configureEach {
     options.errorprone {
         disableWarningsInGeneratedCode.set(true)
         option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
-        option("NullAway:ExcludedFieldAnnotations", "org.mockito.Mock")
-        option("NullAway:ExcludedFieldAnnotations", "org.mockito.InjectMocks")
     }
 }
 tasks.compileJava {
