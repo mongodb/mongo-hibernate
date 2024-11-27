@@ -20,15 +20,11 @@ import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
-import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
-import java.util.HashMap;
 import java.util.Map;
 import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -37,7 +33,7 @@ class SessionFactoryTests {
 
     @Test
     void testSuccess() {
-        buildSessionFactory(Map.of()).close();
+        buildSessionFactory().close();
     }
 
     @Test
@@ -50,22 +46,22 @@ class SessionFactoryTests {
 
     @Test
     void testOpenSession() {
-        try (var sessionFactory = buildSessionFactory(Map.of())) {
+        try (var sessionFactory = buildSessionFactory()) {
             Assertions.assertDoesNotThrow(() -> sessionFactory.openSession().close());
         }
     }
 
-    private SessionFactory buildSessionFactory(Map<String, Object> jdbcSettings) throws ServiceException {
-        var settings = new HashMap<>(jdbcSettings);
-        settings.put(AvailableSettings.DIALECT, MongoDialect.class.getName());
-        settings.put(AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
+    private SessionFactory buildSessionFactory() throws ServiceException {
+        return buildSessionFactory(Map.of());
+    }
 
+    private SessionFactory buildSessionFactory(Map<String, Object> settings) throws ServiceException {
         var standardServiceRegistry =
                 new StandardServiceRegistryBuilder().applySettings(settings).build();
-        var sessionFactoryBuilder = new MetadataSources(standardServiceRegistry)
+        return new MetadataSources(standardServiceRegistry)
                 .getMetadataBuilder()
                 .build()
-                .getSessionFactoryBuilder();
-        return sessionFactoryBuilder.build();
+                .getSessionFactoryBuilder()
+                .build();
     }
 }
