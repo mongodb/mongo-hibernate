@@ -10,9 +10,6 @@ exec_timeout_secs: 3600
 # to detect when the task started failing
 stepback: true
 
-#######################################
-#              Functions              #
-#######################################
 functions:
   "fetch source":
     # Executes git clone and applies the submitted patch, if any.
