@@ -20,6 +20,12 @@ import com.mongodb.hibernate.translate.ast.AstNode;
 import com.mongodb.hibernate.translate.ast.filter.AstFilter;
 import org.bson.BsonWriter;
 
+/**
+ * Represents some deletion MQL command.
+ *
+ * @param collection collection name; never null
+ * @param filter restriction on documents to be deleted; never null
+ */
 public record AstDeleteCommand(String collection, AstFilter filter) implements AstNode {
     @Override
     public void render(BsonWriter writer) {

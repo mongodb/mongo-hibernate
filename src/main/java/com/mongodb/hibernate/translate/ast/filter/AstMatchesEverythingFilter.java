@@ -18,6 +18,11 @@ package com.mongodb.hibernate.translate.ast.filter;
 
 import org.bson.BsonWriter;
 
+/**
+ * Represent an {@link AstFilter} which accepts everything.
+ *
+ * <p>One typical usage is for "delete all".
+ */
 public record AstMatchesEverythingFilter() implements AstFilter {
 
     public static AstMatchesEverythingFilter INSTANCE = new AstMatchesEverythingFilter();

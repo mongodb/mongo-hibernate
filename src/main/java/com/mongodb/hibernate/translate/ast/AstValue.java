@@ -16,4 +16,12 @@
 
 package com.mongodb.hibernate.translate.ast;
 
+/**
+ * Represents value type {@link AstNode}, e.g.
+ *
+ * <ul>
+ *   <li>{@link AstLiteralValue}: non-parameter literal value
+ *   <li>{@link AstPlaceholder}: parameter placeholder
+ * </ul>
+ */
 public interface AstValue extends AstNode {}

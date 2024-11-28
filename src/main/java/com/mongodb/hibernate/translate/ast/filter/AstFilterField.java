@@ -19,6 +19,11 @@ package com.mongodb.hibernate.translate.ast.filter;
 import com.mongodb.hibernate.translate.ast.AstNode;
 import org.bson.BsonWriter;
 
+/**
+ * Represents the common field path {@link AstNode} type which is the target of some {@link AstFilter}.
+ *
+ * @param path path of some field (which could be deeply embedded), usally starting with {@code $}; never null
+ */
 public record AstFilterField(String path) implements AstNode {
     @Override
     public void render(BsonWriter writer) {

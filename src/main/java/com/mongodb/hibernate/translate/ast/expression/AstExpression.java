@@ -18,4 +18,5 @@ package com.mongodb.hibernate.translate.ast.expression;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
 
+/** Represents an expression {@link AstNode} type. */
 public interface AstExpression extends AstNode {}

@@ -18,4 +18,9 @@ package com.mongodb.hibernate.translate.ast.filter;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
 
+/**
+ * Represents some {@link AstFilter} operation, e.g. comparing with some literal value.
+ *
+ * <p>The operation target is usually represented by another {@link AstNode}, e.g. {@link AstFilterField}.
+ */
 public interface AstFilterOperation extends AstNode {}

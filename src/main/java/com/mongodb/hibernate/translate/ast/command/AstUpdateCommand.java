@@ -21,6 +21,14 @@ import com.mongodb.hibernate.translate.ast.filter.AstFilter;
 import java.util.List;
 import org.bson.BsonWriter;
 
+/**
+ * Represents some updating MQL command, which aims to update one single document, based on some {@link AstFilter} and a
+ * collection of {@link AstFieldUpdate}s.
+ *
+ * @param collection collection name; never null
+ * @param filter document restriction; never null
+ * @param updates field updating set; never null
+ */
 public record AstUpdateCommand(String collection, AstFilter filter, List<? extends AstFieldUpdate> updates)
         implements AstNode {
     @Override

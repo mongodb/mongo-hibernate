@@ -18,6 +18,13 @@ package com.mongodb.hibernate.translate.ast;
 
 import org.bson.BsonWriter;
 
+/**
+ * Represents some Bson field with name and value, which is usually rendered with other {@link AstElement}s to compose a
+ * {@link org.bson.BsonDocument}.
+ *
+ * @param name field name; not null
+ * @param value field value; not null
+ */
 public record AstElement(String name, AstValue value) implements AstNode {
     @Override
     public void render(BsonWriter writer) {

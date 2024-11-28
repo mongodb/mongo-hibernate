@@ -19,6 +19,12 @@ package com.mongodb.hibernate.translate.ast.filter;
 import com.mongodb.hibernate.translate.ast.AstValue;
 import org.bson.BsonWriter;
 
+/**
+ * Represents a type of {@link AstFilterOperation} which is based on comparison with some {@link AstValue}.
+ *
+ * @param operator some comparison operator; never null
+ * @param value some {@link AstValue}; never null
+ */
 public record AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value)
         implements AstFilterOperation {
     @Override

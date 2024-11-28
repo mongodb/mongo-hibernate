@@ -16,6 +16,13 @@
 
 package com.mongodb.hibernate.translate.ast.filter;
 
+/**
+ * Enum type denoting the various comparison operators.
+ *
+ * <p>Usually used together with some {@link AstComparisonFilterOperation}.
+ *
+ * @see AstComparisonFilterOperation
+ */
 public enum AstComparisonFilterOperator {
     EQ("$eq"),
     GT("$gt"),

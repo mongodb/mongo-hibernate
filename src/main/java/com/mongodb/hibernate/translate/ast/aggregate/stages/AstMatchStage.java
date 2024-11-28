@@ -20,14 +20,17 @@ import com.mongodb.hibernate.translate.ast.aggregate.AstStage;
 import com.mongodb.hibernate.translate.ast.filter.AstFilter;
 import org.bson.BsonWriter;
 
+/**
+ * Represents some {@link AstStage} based on some query predicate.
+ *
+ * @param filter the query predicate; never null
+ */
 public record AstMatchStage(AstFilter filter) implements AstStage {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         writer.writeName("$match");
-
         filter.render(writer);
-
         writer.writeEndDocument();
     }
 }

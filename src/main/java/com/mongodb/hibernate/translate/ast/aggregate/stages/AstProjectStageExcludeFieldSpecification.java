@@ -18,6 +18,11 @@ package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
 import org.bson.BsonWriter;
 
+/**
+ * Represents some {@link AstProjectStageSpecification} that excludes some field.
+ *
+ * @param path the path of the field to be excluded; never null
+ */
 public record AstProjectStageExcludeFieldSpecification(String path) implements AstProjectStageSpecification {
     @Override
     public void render(BsonWriter writer) {

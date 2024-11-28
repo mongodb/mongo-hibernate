@@ -19,6 +19,11 @@ package com.mongodb.hibernate.translate.ast.filter;
 import java.util.List;
 import org.bson.BsonWriter;
 
+/**
+ * Represents a {@link AstFilter} which is based on conjunction of various {@link AstFilter}s.
+ *
+ * @param filters all {@link AstFilter} elements of the conjunction; never null
+ */
 public record AstAndFilter(List<? extends AstFilter> filters) implements AstFilter {
     @Override
     public void render(BsonWriter writer) {

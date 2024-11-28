@@ -18,9 +18,14 @@ package com.mongodb.hibernate.translate.ast.expression;
 
 import org.bson.BsonWriter;
 
+/**
+ * Represents an {@link AstExpression} denoting the path of some field (which could be deeply embedded).
+ *
+ * @param path a string denotes some field's path, usually starting with {@code $}; never null
+ */
 public record AstFieldPathExpression(String path) implements AstExpression {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeString(path); // path already includes "$" prefix
+        writer.writeString(path);
     }
 }

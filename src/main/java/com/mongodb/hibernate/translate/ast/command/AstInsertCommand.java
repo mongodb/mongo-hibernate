@@ -18,10 +18,16 @@ package com.mongodb.hibernate.translate.ast.command;
 
 import com.mongodb.hibernate.translate.ast.AstElement;
 import com.mongodb.hibernate.translate.ast.AstNode;
-
 import java.util.List;
 import org.bson.BsonWriter;
 
+/**
+ * Represents some insert MQL command which aims to insert one single document composed of a collection of
+ * {@link AstElement}s.
+ *
+ * @param collection collection name; never null
+ * @param elements the fields of the inserted document; never null
+ */
 public record AstInsertCommand(String collection, List<? extends AstElement> elements) implements AstNode {
     @Override
     public void render(BsonWriter writer) {

@@ -18,6 +18,11 @@ package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
 import org.bson.BsonWriter;
 
+/**
+ * Represents some {@link AstProjectStageSpecification} that include some field.
+ *
+ * @param path the path of the field to be included; never null
+ */
 public record AstProjectStageIncludeFieldSpecification(String path) implements AstProjectStageSpecification {
     @Override
     public void render(BsonWriter writer) {

@@ -19,6 +19,12 @@ package com.mongodb.hibernate.translate.ast.aggregate.stages;
 import com.mongodb.hibernate.translate.ast.expression.AstExpression;
 import org.bson.BsonWriter;
 
+/**
+ * Represents the {@link AstProjectStageSpecification} that renames the fields.
+ *
+ * @param path new path assigned
+ * @param expression existing field path expression
+ */
 public record AstProjectStageSetFieldSpecification(String path, AstExpression expression)
         implements AstProjectStageSpecification {
     @Override

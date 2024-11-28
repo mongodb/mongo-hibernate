@@ -20,6 +20,11 @@ import com.mongodb.hibernate.translate.ast.aggregate.AstStage;
 import java.util.List;
 import org.bson.BsonWriter;
 
+/**
+ * Represents some {@link AstStage} that selectively chooses which fields to be passed to next stage.
+ *
+ * @param specifications the collection of field filtering specification (e.g. inclusion and/or exclusion); never null.
+ */
 public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
     @Override
     public void render(BsonWriter writer) {

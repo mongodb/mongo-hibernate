@@ -18,4 +18,10 @@ package com.mongodb.hibernate.translate.ast.aggregate;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
 
+/**
+ * Represents some stage in an aggregate pipeline.
+ *
+ * @see AstPipeline
+ * @see com.mongodb.hibernate.translate.ast.command.AstAggregationCommand
+ */
 public interface AstStage extends AstNode {}

@@ -17,7 +17,6 @@
 package com.mongodb.hibernate.translate.ast.aggregate;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
-
 import java.util.List;
 import org.bson.BsonWriter;
 

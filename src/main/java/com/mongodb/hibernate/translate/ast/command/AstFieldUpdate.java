@@ -20,6 +20,12 @@ import com.mongodb.hibernate.translate.ast.AstNode;
 import com.mongodb.hibernate.translate.ast.AstValue;
 import org.bson.BsonWriter;
 
+/**
+ * Represents one single document field updating.
+ *
+ * @param name field name; never null
+ * @param value field value to be set; never null
+ */
 public record AstFieldUpdate(String name, AstValue value) implements AstNode {
     @Override
     public void render(BsonWriter writer) {

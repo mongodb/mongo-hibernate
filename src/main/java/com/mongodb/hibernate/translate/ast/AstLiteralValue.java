@@ -21,11 +21,20 @@ import org.bson.BsonWriter;
 import org.bson.codecs.BsonValueCodec;
 import org.bson.codecs.EncoderContext;
 
+/**
+ * Represents a literal Bson value {@link AstNode} type, whose rendering is based on some {@link BsonValueCodec}.
+ *
+ * @param literalValue some {@link BsonValue} instance to be rendered; never null
+ * @see AstPlaceholder
+ */
 public record AstLiteralValue(BsonValue literalValue) implements AstValue {
+
+    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
+    private static final EncoderContext DEFAULT_CONTEXT =
+            EncoderContext.builder().build();
 
     @Override
     public void render(final BsonWriter writer) {
-        new BsonValueCodec()
-                .encode(writer, literalValue, EncoderContext.builder().build());
+        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
     }
 }

@@ -18,6 +18,16 @@ package com.mongodb.hibernate.translate.ast.filter;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
 
+/**
+ * Represents filter {@link AstNode} type, which restricts command processing for updating, deletion or aggregation.
+ *
+ * <p>Usually it works by the following combination:
+ *
+ * <ul>
+ *   <li>{@link AstFilterField}: filter target on some field
+ *   <li>{@link AstFilterOperation}: further operation on the target
+ * </ul>
+ */
 public interface AstFilter extends AstNode {
     /**
      * Whether the filtering is based on equality of the _id field.

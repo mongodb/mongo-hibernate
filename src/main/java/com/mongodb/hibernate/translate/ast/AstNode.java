@@ -18,7 +18,18 @@ package com.mongodb.hibernate.translate.ast;
 
 import org.bson.BsonWriter;
 
+/**
+ * The ultimate ancestor interface representing any node in a Mongo AST tree model.
+ *
+ * <p>Its central concern is how to render the sub-tree rooted with it using a {@link BsonWriter} instance. <b>Note:
+ * </b>Extended JSON format is maintained for type safety reason.
+ */
 @FunctionalInterface
 public interface AstNode {
+    /**
+     * Renders the AST sub-tree with {@code this} object as the root.
+     *
+     * @param writer provided {@code BsonWriter} instance; never {@code null}
+     */
     void render(BsonWriter writer);
 }

@@ -18,4 +18,10 @@ package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
 
+/**
+ * Represents the condition on which field to be included in the {@link AstProjectStage}.
+ *
+ * @see AstProjectStageIncludeFieldSpecification
+ * @see AstProjectStageExcludeFieldSpecification
+ */
 public interface AstProjectStageSpecification extends AstNode {}

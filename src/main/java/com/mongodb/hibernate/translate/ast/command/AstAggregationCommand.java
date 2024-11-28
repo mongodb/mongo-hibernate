@@ -20,6 +20,12 @@ import com.mongodb.hibernate.translate.ast.AstNode;
 import com.mongodb.hibernate.translate.ast.aggregate.AstPipeline;
 import org.bson.BsonWriter;
 
+/**
+ * Represents some aggregation MQL command.
+ *
+ * @param collection collection name; never null
+ * @param pipeline pipeline associated with the aggregate; never null
+ */
 public record AstAggregationCommand(String collection, AstPipeline pipeline) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
