@@ -55,7 +55,7 @@ class SessionFactoryTests {
         return buildSessionFactory(Map.of());
     }
 
-    private SessionFactory buildSessionFactory(Map<String, Object> settings) throws ServiceException {
+    private static SessionFactory buildSessionFactory(Map<String, Object> settings) throws ServiceException {
         var standardServiceRegistry =
                 new StandardServiceRegistryBuilder().applySettings(settings).build();
         return new MetadataSources(standardServiceRegistry)
