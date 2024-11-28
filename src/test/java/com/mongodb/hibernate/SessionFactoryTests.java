@@ -51,7 +51,7 @@ class SessionFactoryTests {
         }
     }
 
-    private SessionFactory buildSessionFactory() throws ServiceException {
+    private static SessionFactory buildSessionFactory() throws ServiceException {
         return buildSessionFactory(Map.of());
     }
 
