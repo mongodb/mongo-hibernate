@@ -13,29 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@NullMarked
+package com.mongodb.hibernate.translate.ast.sort;
 
-package com.mongodb.hibernate.translate.ast;
-
-public enum AstNodeType {
-    AggregationCommand,
-    AllFilterOperation,
-    AndFilter,
-    ComparisonFilterOperation,
-    DeleteCommand,
-    Element,
-    FieldOperationFilter,
-    FieldPathExpression,
-    FieldUpdate,
-    FilterField,
-    FormulaExpression,
-    InsertCommand,
-    MatchesEverythingFilter,
-    MatchStage,
-    Pipeline,
-    Placeholder,
-    ProjectStage,
-    ProjectStageExcludeFieldSpecification,
-    ProjectStageIncludeFieldSpecification,
-    ProjectStageSetFieldSpecification,
-    UpdateCommand
-}
+import org.jspecify.annotations.NullMarked;

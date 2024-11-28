@@ -16,17 +16,11 @@
 
 package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.aggregate.AstStage;
 import com.mongodb.hibernate.translate.ast.filter.AstFilter;
 import org.bson.BsonWriter;
 
 public record AstMatchStage(AstFilter filter) implements AstStage {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.MatchStage;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

@@ -16,16 +16,10 @@
 
 package com.mongodb.hibernate.translate.ast.filter;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import java.util.List;
 import org.bson.BsonWriter;
 
 public record AstAndFilter(List<? extends AstFilter> filters) implements AstFilter {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.AndFilter;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

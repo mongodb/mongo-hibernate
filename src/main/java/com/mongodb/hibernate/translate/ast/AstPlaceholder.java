@@ -23,11 +23,6 @@ public record AstPlaceholder() implements AstValue {
     public static AstPlaceholder INSTANCE = new AstPlaceholder();
 
     @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.Placeholder;
-    }
-
-    @Override
     public void render(BsonWriter writer) {
         writer.writeUndefined();
     }

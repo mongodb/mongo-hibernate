@@ -16,15 +16,9 @@
 
 package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import org.bson.BsonWriter;
 
 public record AstProjectStageIncludeFieldSpecification(String path) implements AstProjectStageSpecification {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.ProjectStageIncludeFieldSpecification;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeInt32(path, 1);

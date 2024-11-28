@@ -17,18 +17,12 @@
 package com.mongodb.hibernate.translate.ast.command;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.filter.AstFilter;
 import java.util.List;
 import org.bson.BsonWriter;
 
 public record AstUpdateCommand(String collection, AstFilter filter, List<? extends AstFieldUpdate> updates)
         implements AstNode {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.UpdateCommand;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

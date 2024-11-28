@@ -16,17 +16,11 @@
 
 package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.aggregate.AstStage;
 import java.util.List;
 import org.bson.BsonWriter;
 
 public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.ProjectStage;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

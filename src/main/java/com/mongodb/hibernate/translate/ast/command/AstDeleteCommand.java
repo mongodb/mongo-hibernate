@@ -17,16 +17,10 @@
 package com.mongodb.hibernate.translate.ast.command;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.filter.AstFilter;
 import org.bson.BsonWriter;
 
 public record AstDeleteCommand(String collection, AstFilter filter) implements AstNode {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.DeleteCommand;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

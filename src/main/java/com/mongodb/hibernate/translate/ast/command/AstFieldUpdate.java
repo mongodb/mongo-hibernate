@@ -17,16 +17,10 @@
 package com.mongodb.hibernate.translate.ast.command;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.AstValue;
 import org.bson.BsonWriter;
 
 public record AstFieldUpdate(String name, AstValue value) implements AstNode {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.FieldUpdate;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeName(name);

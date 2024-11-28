@@ -17,15 +17,9 @@
 package com.mongodb.hibernate.translate.ast.filter;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import org.bson.BsonWriter;
 
 public record AstFilterField(String path) implements AstNode {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.FilterField;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeName(path);

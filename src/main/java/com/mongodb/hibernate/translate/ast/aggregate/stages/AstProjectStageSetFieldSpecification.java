@@ -16,17 +16,11 @@
 
 package com.mongodb.hibernate.translate.ast.aggregate.stages;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.expression.AstExpression;
 import org.bson.BsonWriter;
 
 public record AstProjectStageSetFieldSpecification(String path, AstExpression expression)
         implements AstProjectStageSpecification {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.ProjectStageSetFieldSpecification;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeName(path);

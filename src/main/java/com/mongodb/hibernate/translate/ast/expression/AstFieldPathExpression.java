@@ -16,15 +16,9 @@
 
 package com.mongodb.hibernate.translate.ast.expression;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import org.bson.BsonWriter;
 
 public record AstFieldPathExpression(String path) implements AstExpression {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.FieldPathExpression;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeString(path); // path already includes "$" prefix

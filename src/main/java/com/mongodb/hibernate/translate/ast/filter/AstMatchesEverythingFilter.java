@@ -16,17 +16,11 @@
 
 package com.mongodb.hibernate.translate.ast.filter;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import org.bson.BsonWriter;
 
 public record AstMatchesEverythingFilter() implements AstFilter {
 
     public static AstMatchesEverythingFilter INSTANCE = new AstMatchesEverythingFilter();
-
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.MatchesEverythingFilter;
-    }
 
     @Override
     public void render(BsonWriter writer) {

@@ -13,12 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+@NullMarked
 package com.mongodb.hibernate.translate.ast;
 
-import org.bson.BsonWriter;
-
-@FunctionalInterface
-public interface AstNode {
-    void render(BsonWriter writer);
-}
+import org.jspecify.annotations.NullMarked;

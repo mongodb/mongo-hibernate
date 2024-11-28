@@ -14,11 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate.ast;
+@NullMarked
+package com.mongodb.hibernate.translate.ast.filter;
 
-import org.bson.BsonWriter;
-
-@FunctionalInterface
-public interface AstNode {
-    void render(BsonWriter writer);
-}
+import org.jspecify.annotations.NullMarked;

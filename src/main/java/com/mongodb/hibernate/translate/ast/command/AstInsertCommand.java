@@ -18,16 +18,11 @@ package com.mongodb.hibernate.translate.ast.command;
 
 import com.mongodb.hibernate.translate.ast.AstElement;
 import com.mongodb.hibernate.translate.ast.AstNode;
-import com.mongodb.hibernate.translate.ast.AstNodeType;
+
 import java.util.List;
 import org.bson.BsonWriter;
 
 public record AstInsertCommand(String collection, List<? extends AstElement> elements) implements AstNode {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.InsertCommand;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

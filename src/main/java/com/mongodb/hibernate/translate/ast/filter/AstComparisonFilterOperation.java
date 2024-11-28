@@ -16,17 +16,11 @@
 
 package com.mongodb.hibernate.translate.ast.filter;
 
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.AstValue;
 import org.bson.BsonWriter;
 
 public record AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value)
         implements AstFilterOperation {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.ComparisonFilterOperation;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

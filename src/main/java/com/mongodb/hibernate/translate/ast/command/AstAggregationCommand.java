@@ -17,16 +17,10 @@
 package com.mongodb.hibernate.translate.ast.command;
 
 import com.mongodb.hibernate.translate.ast.AstNode;
-import com.mongodb.hibernate.translate.ast.AstNodeType;
 import com.mongodb.hibernate.translate.ast.aggregate.AstPipeline;
 import org.bson.BsonWriter;
 
 public record AstAggregationCommand(String collection, AstPipeline pipeline) implements AstNode {
-    @Override
-    public AstNodeType nodeType() {
-        return AstNodeType.AggregationCommand;
-    }
-
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
