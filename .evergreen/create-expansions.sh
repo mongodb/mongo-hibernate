@@ -9,12 +9,6 @@ fi
 
 DRIVERS_TOOLS="$(pwd)/../drivers-tools"
 
-# Python has cygwin path problems on Windows. Detect prospective mongo-orchestration home
-# directory.
-if [[ "${OS}" = "Windows_NT" ]]; then
-  export DRIVERS_TOOLS=$(cygpath -m $DRIVERS_TOOLS)
-fi
-
 MONGO_ORCHESTRATION_HOME="${DRIVERS_TOOLS}/.evergreen/orchestration"
 MONGODB_BINARIES="${DRIVERS_TOOLS}/mongodb/bin"
 PROJECT_DIRECTORY="$(pwd)"
