@@ -61,6 +61,7 @@ functions:
           - MONGODB_VERSION
           - ORCHESTRATION_FILE
           - MONGODB_BINARIES
+    # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
         file: mo-expansion.yml
