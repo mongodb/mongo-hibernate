@@ -108,11 +108,11 @@ post:
 #                Tasks                #
 #######################################
 tasks:
-  - name: static-check
+  - name: static-analysis
     type: test
     tags:
       - ci
-      - static-check
+      - static-analysis
     commands:
       - command: subprocess.exec
         params:
@@ -121,7 +121,7 @@ tasks:
           add_to_path:
             - .evergreen
           args:
-            - static-check.sh
+            - static-checks.sh
 
   - name: run-test
     type: test
@@ -129,7 +129,7 @@ tasks:
       - ci
       - test
     commands:
-      - func: "bootstrap mongo-orchestration"
+      - func: "bootstrap mongo orchestration"
       - command: subprocess.exec
         params:
           working_dir: src
@@ -137,20 +137,20 @@ tasks:
           add_to_path:
             - .evergreen
           args:
-            - run-test.sh
+            - run-tests.sh
 
 ########################################
 #           Build Variants             #
 ########################################
 buildvariants:
 
-  - name: static-checker
+  - name: static-checks
     tags:
       - ci
-    display_name: Static Check
+    display_name: "Static Checks"
     run_on: rhel80-small
     tasks:
-      - name: .static-check
+      - name: .static-analysis
 
   - name: mongodb_v6.0_replicaset
     tags:
