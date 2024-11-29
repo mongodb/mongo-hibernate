@@ -9,12 +9,13 @@ errorprone = "4.1.0"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.2"
 jspecify = "1.0.0"
-hibernate-core = "6.6.4.Final"
+hibernate-core = "6.6.5.Final"
 mongo-java-driver-sync = "5.3.0"
 slf4j-api = "2.0.16"
 logback-classic = "1.5.15"
 mockito = "5.14.2"
 buildconfig = "5.5.1"
+guava = "33.4.0-jre"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -27,6 +28,8 @@ mongo-java-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.r
 sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

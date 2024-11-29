@@ -16,9 +16,12 @@
 
 package com.mongodb.hibernate.dialect;
 
+import com.mongodb.hibernate.translate.MongoTranslatorFactory;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.spi.ParameterMarkerStrategy;
 
 /**
  * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}.
@@ -48,5 +51,15 @@ public final class MongoDialect extends Dialect {
     @Override
     protected DatabaseVersion getMinimumSupportedVersion() {
         return MINIMUM_VERSION;
+    }
+
+    @Override
+    public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
+        return new MongoTranslatorFactory();
+    }
+
+    @Override
+    public ParameterMarkerStrategy getNativeParameterMarkerStrategy() {
+        return (i, jdbcType) -> "{$undefined: true}";
     }
 }

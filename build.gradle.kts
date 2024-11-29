@@ -139,5 +139,7 @@ dependencies {
     implementation(libs.hibernate.core)
     implementation(libs.mongo.java.driver.sync)
     implementation(libs.sl4j.api)
+    implementation(libs.guava)
+    implementation(libs.mockito.core)
 }
 

@@ -53,4 +53,30 @@ public final class MongoAssertions {
     public static AssertionError fail(String msg) throws AssertionError {
         throw new AssertionError(assertNotNull(msg));
     }
+
+    /**
+     * Asserts that some value is {@code null}.
+     *
+     * @param value A value to check.
+     * @param <T> The type of {@code value}.
+     * @throws AssertionError If {@code value} is not {@code null}.
+     */
+    public static <T> void assertNull(@Nullable T value) throws AssertionError {
+        if (value != null) {
+            throw new AssertionError();
+        }
+    }
+
+    /**
+     * Throw AssertionError if the condition if false.
+     *
+     * @param name the name of the state that is being checked
+     * @param condition the condition about the parameter to check
+     * @throws AssertionError if the condition is false
+     */
+    public static void assertTrue(String name, boolean condition) {
+        if (!condition) {
+            throw new AssertionError("state should be: " + assertNotNull(name));
+        }
+    }
 }
