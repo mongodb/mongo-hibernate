@@ -28,12 +28,12 @@ public final class MongoAssertions {
     private MongoAssertions() {}
 
     /**
-     * Asserts that some expression is not {@code null}.
+     * Asserts that some value is not {@code null}.
      *
-     * @param value A expression to check.
-     * @param <T> The type of {@code expression}.
-     * @return {@code expression}
-     * @throws AssertionError If {@code expression} is {@code null}.
+     * @param value A value to check.
+     * @param <T> The type of {@code value}.
+     * @return {@code value}
+     * @throws AssertionError If {@code value} is {@code null}.
      */
     public static <T> T assertNotNull(@Nullable T value) throws AssertionError {
         if (value == null) {

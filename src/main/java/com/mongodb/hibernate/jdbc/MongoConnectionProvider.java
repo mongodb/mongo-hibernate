@@ -128,15 +128,15 @@ public final class MongoConnectionProvider
 
     private static ConnectionString getConnectionString(Object jdbcUrl) {
         if (!(jdbcUrl instanceof String)) {
-            throw new HibernateException(format(
-                    "Configuration property [%s] expression [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
+            throw new HibernateException(
+                    format("Configuration property [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
         }
         try {
             return new ConnectionString((String) jdbcUrl);
         } catch (RuntimeException e) {
             throw new HibernateException(
                     format(
-                            "Failed to create ConnectionString from configuration property [%s] with expression [%s]",
+                            "Failed to create ConnectionString from configuration property [%s] with value [%s]",
                             JAKARTA_JDBC_URL, jdbcUrl),
                     e);
         }
