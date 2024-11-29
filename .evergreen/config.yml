@@ -47,7 +47,7 @@ functions:
           ${PREPARE_SHELL}
           echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
-  "bootstrap mongo-orchestration":
+  "bootstrap mongo orchestration":
     - command: subprocess.exec
       params:
         binary: sh
