@@ -170,9 +170,6 @@ axes:
       - id: "linux"
         display_name: "Linux"
         run_on: rhel80-small
-      - id: "ubuntu"
-        display_name: "Ubuntu"
-        run_on: ubuntu2004-small
 
 ########################################
 #           Build Variants             #
@@ -188,9 +185,9 @@ buildvariants:
       - name: .static-analysis
 
   - matrix_name: mongo-hibernate
-    matrix_spec: { mongo-version: "*", topology: "*", os: "linux" }
+    matrix_spec: { mongo-version: "*", topology: "*", os: "*" }
 
-    display_name: "${mongo-version} ${topology}"
+    display_name: "${mongo-version} ${topology} ${os}"
     tags:
       - ci
     tasks:
