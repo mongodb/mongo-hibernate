@@ -13,8 +13,6 @@ echo "mongo-hibernate: running tests ..."
 
 echo "MongoDB version: ${MONGODB_VERSION}; topology: ${TOPOLOGY}"
 
-echo "Running tests with Java ${JAVA_VERSION}"
-
 ./gradlew -version
 
 ./gradlew -PjavaVersion=${JAVA_VERSION} --stacktrace --info --continue clean test
