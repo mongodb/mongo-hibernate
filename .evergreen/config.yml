@@ -52,15 +52,9 @@ functions:
       params:
         binary: sh
         include_expansions_in_env:
-          - AUTH
-          - SSL
           - TOPOLOGY
-          - REQUIRE_API_VERSION
           - MONGODB_VERSION
-          - ORCHESTRATION_FILE
           - MONGODB_BINARIES
-          - STORAGE_ENGINE
-          - LOAD_BALANCER
         args:
           - ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
@@ -142,6 +136,45 @@ tasks:
             - run-tests.sh
 
 ########################################
+#              Axes                    #
+########################################
+axes:
+  - id: mongo-version
+    display_name: MongoDB Version
+    values:
+      - id: "8.0"
+        display_name: "8.0"
+        variables:
+          MONGODB_VERSION: "8.0"
+      - id: "7.0"
+        display_name: "7.0"
+        variables:
+          MONGODB_VERSION: "7.0"
+      - id: "6.0"
+        display_name: "6.0"
+        variables:
+          MONGODB_VERSION: "6.0"
+
+  - id: topology
+    display_name: Topology
+    values:
+      - id: "replicaset"
+        display_name: Replica Set
+        variables:
+          TOPOLOGY: "replica_set"
+          LOAD_BALANCER: false
+
+  - id: os
+    display_name: OS
+    values:
+      - id: "linux"
+        display_name: "Linux"
+        run_on: rhel80-small
+      - id: "ubuntu"
+        display_name: "Ubuntu"
+        run_on: ubuntu2004-small
+
+########################################
 #           Build Variants             #
 ########################################
 buildvariants:
@@ -154,38 +187,11 @@ buildvariants:
     tasks:
       - name: .static-analysis
 
-  - name: mongodb_v6.0_replicaset
-    tags:
-      - ci
-      - v6
-    display_name: MongoDB v6.0
-    expansions:
-      MONGODB_VERSION: 6.0
-      TOPOLOGY: replica_set
-    run_on: rhel80-small
-    tasks:
-      - name: .test
+  - matrix_name: mongo-hibernate
+    matrix_spec: { mongo-version: "*", topology: "*", os: "linux" }
 
-  - name: mongodb_v7.0_replicaset
+    display_name: "${mongo-version} ${topology}"
     tags:
       - ci
-      - v7
-    display_name: MongoDB v7.0
-    expansions:
-      MONGODB_VERSION: 7.0
-      TOPOLOGY: replica_set
-    run_on: rhel80-small
-    tasks:
-      - name: .test
-
-  - name: mongodb_v8.0_replicaset
-    tags:
-      - ci
-      - v8
-    display_name: MongoDB v8.0
-    expansions:
-      MONGODB_VERSION: 8.0
-      TOPOLOGY: replica_set
-    run_on: rhel80-small
     tasks:
       - name: .test
