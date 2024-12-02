@@ -22,12 +22,12 @@ functions:
       params:
         working_dir: src
         binary: bash
-        args:
-          - .evergreen/create-expansions.sh
         include_expansions_in_env:
           - is_patch
           - version_id
           - project
+        args:
+          - .evergreen/create-expansions.sh
     - command: expansions.update
       params:
         file: src/expansion.yml
@@ -37,10 +37,10 @@ functions:
       params:
         working_dir: src
         binary: bash
-        args:
-          - .evergreen/fetch-drivers-tools.sh
         include_expansions_in_env:
           - DRIVERS_TOOLS
+        args:
+          - .evergreen/fetch-drivers-tools.sh
     - command: shell.exec
       params:
         script: |
@@ -51,8 +51,6 @@ functions:
     - command: subprocess.exec
       params:
         binary: sh
-        args:
-          - ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
         include_expansions_in_env:
           - AUTH
           - SSL
@@ -61,6 +59,8 @@ functions:
           - MONGODB_VERSION
           - ORCHESTRATION_FILE
           - MONGODB_BINARIES
+        args:
+          - ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       params:
