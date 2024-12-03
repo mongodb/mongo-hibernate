@@ -11,13 +11,13 @@ exec_timeout_secs: 3600
 stepback: true
 
 functions:
-  "fetch source":
+  fetch-source:
     # Executes git clone and applies the submitted patch, if any.
     - command: git.get_project
       params:
         directory: src
 
-  "create expansions":
+  create-expansions:
     - command: subprocess.exec
       params:
         working_dir: src
@@ -32,7 +32,7 @@ functions:
       params:
         file: src/expansion.yml
 
-  "prepare resources":
+  prepare-resources:
     - command: subprocess.exec
       params:
         working_dir: src
@@ -42,7 +42,7 @@ functions:
         args:
           - .evergreen/fetch-drivers-tools.sh
 
-  "bootstrap mongo orchestration":
+  bootstrap-mongo-orchestration:
     - command: subprocess.exec
       params:
         binary: sh
@@ -57,7 +57,7 @@ functions:
       params:
         file: mo-expansion.yml
 
-  "stop mongo orchestration":
+  stop-mongo-orchestration:
     - command: shell.exec
       params:
         script: |
@@ -71,12 +71,12 @@ functions:
           fi
           mongo-orchestration stop || true
 
-  "upload test results":
+  upload-test-results:
     - command: attach.xunit_results
       params:
         file: src/build/test-results/test/TEST-*.xml
 
-  "cleanup":
+  cleanup:
     - command: shell.exec
       params:
         script: |
@@ -85,15 +85,15 @@ functions:
 
 # Functions to run before all tasks (except those in task groups).
 pre:
-  - func: "fetch source"
-  - func: "create expansions"
-  - func: "prepare resources"
+  - func: fetch-source
+  - func: create-expansions
+  - func: prepare-resources
 
 # Functions to run after all tasks (except those in task groups).
 post:
-  - func: "stop mongo orchestration"
-  - func: "upload test results"
-  - func: "cleanup"
+  - func: stop-mongo-orchestration
+  - func: upload-test-results
+  - func: cleanup
 
 #######################################
 #                Tasks                #
@@ -120,7 +120,7 @@ tasks:
       - ci
       - test
     commands:
-      - func: "bootstrap mongo orchestration"
+      - func: bootstrap-mongo-orchestration
       - command: subprocess.exec
         params:
           working_dir: src
@@ -135,7 +135,7 @@ tasks:
 ########################################
 axes:
   - id: mongo-version
-    display_name: MongoDB Version
+    display_name: "MongoDB Version"
     values:
       - id: "8.0"
         display_name: "8.0"
@@ -153,17 +153,16 @@ axes:
   - id: topology
     display_name: Topology
     values:
-      - id: "replicaset"
-        display_name: Replica Set
+      - id: replicaset
+        display_name: "Replica Set"
         variables:
-          TOPOLOGY: "replica_set"
-          LOAD_BALANCER: false
+          TOPOLOGY: replica_set
 
   - id: os
     display_name: OS
     values:
-      - id: "linux"
-        display_name: "Linux"
+      - id: linux
+        display_name: Linux
         run_on: rhel80-small
 
 ########################################
