@@ -45,7 +45,7 @@ functions:
   bootstrap-mongo-orchestration:
     - command: subprocess.exec
       params:
-        binary: sh
+        binary: bash
         include_expansions_in_env:
           - TOPOLOGY
           - MONGODB_VERSION
