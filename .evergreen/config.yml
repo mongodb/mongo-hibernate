@@ -103,7 +103,6 @@ tasks:
     type: test
     tags:
       - ci
-      - static-analysis
     commands:
       - command: subprocess.exec
         params:
@@ -114,11 +113,10 @@ tasks:
           args:
             - static-checks.sh
 
-  - name: run-test
+  - name: run-tests
     type: test
     tags:
       - ci
-      - test
     commands:
       - func: bootstrap-mongo-orchestration
       - command: subprocess.exec
@@ -176,7 +174,7 @@ buildvariants:
     display_name: "Static Checks"
     run_on: rhel80-small
     tasks:
-      - name: .static-analysis
+      - name: static-analysis
 
   - matrix_name: mongo-hibernate
     matrix_spec: { mongo-version: "*", topology: "*", os: "*" }
@@ -185,4 +183,4 @@ buildvariants:
     tags:
       - ci
     tasks:
-      - name: .test
+      - name: run-tests
