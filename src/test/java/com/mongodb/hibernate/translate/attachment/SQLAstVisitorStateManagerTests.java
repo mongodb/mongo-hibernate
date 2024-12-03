@@ -83,4 +83,18 @@ class SQLAstVisitorStateManagerTests {
                 () -> sqlAstVisitorStateManager.detach(AttachmentKey.COLLECTION_NAME, runnable));
         assertTrue(sqlAstVisitorStateManager.state.isEmpty());
     }
+
+    @Test
+    void testAttachmentDuplicated() {
+        // given
+        Runnable runnable = () -> {
+            sqlAstVisitorStateManager.attach(AttachmentKey.COLLECTION_NAME, "books1");
+            sqlAstVisitorStateManager.attach(AttachmentKey.COLLECTION_NAME, "books2");
+        };
+
+        // when && then
+        assertThrows(
+                IllegalStateException.class,
+                () -> sqlAstVisitorStateManager.detach(AttachmentKey.COLLECTION_NAME, runnable));
+    }
 }
