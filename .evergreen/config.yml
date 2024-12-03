@@ -41,11 +41,6 @@ functions:
           - DRIVERS_TOOLS
         args:
           - .evergreen/fetch-drivers-tools.sh
-    - command: shell.exec
-      params:
-        script: |
-          ${PREPARE_SHELL}
-          echo "{ \"releases\": { \"default\": \"$MONGODB_BINARIES\" }}" > $MONGO_ORCHESTRATION_HOME/orchestration.config
 
   "bootstrap mongo orchestration":
     - command: subprocess.exec
