@@ -106,7 +106,7 @@ tasks:
   - name: static-analysis
     type: test
     tags:
-      - ci
+      - pr
     commands:
       - command: subprocess.exec
         params:
