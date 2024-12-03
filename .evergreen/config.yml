@@ -59,9 +59,12 @@ functions:
 
   stop-mongo-orchestration:
     - command: shell.exec
+      include_expansions_in_env:
+        - MONGO_ORCHESTRATION_HOME
       params:
         script: |
-          ${PREPARE_SHELL}
+          set -o errexit
+          set -o xtrace
           cd ${MONGO_ORCHESTRATION_HOME}
           # source the mongo-orchestration virtualenv if it exists
           if [ -f venv/bin/activate ]; then
@@ -78,10 +81,11 @@ functions:
 
   cleanup:
     - command: shell.exec
+      include_expansions_in_env:
+        - DRIVERS_TOOLS
       params:
         script: |
-          ${PREPARE_SHELL}
-          rm -rf $DRIVERS_TOOLS || true
+          rm -rf ${DRIVERS_TOOLS} || true
 
 # Functions to run before all tasks (except those in task groups).
 pre:
