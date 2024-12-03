@@ -116,7 +116,7 @@ tasks:
   - name: run-tests
     type: test
     tags:
-      - ci
+      - pr
     commands:
       - func: bootstrap-mongo-orchestration
       - command: subprocess.exec
@@ -170,7 +170,7 @@ buildvariants:
 
   - name: static-checks
     tags:
-      - ci
+      - pr
     display_name: "Static Checks"
     run_on: rhel80-small
     tasks:
@@ -181,6 +181,6 @@ buildvariants:
 
     display_name: "${mongo-version} ${topology} ${os}"
     tags:
-      - ci
+      - pr
     tasks:
       - name: run-tests
