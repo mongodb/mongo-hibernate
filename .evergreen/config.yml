@@ -58,21 +58,14 @@ functions:
         file: mo-expansion.yml
 
   stop-mongo-orchestration:
-    - command: shell.exec
-      include_expansions_in_env:
-        - MONGO_ORCHESTRATION_HOME
+    - command: subprocess.exec
       params:
-        script: |
-          set -o errexit
-          set -o xtrace
-          cd ${MONGO_ORCHESTRATION_HOME}
-          # source the mongo-orchestration virtualenv if it exists
-          if [ -f venv/bin/activate ]; then
-            . venv/bin/activate
-          elif [ -f venv/Scripts/activate ]; then
-            . venv/Scripts/activate
-          fi
-          mongo-orchestration stop || true
+        working_dir: src
+        binary: bash
+        include_expansions_in_env:
+          - MONGO_ORCHESTRATION_HOME
+        args:
+          - .evergreen/stop-mongo-orchestration.sh
 
   upload-test-results:
     - command: attach.xunit_results
@@ -80,12 +73,9 @@ functions:
         file: src/build/test-results/test/TEST-*.xml
 
   cleanup:
-    - command: shell.exec
-      include_expansions_in_env:
-        - DRIVERS_TOOLS
+    - command: subprocess.exec
       params:
-        script: |
-          rm -rf ${DRIVERS_TOOLS} || true
+        command: rm -rf ${DRIVERS_TOOLS}
 
 # Functions to run before all tasks (except those in task groups).
 pre:

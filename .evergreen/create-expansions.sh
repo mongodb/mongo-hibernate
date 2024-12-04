@@ -25,19 +25,6 @@ PROJECT_DIRECTORY: "${PROJECT_DIRECTORY}"
 TMPDIR: "${TMPDIR}"
 PATH: "${PATH}"
 PROJECT: "${PROJECT}"
-PREPARE_SHELL: |
-    set -o errexit
-    set -o xtrace
-
-    export DRIVERS_TOOLS="${DRIVERS_TOOLS}"
-    export MONGO_ORCHESTRATION_HOME="${MONGO_ORCHESTRATION_HOME}"
-    export MONGODB_BINARIES="${MONGODB_BINARIES}"
-    export PROJECT_DIRECTORY="${PROJECT_DIRECTORY}"
-
-    export TMPDIR="${TMPDIR}"
-    export PATH="${PATH}"
-    export PROJECT="${PROJECT}"
-
 EOT
 
 # Print the expansion file created.
