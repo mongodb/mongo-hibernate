@@ -17,7 +17,8 @@
 package com.mongodb.hibernate.jdbc;
 
 import com.mongodb.client.ClientSession;
-import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.client.MongoClient;
+import com.mongodb.hibernate.internal.NotYetImplementedSQLException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -31,6 +32,9 @@ import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.List;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.jspecify.annotations.Nullable;
 
@@ -42,13 +46,15 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoConnection extends ConnectionAdapter {
 
+    private final MongoClient mongoClient;
     private final ClientSession clientSession;
 
     private boolean closed;
 
     private boolean autoCommit;
 
-    MongoConnection(ClientSession clientSession) {
+    MongoConnection(MongoClient mongoClient, ClientSession clientSession) {
+        this.mongoClient = mongoClient;
         this.clientSession = clientSession;
         autoCommit = true;
     }
@@ -146,21 +152,21 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
+        throw new NotYetImplementedSQLException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
     }
 
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
+        throw new NotYetImplementedSQLException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
     }
 
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
+        throw new NotYetImplementedSQLException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
     }
 
@@ -168,7 +174,7 @@ final class MongoConnection extends ConnectionAdapter {
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
+        throw new NotYetImplementedSQLException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
     }
 
@@ -190,37 +196,37 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Clob createClob() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedSQLException();
     }
 
     @Override
     public Blob createBlob() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedSQLException();
     }
 
     @Override
     public NClob createNClob() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedSQLException();
     }
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedSQLException();
     }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedSQLException();
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedSQLException();
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -228,9 +234,19 @@ final class MongoConnection extends ConnectionAdapter {
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-37");
+        try {
+            var commandResult =
+                    mongoClient.getDatabase("admin").runCommand(new BsonDocument("buildinfo", new BsonInt32(1)));
+            String versionText = commandResult.getString("version");
+            List<Integer> versionArray = commandResult.getList("versionArray", Integer.class);
+            if (versionArray.size() < 2) {
+                throw new SQLException(
+                        String.format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
+            }
+            return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to get metadata", e);
+        }
     }
 
     /**
@@ -302,6 +318,7 @@ final class MongoConnection extends ConnectionAdapter {
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkClosed();
         return false;
     }
 
