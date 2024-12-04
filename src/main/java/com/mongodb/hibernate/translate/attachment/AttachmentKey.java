@@ -17,17 +17,17 @@
 package com.mongodb.hibernate.translate.attachment;
 
 /**
- * A type safe attachment type enum.
+ * A type safe attachment category enum.
  *
- * <p>It is used as the common contract between coordinating attachment producer and consumer. To ensure safe attachment
- * transferring, both parties need to present the identical {@link AttachmentKey}.
+ * <p>It is used as the common contract between coordinating attachment producer (aka attacher) and consumer (aka
+ * detacher). To ensure safe attachment transferring, both parties need to present the identical {@link AttachmentKey}.
  *
- * <p>Note that Java {@code Enum} doesn't support generic type support. This interface combines both {@code Enum} and
- * type safety together.
+ * <p>Note that Java {@code Enum} doesn't support generics type. This interface combines both {@code Enum} and type
+ * safety together.
  *
- * @param <T> generic type
- * @see SQLAstVisitorStateManager#attach(AttachmentKey, Object)
- * @see SQLAstVisitorStateManager#detach(AttachmentKey, Runnable)
+ * @param <T> generics type
+ * @see Attachment#attach(AttachmentKey, Object)
+ * @see Attachment#expect(AttachmentKey, Runnable)
  */
 public interface AttachmentKey<T> {
     AttachmentKey<String> COLUMN_NAME = new AttachmentKey<>() {};

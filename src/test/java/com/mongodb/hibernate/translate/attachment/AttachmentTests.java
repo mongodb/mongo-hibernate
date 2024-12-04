@@ -23,39 +23,53 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class SQLAstVisitorStateManagerTests {
+class AttachmentTests {
 
-    private SQLAstVisitorStateManager sqlAstVisitorStateManager;
+    private Attachment attachment;
 
     @BeforeEach
     void setUp() {
-        sqlAstVisitorStateManager = new SQLAstVisitorStateManager();
+        attachment = new Attachment();
     }
 
     @Test
     void testSuccess() {
         // given
         AttachmentKey<String> attachmentKey = AttachmentKey.COLLECTION_NAME;
-        Runnable runnable = () -> sqlAstVisitorStateManager.attach(attachmentKey, "books");
+        Runnable runnable = () -> attachment.attach(attachmentKey, "books");
 
         // when
-        String returnValue = sqlAstVisitorStateManager.detach(attachmentKey, runnable);
+        String returnValue = attachment.expect(attachmentKey, runnable);
 
         // then
         assertEquals("books", returnValue);
-        assertTrue(sqlAstVisitorStateManager.state.isEmpty());
+        assertTrue(attachment.isBlank());
+    }
+
+    @Test
+    void testEmbeddedAttachments() {
+        // given
+        Runnable collectionAttacher = () -> {
+            attachment.expect(AttachmentKey.COLUMN_NAME, () -> attachment.attach(AttachmentKey.COLUMN_NAME, "title"));
+            attachment.attach(AttachmentKey.COLLECTION_NAME, "books");
+        };
+
+        // when
+        String returnValue = attachment.expect(AttachmentKey.COLLECTION_NAME, collectionAttacher);
+
+        // then
+        assertEquals("books", returnValue);
+        assertTrue(attachment.isBlank());
     }
 
     @Test
     void testReturnTypesMismatch() {
         // given
-        Runnable runnable = () -> sqlAstVisitorStateManager.attach(AttachmentKey.COLLECTION_NAME, "books");
+        Runnable runnable = () -> attachment.attach(AttachmentKey.COLLECTION_NAME, "books");
 
         // when && then
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> sqlAstVisitorStateManager.detach(AttachmentKey.COLUMN_NAME, runnable));
-        assertTrue(sqlAstVisitorStateManager.state.isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> attachment.expect(AttachmentKey.COLUMN_NAME, runnable));
+        assertTrue(attachment.isBlank());
     }
 
     @Test
@@ -66,10 +80,8 @@ class SQLAstVisitorStateManagerTests {
         };
 
         // when && then
-        assertThrows(
-                NullPointerException.class,
-                () -> sqlAstVisitorStateManager.detach(AttachmentKey.COLUMN_NAME, runnable));
-        assertTrue(sqlAstVisitorStateManager.state.isEmpty());
+        assertThrows(NullPointerException.class, () -> attachment.expect(AttachmentKey.COLUMN_NAME, runnable));
+        assertTrue(attachment.isBlank());
     }
 
     @Test
@@ -78,23 +90,20 @@ class SQLAstVisitorStateManagerTests {
         Runnable runnable = () -> {};
 
         // when && then
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> sqlAstVisitorStateManager.detach(AttachmentKey.COLLECTION_NAME, runnable));
-        assertTrue(sqlAstVisitorStateManager.state.isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> attachment.expect(AttachmentKey.COLLECTION_NAME, runnable));
+        assertTrue(attachment.isBlank());
     }
 
     @Test
     void testAttachmentDuplicated() {
         // given
         Runnable runnable = () -> {
-            sqlAstVisitorStateManager.attach(AttachmentKey.COLLECTION_NAME, "books1");
-            sqlAstVisitorStateManager.attach(AttachmentKey.COLLECTION_NAME, "books2");
+            attachment.attach(AttachmentKey.COLLECTION_NAME, "books1");
+            attachment.attach(AttachmentKey.COLLECTION_NAME, "books2");
         };
 
         // when && then
-        assertThrows(
-                IllegalStateException.class,
-                () -> sqlAstVisitorStateManager.detach(AttachmentKey.COLLECTION_NAME, runnable));
+        assertThrows(IllegalStateException.class, () -> attachment.expect(AttachmentKey.COLLECTION_NAME, runnable));
+        assertTrue(attachment.isBlank());
     }
 }
