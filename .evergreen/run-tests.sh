@@ -6,9 +6,13 @@ set -o errexit  # Exit the script with error if any of the commands fail
 ############################################
 #            Main Program                  #
 ############################################
+
 source java-config.sh
 
-echo "mongo-hibernate: static checking ..."
+echo "mongo-hibernate: running tests ..."
+
+echo "MongoDB version: ${MONGODB_VERSION}; topology: ${TOPOLOGY}"
 
 ./gradlew -version
-./gradlew -PxmlReports.enabled=true --info -x test clean check compileJava
+
+./gradlew -PjavaVersion=${JAVA_VERSION} --stacktrace --info --continue clean test
