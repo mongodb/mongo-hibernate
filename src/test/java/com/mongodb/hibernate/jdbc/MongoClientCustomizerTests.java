@@ -89,7 +89,7 @@ class MongoClientCustomizerTests {
 
     @Test
     void testMongoClientCustomizerThrowException() {
-        assertThrows(ServiceException.class, () -> {
+        assertThrows(NullPointerException.class, () -> {
             try (var ignored = buildSessionFactory(
                     (builder, connectionString) -> {
                         throw new NullPointerException();
@@ -105,6 +105,7 @@ class MongoClientCustomizerTests {
         if (connectionString != null) {
             standardServiceRegistryBuilder.applySetting(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
         }
+        standardServiceRegistryBuilder.applySetting(JdbcSettings.ALLOW_METADATA_ON_BOOT, false);
         return new MetadataSources(standardServiceRegistryBuilder.build())
                 .getMetadataBuilder()
                 .build()
