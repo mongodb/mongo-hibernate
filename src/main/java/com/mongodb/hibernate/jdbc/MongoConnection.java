@@ -87,7 +87,7 @@ final class MongoConnection extends ConnectionAdapter {
     public void commit() throws SQLException {
         checkClosed();
         if (autoCommit) {
-            throw new SQLException("Autocommit state should be false when committing transaction");
+            throw new SQLException("AutoCommit state should be false when committing transaction");
         }
         doCommit();
     }
@@ -105,7 +105,7 @@ final class MongoConnection extends ConnectionAdapter {
     public void rollback() throws SQLException {
         checkClosed();
         if (autoCommit) {
-            throw new SQLException("Autocommit state should be false when committing transaction");
+            throw new SQLException("AutoCommit state should be false when committing transaction");
         }
         try {
             clientSession.abortTransaction();

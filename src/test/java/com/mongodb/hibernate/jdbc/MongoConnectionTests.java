@@ -130,7 +130,8 @@ class MongoConnectionTests {
                 }
 
                 @ParameterizedTest(
-                        name = "AutoCommit changed (false -> true): commit existing transaction (successful: {0})")
+                        name =
+                                "AutoCommit state changed (false -> true): commit existing transaction (successful: {0})")
                 @ValueSource(booleans = {true, false})
                 void testTryingToCommitExistingTransactionWhenAutoCommitChangedToTrue(boolean successful)
                         throws SQLException {
@@ -154,7 +155,7 @@ class MongoConnectionTests {
                 }
 
                 @Test
-                @DisplayName("No-op when no active transaction exists and 'autoCommit' changed (false -> true)")
+                @DisplayName("No-op when no active transaction exists and autoCommit state changed (false -> true)")
                 void testNoopWhenNoExistingTransactionAndAutoCommitChangedToTrue() throws SQLException {
                     // given
                     mongoConnection.setAutoCommit(false);
