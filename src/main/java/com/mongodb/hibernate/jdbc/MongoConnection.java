@@ -60,12 +60,8 @@ final class MongoConnection extends ConnectionAdapter {
     public void setAutoCommit(boolean autoCommit) throws SQLException {
         checkClosed();
         if (autoCommit != this.autoCommit) {
-            try {
-                if (clientSession.hasActiveTransaction()) {
-                    clientSession.commitTransaction();
-                }
-            } catch (RuntimeException e) {
-                throw new SQLException("Failed to commit transaction", e);
+            if (clientSession.hasActiveTransaction()) {
+                doCommit();
             }
             try {
                 if (!autoCommit) {
