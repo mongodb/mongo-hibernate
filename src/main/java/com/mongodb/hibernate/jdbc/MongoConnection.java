@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
 import com.mongodb.client.ClientSession;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
@@ -59,18 +61,19 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public void setAutoCommit(boolean autoCommit) throws SQLException {
         checkClosed();
-        if (autoCommit != this.autoCommit) {
-            if (clientSession.hasActiveTransaction()) {
-                doCommit();
+        if (autoCommit == this.autoCommit) {
+            return;
+        }
+        if (clientSession.hasActiveTransaction()) {
+            doCommit();
+        }
+        try {
+            if (!autoCommit) {
+                clientSession.startTransaction();
             }
-            try {
-                if (!autoCommit) {
-                    clientSession.startTransaction();
-                }
-                this.autoCommit = autoCommit;
-            } catch (RuntimeException e) {
-                throw new SQLException("Failed to start transaction", e);
-            }
+            this.autoCommit = autoCommit;
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to start transaction", e);
         }
     }
 
@@ -86,6 +89,11 @@ final class MongoConnection extends ConnectionAdapter {
         if (autoCommit) {
             throw new SQLException("Autocommit state should be false when committing transaction");
         }
+        doCommit();
+    }
+
+    private void doCommit() throws SQLException {
+        assertFalse(autoCommit);
         try {
             clientSession.commitTransaction();
         } catch (RuntimeException e) {

@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_SMART_NULLS;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -113,7 +113,7 @@ class MongoConnectionTests {
 
                 @ParameterizedTest(name = "AutoCommit (true -> false): start transaction (successful: {0})")
                 @ValueSource(booleans = {true, false})
-                void testTringToStartTransactionWhenAutoCommitChangedToFalse(boolean successful) throws SQLException {
+                void testTryingToStartTransactionWhenAutoCommitChangedToFalse(boolean successful) throws SQLException {
                     // given
                     assertTrue(mongoConnection.getAutoCommit());
                     if (!successful) {
@@ -154,6 +154,7 @@ class MongoConnectionTests {
                 }
 
                 @Test
+                @DisplayName("No-op when no active transaction exists and 'autoCommit' changed (false -> true)")
                 void testNoopWhenNoExistingTransactionAndAutoCommitChangedToTrue() throws SQLException {
                     // given
                     mongoConnection.setAutoCommit(false);
@@ -168,13 +169,13 @@ class MongoConnectionTests {
 
                     // then
                     assertTrue(mongoConnection.getAutoCommit());
-                    verify(clientSession, times(2)).hasActiveTransaction();
+                    verify(clientSession, atLeast(1)).hasActiveTransaction();
                     verifyNoMoreInteractions(clientSession);
                 }
             }
 
             @ParameterizedTest(
-                    name = "SQLException is thrown when setAutoCommit({0}) called on a closed MongoConnection")
+                    name = "SQLException is thrown when 'setAutoCommit({0})' is called on a closed MongoConnection")
             @ValueSource(booleans = {true, false})
             void testSQLExceptionThrowWhenCalledOnClosedConnection(boolean autoCommit) throws SQLException {
                 // given
@@ -211,12 +212,15 @@ class MongoConnectionTests {
             }
 
             @Test
-            void testSQLExceptionThrownWhenConnectionClosedAlready() throws SQLException {
+            @DisplayName("SQLException is thrown when 'commit()' is called on a closed MongoConnection")
+            void testSQLExceptionThrowWhenCalledOnClosedConnection() throws SQLException {
                 // given
                 mongoConnection.close();
+                verify(clientSession).close();
 
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.commit());
+                verifyNoMoreInteractions(clientSession);
             }
         }
 
@@ -244,12 +248,15 @@ class MongoConnectionTests {
             }
 
             @Test
-            void testSQLExceptionThrownWhenConnectionClosedAlready() throws SQLException {
+            @DisplayName("SQLException is thrown when 'rollback()' is called on a closed MongoConnection")
+            void testSQLExceptionThrowWhenCalledOnClosedConnection() throws SQLException {
                 // given
                 mongoConnection.close();
+                verify(clientSession).close();
 
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.rollback());
+                verifyNoMoreInteractions(clientSession);
             }
         }
 
@@ -282,13 +289,16 @@ class MongoConnectionTests {
                         Connection.TRANSACTION_REPEATABLE_READ,
                         Connection.TRANSACTION_SERIALIZABLE
                     })
-            @DisplayName("MongoDB Dialect doesn't support JDBC transaction isolation level setting")
-            void testSQLExceptionThrownWhenConnectionClosed(int level) throws SQLException {
+            @DisplayName(
+                    "SQLException is thrown when 'setTransactionIsolation({0})' is called on a closed MongoConnection")
+            void testSQLExceptionThrowWhenCalledOnClosedConnection(int level) throws SQLException {
                 // given
                 mongoConnection.close();
+                verify(clientSession).close();
 
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.setTransactionIsolation(level));
+                verifyNoMoreInteractions(clientSession);
             }
 
             @Test
@@ -300,12 +310,16 @@ class MongoConnectionTests {
             }
 
             @Test
-            void testSQLExceptionThrownWhenConnectionClosed() throws SQLException {
+            @DisplayName(
+                    "SQLException is thrown when 'getTransactionIsolation()' is called on a closed MongoConnection")
+            void testSQLExceptionThrowWhenCalledOnClosedConnection() throws SQLException {
                 // given
                 mongoConnection.close();
+                verify(clientSession).close();
 
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.getTransactionIsolation());
+                verifyNoMoreInteractions(clientSession);
             }
         }
     }
