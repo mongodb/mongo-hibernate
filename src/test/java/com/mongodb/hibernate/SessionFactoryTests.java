@@ -54,7 +54,7 @@ class SessionFactoryTests {
     @Test
     void testInTransaction() {
         try (var sessionFactory = buildSessionFactory()) {
-            sessionFactory.inTransaction(session -> {});
+            assertDoesNotThrow(() -> sessionFactory.inTransaction(session -> {}));
         }
     }
 
