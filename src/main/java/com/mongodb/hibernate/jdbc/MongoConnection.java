@@ -67,14 +67,7 @@ final class MongoConnection extends ConnectionAdapter {
         if (clientSession.hasActiveTransaction()) {
             doCommit();
         }
-        try {
-            if (!autoCommit) {
-                clientSession.startTransaction();
-            }
-            this.autoCommit = autoCommit;
-        } catch (RuntimeException e) {
-            throw new SQLException("Failed to start transaction", e);
-        }
+        this.autoCommit = autoCommit;
     }
 
     @Override
@@ -94,6 +87,9 @@ final class MongoConnection extends ConnectionAdapter {
 
     private void doCommit() throws SQLException {
         assertFalse(autoCommit);
+        if (!clientSession.hasActiveTransaction()) {
+            return;
+        }
         try {
             clientSession.commitTransaction();
         } catch (RuntimeException e) {
@@ -106,6 +102,9 @@ final class MongoConnection extends ConnectionAdapter {
         checkClosed();
         if (autoCommit) {
             throw new SQLException("AutoCommit state should be false when committing transaction");
+        }
+        if (!clientSession.hasActiveTransaction()) {
+            return;
         }
         try {
             clientSession.abortTransaction();

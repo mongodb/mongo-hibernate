@@ -16,8 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_SMART_NULLS;
@@ -93,13 +92,10 @@ class MongoConnectionTests {
                 // given
                 if (!autoCommit) {
                     mongoConnection.setAutoCommit(false);
-                    verify(clientSession).startTransaction();
                     verify(clientSession).hasActiveTransaction();
                 } else {
                     assertTrue(mongoConnection.getAutoCommit());
                 }
-
-                assertEquals(mongoConnection.getAutoCommit(), autoCommit);
 
                 // when
                 mongoConnection.setAutoCommit(autoCommit);
@@ -111,24 +107,6 @@ class MongoConnectionTests {
             @Nested
             class AutoCommitStateChangedTests {
 
-                @ParameterizedTest(name = "AutoCommit (true -> false): start transaction (successful: {0})")
-                @ValueSource(booleans = {true, false})
-                void testTryingToStartTransactionWhenAutoCommitChangedToFalse(boolean successful) throws SQLException {
-                    // given
-                    assertTrue(mongoConnection.getAutoCommit());
-                    if (!successful) {
-                        doThrow(RuntimeException.class).when(clientSession).startTransaction();
-                    }
-
-                    // when && then
-                    if (successful) {
-                        mongoConnection.setAutoCommit(false);
-                    } else {
-                        assertThrows(SQLException.class, () -> mongoConnection.setAutoCommit(false));
-                    }
-                    verify(clientSession).startTransaction();
-                }
-
                 @ParameterizedTest(
                         name =
                                 "AutoCommit state changed (false -> true): commit existing transaction (successful: {0})")
@@ -137,9 +115,6 @@ class MongoConnectionTests {
                         throws SQLException {
                     // given
                     mongoConnection.setAutoCommit(false);
-                    verify(clientSession).startTransaction();
-
-                    assertFalse(mongoConnection.getAutoCommit());
                     doReturn(true).when(clientSession).hasActiveTransaction();
                     if (!successful) {
                         doThrow(RuntimeException.class).when(clientSession).commitTransaction();
@@ -159,17 +134,12 @@ class MongoConnectionTests {
                 void testNoopWhenNoExistingTransactionAndAutoCommitChangedToTrue() throws SQLException {
                     // given
                     mongoConnection.setAutoCommit(false);
-                    verify(clientSession).startTransaction();
-                    mongoConnection.commit();
-                    verify(clientSession).commitTransaction();
-
-                    assertFalse(mongoConnection.getAutoCommit());
+                    doReturn(false).when(clientSession).hasActiveTransaction();
 
                     // when
                     mongoConnection.setAutoCommit(true);
 
                     // then
-                    assertTrue(mongoConnection.getAutoCommit());
                     verify(clientSession, atLeast(1)).hasActiveTransaction();
                     verifyNoMoreInteractions(clientSession);
                 }
@@ -193,9 +163,24 @@ class MongoConnectionTests {
         class CommitTests {
 
             @Test
-            @DisplayName("AutoCommit state should be false when committing transaction")
+            @DisplayName("No-op when no active transaction exists during transaction commit")
+            void testNoopWhenNoTransactionExistsAndCommit() throws SQLException {
+                // given
+                doReturn(false).when(clientSession).hasActiveTransaction();
+                mongoConnection.setAutoCommit(false);
+
+                // when && then
+                assertDoesNotThrow(() -> mongoConnection.commit());
+                verifyNoMoreInteractions(clientSession);
+            }
+
+            @Test
+            @DisplayName("SQLException is thrown when autoCommit state is true during transaction commit")
             void testSQLExceptionThrownWhenAutoCommitIsTrue() throws SQLException {
+                // given
                 assertTrue(mongoConnection.getAutoCommit());
+
+                // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.commit());
             }
 
@@ -204,8 +189,7 @@ class MongoConnectionTests {
             void testSQLExceptionThrownWhenTransactionCommitFailed() throws SQLException {
                 // given
                 mongoConnection.setAutoCommit(false);
-                verify(clientSession).startTransaction();
-
+                doReturn(true).when(clientSession).hasActiveTransaction();
                 doThrow(RuntimeException.class).when(clientSession).commitTransaction();
 
                 // when && then
@@ -229,9 +213,24 @@ class MongoConnectionTests {
         class RollbackTests {
 
             @Test
-            @DisplayName("AutoCommit state should be false when rolling back transaction")
+            @DisplayName("No-op when no active transaction exists during transaction rollback")
+            void testNoopWhenNoTransactionExistsAndRollback() throws SQLException {
+                // given
+                doReturn(false).when(clientSession).hasActiveTransaction();
+                mongoConnection.setAutoCommit(false);
+
+                // when && then
+                assertDoesNotThrow(() -> mongoConnection.rollback());
+                verifyNoMoreInteractions(clientSession);
+            }
+
+            @Test
+            @DisplayName("SQLException is thrown when autoCommit state is true during transaction rollback")
             void testSQLExceptionThrownWhenAutoCommitIsTrue() throws SQLException {
+                // given
                 assertTrue(mongoConnection.getAutoCommit());
+
+                // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.rollback());
             }
 
@@ -240,8 +239,7 @@ class MongoConnectionTests {
             void testSQLExceptionThrownWhenTransactionRollbackFailed() throws SQLException {
                 // given
                 mongoConnection.setAutoCommit(false);
-                verify(clientSession).startTransaction();
-
+                doReturn(true).when(clientSession).hasActiveTransaction();
                 doThrow(RuntimeException.class).when(clientSession).abortTransaction();
 
                 // when && then
