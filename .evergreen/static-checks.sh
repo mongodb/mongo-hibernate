@@ -8,7 +8,8 @@ set -o errexit  # Exit the script with error if any of the commands fail
 ############################################
 source java-config.sh
 
-echo "mongo-hibernate: running tests ..."
+echo "mongo-hibernate: static checking ..."
 
 ./gradlew -version
-./gradlew -PxmlReports.enabled=true --info clean test
+
+./gradlew --info -x test clean check compileJava
