@@ -29,7 +29,6 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import java.util.Set;
-
 import org.bson.BsonDocument;
 import org.jspecify.annotations.Nullable;
 
@@ -41,11 +40,7 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoStatement extends StatementAdapter {
 
-    private static final Set<String> UPDATE_COMMAND_TYPES_SUPPORTED = Set.of(
-            "insert",
-            "update",
-            "delete"
-    );
+    private static final Set<String> UPDATE_COMMAND_TYPES_SUPPORTED = Set.of("insert", "update", "delete");
     private final @Nullable MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
@@ -72,15 +67,12 @@ final class MongoStatement extends StatementAdapter {
         var command = parse(mql);
         var commandType = command.getFirstKey();
         if (!UPDATE_COMMAND_TYPES_SUPPORTED.contains(commandType)) {
-            throw new SQLFeatureNotSupportedException(
-                    format("Unsupported update command type: %s (supported: %s)",
-                            commandType, UPDATE_COMMAND_TYPES_SUPPORTED));
+            throw new SQLFeatureNotSupportedException(format(
+                    "Unsupported update command type: %s (supported: %s)",
+                    commandType, UPDATE_COMMAND_TYPES_SUPPORTED));
         }
         try {
             var result = assertNotNull(mongoDatabase).runCommand(clientSession, command);
-            if (result.getDouble("ok") != 1.0) {
-                throw new SQLException(format("Failed to execute update mql [%s]", mql));
-            }
             return result.getInteger("n");
         } catch (RuntimeException e) {
             throw new SQLException(format("Failed to execute update mql [%s]", mql), e);
