@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.Blob;
@@ -37,16 +38,18 @@ import org.jspecify.annotations.Nullable;
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
- * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by failure in its
- * parent class.
+ * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
+ * in its parent class.
  */
 final class MongoConnection extends ConnectionAdapter {
 
+    private final @Nullable MongoDatabase mongoDatabase;
     private final ClientSession clientSession;
 
     private boolean closed;
 
-    MongoConnection(ClientSession clientSession) {
+    MongoConnection(@Nullable MongoDatabase mongoDatabase, ClientSession clientSession) {
+        this.mongoDatabase = mongoDatabase;
         this.clientSession = clientSession;
     }
 
@@ -121,8 +124,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
+        return new MongoStatement(mongoDatabase, clientSession, this);
     }
 
     @Override
@@ -135,8 +137,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-16");
+        return new MongoStatement(mongoDatabase, clientSession, this);
     }
 
     @Override
@@ -272,11 +273,11 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public <T> T unwrap(Class<T> unwrapType) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("Unwrap() unsupported");
+        throw new SQLFeatureNotSupportedException("unwrap unsupported");
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(Class<?> iface) {
         return false;
     }
 
