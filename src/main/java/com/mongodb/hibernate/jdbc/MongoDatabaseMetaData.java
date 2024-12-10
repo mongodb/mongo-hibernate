@@ -38,7 +38,7 @@ public class MongoDatabaseMetaData extends DatabaseMetaDataAdapter {
     };
 
     public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
-    public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Embedded JDBC Driver";
+    public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
 
     private final Connection connection;
 
