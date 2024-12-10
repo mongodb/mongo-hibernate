@@ -16,8 +16,6 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-
 import com.mongodb.client.ClientSession;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
@@ -86,7 +84,6 @@ final class MongoConnection extends ConnectionAdapter {
     }
 
     private void doCommit() throws SQLException {
-        assertFalse(autoCommit);
         if (!clientSession.hasActiveTransaction()) {
             return;
         }

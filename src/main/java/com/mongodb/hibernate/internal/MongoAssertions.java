@@ -41,18 +41,4 @@ public final class MongoAssertions {
         }
         return value;
     }
-
-    /**
-     * Asserts that some value is {@code false}.
-     *
-     * @param value A value to check.
-     * @return {@code false}.
-     * @throws AssertionError If {@code value} is {@code true}.
-     */
-    public static boolean assertFalse(final boolean value) throws AssertionError {
-        if (value) {
-            throw new AssertionError();
-        }
-        return false;
-    }
 }
