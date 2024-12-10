@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
@@ -25,7 +26,6 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.hibernate.internal.MongoAssertions;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.io.IOException;
@@ -76,9 +76,8 @@ public final class MongoConnectionProvider
     @Override
     public Connection getConnection() throws SQLException {
         try {
-            ClientSession clientSession =
-                    MongoAssertions.assertNotNull(mongoClient).startSession();
-            return new MongoConnection(clientSession);
+            ClientSession clientSession = assertNotNull(mongoClient).startSession();
+            return new MongoConnection(clientSession, assertNotNull(mongoClient));
         } catch (RuntimeException e) {
             throw new SQLException("Failed to start session", e);
         }
