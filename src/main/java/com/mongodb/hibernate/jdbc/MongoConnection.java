@@ -62,9 +62,7 @@ final class MongoConnection extends ConnectionAdapter {
         if (autoCommit == this.autoCommit) {
             return;
         }
-        if (clientSession.hasActiveTransaction()) {
-            doCommit();
-        }
+        doCommitIfNeeded();
         this.autoCommit = autoCommit;
     }
 
@@ -80,10 +78,10 @@ final class MongoConnection extends ConnectionAdapter {
         if (autoCommit) {
             throw new SQLException("AutoCommit state should be false when committing transaction");
         }
-        doCommit();
+        doCommitIfNeeded();
     }
 
-    private void doCommit() throws SQLException {
+    private void doCommitIfNeeded() throws SQLException {
         if (!clientSession.hasActiveTransaction()) {
             return;
         }
