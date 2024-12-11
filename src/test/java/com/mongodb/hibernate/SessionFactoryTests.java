@@ -17,6 +17,7 @@
 package com.mongodb.hibernate;
 
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -26,7 +27,6 @@ import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class SessionFactoryTests {
@@ -47,7 +47,14 @@ class SessionFactoryTests {
     @Test
     void testOpenSession() {
         try (var sessionFactory = buildSessionFactory()) {
-            Assertions.assertDoesNotThrow(() -> sessionFactory.openSession().close());
+            assertDoesNotThrow(() -> sessionFactory.openSession().close());
+        }
+    }
+
+    @Test
+    void testInTransaction() {
+        try (var sessionFactory = buildSessionFactory()) {
+            assertDoesNotThrow(() -> sessionFactory.inTransaction(session -> {}));
         }
     }
 

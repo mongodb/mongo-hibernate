@@ -46,8 +46,11 @@ final class MongoConnection extends ConnectionAdapter {
 
     private boolean closed;
 
+    private boolean autoCommit;
+
     MongoConnection(ClientSession clientSession) {
         this.clientSession = clientSession;
+        autoCommit = true;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,43 +59,65 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public void setAutoCommit(boolean autoCommit) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
+        if (autoCommit == this.autoCommit) {
+            return;
+        }
+        doCommitIfNeeded();
+        this.autoCommit = autoCommit;
     }
 
     @Override
     public boolean getAutoCommit() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
+        return autoCommit;
     }
 
     @Override
     public void commit() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
+        if (autoCommit) {
+            throw new SQLException("AutoCommit state should be false when committing transaction");
+        }
+        doCommitIfNeeded();
+    }
+
+    private void doCommitIfNeeded() throws SQLException {
+        if (!clientSession.hasActiveTransaction()) {
+            return;
+        }
+        try {
+            clientSession.commitTransaction();
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to commit transaction", e);
+        }
     }
 
     @Override
     public void rollback() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
+        if (autoCommit) {
+            throw new SQLException("AutoCommit state should be false when committing transaction");
+        }
+        if (!clientSession.hasActiveTransaction()) {
+            return;
+        }
+        try {
+            clientSession.abortTransaction();
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to rollback transaction", e);
+        }
     }
 
     @Override
     public void setTransactionIsolation(int level) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
+        throw new SQLFeatureNotSupportedException("MongoDB doesn't support JDBC transaction isolation level");
     }
 
     @Override
     public int getTransactionIsolation() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-30");
+        throw new SQLFeatureNotSupportedException("MongoDB doesn't support JDBC transaction isolation level");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
