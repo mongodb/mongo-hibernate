@@ -23,6 +23,7 @@ import static org.mockito.Answers.RETURNS_SMART_NULLS;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -142,6 +143,18 @@ class MongoConnectionTests {
                     // then
                     verify(clientSession, atLeast(1)).hasActiveTransaction();
                     verifyNoMoreInteractions(clientSession);
+                }
+
+                @Test
+                @DisplayName("No transaction is started when autoCommit state changed (true -> false)")
+                void testNoTransactionStartedWhenAutoCommitChangedToFalse() throws SQLException {
+                    // given
+
+                    // when
+                    mongoConnection.setAutoCommit(false);
+
+                    // then
+                    verify(clientSession, never()).startTransaction();
                 }
             }
 
