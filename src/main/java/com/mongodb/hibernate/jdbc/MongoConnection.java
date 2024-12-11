@@ -106,7 +106,7 @@ final class MongoConnection extends ConnectionAdapter {
         try {
             clientSession.abortTransaction();
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to commit transaction", e);
+            throw new SQLException("Failed to rollback transaction", e);
         }
     }
 
