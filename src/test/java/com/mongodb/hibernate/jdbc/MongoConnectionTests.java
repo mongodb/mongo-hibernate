@@ -16,10 +16,16 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
+import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_SMART_NULLS;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -32,12 +38,18 @@ import com.mongodb.client.ClientSession;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Answers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -47,6 +59,9 @@ class MongoConnectionTests {
 
     @Mock(answer = RETURNS_SMART_NULLS)
     private ClientSession clientSession;
+
+    @Mock(answer = RETURNS_SMART_NULLS)
+    private MongoClient mongoClient;
 
     @InjectMocks
     private MongoConnection mongoConnection;
@@ -333,6 +348,62 @@ class MongoConnectionTests {
                 assertThrows(SQLException.class, () -> mongoConnection.getTransactionIsolation());
                 verifyNoMoreInteractions(clientSession);
             }
+        }
+    }
+
+    @Nested
+    class GetMetaDataTests {
+
+        @Mock(answer = Answers.RETURNS_SMART_NULLS)
+        private MongoDatabase mongoDatabase;
+
+        @BeforeEach
+        void setUp() {
+            doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
+        }
+
+        @Test
+        @DisplayName("Happy path for MongoDatabaseMetaData fetching")
+        void testSuccess() {
+            // given
+            var commandResultJson =
+                    """
+                    {"ok": 1.0, "version": "8.0.1", "versionArray": [8, 0, 1, 0]}
+                    """;
+            var commandResultDoc = Document.parse(commandResultJson);
+            doReturn(commandResultDoc).when(mongoDatabase).runCommand(argThat(arg -> "buildinfo"
+                    .equals(arg.toBsonDocument().getFirstKey())));
+
+            // when
+            var metaData = assertDoesNotThrow(() -> mongoConnection.getMetaData());
+
+            // then
+            assertAll(
+                    () -> assertEquals(MONGO_DATABASE_PRODUCT_NAME, metaData.getDatabaseProductName()),
+                    () -> assertEquals(MONGO_JDBC_DRIVER_NAME, metaData.getDriverName()),
+                    () -> assertEquals("8.0.1", metaData.getDatabaseProductVersion()),
+                    () -> assertEquals(8, metaData.getDatabaseMajorVersion()),
+                    () -> assertEquals(0, metaData.getDatabaseMinorVersion()));
+        }
+
+        @Test
+        @DisplayName("SQLException is thrown when MongoConnection#getMetaData() failed while interacting with db")
+        void testSQLExceptionThrownWhenMetaDataFetchingFailed() {
+            // given
+            doThrow(new RuntimeException()).when(mongoDatabase).runCommand(argThat(arg -> "buildinfo"
+                    .equals(arg.toBsonDocument().getFirstKey())));
+            // when && then
+            assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
+        }
+
+        @Test
+        @DisplayName("SQLException is thrown when MongoConnection#getMetaData() is called on a closed connection")
+        void testSQLExceptionThrownWhenConnectionClosed() throws SQLException {
+            // given
+            mongoConnection.close();
+
+            // when && then
+            assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
         }
     }
 }

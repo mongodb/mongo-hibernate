@@ -23,6 +23,7 @@ import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.VisibleForTesting;
@@ -75,8 +76,8 @@ public final class MongoConnectionProvider
     @Override
     public Connection getConnection() throws SQLException {
         try {
-            var clientSession = assertNotNull(mongoClient).startSession();
-            return new MongoConnection(clientSession);
+            ClientSession clientSession = assertNotNull(mongoClient).startSession();
+            return new MongoConnection(assertNotNull(mongoClient), clientSession);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to start session", e);
         }
