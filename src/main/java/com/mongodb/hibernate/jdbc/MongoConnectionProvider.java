@@ -25,6 +25,7 @@ import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.io.IOException;
@@ -69,6 +70,7 @@ public final class MongoConnectionProvider
     private static final long serialVersionUID = 1L;
 
     private @Nullable MongoClient mongoClient;
+    private @Nullable MongoDatabase mongoDatabase;
 
     private @Nullable MongoClientCustomizer mongoClientCustomizer;
 
@@ -76,7 +78,7 @@ public final class MongoConnectionProvider
     public Connection getConnection() throws SQLException {
         try {
             var clientSession = assertNotNull(mongoClient).startSession();
-            return new MongoConnection(clientSession);
+            return new MongoConnection(mongoDatabase, clientSession);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to start session", e);
         }
@@ -122,6 +124,12 @@ public final class MongoConnectionProvider
             clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
         }
         mongoClient = MongoClients.create(clientSettingsBuilder.build());
+        if (connectionString != null) {
+            var database = connectionString.getDatabase();
+            if (database != null) {
+                mongoDatabase = mongoClient.getDatabase(connectionString.getDatabase());
+            }
+        }
     }
 
     private static ConnectionString getConnectionString(Object jdbcUrl) {
