@@ -51,6 +51,13 @@ class SessionFactoryTests {
         }
     }
 
+    @Test
+    void testInTransaction() {
+        try (var sessionFactory = buildSessionFactory()) {
+            assertDoesNotThrow(() -> sessionFactory.inTransaction(session -> {}));
+        }
+    }
+
     private static SessionFactory buildSessionFactory() throws ServiceException {
         return buildSessionFactory(Map.of());
     }

@@ -77,7 +77,7 @@ public final class MongoConnectionProvider
     public Connection getConnection() throws SQLException {
         try {
             ClientSession clientSession = assertNotNull(mongoClient).startSession();
-            return new MongoConnection(clientSession, assertNotNull(mongoClient));
+            return new MongoConnection(assertNotNull(mongoClient), clientSession);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to start session", e);
         }
