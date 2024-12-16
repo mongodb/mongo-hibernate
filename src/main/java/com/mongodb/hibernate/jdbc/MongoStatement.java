@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.hibernate.jdbc.MongoConnection.DATABASE;
+import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -38,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
  * exceptions in its parent class.
  */
-final class MongoStatement extends StatementAdapter {
+class MongoStatement extends StatementAdapter {
 
     private final MongoClient mongoClient;
     private final MongoConnection mongoConnection;
@@ -63,6 +64,10 @@ final class MongoStatement extends StatementAdapter {
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
         var command = parse(mql);
+        return executeUpdate(command);
+    }
+
+    protected int executeUpdate(BsonDocument command) throws SQLException {
         startTransactionIfNeeded();
         try {
             return mongoClient
@@ -199,9 +204,9 @@ final class MongoStatement extends StatementAdapter {
         return closed;
     }
 
-    private void checkClosed() throws SQLException {
+    protected void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("Statement has been closed");
+            throw new SQLException(format("%s has been closed", getClass().getSimpleName()));
         }
     }
 

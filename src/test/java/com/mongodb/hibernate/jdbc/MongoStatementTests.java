@@ -125,7 +125,7 @@ class MongoStatementTests {
 
             // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
-            assertEquals("Statement has been closed", exception.getMessage());
+            assertEquals("MongoStatement has been closed", exception.getMessage());
         }
 
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {

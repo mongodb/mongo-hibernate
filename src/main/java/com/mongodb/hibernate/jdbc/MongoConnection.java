@@ -143,8 +143,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
+        return new MongoPreparedStatement(mongoClient, clientSession, this, mql);
     }
 
     @Override
@@ -152,7 +151,7 @@ final class MongoConnection extends ConnectionAdapter {
             throws SQLException {
         checkClosed();
         throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
+                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
