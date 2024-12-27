@@ -70,7 +70,9 @@ functions:
   upload-test-results:
     - command: attach.xunit_results
       params:
-        file: src/build/test-results/test/TEST-*.xml
+        files:
+          - src/build/test-results/test/TEST-*.xml
+          - src/build/test-results/integrationTest/TEST-*.xml
 
   cleanup:
     - command: subprocess.exec
@@ -107,7 +109,21 @@ tasks:
           args:
             - static-checks.sh
 
-  - name: run-tests
+  - name: run-unit-tests
+    type: test
+    tags:
+      - pr
+    commands:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_to_path:
+            - .evergreen
+          args:
+            - run-unit-tests.sh
+
+  - name: run-integration-tests
     type: test
     tags:
       - pr
@@ -120,7 +136,7 @@ tasks:
           add_to_path:
             - .evergreen
           args:
-            - run-tests.sh
+            - run-integration-tests.sh
 
 ########################################
 #              Axes                    #
@@ -170,6 +186,14 @@ buildvariants:
     tasks:
       - name: static-analysis
 
+  - name: unit-tests
+    tags:
+      - pr
+    display_name: "Unit Tests"
+    run_on: rhel80-medium
+    tasks:
+      - name: run-unit-tests
+
   - matrix_name: mongo-hibernate
     matrix_spec: { mongo-version: "*", topology: "*", os: "*" }
 
@@ -177,4 +201,4 @@ buildvariants:
     tags:
       - pr
     tasks:
-      - name: run-tests
+      - name: run-integration-tests
