@@ -109,12 +109,10 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.logback.classic)
     testImplementation(libs.mockito.junit.jupiter)
-
     testRuntimeOnly(libs.junit.platform.launcher)
 
     integrationTestImplementation(libs.junit.jupiter)
     integrationTestImplementation(libs.logback.classic)
-    integrationTestImplementation(libs.hibernate.testing)
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     errorprone(libs.nullaway)
