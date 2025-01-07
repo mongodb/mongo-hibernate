@@ -18,6 +18,9 @@ package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.bson.Document;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -26,7 +29,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoStatementIntegrationTests {
 
@@ -85,31 +89,37 @@ class MongoStatementIntegrationTests {
                             insert: "%s",
                             documents: [
                                 {
+                                    _id: 1,
                                     title: "War and Peace",
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                 },
                                 {
+                                    _id: 2,
                                     title: "Anna Karenina",
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                 },
                                 {
+                                    _id: 3,
                                     title: "Resurrection",
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                 },
                                 {
+                                    _id: 4,
                                     title: "Crime and Punishment",
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 },
                                 {
+                                    _id: 5,
                                     title: "The Brothers Karamazov",
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 },
                                 {
+                                    _id: 6,
                                     title: "Fathers and Sons",
                                     author: "Ivan Turgenev",
                                     outOfStock: false
@@ -118,17 +128,67 @@ class MongoStatementIntegrationTests {
                         }"""
                         .formatted(COLLECTION_NAME);
 
-        @Test
-        void testInsert() {
-            session.doWork(connection -> {
-                assertExecuteUpdate(INSERT_MQL, 6);
-            });
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testInsert(boolean autoCommit) {
+            List<Document> expectedDocs = List.of(
+                    Document.parse(
+                            """
+                            {
+                                    _id: 1,
+                                    title: "War and Peace",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                            {
+                                    _id: 2,
+                                    title: "Anna Karenina",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: false
+                                 }"""),
+                    Document.parse(
+                            """
+                            {
+                                    _id: 3,
+                                    title: "Resurrection",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 4,
+                                    title: "Crime and Punishment",
+                                    author: "Fyodor Dostoevsky",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 5,
+                                    title: "The Brothers Karamazov",
+                                    author: "Fyodor Dostoevsky",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 6
+                                    title: "Fathers and Sons",
+                                    author: "Ivan Turgenev",
+                                    outOfStock: false
+                                }"""));
+            assertExecuteUpdate(INSERT_MQL, autoCommit, 6, expectedDocs);
         }
 
-        @Test
-        void testUpdate() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testUpdate(boolean autoCommit) {
             // given
             session.doWork(connection -> {
+                connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
             });
@@ -149,36 +209,64 @@ class MongoStatementIntegrationTests {
                             ]
                         }"""
                             .formatted(COLLECTION_NAME);
-            assertExecuteUpdate(updateMql, 3);
-            updateMql =
-                    """
-                        {
-                            update: "%s",
-                            updates: [
-                                {
-                                    q: { author: "Fyodor Dostoevsky" },
-                                    u: {
-                                        $set: { outOfStock: true }
-                                    },
-                                    multi: false
-                                },
-                                {
-                                    q: { author: "Ivan Turgenev" },
-                                    u: {
-                                        $set: { outOfStock: true }
-                                    }
-                                    multi: true
-                                }
-                            ]
-                        }"""
-                            .formatted(COLLECTION_NAME);
-            assertExecuteUpdate(updateMql, 2);
+            var expectedDocs = List.of(
+                    Document.parse(
+                            """
+                            {
+                                    _id: 1,
+                                    title: "War and Peace",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: true
+                                }"""),
+                    Document.parse(
+                            """
+                            {
+                                    _id: 2,
+                                    title: "Anna Karenina",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: true
+                                 }"""),
+                    Document.parse(
+                            """
+                            {
+                                    _id: 3,
+                                    title: "Resurrection",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: true
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 4,
+                                    title: "Crime and Punishment",
+                                    author: "Fyodor Dostoevsky",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 5,
+                                    title: "The Brothers Karamazov",
+                                    author: "Fyodor Dostoevsky",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 6
+                                    title: "Fathers and Sons",
+                                    author: "Ivan Turgenev",
+                                    outOfStock: false
+                                }"""));
+            assertExecuteUpdate(updateMql, autoCommit, 3, expectedDocs);
         }
 
-        @Test
-        void testDelete() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testDelete(boolean autoCommit) {
             // given
             session.doWork(connection -> {
+                connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
             });
@@ -190,36 +278,72 @@ class MongoStatementIntegrationTests {
                         delete: "%s",
                         deletes: [
                             {
-                                q: { author: "Fyodor Dostoevsky" },
-                                limit: 0
-                            },
-                            {
-                                q: { author: "Ivan Turgenev" },
-                                limit: 0
-                            }
-                        ]
-                    }"""
-                            .formatted(COLLECTION_NAME);
-            assertExecuteUpdate(deleteMql, 3);
-            deleteMql =
-                    """
-                    {
-                        delete: "%s",
-                        deletes: [
-                            {
                                 q: { author: "Leo Tolstoy" },
                                 limit: 1
                             }
                         ]
                     }"""
                             .formatted(COLLECTION_NAME);
-            assertExecuteUpdate(deleteMql, 1);
+            var expectedDocs = List.of(
+                    Document.parse(
+                            """
+                            {
+                                    _id: 2,
+                                    title: "Anna Karenina",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: false
+                                 }"""),
+                    Document.parse(
+                            """
+                            {
+                                    _id: 3,
+                                    title: "Resurrection",
+                                    author: "Leo Tolstoy",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 4,
+                                    title: "Crime and Punishment",
+                                    author: "Fyodor Dostoevsky",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 5,
+                                    title: "The Brothers Karamazov",
+                                    author: "Fyodor Dostoevsky",
+                                    outOfStock: false
+                                }"""),
+                    Document.parse(
+                            """
+                           {
+                                    _id: 6
+                                    title: "Fathers and Sons",
+                                    author: "Ivan Turgenev",
+                                    outOfStock: false
+                                }"""));
+            assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
         }
 
-        private void assertExecuteUpdate(String mql, int expectedRowCount) {
+        private void assertExecuteUpdate(
+                String mql, boolean autoCommit, int expectedRowCount, List<Document> expectedCollection) {
             session.doWork(connection -> {
-                var statement = connection.createStatement();
+                connection.setAutoCommit(autoCommit);
+                var statement = (MongoStatement) connection.createStatement();
                 assertEquals(expectedRowCount, statement.executeUpdate(mql));
+                if (!autoCommit) {
+                    connection.commit();
+                }
+                var documents = statement
+                        .getMongoDatabase()
+                        .getCollection(COLLECTION_NAME)
+                        .find();
+                var docs = new ArrayList<>();
+                documents.forEach(docs::add);
+                assertEquals(expectedCollection, docs);
             });
         }
     }

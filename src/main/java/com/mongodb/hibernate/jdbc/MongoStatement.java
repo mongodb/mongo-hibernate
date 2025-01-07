@@ -16,9 +16,13 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
+
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -220,6 +224,11 @@ final class MongoStatement extends StatementAdapter {
         if (closed) {
             throw new ClosedSQLException(this.getClass());
         }
+    }
+
+    @VisibleForTesting(otherwise = PRIVATE)
+    MongoDatabase getMongoDatabase() {
+        return this.mongoClient.getDatabase(DATABASE);
     }
 
     private static BsonDocument parse(String mql) throws SQLException {
