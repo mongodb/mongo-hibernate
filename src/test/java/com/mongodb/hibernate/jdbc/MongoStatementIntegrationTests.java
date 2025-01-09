@@ -339,8 +339,8 @@ class MongoStatementIntegrationTests {
                 }
                 var realDocuments = statement
                         .getMongoDatabase()
-                        .getCollection(COLLECTION_NAME)
-                        .find(BsonDocument.class)
+                        .getCollection(COLLECTION_NAME, BsonDocument.class)
+                        .find()
                         .into(new HashSet<>());
                 assertEquals(expectedDocuments, realDocuments);
             });
