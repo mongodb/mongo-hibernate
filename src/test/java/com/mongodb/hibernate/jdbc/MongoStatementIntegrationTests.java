@@ -18,9 +18,9 @@ package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.bson.Document;
+import java.util.HashSet;
+import java.util.Set;
+import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -131,8 +131,8 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testInsert(boolean autoCommit) {
-            List<Document> expectedDocs = List.of(
-                    Document.parse(
+            var expectedDocs = Set.of(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 1,
@@ -140,7 +140,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 2,
@@ -148,7 +148,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                  }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 3,
@@ -156,7 +156,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 4,
@@ -164,7 +164,7 @@ class MongoStatementIntegrationTests {
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 5,
@@ -172,7 +172,7 @@ class MongoStatementIntegrationTests {
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 6
@@ -209,8 +209,8 @@ class MongoStatementIntegrationTests {
                             ]
                         }"""
                             .formatted(COLLECTION_NAME);
-            var expectedDocs = List.of(
-                    Document.parse(
+            var expectedDocs = Set.of(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 1,
@@ -218,7 +218,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: true
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 2,
@@ -226,7 +226,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: true
                                  }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 3,
@@ -234,7 +234,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: true
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 4,
@@ -242,7 +242,7 @@ class MongoStatementIntegrationTests {
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 5,
@@ -250,7 +250,7 @@ class MongoStatementIntegrationTests {
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 6
@@ -284,8 +284,8 @@ class MongoStatementIntegrationTests {
                         ]
                     }"""
                             .formatted(COLLECTION_NAME);
-            var expectedDocs = List.of(
-                    Document.parse(
+            var expectedDocs = Set.of(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 2,
@@ -293,7 +293,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                  }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                             {
                                     _id: 3,
@@ -301,7 +301,7 @@ class MongoStatementIntegrationTests {
                                     author: "Leo Tolstoy",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 4,
@@ -309,7 +309,7 @@ class MongoStatementIntegrationTests {
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 5,
@@ -317,7 +317,7 @@ class MongoStatementIntegrationTests {
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
                                 }"""),
-                    Document.parse(
+                    BsonDocument.parse(
                             """
                            {
                                     _id: 6
@@ -329,7 +329,7 @@ class MongoStatementIntegrationTests {
         }
 
         private void assertExecuteUpdate(
-                String mql, boolean autoCommit, int expectedRowCount, List<Document> expectedCollection) {
+                String mql, boolean autoCommit, int expectedRowCount, Set<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 var statement = (MongoStatement) connection.createStatement();
@@ -337,13 +337,12 @@ class MongoStatementIntegrationTests {
                 if (!autoCommit) {
                     connection.commit();
                 }
-                var documents = statement
+                var realDocuments = statement
                         .getMongoDatabase()
                         .getCollection(COLLECTION_NAME)
-                        .find();
-                var docs = new ArrayList<>();
-                documents.forEach(docs::add);
-                assertEquals(expectedCollection, docs);
+                        .find(BsonDocument.class)
+                        .into(new HashSet<>());
+                assertEquals(expectedDocuments, realDocuments);
             });
         }
     }
