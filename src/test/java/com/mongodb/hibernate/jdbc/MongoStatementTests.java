@@ -121,22 +121,6 @@ class MongoStatementTests {
         @MethodSource("getMongoStatementMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, StatementMethodInvocation methodInvocation) {
             // given
-            var mql =
-                    """
-                     {
-                        insert: "books",
-                        documents: [
-                            {
-                                title: "War and Peace",
-                                author: "Leo Tolstoy",
-                                outOfStock: false,
-                                values: [
-                                    { $undefined: true }
-                                ]
-                            }
-                        ]
-                     }""";
-
             mongoStatement.close();
 
             // when && then
@@ -145,9 +129,28 @@ class MongoStatementTests {
         }
 
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {
+            var exampleQueryMql =
+                    """
+                    {
+                      find: "restaurants",
+                      filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                      projection: { name: 1, rating: 1, address: 1 },
+                      sort: { name: 1 },
+                      limit: 5
+                    }""";
+            var exampleUpdateMql =
+                    """
+                    update: "members",
+                        updates: [
+                         {
+                             q: {},
+                             u: { $inc: { points: 1 } },
+                             multi: true
+                         }
+                        ]""";
             var map = new HashMap<String, StatementMethodInvocation>();
-            map.put("executeQuery(String)", stmt -> stmt.executeQuery(null));
-            map.put("executeUpdate(String)", stmt -> stmt.executeUpdate(null));
+            map.put("executeQuery(String)", stmt -> stmt.executeQuery(exampleQueryMql));
+            map.put("executeUpdate(String)", stmt -> stmt.executeUpdate(exampleUpdateMql));
             map.put("getMaxRows()", MongoStatement::getMaxRows);
             map.put("setMaxRows(int)", pstmt -> pstmt.setMaxRows(10));
             map.put("getQueryTimeout()", MongoStatement::getQueryTimeout);
@@ -155,19 +158,19 @@ class MongoStatementTests {
             map.put("cancel()", MongoStatement::cancel);
             map.put("getWarnings()", MongoStatement::getWarnings);
             map.put("clearWarnings()", MongoStatement::clearWarnings);
-            map.put("execute(String)", pstmt -> pstmt.execute(null));
+            map.put("execute(String)", pstmt -> pstmt.execute(exampleQueryMql));
             map.put("getResultSet()", MongoStatement::getResultSet);
             map.put("getMoreResultSet()", MongoStatement::getMoreResults);
             map.put("getUpdateCount()", MongoStatement::getUpdateCount);
             map.put("setFetchSize(int)", pstmt -> pstmt.setFetchSize(1));
             map.put("getFetchSize()", MongoStatement::getFetchSize);
-            map.put("addBatch(String)", stmt -> stmt.addBatch(null));
+            map.put("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql));
             map.put("clearBatch()", MongoStatement::clearBatch);
             map.put("executeBatch()", MongoStatement::executeBatch);
             map.put("getConnection()", MongoStatement::getConnection);
             map.put("getGeneratedKeys()", MongoStatement::getGeneratedKeys);
-            map.put("unwrap(Class)", pstmt -> pstmt.unwrap(null));
-            map.put("isWrapperFor(Class)", pstmt -> pstmt.isWrapperFor(null));
+            map.put("unwrap(Class)", pstmt -> pstmt.unwrap(MongoStatement.class));
+            map.put("isWrapperFor(Class)", pstmt -> pstmt.isWrapperFor(MongoStatement.class));
             return map.entrySet().stream().map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
         }
     }
