@@ -185,11 +185,7 @@ class MongoStatementIntegrationTests {
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
             // given
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                var statement = connection.createStatement();
-                statement.executeUpdate(INSERT_MQL);
-            });
+            prepareData();
 
             // when && then
             var updateMql =
@@ -262,11 +258,7 @@ class MongoStatementIntegrationTests {
         @ValueSource(booleans = {true, false})
         void testDelete(boolean autoCommit) {
             // given
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                var statement = connection.createStatement();
-                statement.executeUpdate(INSERT_MQL);
-            });
+            prepareData();
 
             // when && then
             var deleteMql =
@@ -322,6 +314,14 @@ class MongoStatementIntegrationTests {
                                     outOfStock: false
                                 }"""));
             assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
+        }
+
+        private void prepareData() {
+            session.doWork(connection -> {
+                connection.setAutoCommit(true);
+                var statement = connection.createStatement();
+                statement.executeUpdate(INSERT_MQL);
+            });
         }
 
         private void assertExecuteUpdate(
