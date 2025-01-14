@@ -101,26 +101,8 @@ class MongoStatementIntegrationTests {
                             },
                             {
                                 _id: 3,
-                                title: "Resurrection",
-                                author: "Leo Tolstoy",
-                                outOfStock: false
-                            },
-                            {
-                                _id: 4,
                                 title: "Crime and Punishment",
                                 author: "Fyodor Dostoevsky",
-                                outOfStock: false
-                            },
-                            {
-                                _id: 5,
-                                title: "The Brothers Karamazov",
-                                author: "Fyodor Dostoevsky",
-                                outOfStock: false
-                            },
-                            {
-                                _id: 6,
-                                title: "Fathers and Sons",
-                                author: "Ivan Turgenev",
                                 outOfStock: false
                             }
                         ]
@@ -148,37 +130,13 @@ class MongoStatementIntegrationTests {
                                  }"""),
                     BsonDocument.parse(
                             """
-                            {
-                                    _id: 3,
-                                    title: "Resurrection",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
                            {
-                                    _id: 4,
+                                    _id: 3,
                                     title: "Crime and Punishment",
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                           {
-                                    _id: 5,
-                                    title: "The Brothers Karamazov",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                           {
-                                    _id: 6
-                                    title: "Fathers and Sons",
-                                    author: "Ivan Turgenev",
-                                    outOfStock: false
                                 }"""));
-            assertExecuteUpdate(INSERT_MQL, autoCommit, 6, expectedDocs);
+            assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
         }
 
         @ParameterizedTest
@@ -221,37 +179,13 @@ class MongoStatementIntegrationTests {
                                  }"""),
                     BsonDocument.parse(
                             """
-                            {
-                                    _id: 3,
-                                    title: "Resurrection",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true
-                                }"""),
-                    BsonDocument.parse(
-                            """
                            {
-                                    _id: 4,
+                                    _id: 3,
                                     title: "Crime and Punishment",
                                     author: "Fyodor Dostoevsky",
                                     outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                           {
-                                    _id: 5,
-                                    title: "The Brothers Karamazov",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                           {
-                                    _id: 6
-                                    title: "Fathers and Sons",
-                                    author: "Ivan Turgenev",
-                                    outOfStock: false
                                 }"""));
-            assertExecuteUpdate(updateMql, autoCommit, 3, expectedDocs);
+            assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
         }
 
         @ParameterizedTest
@@ -283,34 +217,10 @@ class MongoStatementIntegrationTests {
                                  }"""),
                     BsonDocument.parse(
                             """
-                            {
-                                    _id: 3,
-                                    title: "Resurrection",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
                            {
-                                    _id: 4,
+                                    _id: 3,
                                     title: "Crime and Punishment",
                                     author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                           {
-                                    _id: 5,
-                                    title: "The Brothers Karamazov",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                           {
-                                    _id: 6
-                                    title: "Fathers and Sons",
-                                    author: "Ivan Turgenev",
                                     outOfStock: false
                                 }"""));
             assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
