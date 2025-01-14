@@ -26,6 +26,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class SessionTests {
@@ -59,17 +60,21 @@ class SessionTests {
     }
 
     @Test
-    void testDoWork() {
-        assertDoesNotThrow(() -> session.doWork(connection -> {}));
-    }
-
-    @Test
     void testBeginTransaction() {
         assertDoesNotThrow(() -> session.beginTransaction().commit());
     }
 
-    @Test
-    void testCreateStatement() {
-        assertDoesNotThrow(() -> session.doWork(Connection::createStatement));
+    @Nested
+    class DoWorkTests {
+
+        @Test
+        void createConnectionTest() {
+            assertDoesNotThrow(() -> session.doWork(connection -> {}));
+        }
+
+        @Test
+        void createStatementTest() {
+            assertDoesNotThrow(() -> session.doWork(Connection::createStatement));
+        }
     }
 }
