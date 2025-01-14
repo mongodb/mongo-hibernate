@@ -314,8 +314,8 @@ final class MongoConnection extends ConnectionAdapter {
     }
 
     /**
-     * Starts transaction for the first {@link java.sql.Statement} executing when {@code autoCommit} field value is
-     * {@code false}.
+     * Starts transaction for the first {@link java.sql.Statement} executing
+     * if {@linkplain #getAutoCommit() auto-commit} is disabled.
      *
      * @see MongoStatement#executeQuery(String)
      * @see MongoStatement#executeUpdate(String)
