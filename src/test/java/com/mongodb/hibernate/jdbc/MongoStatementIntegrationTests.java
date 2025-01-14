@@ -329,9 +329,12 @@ class MongoStatementIntegrationTests {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 var statement = (MongoStatement) connection.createStatement();
-                assertEquals(expectedRowCount, statement.executeUpdate(mql));
-                if (!autoCommit) {
-                    connection.commit();
+                try {
+                    assertEquals(expectedRowCount, statement.executeUpdate(mql));
+                } finally {
+                    if (!autoCommit) {
+                        connection.commit();
+                    }
                 }
                 var realDocuments = statement
                         .getMongoDatabase()
