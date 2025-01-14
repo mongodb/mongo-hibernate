@@ -32,7 +32,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.DisplayName;
@@ -140,38 +140,42 @@ class MongoStatementTests {
                     }""";
             var exampleUpdateMql =
                     """
-                    update: "members",
-                        updates: [
-                         {
-                             q: {},
-                             u: { $inc: { points: 1 } },
-                             multi: true
-                         }
-                        ]""";
-            var map = new HashMap<String, StatementMethodInvocation>();
-            map.put("executeQuery(String)", stmt -> stmt.executeQuery(exampleQueryMql));
-            map.put("executeUpdate(String)", stmt -> stmt.executeUpdate(exampleUpdateMql));
-            map.put("getMaxRows()", MongoStatement::getMaxRows);
-            map.put("setMaxRows(int)", pstmt -> pstmt.setMaxRows(10));
-            map.put("getQueryTimeout()", MongoStatement::getQueryTimeout);
-            map.put("setQueryTimeout(int)", pstmt -> pstmt.setQueryTimeout(1));
-            map.put("cancel()", MongoStatement::cancel);
-            map.put("getWarnings()", MongoStatement::getWarnings);
-            map.put("clearWarnings()", MongoStatement::clearWarnings);
-            map.put("execute(String)", pstmt -> pstmt.execute(exampleQueryMql));
-            map.put("getResultSet()", MongoStatement::getResultSet);
-            map.put("getMoreResultSet()", MongoStatement::getMoreResults);
-            map.put("getUpdateCount()", MongoStatement::getUpdateCount);
-            map.put("setFetchSize(int)", pstmt -> pstmt.setFetchSize(1));
-            map.put("getFetchSize()", MongoStatement::getFetchSize);
-            map.put("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql));
-            map.put("clearBatch()", MongoStatement::clearBatch);
-            map.put("executeBatch()", MongoStatement::executeBatch);
-            map.put("getConnection()", MongoStatement::getConnection);
-            map.put("getGeneratedKeys()", MongoStatement::getGeneratedKeys);
-            map.put("unwrap(Class)", pstmt -> pstmt.unwrap(MongoStatement.class));
-            map.put("isWrapperFor(Class)", pstmt -> pstmt.isWrapperFor(MongoStatement.class));
-            return map.entrySet().stream().map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
+                    {
+                      update: "members",
+                      updates: [
+                        {
+                          q: {},
+                          u: { $inc: { points: 1 } },
+                          multi: true
+                        }
+                      ]
+                    }""";
+            return Map.<String, StatementMethodInvocation>ofEntries(
+                            Map.entry("executeQuery(String)", stmt -> stmt.executeQuery(exampleQueryMql)),
+                            Map.entry("executeUpdate(String)", stmt -> stmt.executeUpdate(exampleUpdateMql)),
+                            Map.entry("getMaxRows()", MongoStatement::getMaxRows),
+                            Map.entry("setMaxRows(int)", stmt -> stmt.setMaxRows(10)),
+                            Map.entry("getQueryTimeout()", MongoStatement::getQueryTimeout),
+                            Map.entry("setQueryTimeout(int)", stmt -> stmt.setQueryTimeout(1)),
+                            Map.entry("cancel()", MongoStatement::cancel),
+                            Map.entry("getWarnings()", MongoStatement::getWarnings),
+                            Map.entry("clearWarnings()", MongoStatement::clearWarnings),
+                            Map.entry("execute(String)", stmt -> stmt.execute(exampleQueryMql)),
+                            Map.entry("getResultSet()", MongoStatement::getResultSet),
+                            Map.entry("getMoreResultSet()", MongoStatement::getMoreResults),
+                            Map.entry("getUpdateCount()", MongoStatement::getUpdateCount),
+                            Map.entry("setFetchSize(int)", stmt -> stmt.setFetchSize(1)),
+                            Map.entry("getFetchSize()", MongoStatement::getFetchSize),
+                            Map.entry("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql)),
+                            Map.entry("clearBatch()", MongoStatement::clearBatch),
+                            Map.entry("executeBatch()", MongoStatement::executeBatch),
+                            Map.entry("getConnection()", MongoStatement::getConnection),
+                            Map.entry("getGeneratedKeys()", MongoStatement::getGeneratedKeys),
+                            Map.entry("unwrap(Class)", stmt -> stmt.unwrap(MongoStatement.class)),
+                            Map.entry("isWrapperFor(Class)", stmt -> stmt.isWrapperFor(MongoStatement.class)))
+                    .entrySet()
+                    .stream()
+                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
         }
     }
 }
