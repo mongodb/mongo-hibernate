@@ -160,12 +160,6 @@ final class MongoConnection extends ConnectionAdapter {
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-        checkClosed();
-        return new MongoStatement(mongoClient, clientSession, this);
-    }
-
-    @Override
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
