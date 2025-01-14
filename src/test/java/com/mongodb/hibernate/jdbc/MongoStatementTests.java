@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_SMART_NULLS;
@@ -139,7 +140,8 @@ class MongoStatementTests {
             mongoStatement.close();
 
             // when && then
-            assertThrows(ClosedSQLException.class, () -> methodInvocation.runOn(mongoStatement));
+            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
+            assertEquals("Statement has been closed", exception.getMessage());
         }
 
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {

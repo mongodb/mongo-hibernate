@@ -222,7 +222,7 @@ final class MongoStatement extends StatementAdapter {
 
     private void checkClosed() throws SQLException {
         if (closed) {
-            throw new ClosedSQLException(this.getClass());
+            throw new SQLException("Statement has been closed");
         }
     }
 
