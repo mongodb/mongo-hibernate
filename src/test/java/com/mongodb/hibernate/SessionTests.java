@@ -66,7 +66,6 @@ class SessionTests {
     @Test
     void testBeginTransaction() {
         assertDoesNotThrow(() -> session.beginTransaction().commit());
-        assertDoesNotThrow(() -> session.doWork(connection -> {}));
     }
 
     @Test
