@@ -62,7 +62,7 @@ class MongoStatementIntegrationTests {
         }
     }
 
-    private static final String COLLECTION_NAME = "books";
+    // private static final String COLLECTION_NAME = "books";
 
     @Nested
     class ExecuteUpdateTests {
@@ -73,60 +73,58 @@ class MongoStatementIntegrationTests {
                 conn.createStatement()
                         .executeUpdate(
                                 """
-                        {
-                            delete: "%s",
-                            deletes: [
-                                { q: {}, limit: 0 }
-                            ]
-                        }"""
-                                        .formatted(COLLECTION_NAME));
+                            {
+                                delete: "books",
+                                deletes: [
+                                    { q: {}, limit: 0 }
+                                ]
+                            }""");
             });
         }
 
         private static final String INSERT_MQL =
                 """
                  {
-                            insert: "%s",
-                            documents: [
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                },
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                },
-                                {
-                                    _id: 3,
-                                    title: "Resurrection",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                },
-                                {
-                                    _id: 4,
-                                    title: "Crime and Punishment",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                                },
-                                {
-                                    _id: 5,
-                                    title: "The Brothers Karamazov",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                                },
-                                {
-                                    _id: 6,
-                                    title: "Fathers and Sons",
-                                    author: "Ivan Turgenev",
-                                    outOfStock: false
-                                }
-                            ]
-                        }"""
-                        .formatted(COLLECTION_NAME);
+                        insert: "books",
+                        documents: [
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            },
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            },
+                            {
+                                _id: 3,
+                                title: "Resurrection",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            },
+                            {
+                                _id: 4,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                            },
+                            {
+                                _id: 5,
+                                title: "The Brothers Karamazov",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                            },
+                            {
+                                _id: 6,
+                                title: "Fathers and Sons",
+                                author: "Ivan Turgenev",
+                                outOfStock: false
+                            }
+                        ]
+                }""";
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
@@ -197,7 +195,7 @@ class MongoStatementIntegrationTests {
             var updateMql =
                     """
                         {
-                            update: "%s",
+                            update: "books",
                             updates: [
                                 {
                                     q: { author: "Leo Tolstoy" },
@@ -207,8 +205,7 @@ class MongoStatementIntegrationTests {
                                     multi: true
                                 }
                             ]
-                        }"""
-                            .formatted(COLLECTION_NAME);
+                        }""";
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
@@ -275,15 +272,14 @@ class MongoStatementIntegrationTests {
             var deleteMql =
                     """
                     {
-                        delete: "%s",
+                        delete: "books",
                         deletes: [
                             {
                                 q: { author: "Leo Tolstoy" },
                                 limit: 1
                             }
                         ]
-                    }"""
-                            .formatted(COLLECTION_NAME);
+                    }""";
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
@@ -339,7 +335,7 @@ class MongoStatementIntegrationTests {
                 }
                 var realDocuments = statement
                         .getMongoDatabase()
-                        .getCollection(COLLECTION_NAME, BsonDocument.class)
+                        .getCollection("books", BsonDocument.class)
                         .find()
                         .into(new HashSet<>());
                 assertEquals(expectedDocuments, realDocuments);
