@@ -231,7 +231,7 @@ final class MongoStatement extends StatementAdapter {
         return mongoClient.getDatabase(DATABASE);
     }
 
-    private static BsonDocument parse(String mql) throws SQLException {
+    private static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
         try {
             return BsonDocument.parse(mql);
         } catch (RuntimeException e) {
