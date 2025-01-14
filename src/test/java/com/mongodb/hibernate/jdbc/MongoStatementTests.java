@@ -93,9 +93,8 @@ class MongoStatementTests {
         void testSQLExceptionThrownWhenDBAccessFailed(@Mock(answer = RETURNS_SMART_NULLS) MongoDatabase mongoDatabase) {
             // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
-            doThrow(new RuntimeException())
-                    .when(mongoDatabase)
-                    .runCommand(same(clientSession), any(BsonDocument.class));
+            var dbAccessException = new RuntimeException();
+            doThrow(dbAccessException).when(mongoDatabase).runCommand(same(clientSession), any(BsonDocument.class));
             String mql =
                     """
                     {
@@ -105,7 +104,8 @@ class MongoStatementTests {
                     """;
 
             // when && then
-            assertThrows(SQLException.class, () -> mongoStatement.executeUpdate(mql));
+            var sqlException = assertThrows(SQLException.class, () -> mongoStatement.executeUpdate(mql));
+            assertEquals(dbAccessException, sqlException.getCause());
         }
     }
 
