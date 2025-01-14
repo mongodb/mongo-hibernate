@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
+import static com.mongodb.hibernate.jdbc.MongoConnection.DATABASE;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -39,9 +40,6 @@ import org.jspecify.annotations.Nullable;
  * in its parent class.
  */
 final class MongoStatement extends StatementAdapter {
-
-    // temporary hard-coded database prior to the db config tech design finalizing
-    private static final String DATABASE = "mongo-hibernate-test";
 
     private final MongoClient mongoClient;
     private final MongoConnection mongoConnection;

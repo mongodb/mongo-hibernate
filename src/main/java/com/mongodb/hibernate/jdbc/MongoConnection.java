@@ -43,6 +43,9 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoConnection extends ConnectionAdapter {
 
+    // temporary hard-coded database prior to the db config tech design finalizing
+    public static final String DATABASE = "mongo-hibernate-test";
+
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
 
