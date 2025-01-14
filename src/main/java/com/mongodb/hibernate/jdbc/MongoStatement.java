@@ -228,7 +228,7 @@ final class MongoStatement extends StatementAdapter {
 
     @VisibleForTesting(otherwise = PRIVATE)
     MongoDatabase getMongoDatabase() {
-        return this.mongoClient.getDatabase(DATABASE);
+        return mongoClient.getDatabase(DATABASE);
     }
 
     private static BsonDocument parse(String mql) throws SQLException {
