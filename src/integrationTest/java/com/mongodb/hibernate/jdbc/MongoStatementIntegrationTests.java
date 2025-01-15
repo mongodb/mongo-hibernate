@@ -64,8 +64,6 @@ class MongoStatementIntegrationTests {
         }
     }
 
-    // private static final String COLLECTION_NAME = "books";
-
     @Nested
     class ExecuteUpdateTests {
 
