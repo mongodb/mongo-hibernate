@@ -64,8 +64,8 @@ final class MongoStatement extends StatementAdapter {
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
         var command = parse(mql);
+        startTransactionIfNeeded();
         try {
-            mongoConnection.startTransactionIfNeeded();
             return mongoClient
                     .getDatabase(DATABASE)
                     .runCommand(clientSession, command)
@@ -234,6 +234,21 @@ final class MongoStatement extends StatementAdapter {
             return BsonDocument.parse(mql);
         } catch (RuntimeException e) {
             throw new SQLSyntaxErrorException("Invalid MQL: " + mql, e);
+        }
+    }
+
+    /**
+     * Starts transaction for the first {@link java.sql.Statement} executing if
+     * {@linkplain MongoConnection#getAutoCommit() auto-commit} is disabled.
+     *
+     * @see #executeQuery(String)
+     * @see #executeUpdate(String)
+     * @see #execute(String)
+     * @see #executeBatch()
+     */
+    private void startTransactionIfNeeded() throws SQLException {
+        if (!mongoConnection.getAutoCommit() && !clientSession.hasActiveTransaction()) {
+            clientSession.startTransaction();
         }
     }
 }

@@ -309,19 +309,4 @@ final class MongoConnection extends ConnectionAdapter {
             throw new SQLException("Connection has been closed");
         }
     }
-
-    /**
-     * Starts transaction for the first {@link java.sql.Statement} executing if {@linkplain #getAutoCommit()
-     * auto-commit} is disabled.
-     *
-     * @see MongoStatement#executeQuery(String)
-     * @see MongoStatement#executeUpdate(String)
-     * @see MongoStatement#execute(String)
-     * @see MongoStatement#executeBatch()
-     */
-    void startTransactionIfNeeded() {
-        if (!autoCommit && !clientSession.hasActiveTransaction()) {
-            clientSession.startTransaction();
-        }
-    }
 }
