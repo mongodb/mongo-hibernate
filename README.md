@@ -44,7 +44,7 @@ This project uses separate directories for unit and integration tests:
 - [unit test](src/test)
 - [integration test](src/integrationTest)
 
-Integration tests will connect to a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) configured as below at [hibernate.properties](src/integrationTest/resources/hibernate.properties):
+Integration tests require a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/), below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
 
 ```properties
 jakarta.persistence.jdbc.url=mongodb://localhost/mongo-hibernate-test?directConnection=false
