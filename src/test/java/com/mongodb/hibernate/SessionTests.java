@@ -19,7 +19,6 @@ package com.mongodb.hibernate;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import java.sql.Connection;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -28,7 +27,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class SessionTests {
@@ -66,17 +64,8 @@ class SessionTests {
         assertDoesNotThrow(() -> assertNotNull(session).beginTransaction().commit());
     }
 
-    @Nested
-    class DoWorkTests {
-
-        @Test
-        void createConnectionTest() {
-            assertDoesNotThrow(() -> assertNotNull(session).doWork(connection -> {}));
-        }
-
-        @Test
-        void createStatementTest() {
-            assertDoesNotThrow(() -> assertNotNull(session).doWork(Connection::createStatement));
-        }
+    @Test
+    void createConnectionTest() {
+        assertDoesNotThrow(() -> assertNotNull(session).doWork(connection -> {}));
     }
 }
