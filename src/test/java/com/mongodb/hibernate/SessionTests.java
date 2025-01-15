@@ -16,12 +16,14 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.sql.Connection;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,9 +33,9 @@ import org.junit.jupiter.api.Test;
 
 class SessionTests {
 
-    private static SessionFactory sessionFactory;
+    private static @Nullable SessionFactory sessionFactory;
 
-    private Session session;
+    private @Nullable Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -49,7 +51,7 @@ class SessionTests {
 
     @BeforeEach
     void setUp() {
-        session = sessionFactory.openSession();
+        session = assertNotNull(sessionFactory).openSession();
     }
 
     @AfterEach
@@ -61,7 +63,7 @@ class SessionTests {
 
     @Test
     void testBeginTransaction() {
-        assertDoesNotThrow(() -> session.beginTransaction().commit());
+        assertDoesNotThrow(() -> assertNotNull(session).beginTransaction().commit());
     }
 
     @Nested
@@ -69,12 +71,12 @@ class SessionTests {
 
         @Test
         void createConnectionTest() {
-            assertDoesNotThrow(() -> session.doWork(connection -> {}));
+            assertDoesNotThrow(() -> assertNotNull(session).doWork(connection -> {}));
         }
 
         @Test
         void createStatementTest() {
-            assertDoesNotThrow(() -> session.doWork(Connection::createStatement));
+            assertDoesNotThrow(() -> assertNotNull(session).doWork(Connection::createStatement));
         }
     }
 }

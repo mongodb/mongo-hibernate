@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashSet;
@@ -24,6 +25,7 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,9 +36,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoStatementIntegrationTests {
 
-    private static SessionFactory sessionFactory;
+    private static @Nullable SessionFactory sessionFactory;
 
-    private Session session;
+    private @Nullable Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -52,7 +54,7 @@ class MongoStatementIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        session = sessionFactory.openSession();
+        session = assertNotNull(sessionFactory).openSession();
     }
 
     @AfterEach
@@ -69,7 +71,7 @@ class MongoStatementIntegrationTests {
 
         @BeforeEach
         void setUp() {
-            session.doWork(conn -> {
+            assertNotNull(session).doWork(conn -> {
                 conn.createStatement()
                         .executeUpdate(
                                 """
@@ -227,7 +229,7 @@ class MongoStatementIntegrationTests {
         }
 
         private void prepareData() {
-            session.doWork(connection -> {
+            assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
@@ -236,7 +238,7 @@ class MongoStatementIntegrationTests {
 
         private void assertExecuteUpdate(
                 String mql, boolean autoCommit, int expectedRowCount, Set<? extends BsonDocument> expectedDocuments) {
-            session.doWork(connection -> {
+            assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 var statement = (MongoStatement) connection.createStatement();
                 try {
