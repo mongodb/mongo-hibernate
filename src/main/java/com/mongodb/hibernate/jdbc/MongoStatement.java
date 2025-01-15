@@ -27,7 +27,6 @@ import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import org.bson.BsonDocument;
@@ -36,7 +35,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * MongoDB Dialect's JDBC {@link java.sql.Statement} implementation class.
  *
- * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by throwing exceptions
+ * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing exceptions
  * in its parent class.
  */
 final class MongoStatement extends StatementAdapter {
@@ -196,26 +195,8 @@ final class MongoStatement extends StatementAdapter {
     }
 
     @Override
-    public ResultSet getGeneratedKeys() throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException("Auto-generated key from MongoDB server side unsupported");
-    }
-
-    @Override
     public boolean isClosed() {
         return closed;
-    }
-
-    @Override
-    public <T> T unwrap(Class<T> unwrapType) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException("unwrap unsupported");
-    }
-
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        checkClosed();
-        return false;
     }
 
     private void checkClosed() throws SQLException {

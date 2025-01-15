@@ -169,10 +169,7 @@ class MongoStatementTests {
                             Map.entry("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql)),
                             Map.entry("clearBatch()", MongoStatement::clearBatch),
                             Map.entry("executeBatch()", MongoStatement::executeBatch),
-                            Map.entry("getConnection()", MongoStatement::getConnection),
-                            Map.entry("getGeneratedKeys()", MongoStatement::getGeneratedKeys),
-                            Map.entry("unwrap(Class)", stmt -> stmt.unwrap(MongoStatement.class)),
-                            Map.entry("isWrapperFor(Class)", stmt -> stmt.isWrapperFor(MongoStatement.class)))
+                            Map.entry("getConnection()", MongoStatement::getConnection))
                     .entrySet()
                     .stream()
                     .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
