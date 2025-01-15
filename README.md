@@ -54,7 +54,6 @@ jakarta.persistence.jdbc.url=mongodb://localhost/mongo-hibernate-test?directConn
 An internal CI/CD pipeline is based on an open-source project [evergreen](https://github.com/evergreen-ci/evergreen), a distributed continuous integration system from MongoDB. The corresponding evergreen configuration resources reside in a [.evergreen](/.evergreen) directory under the project root folder.
 
 ## References
-It would be highly helpful to refer to the following awesome articles or resources when need arises:
 - [An Introduction to Hibernate 6](https://docs.jboss.org/hibernate/orm/6.6/introduction/html_single/Hibernate_Introduction.html)
 - [A Guide to Hibernate Query Language](https://docs.jboss.org/hibernate/orm/6.6/querylanguage/html_single/Hibernate_Query_Language.html)
 - [Hibernate User Guide](https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html)
