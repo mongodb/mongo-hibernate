@@ -26,23 +26,6 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    testImplementation(libs.junit.jupiter)
-    testImplementation(libs.logback.classic)
-    testImplementation(libs.mockito.junit.jupiter)
-
-    testRuntimeOnly(libs.junit.platform.launcher)
-
-    errorprone(libs.nullaway)
-    api(libs.jspecify)
-
-    errorprone(libs.google.errorprone.core)
-
-    implementation(libs.hibernate.core)
-    implementation(libs.mongo.java.driver.sync)
-    implementation(libs.sl4j.api)
-}
-
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
@@ -52,6 +35,40 @@ java {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Integration Tests
+
+sourceSets {
+    create("integrationTest") {
+        compileClasspath += sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().output
+    }
+}
+
+val integrationTestImplementation by configurations.getting {
+    extendsFrom(configurations.implementation.get())
+}
+val integrationTestRuntimeOnly: Configuration by configurations.getting
+
+configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.runtimeOnly.get())
+
+val integrationTest = task<Test>("integrationTest") {
+    description = "Runs integration tests."
+    group = "verification"
+
+    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+    classpath = sourceSets["integrationTest"].runtimeClasspath
+    shouldRunAfter("test")
+
+    useJUnitPlatform()
+
+    testLogging {
+        events("passed")
+    }
+}
+
+tasks.check { dependsOn(integrationTest) }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Static Analysis Tasks
@@ -83,5 +100,28 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.compileJava {
     // The check defaults to a warning, bump it up to an error for the main sources
     options.errorprone.error("NullAway")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Dependencies
+
+dependencies {
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.logback.classic)
+    testImplementation(libs.mockito.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+
+    integrationTestImplementation(libs.junit.jupiter)
+    integrationTestImplementation(libs.logback.classic)
+    integrationTestRuntimeOnly(libs.junit.platform.launcher)
+
+    errorprone(libs.nullaway)
+    api(libs.jspecify)
+
+    errorprone(libs.google.errorprone.core)
+
+    implementation(libs.hibernate.core)
+    implementation(libs.mongo.java.driver.sync)
+    implementation(libs.sl4j.api)
 }
 

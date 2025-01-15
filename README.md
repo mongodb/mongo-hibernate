@@ -37,8 +37,35 @@ To check whether any format violation exists, run `spotlessCheck` gradle task. I
 
 Both plugins are enabled on gradle's `compileJava` task.
 
-## References
+### Testing
 
+This project uses separate directories for unit and integration tests:
+
+- [unit test](src/test)
+- [integration test](src/integrationTest)
+
+#### Gradle Tasks
+
+##### Unit Test
+```console
+./gradlew clean test
+```
+
+##### Integration Test
+```console
+./gradlew clean integrationTest
+```
+
+Integration tests require a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) as below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
+
+```properties
+jakarta.persistence.jdbc.url={your_mongodb_connection_string}
+```
+
+### CI/CD
+This project uses [evergreen](https://github.com/evergreen-ci/evergreen), a distributed continuous integration system from MongoDB. The evergreen configuration is in the [.evergreen](/.evergreen) directory.
+
+## References
 - [An Introduction to Hibernate 6](https://docs.jboss.org/hibernate/orm/6.6/introduction/html_single/Hibernate_Introduction.html)
 - [A Guide to Hibernate Query Language](https://docs.jboss.org/hibernate/orm/6.6/querylanguage/html_single/Hibernate_Query_Language.html)
 - [Hibernate User Guide](https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html)

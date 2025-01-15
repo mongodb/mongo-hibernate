@@ -2,17 +2,17 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-junit-jupiter = "5.11.3"
+junit-jupiter = "5.11.4"
 spotless = "6.25.0"
 palantir = "2.50.0"
 errorprone = "4.1.0"
 google-errorprone-core = "2.36.0"
-nullaway = "0.12.1"
+nullaway = "0.12.2"
 jspecify = "1.0.0"
-hibernate-core = "6.6.3.Final"
+hibernate-core = "6.6.4.Final"
 mongo-java-driver-sync = "5.2.1"
 slf4j-api = "2.0.16"
-logback-classic = "1.5.12"
+logback-classic = "1.5.15"
 mockito = "5.14.2"
 
 [libraries]
