@@ -39,7 +39,7 @@ Both plugins are enabled on gradle's `compileJava` task.
 
 ### Testing
 
-Per best practice, we maintain separate directories for unit and integration testings:
+This project uses separate directories for unit and integration tests:
 
 - [unit test](src/test)
 - [integration test](src/integrationTest)
