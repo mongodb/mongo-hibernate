@@ -44,10 +44,22 @@ This project uses separate directories for unit and integration tests:
 - [unit test](src/test)
 - [integration test](src/integrationTest)
 
-Integration tests require a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/), below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
+#### Gradle Tasks
+
+##### Unit Test
+```console
+./gradlew clean test
+```
+
+##### Integration Test
+```console
+./gradlew clean integrationTest
+```
+
+Integration tests require a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) as below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
 
 ```properties
-jakarta.persistence.jdbc.url=mongodb://localhost/mongo-hibernate-test?directConnection=false
+jakarta.persistence.jdbc.url={your_mongodb_connection_string}
 ```
 
 ### CI/CD
