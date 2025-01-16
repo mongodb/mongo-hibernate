@@ -75,10 +75,11 @@ public final class MongoConnectionProvider
     @Override
     public Connection getConnection() throws SQLException {
         try {
-            var clientSession = assertNotNull(mongoClient).startSession();
-            return new MongoConnection(clientSession);
+            var client = assertNotNull(mongoClient);
+            var clientSession = client.startSession();
+            return new MongoConnection(client, clientSession);
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to start session", e);
+            throw new SQLException("Failed to get connection", e);
         }
     }
 
