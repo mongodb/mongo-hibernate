@@ -65,7 +65,7 @@ class SessionTests {
     }
 
     @Test
-    void createConnectionTest() {
+    void doWorkTest() {
         assertDoesNotThrow(() -> assertNotNull(session).doWork(connection -> {}));
     }
 }
