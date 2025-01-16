@@ -94,19 +94,22 @@ class MongoPreparedStatementIntegrationTests {
                             _id: 1,
                             title: "War and Peace",
                             author: "Leo Tolstoy",
-                            outOfStock: false
+                            outOfStock: false,
+                            tags: [ "classic", "tolstoy" ]
                         },
                         {
                             _id: 2,
                             title: "Anna Karenina",
                             author: "Leo Tolstoy",
-                            outOfStock: false
+                            outOfStock: false,
+                            tags: [ "classic", "tolstoy" ]
                         },
                         {
                             _id: 3,
                             title: "Crime and Punishment",
                             author: "Fyodor Dostoevsky",
-                            outOfStock: false
+                            outOfStock: false,
+                            tags: [ "classic", "Dostoevsky", "literature" ]
                         }
                     ]
                 }""";
@@ -115,7 +118,7 @@ class MongoPreparedStatementIntegrationTests {
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
             // given
-            prepareData(INSERT_MQL);
+            prepareData();
 
             // when && then
             var expectedDocs = Set.of(
@@ -125,7 +128,8 @@ class MongoPreparedStatementIntegrationTests {
                                     _id: 1,
                                     title: "War and Peace",
                                     author: "Leo Tolstoy",
-                                    outOfStock: true
+                                    outOfStock: true,
+                                    tags: [ "classic", "tolstoy", "literature" ]
                                 }"""),
                     BsonDocument.parse(
                             """
@@ -133,7 +137,8 @@ class MongoPreparedStatementIntegrationTests {
                                     _id: 2,
                                     title: "Anna Karenina",
                                     author: "Leo Tolstoy",
-                                    outOfStock: true
+                                    outOfStock: true,
+                                    tags: [ "classic", "tolstoy", "literature" ]
                                 }"""),
                     BsonDocument.parse(
                             """
@@ -141,27 +146,32 @@ class MongoPreparedStatementIntegrationTests {
                                    _id: 3,
                                    title: "Crime and Punishment",
                                    author: "Fyodor Dostoevsky",
-                                   outOfStock: false
+                                   outOfStock: false,
+                                   tags: [ "classic", "Dostoevsky", "literature" ]
                                }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)
                             connection.prepareStatement(
                                     """
-                    {
-                        update: "books",
-                        updates: [
-                            {
-                                q: { author: { $undefined: true } },
-                                u: {
-                                    $set: { outOfStock: { $undefined: true } }
-                                },
-                                multi: true
-                            }
-                        ]
-                    }""");
+                                        {
+                                            update: "books",
+                                            updates: [
+                                                {
+                                                    q: { author: { $undefined: true } },
+                                                    u: {
+                                                        $set: {
+                                                            outOfStock: { $undefined: true }
+                                                        },
+                                                        $push: { tags: { $undefined: true } }
+                                                    },
+                                                    multi: true
+                                                }
+                                            ]
+                                        }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     pstmt.setBoolean(2, true);
+                    pstmt.setString(3, "literature");
                     return pstmt;
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -170,24 +180,24 @@ class MongoPreparedStatementIntegrationTests {
             assertExecuteUpdate(pstmtProvider, autoCommit, 2, expectedDocs);
         }
 
-        private void prepareData(String mql) {
+        private void prepareData() {
             assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
-                statement.executeUpdate(mql);
+                statement.executeUpdate(INSERT_MQL);
             });
         }
 
         private void assertExecuteUpdate(
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
                 boolean autoCommit,
-                int expectedRowCount,
+                int expectedUpdatedRowCount,
                 Set<? extends BsonDocument> expectedDocuments) {
             assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 var pstmt = pstmtProvider.apply(connection);
                 try {
-                    assertEquals(expectedRowCount, pstmt.executeUpdate());
+                    assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate());
                 } finally {
                     if (!autoCommit) {
                         connection.commit();
