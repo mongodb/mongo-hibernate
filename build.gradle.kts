@@ -93,13 +93,15 @@ tasks.withType<JavaCompile>().configureEach {
     options.errorprone {
         disableWarningsInGeneratedCode.set(true)
         option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
-        option("NullAway:ExcludedFieldAnnotations", "org.mockito.Mock")
-        option("NullAway:ExcludedFieldAnnotations", "org.mockito.InjectMocks")
     }
 }
 tasks.compileJava {
     // The check defaults to a warning, bump it up to an error for the main sources
     options.errorprone.error("NullAway")
+}
+
+tasks.compileTestJava {
+    options.errorprone.isEnabled.set(false)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
