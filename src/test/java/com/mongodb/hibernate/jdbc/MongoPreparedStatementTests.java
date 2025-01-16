@@ -16,9 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.jdbc.MongoPreparedStatement.ERROR_MSG_PARAMETER_INDEX_OVERFLOW;
-import static com.mongodb.hibernate.jdbc.MongoPreparedStatement.ERROR_MSG_PARAMETER_INDEX_UNDERFLOW;
-import static com.mongodb.hibernate.jdbc.MongoPreparedStatement.ERROR_MSG_PARAMETER_UNRESOLVED;
+import static com.mongodb.hibernate.jdbc.MongoPreparedStatement.ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID;
+import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -250,55 +249,12 @@ class MongoPreparedStatementTests {
         }
 
         @Test
-        @DisplayName("SQLException is thrown when parameterIndex is zero and parameters not empty")
-        void testParameterIndexUnderflow() {
+        @DisplayName("SQLException is thrown when parameter index is invalid")
+        void testParameterIndexInvalid() {
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
                 var sqlException =
                         assertThrows(SQLException.class, () -> preparedStatement.setString(0, "War and Peace"));
-                assertEquals(ERROR_MSG_PARAMETER_INDEX_UNDERFLOW, sqlException.getMessage());
-                verify(mongoClient, never()).getDatabase(anyString());
-            }
-        }
-
-        @Test
-        @DisplayName("SQLException is thrown when parameterIndex surpassing parameter list size")
-        void testParameterIndexOverflow() {
-            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
-                var sqlException =
-                        assertThrows(SQLException.class, () -> preparedStatement.setString(6, "War and Peace"));
-                assertEquals(ERROR_MSG_PARAMETER_INDEX_OVERFLOW, sqlException.getMessage());
-                verify(mongoClient, never()).getDatabase(anyString());
-            }
-        }
-
-        @Test
-        @DisplayName("SQLException is thrown when some parameter was provided values more than once")
-        void testParameterValueProvidedMoreThanOnce() throws SQLException {
-            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
-
-                preparedStatement.setString(1, "War and Peace");
-                preparedStatement.setString(2, "Leo Tolstoy");
-                preparedStatement.setBoolean(4, false);
-                preparedStatement.setString(5, "classic");
-                preparedStatement.setInt(3, 1865);
-
-                assertThrows(SQLException.class, () -> preparedStatement.setInt(3, 1869));
-                verify(mongoClient, never()).getDatabase(anyString());
-            }
-        }
-
-        @Test
-        @DisplayName("SQLException is thrown when some parameter is not provided value")
-        void testParameterNotAllProvided() throws SQLException {
-            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
-
-                preparedStatement.setString(1, "War and Peace");
-                preparedStatement.setString(2, "Leo Tolstoy");
-                preparedStatement.setInt(3, 1869);
-                preparedStatement.setBoolean(4, false);
-
-                var sqlException = assertThrows(SQLException.class, preparedStatement::executeUpdate);
-                assertEquals(ERROR_MSG_PARAMETER_UNRESOLVED, sqlException.getMessage());
+                assertEquals(format(ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID, 0, 5), sqlException.getMessage());
                 verify(mongoClient, never()).getDatabase(anyString());
             }
         }

@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static java.lang.String.format;
+
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
@@ -62,11 +64,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private final BsonDocument command;
 
-    // once parameter is provided, the corresponding entry will be set to null
-    // so duplicated parameter setting could be detected
-    private final List<@Nullable Consumer<BsonValue>> parameters;
-
-    private int unresolvedParameterCount;
+    private final List<Consumer<BsonValue>> parameters;
 
     public MongoPreparedStatement(
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
@@ -74,20 +72,17 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         this.command = BsonDocument.parse(mql);
         this.parameters = new ArrayList<>();
         parseParameters(command, parameters);
-        unresolvedParameterCount = parameters.size();
     }
 
     @Override
     public ResultSet executeQuery() throws SQLException {
         checkClosed();
-        ensureAllParametersResolved();
         throw new NotYetImplementedException();
     }
 
     @Override
     public int executeUpdate() throws SQLException {
         checkClosed();
-        ensureAllParametersResolved();
         return executeUpdate(command);
     }
 
@@ -240,22 +235,15 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) throws SQLException {
         checkClosed();
-        if (parameterIndex <= 0) {
-            throw new SQLException(ERROR_MSG_PARAMETER_INDEX_UNDERFLOW);
-        }
-        if (parameterIndex > parameters.size()) {
-            throw new SQLException(ERROR_MSG_PARAMETER_INDEX_OVERFLOW);
+        if (parameterIndex < 1 || parameterIndex > parameters.size()) {
+            throw new SQLException(
+                    format(ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID, parameterIndex, parameters.size()));
         }
         var parameterValueConsumer = parameters.get(parameterIndex - 1);
-        if (parameterValueConsumer == null) {
-            throw new SQLException(ERROR_MSG_PARAMETER_VALUE_SET_MORE_THAN_ONCE);
-        }
         parameterValueConsumer.accept(parameterValue);
-        parameters.set(parameterIndex - 1, null);
-        unresolvedParameterCount--;
     }
 
-    private static void parseParameters(BsonDocument command, List<@Nullable Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameters) {
         for (var entry : command.entrySet()) {
             if (isParameterMarker(entry.getValue())) {
                 parameters.add(entry::setValue);
@@ -265,7 +253,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         }
     }
 
-    private static void parseParameters(BsonArray array, List<@Nullable Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameters) {
         IntStream.range(0, array.size()).forEach(i -> {
             var value = array.get(i);
             if (isParameterMarker(value)) {
@@ -276,7 +264,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         });
     }
 
-    private static void parseParameters(BsonValue value, List<@Nullable Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameters) {
         if (value.isDocument()) {
             parseParameters(value.asDocument(), parameters);
         } else if (value.isArray()) {
@@ -288,27 +276,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         return value.getBsonType() == BsonType.UNDEFINED;
     }
 
-    private void ensureAllParametersResolved() throws SQLException {
-        if (unresolvedParameterCount > 0) {
-            throw new SQLException("Unresolved parameter found");
-        }
-    }
-
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
     List<@Nullable Consumer<BsonValue>> getParameters() {
         return parameters;
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static final String ERROR_MSG_PARAMETER_INDEX_UNDERFLOW = "Parameter index should start from 1";
-
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static final String ERROR_MSG_PARAMETER_INDEX_OVERFLOW =
-            "Parameter index should not be larger than parameters size";
-
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static final String ERROR_MSG_PARAMETER_VALUE_SET_MORE_THAN_ONCE = "Parameter index has been set previously";
-
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static final String ERROR_MSG_PARAMETER_UNRESOLVED = "Unresolved parameter found";
+    static final String ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID =
+            "Parameter index invalid: %d; should be within [1, %d]";
 }
