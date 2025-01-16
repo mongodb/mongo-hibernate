@@ -233,6 +233,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         setParameter(parameterIndex, BsonNull.VALUE);
     }
 
+    @SuppressWarnings("JavaUtilDate")
     private void setBsonDateTimeParameter(int parameterIndex, java.util.@Nullable Date date) throws SQLException {
         setParameter(parameterIndex, date == null ? BsonNull.VALUE : new BsonDateTime(date.getTime()));
     }
