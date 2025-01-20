@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.IntStream;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
@@ -260,14 +259,15 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameters) {
-        IntStream.range(0, array.size()).forEach(i -> {
+        for (var i = 0; i < array.size(); i++) {
             var value = array.get(i);
             if (isParameterMarker(value)) {
-                parameters.add(v -> array.set(i, v));
+                var idx = i;
+                parameters.add(v -> array.set(idx, v));
             } else if (value.getBsonType().isContainer()) {
                 parseParameters(value, parameters);
             }
-        });
+        }
     }
 
     private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameters) {
