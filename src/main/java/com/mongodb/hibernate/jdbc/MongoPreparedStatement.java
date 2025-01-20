@@ -141,37 +141,49 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setBigDecimal(int parameterIndex, @Nullable BigDecimal x) throws SQLException {
         checkClosed();
-        setParameter(parameterIndex, x == null ? BsonNull.VALUE : new BsonDecimal128(new Decimal128(x)));
+        if (x == null) {
+            setNull(parameterIndex, Types.NUMERIC);
+        } else {
+            setParameter(parameterIndex, new BsonDecimal128(new Decimal128(x)));
+        }
     }
 
     @Override
     public void setString(int parameterIndex, @Nullable String x) throws SQLException {
         checkClosed();
-        setParameter(parameterIndex, x == null ? BsonNull.VALUE : new BsonString(x));
+        if (x == null) {
+            setNull(parameterIndex, Types.VARCHAR);
+        } else {
+            setParameter(parameterIndex, new BsonString(x));
+        }
     }
 
     @Override
     public void setBytes(int parameterIndex, byte @Nullable [] x) throws SQLException {
         checkClosed();
-        setParameter(parameterIndex, x == null ? BsonNull.VALUE : new BsonBinary(x));
+        if (x == null) {
+            setNull(parameterIndex, Types.VARBINARY);
+        } else {
+            setParameter(parameterIndex, new BsonBinary(x));
+        }
     }
 
     @Override
     public void setDate(int parameterIndex, @Nullable Date x) throws SQLException {
         checkClosed();
-        setBsonDateTimeParameter(parameterIndex, x);
+        setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
     }
 
     @Override
     public void setTime(int parameterIndex, @Nullable Time x) throws SQLException {
         checkClosed();
-        setBsonDateTimeParameter(parameterIndex, x);
+        setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
     }
 
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x) throws SQLException {
         checkClosed();
-        setBsonDateTimeParameter(parameterIndex, x);
+        setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
     }
 
     @Override
@@ -248,8 +260,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @SuppressWarnings("JavaUtilDate")
-    private void setBsonDateTimeParameter(int parameterIndex, java.util.@Nullable Date date) throws SQLException {
-        setParameter(parameterIndex, date == null ? BsonNull.VALUE : new BsonDateTime(date.getTime()));
+    private void setBsonDateTimeParameter(int parameterIndex, java.util.@Nullable Date date, int sqlType)
+            throws SQLException {
+        if (date == null) {
+            setNull(parameterIndex, sqlType);
+        } else {
+            setParameter(parameterIndex, new BsonDateTime(date.getTime()));
+        }
     }
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) throws SQLException {
