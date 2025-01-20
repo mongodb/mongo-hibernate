@@ -43,7 +43,7 @@ import java.util.Calendar;
  *
  * @see MongoPreparedStatement
  */
-interface PreparedStatementAdapter extends PreparedStatement {
+interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     @Override
     default ResultSet executeQuery() throws SQLException {
         throw new SQLFeatureNotSupportedException("executeQuery not implemented");

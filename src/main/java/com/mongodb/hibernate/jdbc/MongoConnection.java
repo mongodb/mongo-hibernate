@@ -36,9 +36,9 @@ import org.jspecify.annotations.Nullable;
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
  * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent class.
+ * exceptions in its parent {@linkplain ConnectionAdapter adapter interface}.
  */
-final class MongoConnection extends ConnectionAdapter {
+final class MongoConnection implements ConnectionAdapter {
 
     // temporary hard-coded database prior to the db config tech design finalizing
     public static final String DATABASE = "mongo-hibernate-test";
