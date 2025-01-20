@@ -195,19 +195,20 @@ class MongoPreparedStatementIntegrationTests {
                 Set<? extends BsonDocument> expectedDocuments) {
             assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
-                var pstmt = pstmtProvider.apply(connection);
-                try {
-                    assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate());
-                } finally {
-                    if (!autoCommit) {
-                        connection.commit();
+                try (var pstmt = pstmtProvider.apply(connection)) {
+                    try {
+                        assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate());
+                    } finally {
+                        if (!autoCommit) {
+                            connection.commit();
+                        }
                     }
+                    var realDocuments = pstmt.getMongoDatabase()
+                            .getCollection("books", BsonDocument.class)
+                            .find()
+                            .into(new HashSet<>());
+                    assertEquals(expectedDocuments, realDocuments);
                 }
-                var realDocuments = pstmt.getMongoDatabase()
-                        .getCollection("books", BsonDocument.class)
-                        .find()
-                        .into(new HashSet<>());
-                assertEquals(expectedDocuments, realDocuments);
             });
         }
     }
