@@ -67,7 +67,7 @@ class MongoStatement extends StatementAdapter {
         return executeUpdateCommand(command);
     }
 
-    protected int executeUpdateCommand(BsonDocument command) throws SQLException {
+    int executeUpdateCommand(BsonDocument command) throws SQLException {
         startTransactionIfNeeded();
         try {
             return mongoClient
@@ -75,7 +75,7 @@ class MongoStatement extends StatementAdapter {
                     .runCommand(clientSession, command)
                     .getInteger("n");
         } catch (Exception e) {
-            throw new SQLException("Failed to run #executeUpdate(String)", e);
+            throw new SQLException("Failed to execute update command", e);
         }
     }
 
