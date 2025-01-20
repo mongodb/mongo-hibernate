@@ -64,10 +64,10 @@ class MongoStatement extends StatementAdapter {
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
         var command = parse(mql);
-        return executeUpdate(command);
+        return executeUpdateCommand(command);
     }
 
-    protected int executeUpdate(BsonDocument command) throws SQLException {
+    protected int executeUpdateCommand(BsonDocument command) throws SQLException {
         startTransactionIfNeeded();
         try {
             return mongoClient
@@ -226,11 +226,6 @@ class MongoStatement extends StatementAdapter {
     /**
      * Starts transaction for the first {@link java.sql.Statement} executing if
      * {@linkplain MongoConnection#getAutoCommit() auto-commit} is disabled.
-     *
-     * @see #executeQuery(String)
-     * @see #executeUpdate(String)
-     * @see #execute(String)
-     * @see #executeBatch()
      */
     private void startTransactionIfNeeded() throws SQLException {
         if (!mongoConnection.getAutoCommit() && !clientSession.hasActiveTransaction()) {

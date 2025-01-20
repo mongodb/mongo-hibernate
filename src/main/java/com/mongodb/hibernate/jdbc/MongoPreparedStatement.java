@@ -32,7 +32,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -71,7 +70,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         super(mongoClient, clientSession, mongoConnection);
         this.command = BsonDocument.parse(mql);
         this.parameters = new ArrayList<>();
-        parseParameters(command, parameters);
+        dispatchContainerParsing(command, parameters);
     }
 
     @Override
@@ -83,7 +82,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public int executeUpdate() throws SQLException {
         checkClosed();
-        return executeUpdate(command);
+        return executeUpdateCommand(command);
     }
 
     @Override
@@ -169,12 +168,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setObject(int parameterIndex, @Nullable Object x, int targetSqlType) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
     @Override
     public void setObject(int parameterIndex, @Nullable Object x) throws SQLException {
-        setObject(parameterIndex, x, Types.OTHER);
+        checkClosed();
+        throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
     // --------------------------JDBC 2.0-----------------------------
@@ -243,32 +243,32 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         parameterValueConsumer.accept(parameterValue);
     }
 
-    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameters) {
+    private static void dispatchContainerParsing(BsonDocument command, List<Consumer<BsonValue>> parameters) {
         for (var entry : command.entrySet()) {
             if (isParameterMarker(entry.getValue())) {
                 parameters.add(entry::setValue);
             } else if (entry.getValue().getBsonType().isContainer()) {
-                parseParameters(entry.getValue(), parameters);
+                dispatchContainerParsing(entry.getValue(), parameters);
             }
         }
     }
 
-    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameters) {
+    private static void dispatchContainerParsing(BsonArray array, List<Consumer<BsonValue>> parameters) {
         IntStream.range(0, array.size()).forEach(i -> {
             var value = array.get(i);
             if (isParameterMarker(value)) {
                 parameters.add(v -> array.set(i, v));
             } else if (value.getBsonType().isContainer()) {
-                parseParameters(value, parameters);
+                dispatchContainerParsing(value, parameters);
             }
         });
     }
 
-    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameters) {
+    private static void dispatchContainerParsing(BsonValue value, List<Consumer<BsonValue>> parameters) {
         if (value.isDocument()) {
-            parseParameters(value.asDocument(), parameters);
+            dispatchContainerParsing(value.asDocument(), parameters);
         } else if (value.isArray()) {
-            parseParameters(value.asArray(), parameters);
+            dispatchContainerParsing(value.asArray(), parameters);
         }
     }
 
