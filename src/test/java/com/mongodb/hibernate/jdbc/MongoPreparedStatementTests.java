@@ -326,7 +326,7 @@ class MongoPreparedStatementTests {
                             Map.entry("setTime(int,Time,Calendar)", pstmt -> pstmt.setTime(1, null, null)),
                             Map.entry(
                                     "setTimestamp(int,Timestamp,Calendar)", pstmt -> pstmt.setTimestamp(1, null, null)),
-                            Map.entry("setNull(int,Object,int)", pstmt -> pstmt.setNull(1, Types.STRUCT, "BOOK")))
+                            Map.entry("setNull(int,Object,String)", pstmt -> pstmt.setNull(1, Types.STRUCT, "BOOK")))
                     .entrySet()
                     .stream()
                     .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));

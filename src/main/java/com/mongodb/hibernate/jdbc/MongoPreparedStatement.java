@@ -28,10 +28,13 @@ import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.Date;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -88,6 +91,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
         checkClosed();
+        checkSqlTypeSupported(sqlType);
         setParameter(parameterIndex, BsonNull.VALUE);
     }
 
@@ -225,6 +229,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setNull(int parameterIndex, int sqlType, @Nullable String typeName) throws SQLException {
         checkClosed();
+        checkSqlTypeSupported(sqlType);
         setParameter(parameterIndex, BsonNull.VALUE);
     }
 
@@ -284,4 +289,28 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
     static final String ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID =
             "Parameter index invalid: %d; should be within [1, %d]";
+
+    private void checkSqlTypeSupported(int sqlType) throws SQLFeatureNotSupportedException {
+        switch (sqlType) {
+            case Types.BOOLEAN:
+            case Types.TINYINT:
+            case Types.SMALLINT:
+            case Types.INTEGER:
+            case Types.BIGINT:
+            case Types.REAL:
+            case Types.DOUBLE:
+            case Types.NUMERIC:
+            case Types.VARCHAR:
+            case Types.LONGVARCHAR:
+            case Types.BINARY:
+            case Types.LONGVARBINARY:
+            case Types.DATE:
+            case Types.TIME:
+            case Types.TIMESTAMP:
+                break;
+            default:
+                throw new SQLFeatureNotSupportedException(
+                        "Unsupported sql type: " + JDBCType.valueOf(sqlType).getName());
+        }
+    }
 }
