@@ -22,7 +22,7 @@ import static com.mongodb.hibernate.jdbc.MongoConnection.DATABASE;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.NotYetImplementedSQLException;
+import com.mongodb.hibernate.internal.NotYetImplementedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -55,7 +55,7 @@ final class MongoStatement extends StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
@@ -84,35 +84,35 @@ final class MongoStatement extends StatementAdapter {
     @Override
     public int getMaxRows() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void setMaxRows(int max) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public int getQueryTimeout() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void setQueryTimeout(int seconds) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void cancel() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException();
+        throw new NotYetImplementedException();
     }
 
     @Override
@@ -132,59 +132,59 @@ final class MongoStatement extends StatementAdapter {
     @Override
     public boolean execute(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException("To be implemented in scope of index and unique constraint creation");
+        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public @Nullable ResultSet getResultSet() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException("To be implemented in scope of index and unique constraint creation");
+        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public boolean getMoreResults() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException("To be implemented in scope of index and unique constraint creation");
+        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public int getUpdateCount() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException("To be implemented in scope of index and unique constraint creation");
+        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public void setFetchSize(int rows) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public int getFetchSize() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void addBatch(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedSQLException(
+        throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
