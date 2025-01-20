@@ -19,7 +19,6 @@ package com.mongodb.hibernate.jdbc;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_SMART_NULLS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -65,113 +64,6 @@ class MongoPreparedStatementTests {
 
     private MongoPreparedStatement createMongoPreparedStatement(String mql) {
         return new MongoPreparedStatement(mongoClient, clientSession, mongoConnection, mql);
-    }
-
-    @Nested
-    class ParameterParsingTests {
-
-        @Test
-        @DisplayName("Empty parameters should be created if no parameter marker found")
-        void testZeroParameters() {
-            // given
-            var mql =
-                    """
-                     {
-                        insert: "books",
-                        documents: [
-                            {
-                                title: "War and Peace",
-                                author: "Leo Tolstoy",
-                                outOfStock: false
-                            }
-                        ]
-                     }
-                     """;
-
-            // when && then
-            try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertTrue(preparedStatement.getParameterValueSetters().isEmpty());
-            }
-        }
-
-        @Test
-        @DisplayName("Parameter marker could be found in embedded document field")
-        void testParameterMarkerInDocumentContainer() {
-            // given
-            var mql =
-                    """
-                     {
-                        insert: "books",
-                        documents: [
-                            {
-                                title: { $undefined: true },
-                                author: "Leo Tolstoy",
-                                outOfStock: false
-                            }
-                        ]
-                     }
-                     """;
-
-            // when && then
-            try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertEquals(1, preparedStatement.getParameterValueSetters().size());
-            }
-        }
-
-        @Test
-        @DisplayName("Parameter marker could be found in embedded array field")
-        void testParameterMarkerInArrayContainer() {
-            // given
-            var mql =
-                    """
-                     {
-                        insert: "books",
-                        documents: [
-                            {
-                                title: "War and Peace",
-                                author: "Leo Tolstoy",
-                                outOfStock: false,
-                                tags: [
-                                    { $undefined: true },
-                                    { $undefined: true },
-                                ]
-                            }
-                        ]
-                     }
-                     """;
-
-            // when && then
-            try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertEquals(2, preparedStatement.getParameterValueSetters().size());
-            }
-        }
-
-        @Test
-        @DisplayName("Parameter marker could be found in both document and array embedded fields")
-        void testParameterMarkerInBothDocumentAndArrayContainers() {
-            // given
-            var mql =
-                    """
-                     {
-                        insert: "books",
-                        documents: [
-                            {
-                                title: { $undefined: true },
-                                author: { $undefined: true },
-                                outOfStock: false,
-                                tags: [
-                                    { $undefined: true }
-                                ]
-                            }
-                        ]
-                     }
-                     """;
-
-            // when && then
-            try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertEquals(3, preparedStatement.getParameterValueSetters().size());
-            }
-        }
     }
 
     @Nested

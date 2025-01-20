@@ -17,13 +17,11 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.assertions.Assertions.fail;
-import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
-import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -322,11 +320,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private static boolean isParameterMarker(BsonValue value) {
         return value.getBsonType() == BsonType.UNDEFINED;
-    }
-
-    @VisibleForTesting(otherwise = PRIVATE)
-    List<@Nullable Consumer<BsonValue>> getParameterValueSetters() {
-        return parameterValueSetters;
     }
 
     private void checkSqlTypeSupported(int sqlType) throws SQLFeatureNotSupportedException {
