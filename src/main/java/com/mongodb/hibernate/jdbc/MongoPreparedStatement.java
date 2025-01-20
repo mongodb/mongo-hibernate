@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.assertions.Assertions.fail;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
@@ -73,7 +74,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         super(mongoClient, clientSession, mongoConnection);
         this.command = BsonDocument.parse(mql);
         this.parameters = new ArrayList<>();
-        dispatchContainerParsing(command, parameters);
+        parseParameters(command, parameters);
     }
 
     @Override
@@ -248,32 +249,34 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         parameterValueConsumer.accept(parameterValue);
     }
 
-    private static void dispatchContainerParsing(BsonDocument command, List<Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameters) {
         for (var entry : command.entrySet()) {
             if (isParameterMarker(entry.getValue())) {
                 parameters.add(entry::setValue);
             } else if (entry.getValue().getBsonType().isContainer()) {
-                dispatchContainerParsing(entry.getValue(), parameters);
+                parseParameters(entry.getValue(), parameters);
             }
         }
     }
 
-    private static void dispatchContainerParsing(BsonArray array, List<Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameters) {
         IntStream.range(0, array.size()).forEach(i -> {
             var value = array.get(i);
             if (isParameterMarker(value)) {
                 parameters.add(v -> array.set(i, v));
             } else if (value.getBsonType().isContainer()) {
-                dispatchContainerParsing(value, parameters);
+                parseParameters(value, parameters);
+            } else {
+                fail();
             }
         });
     }
 
-    private static void dispatchContainerParsing(BsonValue value, List<Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameters) {
         if (value.isDocument()) {
-            dispatchContainerParsing(value.asDocument(), parameters);
+            parseParameters(value.asDocument(), parameters);
         } else if (value.isArray()) {
-            dispatchContainerParsing(value.asArray(), parameters);
+            parseParameters(value.asArray(), parameters);
         }
     }
 
