@@ -170,20 +170,17 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     @Override
     public void setDate(int parameterIndex, @Nullable Date x) throws SQLException {
-        checkClosed();
-        setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
+        setDate(parameterIndex, x, null);
     }
 
     @Override
     public void setTime(int parameterIndex, @Nullable Time x) throws SQLException {
-        checkClosed();
-        setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
+        setTime(parameterIndex, x, null);
     }
 
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x) throws SQLException {
-        checkClosed();
-        setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
+        setTimestamp(parameterIndex, x, null);
     }
 
     @Override
@@ -237,19 +234,31 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setDate(int parameterIndex, @Nullable Date x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        if (cal == null) {
+            setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
+        } else {
+            throw new NotYetImplementedException();
+        }
     }
 
     @Override
     public void setTime(int parameterIndex, @Nullable Time x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        if (cal == null) {
+            setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
+        } else {
+            throw new NotYetImplementedException();
+        }
     }
 
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        if (cal == null) {
+            setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
+        } else {
+            throw new NotYetImplementedException();
+        }
     }
 
     @Override
