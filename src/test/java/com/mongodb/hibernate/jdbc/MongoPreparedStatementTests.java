@@ -94,7 +94,7 @@ class MongoPreparedStatementTests {
 
             // when && then
             try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertTrue(preparedStatement.getParameters().isEmpty());
+                assertTrue(preparedStatement.getParameterValueSetters().isEmpty());
             }
         }
 
@@ -118,7 +118,7 @@ class MongoPreparedStatementTests {
 
             // when && then
             try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertEquals(1, preparedStatement.getParameters().size());
+                assertEquals(1, preparedStatement.getParameterValueSetters().size());
             }
         }
 
@@ -146,7 +146,7 @@ class MongoPreparedStatementTests {
 
             // when && then
             try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertEquals(2, preparedStatement.getParameters().size());
+                assertEquals(2, preparedStatement.getParameterValueSetters().size());
             }
         }
 
@@ -173,7 +173,7 @@ class MongoPreparedStatementTests {
 
             // when && then
             try (var preparedStatement = createMongoPreparedStatement(mql)) {
-                assertEquals(3, preparedStatement.getParameters().size());
+                assertEquals(3, preparedStatement.getParameterValueSetters().size());
             }
         }
     }

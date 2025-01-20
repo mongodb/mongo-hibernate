@@ -46,8 +46,8 @@ public final class MongoAssertions {
      * Asserts that failure happens invariably.
      *
      * @param msg The failure message.
-     * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw fail("failure message")}.
-     * This may be helpful in non-{@code void} methods.
+     * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
+     *     fail("failure message")}. This may be helpful in non-{@code void} methods.
      * @throws AssertionError Always
      */
     public static AssertionError fail(String msg) throws AssertionError {

@@ -67,14 +67,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private final BsonDocument command;
 
-    private final List<Consumer<BsonValue>> parameters;
+    private final List<Consumer<BsonValue>> parameterValueSetters;
 
     public MongoPreparedStatement(
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
         super(mongoClient, clientSession, mongoConnection);
         this.command = BsonDocument.parse(mql);
-        this.parameters = new ArrayList<>();
-        parseParameters(command, parameters);
+        this.parameterValueSetters = new ArrayList<>();
+        parseParameters(command, parameterValueSetters);
     }
 
     @Override
@@ -241,12 +241,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) throws SQLException {
         checkClosed();
-        if (parameterIndex < 1 || parameterIndex > parameters.size()) {
+        if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
             throw new SQLException(
-                    format(ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID, parameterIndex, parameters.size()));
+                    format(ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID, parameterIndex, parameterValueSetters.size()));
         }
-        var parameterValueConsumer = parameters.get(parameterIndex - 1);
-        parameterValueConsumer.accept(parameterValue);
+        var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
+        parameterValueSetter.accept(parameterValue);
     }
 
     private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameters) {
@@ -285,8 +285,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    List<@Nullable Consumer<BsonValue>> getParameters() {
-        return parameters;
+    List<@Nullable Consumer<BsonValue>> getParameterValueSetters() {
+        return parameterValueSetters;
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
