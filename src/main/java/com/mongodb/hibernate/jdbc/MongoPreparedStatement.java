@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.assertions.Assertions.fail;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
@@ -285,7 +286,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         return value.getBsonType() == BsonType.UNDEFINED;
     }
 
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
+    @VisibleForTesting(otherwise = PRIVATE)
     List<@Nullable Consumer<BsonValue>> getParameterValueSetters() {
         return parameterValueSetters;
     }
