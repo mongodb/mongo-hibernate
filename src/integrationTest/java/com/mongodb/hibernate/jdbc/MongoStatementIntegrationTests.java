@@ -238,20 +238,20 @@ class MongoStatementIntegrationTests {
                 String mql, boolean autoCommit, int expectedRowCount, Set<? extends BsonDocument> expectedDocuments) {
             assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
-                var statement = (MongoStatement) connection.createStatement();
-                try {
-                    assertEquals(expectedRowCount, statement.executeUpdate(mql));
-                } finally {
-                    if (!autoCommit) {
-                        connection.commit();
+                try (var stmt = (MongoStatement) connection.createStatement()) {
+                    try {
+                        assertEquals(expectedRowCount, stmt.executeUpdate(mql));
+                    } finally {
+                        if (!autoCommit) {
+                            connection.commit();
+                        }
                     }
+                    var realDocuments = stmt.getMongoDatabase()
+                            .getCollection("books", BsonDocument.class)
+                            .find()
+                            .into(new HashSet<>());
+                    assertEquals(expectedDocuments, realDocuments);
                 }
-                var realDocuments = statement
-                        .getMongoDatabase()
-                        .getCollection("books", BsonDocument.class)
-                        .find()
-                        .into(new HashSet<>());
-                assertEquals(expectedDocuments, realDocuments);
             });
         }
     }
