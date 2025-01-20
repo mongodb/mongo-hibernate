@@ -241,8 +241,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private void setParameter(int parameterIndex, BsonValue parameterValue) throws SQLException {
         checkClosed();
         if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
-            throw new SQLException(
-                    format(ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID, parameterIndex, parameterValueSetters.size()));
+            throw new SQLException(format(
+                    "Parameter index invalid: %d; should be within [1, %d]",
+                    parameterIndex, parameterValueSetters.size()));
         }
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
@@ -288,10 +289,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     List<@Nullable Consumer<BsonValue>> getParameterValueSetters() {
         return parameterValueSetters;
     }
-
-    @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
-    static final String ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID =
-            "Parameter index invalid: %d; should be within [1, %d]";
 
     private void checkSqlTypeSupported(int sqlType) throws SQLFeatureNotSupportedException {
         switch (sqlType) {

@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.jdbc.MongoPreparedStatement.ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -254,7 +253,9 @@ class MongoPreparedStatementTests {
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
                 var sqlException =
                         assertThrows(SQLException.class, () -> preparedStatement.setString(0, "War and Peace"));
-                assertEquals(format(ERROR_MSG_PATTERN_PARAMETER_INDEX_INVALID, 0, 5), sqlException.getMessage());
+                assertEquals(
+                        format("Parameter index invalid: %d; should be within [1, %d]", 0, 5),
+                        sqlException.getMessage());
                 verify(mongoClient, never()).getDatabase(anyString());
             }
         }
