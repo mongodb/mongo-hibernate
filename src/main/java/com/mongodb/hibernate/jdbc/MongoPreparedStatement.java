@@ -266,8 +266,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 parameters.add(v -> array.set(i, v));
             } else if (value.getBsonType().isContainer()) {
                 parseParameters(value, parameters);
-            } else {
-                fail();
             }
         });
     }
@@ -277,6 +275,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             parseParameters(value.asDocument(), parameters);
         } else if (value.isArray()) {
             parseParameters(value.asArray(), parameters);
+        } else {
+            fail();
         }
     }
 
