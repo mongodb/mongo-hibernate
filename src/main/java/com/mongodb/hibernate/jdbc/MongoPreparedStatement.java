@@ -256,33 +256,21 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, @Nullable Date x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        if (cal == null) {
-            setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
-        } else {
-            throw new NotYetImplementedException();
-        }
+        setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
     }
 
     @Override
     public void setTime(int parameterIndex, @Nullable Time x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        if (cal == null) {
-            setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
-        } else {
-            throw new NotYetImplementedException();
-        }
+        setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
     }
 
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        if (cal == null) {
-            setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
-        } else {
-            throw new NotYetImplementedException();
-        }
+        setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
     }
 
     @Override
