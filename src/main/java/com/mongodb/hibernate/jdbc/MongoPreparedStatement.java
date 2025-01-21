@@ -90,6 +90,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         checkSqlTypeSupported(sqlType);
         setParameter(parameterIndex, BsonNull.VALUE);
     }
@@ -97,48 +98,56 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setBoolean(int parameterIndex, boolean x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, BsonBoolean.valueOf(x));
     }
 
     @Override
     public void setByte(int parameterIndex, byte x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setInt(parameterIndex, x);
     }
 
     @Override
     public void setShort(int parameterIndex, short x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setInt(parameterIndex, x);
     }
 
     @Override
     public void setInt(int parameterIndex, int x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, new BsonInt32(x));
     }
 
     @Override
     public void setLong(int parameterIndex, long x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, new BsonInt64(x));
     }
 
     @Override
     public void setFloat(int parameterIndex, float x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setDouble(parameterIndex, x);
     }
 
     @Override
     public void setDouble(int parameterIndex, double x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, new BsonDouble(x));
     }
 
     @Override
     public void setBigDecimal(int parameterIndex, @Nullable BigDecimal x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         if (x == null) {
             setNull(parameterIndex, Types.NUMERIC);
         } else {
@@ -149,6 +158,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setString(int parameterIndex, @Nullable String x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         if (x == null) {
             setNull(parameterIndex, Types.VARCHAR);
         } else {
@@ -159,6 +169,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setBytes(int parameterIndex, byte @Nullable [] x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         if (x == null) {
             setNull(parameterIndex, Types.VARBINARY);
         } else {
@@ -168,22 +179,29 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     @Override
     public void setDate(int parameterIndex, @Nullable Date x) throws SQLException {
+        checkClosed();
+        checkParameterIndex(parameterIndex);
         setDate(parameterIndex, x, null);
     }
 
     @Override
     public void setTime(int parameterIndex, @Nullable Time x) throws SQLException {
+        checkClosed();
+        checkParameterIndex(parameterIndex);
         setTime(parameterIndex, x, null);
     }
 
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x) throws SQLException {
+        checkClosed();
+        checkParameterIndex(parameterIndex);
         setTimestamp(parameterIndex, x, null);
     }
 
     @Override
     public void setBinaryStream(int parameterIndex, @Nullable InputStream x, int length) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException();
     }
 
@@ -193,12 +211,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setObject(int parameterIndex, @Nullable Object x, int targetSqlType) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
     @Override
     public void setObject(int parameterIndex, @Nullable Object x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
@@ -214,24 +234,28 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setBlob(int parameterIndex, @Nullable Blob x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException();
     }
 
     @Override
     public void setClob(int parameterIndex, @Nullable Clob x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException();
     }
 
     @Override
     public void setArray(int parameterIndex, @Nullable Array x) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException();
     }
 
     @Override
     public void setDate(int parameterIndex, @Nullable Date x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         if (cal == null) {
             setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
         } else {
@@ -242,6 +266,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setTime(int parameterIndex, @Nullable Time x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         if (cal == null) {
             setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
         } else {
@@ -252,6 +277,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         if (cal == null) {
             setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
         } else {
@@ -262,6 +288,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void setNull(int parameterIndex, int sqlType, @Nullable String typeName) throws SQLException {
         checkClosed();
+        checkParameterIndex(parameterIndex);
         checkSqlTypeSupported(sqlType);
         setParameter(parameterIndex, BsonNull.VALUE);
     }
@@ -276,12 +303,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         }
     }
 
-    private void setParameter(int parameterIndex, BsonValue parameterValue) throws SQLException {
-        if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
-            throw new SQLException(format(
-                    "Parameter index invalid: %d; should be within [1, %d]",
-                    parameterIndex, parameterValueSetters.size()));
-        }
+    private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
     }
@@ -343,6 +365,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             default:
                 throw new SQLFeatureNotSupportedException(
                         "Unsupported sql type: " + JDBCType.valueOf(sqlType).getName());
+        }
+    }
+
+    private void checkParameterIndex(int parameterIndex) throws SQLException {
+        if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
+            throw new SQLException(format(
+                    "Parameter index invalid: %d; should be within [1, %d]",
+                    parameterIndex, parameterValueSetters.size()));
         }
     }
 }
