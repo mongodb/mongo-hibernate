@@ -277,8 +277,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setNull(int parameterIndex, int sqlType, @Nullable String typeName) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        checkSqlTypeSupported(sqlType);
-        setParameter(parameterIndex, BsonNull.VALUE);
+        throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
     @SuppressWarnings("JavaUtilDate")
@@ -334,9 +333,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private void checkSqlTypeSupported(int sqlType) throws SQLFeatureNotSupportedException {
         switch (sqlType) {
-            case Types.BOOLEAN:
-            case Types.TINYINT:
-            case Types.SMALLINT:
             case Types.INTEGER:
             case Types.BIGINT:
             case Types.REAL:
@@ -349,6 +345,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             case Types.DATE:
             case Types.TIME:
             case Types.TIMESTAMP:
+            case Types.TIME_WITH_TIMEZONE:
+            case Types.TIMESTAMP_WITH_TIMEZONE:
                 break;
             default:
                 throw new SQLFeatureNotSupportedException(
