@@ -286,33 +286,33 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         parameterValueSetter.accept(parameterValue);
     }
 
-    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameterValueSetters) {
         for (var entry : command.entrySet()) {
             if (isParameterMarker(entry.getValue())) {
-                parameters.add(entry::setValue);
+                parameterValueSetters.add(entry::setValue);
             } else if (entry.getValue().getBsonType().isContainer()) {
-                parseParameters(entry.getValue(), parameters);
+                parseParameters(entry.getValue(), parameterValueSetters);
             }
         }
     }
 
-    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameterValueSetters) {
         for (var i = 0; i < array.size(); i++) {
             var value = array.get(i);
             if (isParameterMarker(value)) {
                 var idx = i;
-                parameters.add(v -> array.set(idx, v));
+                parameterValueSetters.add(v -> array.set(idx, v));
             } else if (value.getBsonType().isContainer()) {
-                parseParameters(value, parameters);
+                parseParameters(value, parameterValueSetters);
             }
         }
     }
 
-    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameters) {
+    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameterValueSetters) {
         if (value.isDocument()) {
-            parseParameters(value.asDocument(), parameters);
+            parseParameters(value.asDocument(), parameterValueSetters);
         } else if (value.isArray()) {
-            parseParameters(value.asArray(), parameters);
+            parseParameters(value.asArray(), parameterValueSetters);
         } else {
             fail("Only BSON container type (BsonDocument or BsonArray) is accepted");
         }
