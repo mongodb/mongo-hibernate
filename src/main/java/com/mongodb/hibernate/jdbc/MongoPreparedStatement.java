@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.assertions.Assertions.fail;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
@@ -314,7 +314,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         } else if (value.isArray()) {
             parseParameters(value.asArray(), parameters);
         } else {
-            fail();
+            fail("Only BSON container type (BsonDocument or BsonArray) is accepted");
         }
     }
 
