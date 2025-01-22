@@ -91,7 +91,15 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        checkSqlTypeSupported(sqlType);
+        switch (sqlType) {
+            case Types.DATALINK:
+            case Types.JAVA_OBJECT:
+            case Types.REF:
+            case Types.ROWID:
+            case Types.SQLXML:
+                throw new SQLFeatureNotSupportedException(
+                        "Unsupported sql type: " + JDBCType.valueOf(sqlType).getName());
+        }
         setParameter(parameterIndex, BsonNull.VALUE);
     }
 
@@ -331,30 +339,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         return value.getBsonType() == BsonType.UNDEFINED;
     }
 
-    private void checkSqlTypeSupported(int sqlType) throws SQLFeatureNotSupportedException {
-        switch (sqlType) {
-            case Types.INTEGER:
-            case Types.BIGINT:
-            case Types.REAL:
-            case Types.DOUBLE:
-            case Types.NUMERIC:
-            case Types.VARCHAR:
-            case Types.LONGVARCHAR:
-            case Types.BINARY:
-            case Types.LONGVARBINARY:
-            case Types.DATE:
-            case Types.TIME:
-            case Types.TIMESTAMP:
-            case Types.TIME_WITH_TIMEZONE:
-            case Types.TIMESTAMP_WITH_TIMEZONE:
-                break;
-            default:
-                throw new SQLFeatureNotSupportedException(
-                        "Unsupported sql type: " + JDBCType.valueOf(sqlType).getName());
-        }
-    }
-
     private void checkParameterIndex(int parameterIndex) throws SQLException {
+        if (parameterValueSetters.isEmpty()) {
+            throw new SQLException("No parameter exists");
+        }
         if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
             throw new SQLException(format(
                     "Parameter index invalid: %d; should be within [1, %d]",
