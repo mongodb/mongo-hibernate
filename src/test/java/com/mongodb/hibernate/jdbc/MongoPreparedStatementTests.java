@@ -53,13 +53,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MongoPreparedStatementTests {
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private MongoClient mongoClient;
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private ClientSession clientSession;
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private MongoConnection mongoConnection;
 
     private MongoPreparedStatement createMongoPreparedStatement(String mql) {
