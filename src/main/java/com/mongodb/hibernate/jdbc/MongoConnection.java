@@ -177,8 +177,9 @@ final class MongoConnection extends ConnectionAdapter {
     public DatabaseMetaData getMetaData() throws SQLException {
         checkClosed();
         try {
-            var commandResult =
-                    mongoClient.getDatabase("admin").runCommand(new BsonDocument("buildinfo", new BsonInt32(1)));
+            var commandResult = mongoClient
+                    .getDatabase("admin")
+                    .runCommand(clientSession, new BsonDocument("buildinfo", new BsonInt32(1)));
             var versionText = commandResult.getString("version");
             var versionArray = commandResult.getList("versionArray", Integer.class);
             if (versionArray.size() < 2) {

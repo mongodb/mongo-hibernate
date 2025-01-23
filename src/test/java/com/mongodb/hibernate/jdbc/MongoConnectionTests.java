@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.RETURNS_SMART_NULLS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
@@ -362,11 +363,16 @@ class MongoConnectionTests {
                 doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
                 var commandResultJson =
                         """
-                                {"ok": 1.0, "version": "8.0.1", "versionArray": [8, 0, 1, 0]}
-                                """;
+                        {
+                            "ok": 1.0,
+                            "version": "8.0.1",
+                            "versionArray": [8, 0, 1, 0]
+                        }""";
                 var commandResultDoc = Document.parse(commandResultJson);
-                doReturn(commandResultDoc).when(mongoDatabase).runCommand(argThat(arg -> "buildinfo"
-                        .equals(arg.toBsonDocument().getFirstKey())));
+                doReturn(commandResultDoc)
+                        .when(mongoDatabase)
+                        .runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
+                                .equals(arg.toBsonDocument().getFirstKey())));
 
                 // when
                 var metaData = assertDoesNotThrow(() -> mongoConnection.getMetaData());
