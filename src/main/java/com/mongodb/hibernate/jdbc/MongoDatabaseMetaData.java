@@ -18,7 +18,6 @@ package com.mongodb.hibernate.jdbc;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
@@ -27,13 +26,6 @@ import java.sql.ResultSet;
  * exceptions in its parent {@link DatabaseMetaDataAdapter adapter interface}.
  */
 final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
-
-    private static final ResultSet EMPTY_RESULT_SET = new ResultSetAdapter() {
-        @Override
-        public boolean next() {
-            return false;
-        }
-    };
 
     public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
@@ -164,53 +156,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     }
 
     @Override
-    public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String types[]) {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getCatalogs() {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getColumns(
-            String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getPrimaryKeys(String catalog, String schema, String table) {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getImportedKeys(String catalog, String schema, String table) {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getCrossReference(
-            String parentCatalog,
-            String parentSchema,
-            String parentTable,
-            String foreignCatalog,
-            String foreignSchema,
-            String foreignTable) {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getTypeInfo() {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
-    public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) {
-        return EMPTY_RESULT_SET;
-    }
-
-    @Override
     public boolean supportsResultSetType(int type) {
         return false;
     }
@@ -263,11 +208,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     }
 
     // ------------------------- JDBC 4.0 -----------------------------------
-
-    @Override
-    public ResultSet getSchemas(String catalog, String schemaPattern) {
-        return EMPTY_RESULT_SET;
-    }
 
     // --------------------------JDBC 4.1 -----------------------------
 
