@@ -77,7 +77,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         return 0;
     }
 
-
     @Override
     public String getSQLKeywords() {
         return "";

@@ -391,8 +391,10 @@ class MongoConnectionTests {
             void testSQLExceptionThrownWhenMetaDataFetchingFailed() {
                 // given
                 doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
-                doThrow(new RuntimeException()).when(mongoDatabase).runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
-                        .equals(arg.toBsonDocument().getFirstKey())));
+                doThrow(new RuntimeException())
+                        .when(mongoDatabase)
+                        .runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
+                                .equals(arg.toBsonDocument().getFirstKey())));
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
             }
