@@ -40,9 +40,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
         throw new SQLFeatureNotSupportedException("isWrapperFor not implemented");
     }
 
-    // ----------------------------------------------------------------------
-    // First, a variety of minor information about the target database.
-
     @Override
     default boolean allProceduresAreCallable() throws SQLException {
         throw new SQLFeatureNotSupportedException("allProceduresAreCallable not implemented");
@@ -207,9 +204,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
     default String getExtraNameCharacters() throws SQLException {
         throw new SQLFeatureNotSupportedException("getExtraNameCharacters not implemented");
     }
-
-    // --------------------------------------------------------------------
-    // Functions describing which features are supported.
 
     @Override
     default boolean supportsAlterTableWithAddColumn() throws SQLException {
@@ -496,12 +490,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
         throw new SQLFeatureNotSupportedException("supportsOpenStatementsAcrossRollback not implemented");
     }
 
-    // ----------------------------------------------------------------------
-    // The following group of methods exposes various limitations
-    // based on the target database with the current driver.
-    // Unless otherwise specified, a result of zero means there is no
-    // limit, or the limit is not known.
-
     @Override
     default int getMaxBinaryLiteralLength() throws SQLException {
         throw new SQLFeatureNotSupportedException("getMaxBinaryLiteralLength not implemented");
@@ -606,8 +594,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
     default int getMaxUserNameLength() throws SQLException {
         throw new SQLFeatureNotSupportedException("getMaxUserNameLength not implemented");
     }
-
-    // ----------------------------------------------------------------------
 
     @Override
     default int getDefaultTransactionIsolation() throws SQLException {
@@ -818,8 +804,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
         throw new SQLFeatureNotSupportedException("getConnection not implemented");
     }
 
-    // ------------------- JDBC 3.0 -------------------------
-
     @Override
     default boolean supportsSavepoints() throws SQLException {
         throw new SQLFeatureNotSupportedException("supportsSavepoints not implemented");
@@ -903,8 +887,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
         throw new SQLFeatureNotSupportedException("supportsStatementPooling not implemented");
     }
 
-    // ------------------------- JDBC 4.0 -----------------------------------
-
     @Override
     default RowIdLifetime getRowIdLifetime() throws SQLException {
         throw new SQLFeatureNotSupportedException("getRowIdLifetime not implemented");
@@ -943,8 +925,6 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
         throw new SQLFeatureNotSupportedException("getFunctionColumns not implemented");
     }
 
-    // --------------------------JDBC 4.1 -----------------------------
-
     @Override
     default ResultSet getPseudoColumns(
             String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
@@ -956,8 +936,4 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
     default boolean generatedKeyAlwaysReturned() throws SQLException {
         throw new SQLFeatureNotSupportedException("generatedKeyAlwaysReturned not implemented");
     }
-
-    // --------------------------JDBC 4.2 -----------------------------
-
-    // JDBC 4.3
 }
