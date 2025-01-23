@@ -45,9 +45,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         this.databaseMinorVersion = databaseMinorVersion;
     }
 
-    // ----------------------------------------------------------------------
-    // First, a variety of minor information about the target database.
-
     @Override
     public String getDatabaseProductName() {
         return MONGO_DATABASE_PRODUCT_NAME;
@@ -103,14 +100,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         return false;
     }
 
-    // ----------------------------------------------------------------------
-    // The following group of methods exposes various limitations
-    // based on the target database with the current driver.
-    // Unless otherwise specified, a result of zero means there is no
-    // limit, or the limit is not known.
-
-    // ----------------------------------------------------------------------
-
     @Override
     public boolean dataDefinitionCausesTransactionCommit() {
         return false;
@@ -135,8 +124,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     public Connection getConnection() {
         return connection;
     }
-
-    // ------------------- JDBC 3.0 -------------------------
 
     @Override
     public boolean supportsNamedParameters() {
@@ -172,14 +159,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     public int getSQLStateType() {
         return DatabaseMetaData.sqlStateSQL;
     }
-
-    // ------------------------- JDBC 4.0 -----------------------------------
-
-    // --------------------------JDBC 4.1 -----------------------------
-
-    // --------------------------JDBC 4.2 -----------------------------
-
-    // JDBC 4.3
 
     @Override
     public boolean isWrapperFor(Class<?> iface) {

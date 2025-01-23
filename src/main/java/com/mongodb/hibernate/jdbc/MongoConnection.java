@@ -242,7 +242,8 @@ final class MongoConnection extends ConnectionAdapter {
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) {
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkClosed();
         return false;
     }
 

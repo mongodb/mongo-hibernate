@@ -200,7 +200,8 @@ final class MongoStatement extends StatementAdapter {
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) {
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkClosed();
         return false;
     }
 

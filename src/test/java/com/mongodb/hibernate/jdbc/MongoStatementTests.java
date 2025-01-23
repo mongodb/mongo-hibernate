@@ -32,6 +32,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.Statement;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
@@ -169,7 +170,8 @@ class MongoStatementTests {
                             Map.entry("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql)),
                             Map.entry("clearBatch()", MongoStatement::clearBatch),
                             Map.entry("executeBatch()", MongoStatement::executeBatch),
-                            Map.entry("getConnection()", MongoStatement::getConnection))
+                            Map.entry("getConnection()", MongoStatement::getConnection),
+                            Map.entry("isWrapperFor(Class)", stmt -> stmt.isWrapperFor(Statement.class)))
                     .entrySet()
                     .stream()
                     .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
