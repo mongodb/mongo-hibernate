@@ -232,12 +232,6 @@ final class MongoConnection extends ConnectionAdapter {
         checkClosed();
     }
 
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        checkClosed();
-        return false;
-    }
-
     private void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("Connection has been closed");
