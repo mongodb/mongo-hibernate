@@ -23,10 +23,10 @@ import java.sql.ResultSet;
 /**
  * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
  *
- * <p>It only focuses on API methods Hibernate ever used. All the unused methods are implemented by failure in its
- * parent class.
+ * <p>It only focuses on API methods MongoDB Dialect will support. All the other methods are implemented by throwing
+ * exceptions in its parent {@link DatabaseMetaDataAdapter adapter interface}.
  */
-public class MongoDatabaseMetaData extends DatabaseMetaDataAdapter {
+final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     private static final ResultSet EMPTY_RESULT_SET = new ResultSetAdapter() {
         @Override
