@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
