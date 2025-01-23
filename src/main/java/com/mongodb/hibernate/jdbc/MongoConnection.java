@@ -175,6 +175,7 @@ final class MongoConnection extends ConnectionAdapter {
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
+        checkClosed();
         try {
             var commandResult =
                     mongoClient.getDatabase("admin").runCommand(new BsonDocument("buildinfo", new BsonInt32(1)));

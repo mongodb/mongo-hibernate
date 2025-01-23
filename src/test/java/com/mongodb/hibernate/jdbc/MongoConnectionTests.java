@@ -41,7 +41,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import org.bson.Document;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -356,15 +355,11 @@ class MongoConnectionTests {
             @Mock(answer = RETURNS_SMART_NULLS)
             private MongoDatabase mongoDatabase;
 
-            @BeforeEach
-            void setUp() {
-                doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
-            }
-
             @Test
             @DisplayName("Happy path for MongoDatabaseMetaData fetching")
             void testSuccess() {
                 // given
+                doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
                 var commandResultJson =
                         """
                                 {"ok": 1.0, "version": "8.0.1", "versionArray": [8, 0, 1, 0]}
@@ -389,6 +384,7 @@ class MongoConnectionTests {
             @DisplayName("SQLException is thrown when MongoConnection#getMetaData() failed while interacting with db")
             void testSQLExceptionThrownWhenMetaDataFetchingFailed() {
                 // given
+                doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
                 doThrow(new RuntimeException()).when(mongoDatabase).runCommand(argThat(arg -> "buildinfo"
                         .equals(arg.toBsonDocument().getFirstKey())));
                 // when && then
