@@ -280,6 +280,11 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
+    @Override
+    public boolean isWrapperFor(Class<?> iface) {
+        return false;
+    }
+
     @SuppressWarnings("JavaUtilDate")
     private void setBsonDateTimeParameter(int parameterIndex, java.util.@Nullable Date date, int sqlType)
             throws SQLException {
