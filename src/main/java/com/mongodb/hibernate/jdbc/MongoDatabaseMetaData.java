@@ -19,8 +19,6 @@ package com.mongodb.hibernate.jdbc;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
@@ -281,11 +279,6 @@ public class MongoDatabaseMetaData extends DatabaseMetaDataAdapter {
     }
 
     // JDBC 4.3
-
-    @Override
-    public <T> T unwrap(Class<T> unwrapType) throws SQLException {
-        throw new SQLFeatureNotSupportedException("unwrap not supported");
-    }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) {

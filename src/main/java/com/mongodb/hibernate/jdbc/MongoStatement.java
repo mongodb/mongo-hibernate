@@ -199,6 +199,11 @@ final class MongoStatement extends StatementAdapter {
         return closed;
     }
 
+    @Override
+    public boolean isWrapperFor(Class<?> iface) {
+        return false;
+    }
+
     private void checkClosed() throws SQLException {
         if (closed) {
             throw new SQLException("Statement has been closed");
