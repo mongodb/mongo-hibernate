@@ -31,6 +31,8 @@ import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
@@ -39,6 +41,8 @@ import org.jspecify.annotations.Nullable;
  * exceptions in its parent class.
  */
 final class MongoConnection extends ConnectionAdapter {
+
+    private final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
 
     // temporary hard-coded database prior to the db config tech design finalizing
     public static final String DATABASE = "mongo-hibernate-test";
@@ -188,6 +192,9 @@ final class MongoConnection extends ConnectionAdapter {
             }
             return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
         } catch (RuntimeException e) {
+            if (logger.isErrorEnabled()) {
+                logger.error("Failed to get metadata", e);
+            }
             throw new SQLException("Failed to get metadata", e);
         }
     }
