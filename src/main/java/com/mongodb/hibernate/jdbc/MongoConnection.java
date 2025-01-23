@@ -20,14 +20,10 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.DatabaseMetaData;
-import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
 import org.jspecify.annotations.Nullable;
@@ -156,30 +152,6 @@ final class MongoConnection implements ConnectionAdapter {
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // SQL99 data types
-
-    @Override
-    public Clob createClob() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public Blob createBlob() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public NClob createNClob() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public SQLXML createSQLXML() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {

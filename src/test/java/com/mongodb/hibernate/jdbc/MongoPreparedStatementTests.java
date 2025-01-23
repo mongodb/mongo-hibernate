@@ -30,8 +30,6 @@ import static org.mockito.Mockito.verify;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
-import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Map;
@@ -209,8 +207,6 @@ class MongoPreparedStatementTests {
                                     "setBinaryStream(int,InputStream,int)", pstmt -> pstmt.setBinaryStream(1, null, 0)),
                             Map.entry("setObject(int,Object,int)", pstmt -> pstmt.setObject(1, null, Types.OTHER)),
                             Map.entry("addBatch()", MongoPreparedStatement::addBatch),
-                            Map.entry("setBlob(int,Blob)", pstmt -> pstmt.setBlob(1, (Blob) null)),
-                            Map.entry("setClob(int,Clob)", pstmt -> pstmt.setClob(1, (Clob) null)),
                             Map.entry("setArray(int,Array)", pstmt -> pstmt.setArray(1, null)),
                             Map.entry("setDate(int,Date,Calendar)", pstmt -> pstmt.setDate(1, null, null)),
                             Map.entry("setTime(int,Time,Calendar)", pstmt -> pstmt.setTime(1, null, null)),

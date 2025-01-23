@@ -25,8 +25,6 @@ import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.ResultSet;
@@ -245,20 +243,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         throw new NotYetImplementedException(
                 "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
-    public void setBlob(int parameterIndex, @Nullable Blob x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public void setClob(int parameterIndex, @Nullable Clob x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException();
     }
 
     @Override
