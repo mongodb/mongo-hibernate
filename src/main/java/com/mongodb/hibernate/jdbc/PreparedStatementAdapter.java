@@ -39,7 +39,7 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 
 /**
- * A {@link java.sql.PreparedStatement} adapter interface that throws exceptions for all its API methods by default.
+ * A {@link java.sql.PreparedStatement} adapter interface that throws exceptions for all its API methods.
  *
  * @see MongoPreparedStatement
  */
