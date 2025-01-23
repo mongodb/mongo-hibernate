@@ -123,7 +123,7 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public boolean supportsResultSetType(int type) {
-        return false;
+        return type == ResultSet.TYPE_FORWARD_ONLY;
     }
 
     @Override
