@@ -67,12 +67,12 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public int getDriverMajorVersion() {
-        return 1;
+        return 1; // to be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-34
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return 0;
+        return 0; // // to be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-34
     }
 
     @Override
