@@ -77,40 +77,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         return 0;
     }
 
-    @Override
-    public boolean storesUpperCaseIdentifiers() {
-        return false;
-    }
-
-    @Override
-    public boolean storesLowerCaseIdentifiers() {
-        return false;
-    }
-
-    @Override
-    public boolean storesMixedCaseIdentifiers() {
-        return true;
-    }
-
-    @Override
-    public boolean supportsMixedCaseQuotedIdentifiers() {
-        return true;
-    }
-
-    @Override
-    public boolean storesUpperCaseQuotedIdentifiers() {
-        return false;
-    }
-
-    @Override
-    public boolean storesLowerCaseQuotedIdentifiers() {
-        return false;
-    }
-
-    @Override
-    public boolean storesMixedCaseQuotedIdentifiers() {
-        return true;
-    }
 
     @Override
     public String getSQLKeywords() {
@@ -212,11 +178,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     // --------------------------JDBC 4.1 -----------------------------
 
     // --------------------------JDBC 4.2 -----------------------------
-
-    @Override
-    public boolean supportsRefCursors() {
-        return false;
-    }
 
     // JDBC 4.3
 
