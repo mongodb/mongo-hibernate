@@ -24,7 +24,7 @@ import org.mockito.stubbing.Answer;
  * href="https://github.com/mockito/mockito/issues/971">issue</a> is resolved, this seems the best way to configure
  * {@link Answers#RETURNS_SMART_NULLS RETURNS_SMART_NULLS} as the default Mock {@link Answer}.
  */
-public class MockitoConfiguration extends DefaultMockitoConfiguration {
+public final class MockitoConfiguration extends DefaultMockitoConfiguration {
 
     public Answer<Object> getDefaultAnswer() {
         return Answers.RETURNS_SMART_NULLS;
