@@ -24,12 +24,18 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.internal.MongoClientImpl;
+import com.mongodb.event.ClusterClosedEvent;
+import com.mongodb.event.ClusterListener;
+import com.mongodb.event.ClusterOpeningEvent;
 import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
-import java.util.UUID;
 import java.util.function.Consumer;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
@@ -55,14 +61,14 @@ class MongoConnectionProviderTests {
 
             // given
 
-            var hostInConnectionString = "my-host";
+            var hostInConnectionString = customizerAppliesConnectionString ? "my-host" : "localhost";
             var connectionString = "mongodb://" + hostInConnectionString;
 
-            var applicationName = "test_" + UUID.randomUUID();
+            var customizedClusterListener = mock(ClusterListener.class);
 
             MongoClientCustomizer customizer = (builder, cs) -> {
-                builder.applicationName(applicationName);
-
+                builder.applyToClusterSettings(
+                        clusterSettingsBuilder -> clusterSettingsBuilder.addClusterListener(customizedClusterListener));
                 assertNotNull(cs);
                 if (customizerAppliesConnectionString) {
                     builder.applyConnectionString(cs);
@@ -71,7 +77,7 @@ class MongoConnectionProviderTests {
 
             // when
             verifyMongoClient(customizer, connectionString, mongoClient -> {
-                var hosts = mongoClient.getCluster().getSettings().getHosts().stream()
+                var hosts = mongoClient.getClusterDescription().getClusterSettings().getHosts().stream()
                         .map(ServerAddress::getHost)
                         .collect(toSet());
 
@@ -81,10 +87,10 @@ class MongoConnectionProviderTests {
                 } else {
                     assertNotEquals(singleton(hostInConnectionString), hosts);
                 }
-                var clusterDescription = mongoClient.getCluster().getClusterId().getDescription();
-                assertEquals(applicationName, clusterDescription);
+                verify(customizedClusterListener).clusterOpening(any(ClusterOpeningEvent.class));
                 verifyMongoDriverInformationPopulated(mongoClient);
             });
+            verify(customizedClusterListener).clusterClosed(any(ClusterClosedEvent.class));
         }
 
         @Test
@@ -111,8 +117,8 @@ class MongoConnectionProviderTests {
         }
     }
 
-    private void verifyMongoDriverInformationPopulated(MongoClientImpl mongoClient) {
-        var driverInformation = mongoClient.getMongoDriverInformation();
+    private void verifyMongoDriverInformationPopulated(MongoClient mongoClient) {
+        var driverInformation = ((MongoClientImpl) mongoClient).getMongoDriverInformation();
         assertAll(
                 () -> assertTrue(driverInformation.getDriverNames().contains(BuildConfig.NAME)),
                 () -> assertTrue(driverInformation.getDriverVersions().contains(BuildConfig.VERSION)));
@@ -121,7 +127,7 @@ class MongoConnectionProviderTests {
     private void verifyMongoClient(
             @Nullable MongoClientCustomizer mongoClientCustomizer,
             @Nullable String connectionString,
-            Consumer<MongoClientImpl> verifier)
+            Consumer<MongoClient> verifier)
             throws ServiceException {
         try (var sessionFactory = buildSessionFactory(mongoClientCustomizer, connectionString)) {
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
