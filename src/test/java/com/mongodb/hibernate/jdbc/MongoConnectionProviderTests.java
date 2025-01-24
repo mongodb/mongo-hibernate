@@ -88,7 +88,6 @@ class MongoConnectionProviderTests {
                     assertNotEquals(singleton(hostInConnectionString), hosts);
                 }
                 verify(customizedClusterListener).clusterOpening(any(ClusterOpeningEvent.class));
-                verifyMongoDriverInformationPopulated(mongoClient);
             });
             verify(customizedClusterListener).clusterClosed(any(ClusterClosedEvent.class));
         }
@@ -105,16 +104,12 @@ class MongoConnectionProviderTests {
         }
     }
 
-    @Nested
-    class NoMongoClientCustomizerUsageTests {
-
-        @Test
-        void testMongoDriverInformationPopulated() {
-            verifyMongoClient(
-                    null,
-                    "mongodb://localhost/db",
-                    MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
-        }
+    @Test
+    void testMongoDriverInformationPopulated() {
+        verifyMongoClient(
+                null,
+                "mongodb://localhost/db",
+                MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
     }
 
     private void verifyMongoDriverInformationPopulated(MongoClient mongoClient) {
