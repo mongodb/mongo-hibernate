@@ -317,7 +317,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         } else if (value.isArray()) {
             parseParameters(value.asArray(), parameterValueSetters);
         } else {
-            fail("Only BSON container type (BsonDocument or BsonArray) is accepted");
+            fail("Only BSON container type (BsonDocument or BsonArray) is accepted; provided type: "
+                    + value.getBsonType());
         }
     }
 
