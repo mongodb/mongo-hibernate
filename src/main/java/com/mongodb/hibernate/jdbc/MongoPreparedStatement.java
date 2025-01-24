@@ -279,11 +279,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
-    @Override
-    public boolean isWrapperFor(Class<?> iface) {
-        return false;
-    }
-
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
