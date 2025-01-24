@@ -89,6 +89,8 @@ spotless {
         // need to add license header manually to package-info.java
         // due to the bug: https://github.com/diffplug/spotless/issues/532
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
+
+        targetExclude("**/generated/**/*.java")
     }
 }
 
@@ -109,7 +111,7 @@ tasks.compileJava {
 // Build Config
 
 buildConfig {
-    buildConfigField("NAME", provider { "${project.name}" })
+    buildConfigField("NAME", provider { project.name })
     buildConfigField("VERSION", provider { "${project.version}" })
     packageName("com.mongodb.hibernate")
 }
