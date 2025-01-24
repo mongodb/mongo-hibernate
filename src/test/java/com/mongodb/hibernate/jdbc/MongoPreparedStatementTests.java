@@ -19,7 +19,6 @@ package com.mongodb.hibernate.jdbc;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Answers.RETURNS_SMART_NULLS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -85,7 +84,7 @@ class MongoPreparedStatementTests {
                  }
                  """;
 
-        @Mock(answer = RETURNS_SMART_NULLS)
+        @Mock
         private MongoDatabase mongoDatabase;
 
         @Captor
