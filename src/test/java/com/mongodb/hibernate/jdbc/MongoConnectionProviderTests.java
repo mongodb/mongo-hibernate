@@ -30,6 +30,7 @@ import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
@@ -69,36 +70,28 @@ class MongoConnectionProviderTests {
             };
 
             // when
-            try (var sessionFactory = buildSessionFactory(customizer, connectionString)) {
-
-                // then
-                var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
-                        .unwrap(SessionFactoryImplementor.class)
-                        .getServiceRegistry()
-                        .requireService(ConnectionProvider.class);
-
-                var mongoClient = (MongoClientImpl) mongoConnectionProvider.getMongoClient();
-                assertNotNull(mongoClient);
-
+            verifyMongoClient(customizer, connectionString, mongoClient -> {
                 var hosts = mongoClient.getCluster().getSettings().getHosts().stream()
                         .map(ServerAddress::getHost)
                         .collect(toSet());
+
+                // then
                 if (customizerAppliesConnectionString) {
                     assertEquals(singleton(hostInConnectionString), hosts);
                 } else {
                     assertNotEquals(singleton(hostInConnectionString), hosts);
                 }
-
                 var clusterDescription = mongoClient.getCluster().getClusterId().getDescription();
                 assertEquals(applicationName, clusterDescription);
-            }
+                verifyMongoDriverInformationPopulated(mongoClient);
+            });
         }
 
         @Test
         void testMongoClientCustomizerThrowException() {
             assertThrows(ServiceException.class, () -> {
                 try (var ignored = buildSessionFactory(
-                        (builder, connectionString) -> {
+                        (builder, cs) -> {
                             throw new NullPointerException();
                         },
                         null)) {}
@@ -106,11 +99,31 @@ class MongoConnectionProviderTests {
         }
     }
 
-    @Test
-    void testMongoDriverInformationPopulated() {
+    @Nested
+    class NoMongoClientCustomizerUsageTests {
 
-        // given
-        try (var sessionFactory = buildSessionFactory("mongodb://localhost/db")) {
+        @Test
+        void testMongoDriverInformationPopulated() {
+            verifyMongoClient(
+                    null,
+                    "mongodb://localhost/db",
+                    MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
+        }
+    }
+
+    private void verifyMongoDriverInformationPopulated(MongoClientImpl mongoClient) {
+        var driverInformation = mongoClient.getMongoDriverInformation();
+        assertAll(
+                () -> assertTrue(driverInformation.getDriverNames().contains(BuildConfig.NAME)),
+                () -> assertTrue(driverInformation.getDriverVersions().contains(BuildConfig.VERSION)));
+    }
+
+    private void verifyMongoClient(
+            @Nullable MongoClientCustomizer mongoClientCustomizer,
+            @Nullable String connectionString,
+            Consumer<MongoClientImpl> verifier)
+            throws ServiceException {
+        try (var sessionFactory = buildSessionFactory(mongoClientCustomizer, connectionString)) {
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
                     .unwrap(SessionFactoryImplementor.class)
                     .getServiceRegistry()
@@ -119,24 +132,12 @@ class MongoConnectionProviderTests {
             var mongoClient = (MongoClientImpl) mongoConnectionProvider.getMongoClient();
             assertNotNull(mongoClient);
 
-            var driverInformation = mongoClient.getMongoDriverInformation();
-            assertAll(
-                    () -> assertTrue(driverInformation.getDriverNames().contains(BuildConfig.NAME)),
-                    () -> assertTrue(driverInformation.getDriverVersions().contains(BuildConfig.VERSION)));
+            verifier.accept(mongoClient);
         }
     }
 
-    private SessionFactory buildSessionFactory(MongoClientCustomizer mongoClientCustomizer) {
-        return buildSessionFactory(mongoClientCustomizer, null);
-    }
-
-    private SessionFactory buildSessionFactory(String connectionString) {
-        return buildSessionFactory(null, connectionString);
-    }
-
     private SessionFactory buildSessionFactory(
-            @Nullable MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString)
-            throws ServiceException {
+            @Nullable MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString) {
         var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
         if (mongoClientCustomizer != null) {
             standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, mongoClientCustomizer);

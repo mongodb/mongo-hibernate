@@ -124,11 +124,16 @@ public final class MongoConnectionProvider
         } else {
             clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
         }
+
         var clientSettings = clientSettingsBuilder.build();
+
+        assertNotNull(BuildConfig.NAME);
+        assertNotNull(BuildConfig.VERSION);
         var driverInfo = MongoDriverInformation.builder()
                 .driverName(BuildConfig.NAME)
                 .driverVersion(BuildConfig.VERSION)
                 .build();
+
         mongoClient = MongoClients.create(clientSettings, driverInfo);
     }
 
