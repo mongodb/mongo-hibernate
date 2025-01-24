@@ -40,7 +40,6 @@ import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
-import org.bson.BsonDateTime;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
@@ -256,21 +255,21 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, @Nullable Date x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setBsonDateTimeParameter(parameterIndex, x, Types.DATE);
+        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTime(int parameterIndex, @Nullable Time x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setBsonDateTimeParameter(parameterIndex, x, Types.TIME);
+        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTimestamp(int parameterIndex, @Nullable Timestamp x, @Nullable Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setBsonDateTimeParameter(parameterIndex, x, Types.TIMESTAMP);
+        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
@@ -283,16 +282,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public boolean isWrapperFor(Class<?> iface) {
         return false;
-    }
-
-    @SuppressWarnings("JavaUtilDate")
-    private void setBsonDateTimeParameter(int parameterIndex, java.util.@Nullable Date date, int sqlType)
-            throws SQLException {
-        if (date == null) {
-            setNull(parameterIndex, sqlType);
-        } else {
-            setParameter(parameterIndex, new BsonDateTime(date.getTime()));
-        }
     }
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
