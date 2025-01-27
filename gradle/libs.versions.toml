@@ -14,6 +14,7 @@ mongo-java-driver-sync = "5.3.0"
 slf4j-api = "2.0.16"
 logback-classic = "1.5.15"
 mockito = "5.14.2"
+buildconfig = "5.5.1"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -30,3 +31,4 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone" }
+buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
