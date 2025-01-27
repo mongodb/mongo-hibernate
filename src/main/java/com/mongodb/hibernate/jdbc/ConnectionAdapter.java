@@ -39,283 +39,283 @@ import java.util.concurrent.Executor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link java.sql.Connection} implementation class that throws exceptions for all its API methods.
+ * A {@link java.sql.Connection} adapter interface that throws exceptions for all its API methods.
  *
  * @see MongoConnection
  */
-abstract class ConnectionAdapter implements Connection {
+interface ConnectionAdapter extends Connection {
 
     @Override
-    public Statement createStatement() throws SQLException {
+    default Statement createStatement() throws SQLException {
         throw new SQLFeatureNotSupportedException("createStatement not implemented");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql) throws SQLException {
+    default PreparedStatement prepareStatement(String sql) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareStatement not implemented");
     }
 
     @Override
-    public CallableStatement prepareCall(String sql) throws SQLException {
+    default CallableStatement prepareCall(String sql) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareCall not implemented");
     }
 
     @Override
-    public String nativeSQL(String sql) throws SQLException {
+    default String nativeSQL(String sql) throws SQLException {
         throw new SQLFeatureNotSupportedException("nativeSQL not implemented");
     }
 
     @Override
-    public void setAutoCommit(boolean autoCommit) throws SQLException {
+    default void setAutoCommit(boolean autoCommit) throws SQLException {
         throw new SQLFeatureNotSupportedException("setAutoCommit not implemented");
     }
 
     @Override
-    public boolean getAutoCommit() throws SQLException {
+    default boolean getAutoCommit() throws SQLException {
         throw new SQLFeatureNotSupportedException("getAutoCommit not implemented");
     }
 
     @Override
-    public void commit() throws SQLException {
+    default void commit() throws SQLException {
         throw new SQLFeatureNotSupportedException("commit not implemented");
     }
 
     @Override
-    public void rollback() throws SQLException {
+    default void rollback() throws SQLException {
         throw new SQLFeatureNotSupportedException("rollback not implemented");
     }
 
     @Override
-    public void close() throws SQLException {
+    default void close() throws SQLException {
         throw new SQLFeatureNotSupportedException("close not implemented");
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    default boolean isClosed() throws SQLException {
         throw new SQLFeatureNotSupportedException("isClosed not implemented");
     }
 
     @Override
-    public DatabaseMetaData getMetaData() throws SQLException {
+    default DatabaseMetaData getMetaData() throws SQLException {
         throw new SQLFeatureNotSupportedException("geetMetaData not implemented");
     }
 
     @Override
-    public void setReadOnly(boolean readOnly) throws SQLException {
+    default void setReadOnly(boolean readOnly) throws SQLException {
         throw new SQLFeatureNotSupportedException("setReadOnly not implemented");
     }
 
     @Override
-    public boolean isReadOnly() throws SQLException {
+    default boolean isReadOnly() throws SQLException {
         throw new SQLFeatureNotSupportedException("isReadOnly not implemented");
     }
 
     @Override
-    public void setCatalog(String catalog) throws SQLException {
+    default void setCatalog(String catalog) throws SQLException {
         throw new SQLFeatureNotSupportedException("setCatalog not implemented");
     }
 
     @Override
-    public @Nullable String getCatalog() throws SQLException {
+    default @Nullable String getCatalog() throws SQLException {
         throw new SQLFeatureNotSupportedException("getCatalog not implemented");
     }
 
     @Override
-    public void setTransactionIsolation(int level) throws SQLException {
+    default void setTransactionIsolation(int level) throws SQLException {
         throw new SQLFeatureNotSupportedException("setTransactionIsolation not implemented");
     }
 
     @Override
-    public int getTransactionIsolation() throws SQLException {
+    default int getTransactionIsolation() throws SQLException {
         throw new SQLFeatureNotSupportedException("getTransactionIsolation not implemented");
     }
 
     @Override
-    public @Nullable SQLWarning getWarnings() throws SQLException {
+    default @Nullable SQLWarning getWarnings() throws SQLException {
         throw new SQLFeatureNotSupportedException("getWarnings not implemented");
     }
 
     @Override
-    public void clearWarnings() throws SQLException {
+    default void clearWarnings() throws SQLException {
         throw new SQLFeatureNotSupportedException("clearWarnings not implemented");
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
+    default Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
         throw new SQLFeatureNotSupportedException("createStatement not implemented");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
+    default PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareStatement not implemented");
     }
 
     @Override
-    public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
+    default CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareCall not implemented");
     }
 
     @Override
-    public Map<String, Class<?>> getTypeMap() throws SQLException {
+    default Map<String, Class<?>> getTypeMap() throws SQLException {
         throw new SQLFeatureNotSupportedException("getTypeMap not implemented");
     }
 
     @Override
-    public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
+    default void setTypeMap(Map<String, Class<?>> map) throws SQLException {
         throw new SQLFeatureNotSupportedException("setTypeMap not implemented");
     }
 
     @Override
-    public void setHoldability(int holdability) throws SQLException {
+    default void setHoldability(int holdability) throws SQLException {
         throw new SQLFeatureNotSupportedException("setHoldability not implemented");
     }
 
     @Override
-    public int getHoldability() throws SQLException {
+    default int getHoldability() throws SQLException {
         throw new SQLFeatureNotSupportedException("getHoldability not implemented");
     }
 
     @Override
-    public Savepoint setSavepoint() throws SQLException {
+    default Savepoint setSavepoint() throws SQLException {
         throw new SQLFeatureNotSupportedException("setSavepoint not implemented");
     }
 
     @Override
-    public Savepoint setSavepoint(String name) throws SQLException {
+    default Savepoint setSavepoint(String name) throws SQLException {
         throw new SQLFeatureNotSupportedException("setSavepoint not implemented");
     }
 
     @Override
-    public void rollback(Savepoint savepoint) throws SQLException {
+    default void rollback(Savepoint savepoint) throws SQLException {
         throw new SQLFeatureNotSupportedException("rollback not implemented");
     }
 
     @Override
-    public void releaseSavepoint(Savepoint savepoint) throws SQLException {
+    default void releaseSavepoint(Savepoint savepoint) throws SQLException {
         throw new SQLFeatureNotSupportedException("releaseSavepoint not implemented");
     }
 
     @Override
-    public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
+    default Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
         throw new SQLFeatureNotSupportedException("createStatement not implemented");
     }
 
     @Override
-    public PreparedStatement prepareStatement(
+    default PreparedStatement prepareStatement(
             String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareStatement not implemented");
     }
 
     @Override
-    public CallableStatement prepareCall(
+    default CallableStatement prepareCall(
             String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareCall not implemented");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
+    default PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareStatement not implemented");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
+    default PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareStatement not implemented");
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
+    default PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
         throw new SQLFeatureNotSupportedException("prepareStatement not implemented");
     }
 
     @Override
-    public Clob createClob() throws SQLException {
+    default Clob createClob() throws SQLException {
         throw new SQLFeatureNotSupportedException("createClob not implemented");
     }
 
     @Override
-    public Blob createBlob() throws SQLException {
+    default Blob createBlob() throws SQLException {
         throw new SQLFeatureNotSupportedException("createBlob not implemented");
     }
 
     @Override
-    public NClob createNClob() throws SQLException {
+    default NClob createNClob() throws SQLException {
         throw new SQLFeatureNotSupportedException("createNClob not implemented");
     }
 
     @Override
-    public SQLXML createSQLXML() throws SQLException {
+    default SQLXML createSQLXML() throws SQLException {
         throw new SQLFeatureNotSupportedException("createSQLXML not implemented");
     }
 
     @Override
-    public boolean isValid(int timeout) throws SQLException {
+    default boolean isValid(int timeout) throws SQLException {
         throw new SQLFeatureNotSupportedException("isValid not implemented");
     }
 
     @Override
-    public void setClientInfo(String name, String value) throws SQLClientInfoException {
+    default void setClientInfo(String name, String value) throws SQLClientInfoException {
         throw new SQLClientInfoException("setClientInfo not implemented", Collections.emptyMap());
     }
 
     @Override
-    public void setClientInfo(Properties properties) throws SQLClientInfoException {
+    default void setClientInfo(Properties properties) throws SQLClientInfoException {
         throw new SQLClientInfoException("setClientInfo not implemented", Collections.emptyMap());
     }
 
     @Override
-    public String getClientInfo(String name) throws SQLException {
+    default String getClientInfo(String name) throws SQLException {
         throw new SQLFeatureNotSupportedException("getClientInfo not implemented");
     }
 
     @Override
-    public Properties getClientInfo() throws SQLException {
+    default Properties getClientInfo() throws SQLException {
         throw new SQLFeatureNotSupportedException("getClientInfo not implemented");
     }
 
     @Override
-    public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
+    default Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         throw new SQLFeatureNotSupportedException("createArrayOf not implemented");
     }
 
     @Override
-    public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
+    default Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         throw new SQLFeatureNotSupportedException("createStruct not implemented");
     }
 
     @Override
-    public void setSchema(String schema) throws SQLException {
+    default void setSchema(String schema) throws SQLException {
         throw new SQLFeatureNotSupportedException("setSchema not implemented");
     }
 
     @Override
-    public @Nullable String getSchema() throws SQLException {
+    default @Nullable String getSchema() throws SQLException {
         throw new SQLFeatureNotSupportedException("getSchema not implemented");
     }
 
     @Override
-    public void abort(Executor executor) throws SQLException {
+    default void abort(Executor executor) throws SQLException {
         throw new SQLFeatureNotSupportedException("abort not implemented");
     }
 
     @Override
-    public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
+    default void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
         throw new SQLFeatureNotSupportedException("setNetworkTimeout not implemented");
     }
 
     @Override
-    public int getNetworkTimeout() throws SQLException {
+    default int getNetworkTimeout() throws SQLException {
         throw new SQLFeatureNotSupportedException("getNetworkTimeout not implemented");
     }
 
     @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
+    default <T> T unwrap(Class<T> iface) throws SQLException {
         throw new SQLFeatureNotSupportedException("unwrap not implemented");
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+    default boolean isWrapperFor(Class<?> iface) throws SQLException {
         throw new SQLFeatureNotSupportedException("isWrapperFor not implemented");
     }
 }

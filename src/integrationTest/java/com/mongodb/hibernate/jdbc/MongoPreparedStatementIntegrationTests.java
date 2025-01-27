@@ -19,8 +19,11 @@ package com.mongodb.hibernate.jdbc;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -34,7 +37,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class MongoStatementIntegrationTests {
+class MongoPreparedStatementIntegrationTests {
 
     private static @Nullable SessionFactory sessionFactory;
 
@@ -91,53 +94,25 @@ class MongoStatementIntegrationTests {
                             _id: 1,
                             title: "War and Peace",
                             author: "Leo Tolstoy",
-                            outOfStock: false
+                            outOfStock: false,
+                            tags: [ "classic", "tolstoy" ]
                         },
                         {
                             _id: 2,
                             title: "Anna Karenina",
                             author: "Leo Tolstoy",
-                            outOfStock: false
+                            outOfStock: false,
+                            tags: [ "classic", "tolstoy" ]
                         },
                         {
                             _id: 3,
                             title: "Crime and Punishment",
                             author: "Fyodor Dostoevsky",
-                            outOfStock: false
+                            outOfStock: false,
+                            tags: [ "classic", "Dostoevsky", "literature" ]
                         }
                     ]
                 }""";
-
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testInsert(boolean autoCommit) {
-            var expectedDocs = Set.of(
-                    BsonDocument.parse(
-                            """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false
-                               }"""));
-            assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
-        }
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
@@ -146,20 +121,6 @@ class MongoStatementIntegrationTests {
             prepareData();
 
             // when && then
-            var updateMql =
-                    """
-                    {
-                        update: "books",
-                        updates: [
-                            {
-                                q: { author: "Leo Tolstoy" },
-                                u: {
-                                    $set: { outOfStock: true }
-                                },
-                                multi: true
-                            }
-                        ]
-                    }""";
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
@@ -167,7 +128,8 @@ class MongoStatementIntegrationTests {
                                     _id: 1,
                                     title: "War and Peace",
                                     author: "Leo Tolstoy",
-                                    outOfStock: true
+                                    outOfStock: true,
+                                    tags: [ "classic", "tolstoy", "literature" ]
                                 }"""),
                     BsonDocument.parse(
                             """
@@ -175,7 +137,8 @@ class MongoStatementIntegrationTests {
                                     _id: 2,
                                     title: "Anna Karenina",
                                     author: "Leo Tolstoy",
-                                    outOfStock: true
+                                    outOfStock: true,
+                                    tags: [ "classic", "tolstoy", "literature" ]
                                 }"""),
                     BsonDocument.parse(
                             """
@@ -183,47 +146,38 @@ class MongoStatementIntegrationTests {
                                    _id: 3,
                                    title: "Crime and Punishment",
                                    author: "Fyodor Dostoevsky",
-                                   outOfStock: false
+                                   outOfStock: false,
+                                   tags: [ "classic", "Dostoevsky", "literature" ]
                                }"""));
-            assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
-        }
-
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testDelete(boolean autoCommit) {
-            // given
-            prepareData();
-
-            // when && then
-            var deleteMql =
-                    """
-                    {
-                        delete: "books",
-                        deletes: [
-                            {
-                                q: { author: "Leo Tolstoy" },
-                                limit: 1
-                            }
-                        ]
-                    }""";
-            var expectedDocs = Set.of(
-                    BsonDocument.parse(
-                            """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
-                    BsonDocument.parse(
-                            """
-                               {
-                                    _id: 3,
-                                    title: "Crime and Punishment",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                               }"""));
-            assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
+            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+                try {
+                    var pstmt = (MongoPreparedStatement)
+                            connection.prepareStatement(
+                                    """
+                                        {
+                                            update: "books",
+                                            updates: [
+                                                {
+                                                    q: { author: { $undefined: true } },
+                                                    u: {
+                                                        $set: {
+                                                            outOfStock: { $undefined: true }
+                                                        },
+                                                        $push: { tags: { $undefined: true } }
+                                                    },
+                                                    multi: true
+                                                }
+                                            ]
+                                        }""");
+                    pstmt.setString(1, "Leo Tolstoy");
+                    pstmt.setBoolean(2, true);
+                    pstmt.setString(3, "literature");
+                    return pstmt;
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+            assertExecuteUpdate(pstmtProvider, autoCommit, 2, expectedDocs);
         }
 
         private void prepareData() {
@@ -235,18 +189,21 @@ class MongoStatementIntegrationTests {
         }
 
         private void assertExecuteUpdate(
-                String mql, boolean autoCommit, int expectedRowCount, Set<? extends BsonDocument> expectedDocuments) {
+                Function<Connection, MongoPreparedStatement> pstmtProvider,
+                boolean autoCommit,
+                int expectedUpdatedRowCount,
+                Set<? extends BsonDocument> expectedDocuments) {
             assertNotNull(session).doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
-                try (var stmt = (MongoStatement) connection.createStatement()) {
+                try (var pstmt = pstmtProvider.apply(connection)) {
                     try {
-                        assertEquals(expectedRowCount, stmt.executeUpdate(mql));
+                        assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate());
                     } finally {
                         if (!autoCommit) {
                             connection.commit();
                         }
                     }
-                    var realDocuments = stmt.getMongoDatabase()
+                    var realDocuments = pstmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
                             .into(new HashSet<>());

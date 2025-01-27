@@ -20,14 +20,10 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.DatabaseMetaData;
-import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Struct;
 import org.jspecify.annotations.Nullable;
@@ -36,9 +32,9 @@ import org.jspecify.annotations.Nullable;
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
  * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent class.
+ * exceptions in its parent {@linkplain ConnectionAdapter adapter interface}.
  */
-final class MongoConnection extends ConnectionAdapter {
+final class MongoConnection implements ConnectionAdapter {
 
     // temporary hard-coded database prior to the db config tech design finalizing
     public static final String DATABASE = "mongo-hibernate-test";
@@ -143,8 +139,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
+        return new MongoPreparedStatement(mongoClient, clientSession, this, mql);
     }
 
     @Override
@@ -152,35 +147,11 @@ final class MongoConnection extends ConnectionAdapter {
             throws SQLException {
         checkClosed();
         throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
+                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // SQL99 data types
-
-    @Override
-    public Clob createClob() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public Blob createBlob() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public NClob createNClob() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public SQLXML createSQLXML() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException();
-    }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
@@ -244,6 +215,11 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();
+    }
+
+    @Override
+    public boolean isWrapperFor(Class<?> iface) {
+        return false;
     }
 
     private void checkClosed() throws SQLException {

@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Answers.RETURNS_SMART_NULLS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.same;
@@ -49,13 +48,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MongoStatementTests {
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private MongoClient mongoClient;
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private ClientSession clientSession;
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private MongoConnection mongoConnection;
 
     @InjectMocks
@@ -90,7 +89,7 @@ class MongoStatementTests {
 
         @Test
         @DisplayName("SQLException is thrown when database access error occurs")
-        void testSQLExceptionThrownWhenDBAccessFailed(@Mock(answer = RETURNS_SMART_NULLS) MongoDatabase mongoDatabase) {
+        void testSQLExceptionThrownWhenDBAccessFailed(@Mock MongoDatabase mongoDatabase) {
             // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
             var dbAccessException = new RuntimeException();
@@ -125,7 +124,7 @@ class MongoStatementTests {
 
             // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
-            assertEquals("Statement has been closed", exception.getMessage());
+            assertEquals("MongoStatement has been closed", exception.getMessage());
         }
 
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {
