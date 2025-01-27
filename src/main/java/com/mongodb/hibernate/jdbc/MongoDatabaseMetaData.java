@@ -16,9 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
+
+import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.util.StringTokenizer;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
@@ -31,11 +37,16 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
 
+    @VisibleForTesting(otherwise = PRIVATE)
+    record VersionNumPair(int majorVersion, int minVersion) {}
+
     private final Connection connection;
 
     private final String databaseVersionText;
     private final int databaseMajorVersion;
     private final int databaseMinorVersion;
+
+    private final VersionNumPair versionNumPair;
 
     MongoDatabaseMetaData(
             Connection connection, String databaseVersionText, int databaseMajorVersion, int databaseMinorVersion) {
@@ -43,6 +54,7 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         this.databaseVersionText = databaseVersionText;
         this.databaseMajorVersion = databaseMajorVersion;
         this.databaseMinorVersion = databaseMinorVersion;
+        versionNumPair = parseVersionNumPair(assertNotNull(BuildConfig.VERSION));
     }
 
     @Override
@@ -62,17 +74,17 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public String getDriverVersion() {
-        return getDriverMajorVersion() + "." + getDriverMinorVersion();
+        return BuildConfig.VERSION;
     }
 
     @Override
     public int getDriverMajorVersion() {
-        return 1; // to be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-34
+        return versionNumPair.majorVersion;
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return 0; // // to be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-34
+        return versionNumPair.minVersion;
     }
 
     @Override
@@ -163,5 +175,22 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     @Override
     public boolean isWrapperFor(Class<?> iface) {
         return false;
+    }
+
+    @VisibleForTesting(otherwise = PRIVATE)
+    static VersionNumPair parseVersionNumPair(String versionText) {
+        int majorVersion = 0;
+        int minVersion = 0;
+        var tokenizer = new StringTokenizer(versionText, ".");
+        if (tokenizer.hasMoreTokens()) {
+            try {
+                majorVersion = Integer.parseInt(tokenizer.nextToken());
+                if (tokenizer.hasMoreTokens()) {
+                    minVersion = Integer.parseInt(tokenizer.nextToken());
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return new VersionNumPair(majorVersion, minVersion);
     }
 }
