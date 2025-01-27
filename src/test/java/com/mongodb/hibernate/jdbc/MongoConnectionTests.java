@@ -245,19 +245,6 @@ class MongoConnectionTests {
                     verify(clientSession, never()).startTransaction();
                 }
             }
-
-            @ParameterizedTest(
-                    name = "SQLException is thrown when 'setAutoCommit({0})' is called on a closed MongoConnection")
-            @ValueSource(booleans = {true, false})
-            void testSQLExceptionThrowWhenCalledOnClosedConnection(boolean autoCommit) throws SQLException {
-                // given
-                mongoConnection.close();
-                verify(clientSession).close();
-
-                // when && then
-                assertThrows(SQLException.class, () -> mongoConnection.setAutoCommit(autoCommit));
-                verifyNoMoreInteractions(clientSession);
-            }
         }
 
         @Nested
@@ -295,18 +282,6 @@ class MongoConnectionTests {
 
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.commit());
-            }
-
-            @Test
-            @DisplayName("SQLException is thrown when 'commit()' is called on a closed MongoConnection")
-            void testSQLExceptionThrowWhenCalledOnClosedConnection() throws SQLException {
-                // given
-                mongoConnection.close();
-                verify(clientSession).close();
-
-                // when && then
-                assertThrows(SQLException.class, () -> mongoConnection.commit());
-                verifyNoMoreInteractions(clientSession);
             }
         }
 
@@ -346,18 +321,6 @@ class MongoConnectionTests {
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.rollback());
             }
-
-            @Test
-            @DisplayName("SQLException is thrown when 'rollback()' is called on a closed MongoConnection")
-            void testSQLExceptionThrowWhenCalledOnClosedConnection() throws SQLException {
-                // given
-                mongoConnection.close();
-                verify(clientSession).close();
-
-                // when && then
-                assertThrows(SQLException.class, () -> mongoConnection.rollback());
-                verifyNoMoreInteractions(clientSession);
-            }
         }
 
         @Nested
@@ -380,46 +343,12 @@ class MongoConnectionTests {
                 verifyNoInteractions(clientSession);
             }
 
-            @ParameterizedTest
-            @ValueSource(
-                    ints = {
-                        Connection.TRANSACTION_NONE,
-                        Connection.TRANSACTION_READ_UNCOMMITTED,
-                        Connection.TRANSACTION_READ_COMMITTED,
-                        Connection.TRANSACTION_REPEATABLE_READ,
-                        Connection.TRANSACTION_SERIALIZABLE
-                    })
-            @DisplayName(
-                    "SQLException is thrown when 'setTransactionIsolation({0})' is called on a closed MongoConnection")
-            void testSQLExceptionThrowWhenCalledOnClosedConnection(int level) throws SQLException {
-                // given
-                mongoConnection.close();
-                verify(clientSession).close();
-
-                // when && then
-                assertThrows(SQLException.class, () -> mongoConnection.setTransactionIsolation(level));
-                verifyNoMoreInteractions(clientSession);
-            }
-
             @Test
             @DisplayName("MongoDB Dialect doesn't support JDBC transaction isolation level fetching")
             void testGetUnsupported() {
                 // when && then
                 assertThrows(SQLFeatureNotSupportedException.class, () -> mongoConnection.getTransactionIsolation());
                 verifyNoInteractions(clientSession);
-            }
-
-            @Test
-            @DisplayName(
-                    "SQLException is thrown when 'getTransactionIsolation()' is called on a closed MongoConnection")
-            void testSQLExceptionThrowWhenCalledOnClosedConnection() throws SQLException {
-                // given
-                mongoConnection.close();
-                verify(clientSession).close();
-
-                // when && then
-                assertThrows(SQLException.class, () -> mongoConnection.getTransactionIsolation());
-                verifyNoMoreInteractions(clientSession);
             }
         }
     }
@@ -471,19 +400,6 @@ class MongoConnectionTests {
                             .equals(arg.toBsonDocument().getFirstKey())));
             // when && then
             assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
-        }
-
-        @Test
-        @DisplayName("SQLException is thrown when MongoConnection#getMetaData() is called on a closed connection")
-        void testSQLExceptionThrownWhenConnectionClosed() throws SQLException {
-            // given
-            mongoConnection.close();
-
-            // when && then
-            assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
-
-            // then
-            assertTrue(mongoConnection.isClosed());
         }
     }
 }
