@@ -23,8 +23,10 @@ import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.io.IOException;
@@ -122,7 +124,17 @@ public final class MongoConnectionProvider
         } else {
             clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
         }
-        mongoClient = MongoClients.create(clientSettingsBuilder.build());
+
+        var clientSettings = clientSettingsBuilder.build();
+
+        assertNotNull(BuildConfig.NAME);
+        assertNotNull(BuildConfig.VERSION);
+        var driverInfo = MongoDriverInformation.builder()
+                .driverName(BuildConfig.NAME)
+                .driverVersion(BuildConfig.VERSION)
+                .build();
+
+        mongoClient = MongoClients.create(clientSettings, driverInfo);
     }
 
     private static ConnectionString getConnectionString(Object jdbcUrl) {

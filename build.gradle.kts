@@ -16,10 +16,13 @@
 
 import net.ltgt.gradle.errorprone.errorprone
 
+version = "1.0.0-SNAPSHOT"
+
 plugins {
     `java-library`
     alias(libs.plugins.spotless)
     alias(libs.plugins.errorprone)
+    alias(libs.plugins.buildconfig)
 }
 
 repositories {
@@ -86,6 +89,8 @@ spotless {
         // need to add license header manually to package-info.java
         // due to the bug: https://github.com/diffplug/spotless/issues/532
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
+
+        targetExclude("**/generated/**/*.java")
     }
 }
 
@@ -100,6 +105,15 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.compileJava {
     // The check defaults to a warning, bump it up to an error for the main sources
     options.errorprone.error("NullAway")
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Build Config
+
+buildConfig {
+    buildConfigField("NAME", provider { project.name })
+    buildConfigField("VERSION", provider { "${project.version}" })
+    packageName("com.mongodb.hibernate")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
