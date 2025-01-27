@@ -38,9 +38,9 @@ import org.slf4j.LoggerFactory;
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
  * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent class.
+ * exceptions in its parent {@linkplain ConnectionAdapter adapter interface}.
  */
-final class MongoConnection extends ConnectionAdapter {
+final class MongoConnection implements ConnectionAdapter {
 
     private final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
 
@@ -147,8 +147,7 @@ final class MongoConnection extends ConnectionAdapter {
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
+        return new MongoPreparedStatement(mongoClient, clientSession, this, mql);
     }
 
     @Override
@@ -156,7 +155,7 @@ final class MongoConnection extends ConnectionAdapter {
             throws SQLException {
         checkClosed();
         throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-13");
+                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,8 +241,7 @@ final class MongoConnection extends ConnectionAdapter {
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        checkClosed();
+    public boolean isWrapperFor(Class<?> iface) {
         return false;
     }
 

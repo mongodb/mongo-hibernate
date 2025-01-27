@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.hibernate.jdbc.MongoConnection.DATABASE;
+import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -36,9 +37,9 @@ import org.jspecify.annotations.Nullable;
  * MongoDB Dialect's JDBC {@link java.sql.Statement} implementation class.
  *
  * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent class.
+ * exceptions in its parent {@link StatementAdapter adapter interface}.
  */
-final class MongoStatement extends StatementAdapter {
+class MongoStatement implements StatementAdapter {
 
     private final MongoClient mongoClient;
     private final MongoConnection mongoConnection;
@@ -63,6 +64,10 @@ final class MongoStatement extends StatementAdapter {
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
         var command = parse(mql);
+        return executeUpdateCommand(command);
+    }
+
+    int executeUpdateCommand(BsonDocument command) throws SQLException {
         startTransactionIfNeeded();
         try {
             return mongoClient
@@ -70,7 +75,7 @@ final class MongoStatement extends StatementAdapter {
                     .runCommand(clientSession, command)
                     .getInteger("n");
         } catch (Exception e) {
-            throw new SQLException("Failed to run #executeUpdate(String)", e);
+            throw new SQLException("Failed to execute update command", e);
         }
     }
 
@@ -200,14 +205,13 @@ final class MongoStatement extends StatementAdapter {
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        checkClosed();
+    public boolean isWrapperFor(Class<?> iface) {
         return false;
     }
 
-    private void checkClosed() throws SQLException {
+    void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("Statement has been closed");
+            throw new SQLException(format("%s has been closed", getClass().getSimpleName()));
         }
     }
 
@@ -227,11 +231,6 @@ final class MongoStatement extends StatementAdapter {
     /**
      * Starts transaction for the first {@link java.sql.Statement} executing if
      * {@linkplain MongoConnection#getAutoCommit() auto-commit} is disabled.
-     *
-     * @see #executeQuery(String)
-     * @see #executeUpdate(String)
-     * @see #execute(String)
-     * @see #executeBatch()
      */
     private void startTransactionIfNeeded() throws SQLException {
         if (!mongoConnection.getAutoCommit() && !clientSession.hasActiveTransaction()) {

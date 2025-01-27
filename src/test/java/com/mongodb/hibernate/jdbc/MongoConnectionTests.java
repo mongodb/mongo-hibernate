@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Answers.RETURNS_SMART_NULLS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,13 +34,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoDatabase;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Stream;
+
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -58,10 +58,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MongoConnectionTests {
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private ClientSession clientSession;
 
-    @Mock(answer = RETURNS_SMART_NULLS)
+    @Mock
     private MongoClient mongoClient;
 
     @InjectMocks
@@ -325,7 +325,7 @@ class MongoConnectionTests {
     @Nested
     class GetMetaDataTests {
 
-        @Mock(answer = RETURNS_SMART_NULLS)
+        @Mock
         private MongoDatabase mongoDatabase;
 
         @Test
