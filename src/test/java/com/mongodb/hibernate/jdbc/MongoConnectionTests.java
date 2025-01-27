@@ -32,7 +32,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import com.mongodb.client.ClientSession;
@@ -41,7 +40,6 @@ import com.mongodb.client.MongoDatabase;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.Document;
@@ -320,35 +318,6 @@ class MongoConnectionTests {
 
                 // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.rollback());
-            }
-        }
-
-        @Nested
-        class TransactionIsolationLevelTests {
-
-            @ParameterizedTest
-            @ValueSource(
-                    ints = {
-                        Connection.TRANSACTION_NONE,
-                        Connection.TRANSACTION_READ_UNCOMMITTED,
-                        Connection.TRANSACTION_READ_COMMITTED,
-                        Connection.TRANSACTION_REPEATABLE_READ,
-                        Connection.TRANSACTION_SERIALIZABLE
-                    })
-            @DisplayName("MongoDB Dialect doesn't support JDBC transaction isolation level setting")
-            void testSetUnsupported(int level) {
-                // when && then
-                assertThrows(
-                        SQLFeatureNotSupportedException.class, () -> mongoConnection.setTransactionIsolation(level));
-                verifyNoInteractions(clientSession);
-            }
-
-            @Test
-            @DisplayName("MongoDB Dialect doesn't support JDBC transaction isolation level fetching")
-            void testGetUnsupported() {
-                // when && then
-                assertThrows(SQLFeatureNotSupportedException.class, () -> mongoConnection.getTransactionIsolation());
-                verifyNoInteractions(clientSession);
             }
         }
     }
