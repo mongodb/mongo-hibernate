@@ -192,10 +192,11 @@ final class MongoConnection extends ConnectionAdapter {
             }
             return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
         } catch (RuntimeException e) {
+            var msg = "Failed to get metadata";
             if (logger.isErrorEnabled()) {
-                logger.error("Failed to get metadata", e);
+                logger.error(msg, e);
             }
-            throw new SQLException("Failed to get metadata", e);
+            throw new SQLException(msg, e);
         }
     }
 
