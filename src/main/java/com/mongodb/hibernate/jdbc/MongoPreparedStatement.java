@@ -50,7 +50,6 @@ import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
-import org.jspecify.annotations.Nullable;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.PreparedStatement} implementation class.
@@ -158,84 +157,67 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setBigDecimal(int parameterIndex, @Nullable BigDecimal x) throws SQLException {
+    public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        if (x == null) {
-            setNull(parameterIndex, Types.NUMERIC);
-        } else {
-            setParameter(parameterIndex, new BsonDecimal128(new Decimal128(x)));
-        }
+        setParameter(parameterIndex, new BsonDecimal128(new Decimal128(x)));
     }
 
     @Override
-    public void setString(int parameterIndex, @Nullable String x) throws SQLException {
+    public void setString(int parameterIndex, String x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        if (x == null) {
-            setNull(parameterIndex, Types.VARCHAR);
-        } else {
-            setParameter(parameterIndex, new BsonString(x));
-        }
+        setParameter(parameterIndex, new BsonString(x));
     }
 
     @Override
-    public void setBytes(int parameterIndex, byte @Nullable [] x) throws SQLException {
+    public void setBytes(int parameterIndex, byte[] x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        if (x == null) {
-            setNull(parameterIndex, Types.VARBINARY);
-        } else {
-            setParameter(parameterIndex, new BsonBinary(x));
-        }
+        setParameter(parameterIndex, new BsonBinary(x));
     }
 
     @Override
-    public void setDate(int parameterIndex, @Nullable Date x) throws SQLException {
+    public void setDate(int parameterIndex, Date x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setDate(parameterIndex, x, null);
+        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
-    public void setTime(int parameterIndex, @Nullable Time x) throws SQLException {
+    public void setTime(int parameterIndex, Time x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setTime(parameterIndex, x, null);
+        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, @Nullable Timestamp x) throws SQLException {
+    public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setTimestamp(parameterIndex, x, null);
+        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
-    public void setBinaryStream(int parameterIndex, @Nullable InputStream x, int length) throws SQLException {
+    public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException();
     }
 
-    // ----------------------------------------------------------------------
-    // Advanced features:
-
     @Override
-    public void setObject(int parameterIndex, @Nullable Object x, int targetSqlType) throws SQLException {
+    public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
     @Override
-    public void setObject(int parameterIndex, @Nullable Object x) throws SQLException {
+    public void setObject(int parameterIndex, Object x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
-
-    // --------------------------JDBC 2.0-----------------------------
 
     @Override
     public void addBatch() throws SQLException {
@@ -245,35 +227,35 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setArray(int parameterIndex, @Nullable Array x) throws SQLException {
+    public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException();
     }
 
     @Override
-    public void setDate(int parameterIndex, @Nullable Date x, @Nullable Calendar cal) throws SQLException {
+    public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
-    public void setTime(int parameterIndex, @Nullable Time x, @Nullable Calendar cal) throws SQLException {
+    public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, @Nullable Timestamp x, @Nullable Calendar cal) throws SQLException {
+    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
-    public void setNull(int parameterIndex, int sqlType, @Nullable String typeName) throws SQLException {
+    public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
