@@ -177,9 +177,9 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     private record Version(String versionText, int major, int minor) {
         static Version parse(String versionText) {
+            String[] parts = versionText.split("[-.]", 3);
+            assertTrue(parts.length >= 2);
             try {
-                String[] parts = versionText.split("[-.]", 3);
-                assertTrue(parts.length >= 2);
                 return new Version(versionText, Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
             } catch (NumberFormatException e) {
                 throw fail(e.toString());
