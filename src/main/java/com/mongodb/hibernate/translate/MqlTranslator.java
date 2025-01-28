@@ -207,11 +207,8 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
 
     @Override
     public void visitColumnWriteFragment(ColumnWriteFragment columnWriteFragment) {
-        if (columnWriteFragment.getParameters().isEmpty()) {
-            throw new NotYetImplementedException("maybe belongs to scope of Formula feature");
-        }
-        if (columnWriteFragment.getParameters().size() > 1) {
-            throw new NotYetImplementedException("belongs to the scope of Array or STRUCT feature");
+        if (columnWriteFragment.getParameters().size() != 1) {
+            throw new NotYetImplementedException();
         }
         var jdbcParameter = columnWriteFragment.getParameters().iterator().next();
         parameterBinders.add(jdbcParameter.getParameterBinder());
