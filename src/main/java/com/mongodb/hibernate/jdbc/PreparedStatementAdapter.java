@@ -37,6 +37,7 @@ import java.sql.SQLXML;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link java.sql.PreparedStatement} adapter interface that throws exceptions for all its API methods.
@@ -130,6 +131,7 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     default void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
         throw new SQLFeatureNotSupportedException("setUnicodeStream not implemented");
     }
@@ -143,9 +145,6 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     default void clearParameters() throws SQLException {
         throw new SQLFeatureNotSupportedException("clearParameters not implemented");
     }
-
-    // ----------------------------------------------------------------------
-    // Advanced features:
 
     @Override
     default void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
@@ -161,8 +160,6 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     default boolean execute() throws SQLException {
         throw new SQLFeatureNotSupportedException("execute not implemented");
     }
-
-    // --------------------------JDBC 2.0-----------------------------
 
     @Override
     default void addBatch() throws SQLException {
@@ -195,7 +192,7 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     }
 
     @Override
-    default ResultSetMetaData getMetaData() throws SQLException {
+    default @Nullable ResultSetMetaData getMetaData() throws SQLException {
         throw new SQLFeatureNotSupportedException("getMetaData not implemented");
     }
 
@@ -219,8 +216,6 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
         throw new SQLFeatureNotSupportedException("setNull not implemented");
     }
 
-    // ------------------------- JDBC 3.0 -----------------------------------
-
     @Override
     default void setURL(int parameterIndex, URL x) throws SQLException {
         throw new SQLFeatureNotSupportedException("setURL not implemented");
@@ -230,8 +225,6 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     default ParameterMetaData getParameterMetaData() throws SQLException {
         throw new SQLFeatureNotSupportedException("getParameterMetaData not implemented");
     }
-
-    // ------------------------- JDBC 4.0 -----------------------------------
 
     @Override
     default void setRowId(int parameterIndex, RowId x) throws SQLException {
@@ -327,7 +320,4 @@ interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     default void setNClob(int parameterIndex, Reader reader) throws SQLException {
         throw new SQLFeatureNotSupportedException("setNClob not implemented");
     }
-
-    // ------------------------- JDBC 4.2 -----------------------------------
-
 }

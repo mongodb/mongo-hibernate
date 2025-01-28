@@ -97,7 +97,7 @@ interface ConnectionAdapter extends Connection {
 
     @Override
     default DatabaseMetaData getMetaData() throws SQLException {
-        throw new SQLFeatureNotSupportedException("geetMetaData not implemented");
+        throw new SQLFeatureNotSupportedException("getMetaData not implemented");
     }
 
     @Override
