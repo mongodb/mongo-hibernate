@@ -16,15 +16,14 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 
-import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
-import java.util.StringTokenizer;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
@@ -42,19 +41,18 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     private final Connection connection;
 
-    private final String databaseVersionText;
-    private final int databaseMajorVersion;
-    private final int databaseMinorVersion;
-
-    private final VersionNumPair versionNumPair;
+    private final Version databaseVersion;
+    private final Version driverVersion;
 
     MongoDatabaseMetaData(
-            Connection connection, String databaseVersionText, int databaseMajorVersion, int databaseMinorVersion) {
+            Connection connection,
+            String databaseVersionText,
+            int databaseMajorVersion,
+            int databaseMinorVersion,
+            String driverVersionText) {
         this.connection = connection;
-        this.databaseVersionText = databaseVersionText;
-        this.databaseMajorVersion = databaseMajorVersion;
-        this.databaseMinorVersion = databaseMinorVersion;
-        versionNumPair = parseVersionNumPair(assertNotNull(BuildConfig.VERSION));
+        databaseVersion = new Version(databaseVersionText, databaseMajorVersion, databaseMinorVersion);
+        driverVersion = Version.parse(driverVersionText);
     }
 
     @Override
@@ -64,7 +62,7 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public String getDatabaseProductVersion() {
-        return databaseVersionText;
+        return databaseVersion.versionText;
     }
 
     @Override
@@ -74,17 +72,17 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public String getDriverVersion() {
-        return BuildConfig.VERSION;
+        return driverVersion.versionText;
     }
 
     @Override
     public int getDriverMajorVersion() {
-        return versionNumPair.majorVersion;
+        return driverVersion.major;
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return versionNumPair.minVersion;
+        return driverVersion.minor;
     }
 
     @Override
@@ -149,12 +147,12 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public int getDatabaseMajorVersion() {
-        return databaseMajorVersion;
+        return databaseVersion.major;
     }
 
     @Override
     public int getDatabaseMinorVersion() {
-        return databaseMinorVersion;
+        return databaseVersion.minor;
     }
 
     @Override
@@ -177,20 +175,15 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         return false;
     }
 
-    @VisibleForTesting(otherwise = PRIVATE)
-    static VersionNumPair parseVersionNumPair(String versionText) {
-        int majorVersion = 0;
-        int minVersion = 0;
-        var tokenizer = new StringTokenizer(versionText, ".");
-        if (tokenizer.hasMoreTokens()) {
+    private record Version(String versionText, int major, int minor) {
+        static Version parse(String versionText) {
             try {
-                majorVersion = Integer.parseInt(tokenizer.nextToken());
-                if (tokenizer.hasMoreTokens()) {
-                    minVersion = Integer.parseInt(tokenizer.nextToken());
-                }
-            } catch (NumberFormatException ignored) {
+                String[] parts = versionText.split("[-.]", 3);
+                assertTrue(parts.length >= 2);
+                return new Version(versionText, Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+            } catch (NumberFormatException e) {
+                throw fail(e.toString());
             }
         }
-        return new VersionNumPair(majorVersion, minVersion);
     }
 }

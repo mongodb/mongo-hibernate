@@ -16,10 +16,12 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
@@ -189,7 +191,8 @@ final class MongoConnection implements ConnectionAdapter {
                 throw new SQLException(
                         format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
             }
-            return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
+            return new MongoDatabaseMetaData(
+                    this, versionText, versionArray.get(0), versionArray.get(1), assertNotNull(BuildConfig.VERSION));
         } catch (RuntimeException e) {
             var msg = "Failed to get metadata";
             if (logger.isErrorEnabled()) {
