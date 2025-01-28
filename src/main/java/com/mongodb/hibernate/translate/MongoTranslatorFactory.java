@@ -25,20 +25,18 @@ import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
-import org.mockito.Mockito;
 
-@SuppressWarnings("unchecked")
 public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
-        return Mockito.mock(SqlAstTranslator.class);
+        return new SqlAstTranslatorAdapter<>();
     }
 
     @Override
     public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, MutationStatement mutationStatement) {
-        return Mockito.mock(SqlAstTranslator.class);
+        return new SqlAstTranslatorAdapter<>();
     }
 
     @Override

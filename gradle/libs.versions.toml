@@ -27,7 +27,6 @@ mongo-java-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.r
 sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
-mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

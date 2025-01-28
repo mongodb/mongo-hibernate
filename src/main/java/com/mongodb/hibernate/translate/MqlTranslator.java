@@ -117,8 +117,6 @@ import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
-import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
-import org.mockito.Mockito;
 
 final class MqlTranslator<T extends JdbcOperation & MutationOperation> implements SqlAstTranslator<T> {
 
@@ -173,7 +171,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
             if (tableMutation instanceof TableInsert) {
                 return translateTableMutation(tableMutation);
             } else {
-                return (T) Mockito.mock(JdbcMutationOperation.class);
+                return (T) new JdbcMutationOperationAdapter();
             }
         }
         throw new NotYetImplementedException();
