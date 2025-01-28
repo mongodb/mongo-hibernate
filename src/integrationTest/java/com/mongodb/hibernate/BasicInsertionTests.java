@@ -88,6 +88,27 @@ class BasicInsertionTests {
     }
 
     @Test
+    void testEntityWithNullFieldInsertion() {
+        sessionFactory.inTransaction(session -> {
+            var book = new Book();
+            book.id = 1;
+            book.title = "War and Peace";
+            book.publishYear = 1867;
+            session.persist(book);
+        });
+        var expectedDocuments = Set.of(
+                BsonDocument.parse(
+                        """
+                        {
+                            _id: 1,
+                            title: "War and Peace",
+                            author: null,
+                            publishYear: 1867
+                        }"""));
+        Assertions.assertEquals(expectedDocuments, getCollectionDocuments());
+    }
+
+    @Test
     void testEntityWithEmbeddedFieldInsertion() {
         sessionFactory.inTransaction(session -> {
             var book = new BookWithEmbeddedField();
