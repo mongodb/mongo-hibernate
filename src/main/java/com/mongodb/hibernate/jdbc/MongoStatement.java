@@ -30,7 +30,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.List;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -56,8 +60,43 @@ class MongoStatement implements StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
+        var command = parse(mql);
+        return executeQueryCommand(command);
+    }
+
+    ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
+        startTransactionIfNeeded();
+        try {
+            var collectionName = command.getString("aggregate").getValue();
+            var collection = mongoClient.getDatabase(DATABASE).getCollection(collectionName, BsonDocument.class);
+            var pipeline = command.getArray("pipeline").stream()
+                    .map(BsonValue::asDocument)
+                    .toList();
+            var cursor = collection.aggregate(clientSession, pipeline).cursor();
+            var fieldNames = getFieldNamesFromProjectDocument(
+                    pipeline.get(pipeline.size() - 1).asDocument().getDocument("$project"));
+            return new MongoResultSet(cursor, fieldNames);
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to run aggregate command: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Gets included field names from {@code $project} document
+     *
+     * @param projectDocument the {@code $project} document
+     * @return ordered field names included in {@code aggregate} command response
+     */
+    private List<String> getFieldNamesFromProjectDocument(BsonDocument projectDocument) {
+        var fieldNames = new ArrayList<String>(projectDocument.size());
+        projectDocument.forEach((key, value) -> {
+            boolean skip = (value.isNumber() && value.asNumber().intValue() == 0)
+                    || (value.isBoolean() && value.asBoolean().equals(BsonBoolean.FALSE));
+            if (!skip) {
+                fieldNames.add(key);
+            }
+        });
+        return fieldNames;
     }
 
     @Override

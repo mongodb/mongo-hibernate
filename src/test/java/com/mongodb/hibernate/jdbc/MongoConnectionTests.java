@@ -112,7 +112,7 @@ class MongoConnectionTests {
 
             // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
-            assertEquals("Connection has been closed", exception.getMessage());
+            assertEquals("MongoConnection has been closed", exception.getMessage());
         }
 
         private static Stream<Arguments> getMongoConnectionMethodInvocationsImpactedByClosing() {
