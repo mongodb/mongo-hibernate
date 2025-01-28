@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
-@NullMarked
-package com.mongodb.hibernate.translate.mongoast.command;
+package com.mongodb.hibernate.internal.mongoast;
 
-import org.jspecify.annotations.NullMarked;
+/**
+ * Represents value type {@link AstNode}, e.g.
+ *
+ * <ul>
+ *   <li>{@link AstLiteralValue}: non-parameter literal value
+ *   <li>{@link AstPlaceholder}: parameter placeholder
+ * </ul>
+ */
+public interface AstValue extends AstNode {}

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate.mongoast.command;
+package com.mongodb.hibernate.internal.mongoast.command;
 
-import com.mongodb.hibernate.translate.mongoast.AstElement;
-import com.mongodb.hibernate.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.mongoast.AstElement;
+import com.mongodb.hibernate.internal.mongoast.AstNode;
 import java.util.List;
 import org.bson.BsonWriter;
 

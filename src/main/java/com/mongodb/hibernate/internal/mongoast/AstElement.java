@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate.mongoast;
+package com.mongodb.hibernate.internal.mongoast;
+
+import org.bson.BsonWriter;
 
 /**
- * Represents value type {@link AstNode}, e.g.
+ * Represents some Bson field with name and value, which is usually rendered with other {@link AstElement}s to compose a
+ * {@link org.bson.BsonDocument}.
  *
- * <ul>
- *   <li>{@link AstLiteralValue}: non-parameter literal value
- *   <li>{@link AstPlaceholder}: parameter placeholder
- * </ul>
+ * @param name field name; not {@code null}
+ * @param value field value; not {@code null}
  */
-public interface AstValue extends AstNode {}
+public record AstElement(String name, AstValue value) implements AstNode {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeName(name);
+        value.render(writer);
+    }
+}

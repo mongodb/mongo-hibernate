@@ -17,11 +17,11 @@
 package com.mongodb.hibernate.translate;
 
 import com.mongodb.hibernate.internal.NotYetImplementedException;
-import com.mongodb.hibernate.translate.mongoast.AstElement;
-import com.mongodb.hibernate.translate.mongoast.AstNode;
-import com.mongodb.hibernate.translate.mongoast.AstPlaceholder;
-import com.mongodb.hibernate.translate.mongoast.AstValue;
-import com.mongodb.hibernate.translate.mongoast.command.AstInsertCommand;
+import com.mongodb.hibernate.internal.mongoast.AstElement;
+import com.mongodb.hibernate.internal.mongoast.AstNode;
+import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
+import com.mongodb.hibernate.internal.mongoast.AstValue;
+import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;

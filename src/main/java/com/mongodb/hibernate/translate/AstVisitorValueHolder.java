@@ -22,7 +22,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static java.lang.String.format;
 
 import com.google.common.reflect.TypeToken;
-import com.mongodb.hibernate.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.mongoast.AstNode;
 import org.jspecify.annotations.Nullable;
 
 /**

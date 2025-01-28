@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate.mongoast;
+package com.mongodb.hibernate.internal.mongoast;
 
 import org.bson.BsonValue;
 import org.bson.BsonWriter;

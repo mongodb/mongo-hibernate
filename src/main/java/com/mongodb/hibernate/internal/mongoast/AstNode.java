@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate.mongoast;
+package com.mongodb.hibernate.internal.mongoast;
 
 import org.bson.BsonWriter;
 
 /**
- * Represents some Bson field with name and value, which is usually rendered with other {@link AstElement}s to compose a
- * {@link org.bson.BsonDocument}.
+ * The ultimate ancestor interface representing any node in a Mongo AST tree model.
  *
- * @param name field name; not {@code null}
- * @param value field value; not {@code null}
+ * <p>Its central concern is how to render the sub-tree rooted with it using a {@link BsonWriter} instance.
  */
-public record AstElement(String name, AstValue value) implements AstNode {
-    @Override
-    public void render(BsonWriter writer) {
-        writer.writeName(name);
-        value.render(writer);
-    }
+@FunctionalInterface
+public interface AstNode {
+    /**
+     * Renders the AST sub-tree with {@code this} object as the root.
+     *
+     * @param writer provided {@code BsonWriter} instance; not {@code null}
+     */
+    void render(BsonWriter writer);
 }
