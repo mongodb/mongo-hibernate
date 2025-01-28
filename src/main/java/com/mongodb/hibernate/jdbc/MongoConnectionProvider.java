@@ -127,11 +127,9 @@ public final class MongoConnectionProvider
 
         var clientSettings = clientSettingsBuilder.build();
 
-        assertNotNull(BuildConfig.NAME);
-        assertNotNull(BuildConfig.VERSION);
         var driverInfo = MongoDriverInformation.builder()
-                .driverName(BuildConfig.NAME)
-                .driverVersion(BuildConfig.VERSION)
+                .driverName(assertNotNull(BuildConfig.NAME))
+                .driverVersion(assertNotNull(BuildConfig.VERSION))
                 .build();
 
         mongoClient = MongoClients.create(clientSettings, driverInfo);

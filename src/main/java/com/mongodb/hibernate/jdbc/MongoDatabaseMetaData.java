@@ -1,0 +1,189 @@
+/*
+ * Copyright 2024-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.mongodb.hibernate.jdbc;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
+
+import com.mongodb.hibernate.internal.VisibleForTesting;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+
+/**
+ * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
+ *
+ * <p>It only focuses on API methods MongoDB Dialect will support. All the other methods are implemented by throwing
+ * exceptions in its parent {@link DatabaseMetaDataAdapter adapter interface}.
+ */
+final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
+
+    public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
+    public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
+
+    @VisibleForTesting(otherwise = PRIVATE)
+    record VersionNumPair(int majorVersion, int minVersion) {}
+
+    private final Connection connection;
+
+    private final Version databaseVersion;
+    private final Version driverVersion;
+
+    MongoDatabaseMetaData(
+            Connection connection,
+            String databaseVersionText,
+            int databaseMajorVersion,
+            int databaseMinorVersion,
+            String driverVersionText) {
+        this.connection = connection;
+        databaseVersion = new Version(databaseVersionText, databaseMajorVersion, databaseMinorVersion);
+        driverVersion = Version.parse(driverVersionText);
+    }
+
+    @Override
+    public String getDatabaseProductName() {
+        return MONGO_DATABASE_PRODUCT_NAME;
+    }
+
+    @Override
+    public String getDatabaseProductVersion() {
+        return databaseVersion.versionText;
+    }
+
+    @Override
+    public String getDriverName() {
+        return MONGO_JDBC_DRIVER_NAME;
+    }
+
+    @Override
+    public String getDriverVersion() {
+        return driverVersion.versionText;
+    }
+
+    @Override
+    public int getDriverMajorVersion() {
+        return driverVersion.major;
+    }
+
+    @Override
+    public int getDriverMinorVersion() {
+        return driverVersion.minor;
+    }
+
+    @Override
+    public String getSQLKeywords() {
+        return "";
+    }
+
+    @Override
+    public boolean isCatalogAtStart() {
+        return true;
+    }
+
+    @Override
+    public String getCatalogSeparator() {
+        return ".";
+    }
+
+    @Override
+    public boolean supportsSchemasInTableDefinitions() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsCatalogsInTableDefinitions() {
+        return false;
+    }
+
+    @Override
+    public boolean dataDefinitionCausesTransactionCommit() {
+        return false;
+    }
+
+    @Override
+    public boolean dataDefinitionIgnoredInTransactions() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsResultSetType(int type) {
+        return type == ResultSet.TYPE_FORWARD_ONLY;
+    }
+
+    @Override
+    public boolean supportsBatchUpdates() {
+        return true;
+    }
+
+    @Override
+    public Connection getConnection() {
+        return connection;
+    }
+
+    @Override
+    public boolean supportsNamedParameters() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsGetGeneratedKeys() {
+        return false;
+    }
+
+    @Override
+    public int getDatabaseMajorVersion() {
+        return databaseVersion.major;
+    }
+
+    @Override
+    public int getDatabaseMinorVersion() {
+        return databaseVersion.minor;
+    }
+
+    @Override
+    public int getJDBCMajorVersion() {
+        return 4;
+    }
+
+    @Override
+    public int getJDBCMinorVersion() {
+        return 3;
+    }
+
+    @Override
+    public int getSQLStateType() {
+        return DatabaseMetaData.sqlStateSQL;
+    }
+
+    @Override
+    public boolean isWrapperFor(Class<?> iface) {
+        return false;
+    }
+
+    private record Version(String versionText, int major, int minor) {
+        static Version parse(String versionText) {
+            String[] parts = versionText.split("[-.]", 3);
+            assertTrue(parts.length >= 2);
+            try {
+                return new Version(versionText, Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+            } catch (NumberFormatException e) {
+                throw fail(e.toString());
+            }
+        }
+    }
+}

@@ -94,7 +94,7 @@ class MongoConnectionProviderTests {
 
         @Test
         void testMongoClientCustomizerThrowException() {
-            assertThrows(ServiceException.class, () -> {
+            assertThrows(NullPointerException.class, () -> {
                 try (var ignored = buildSessionFactory(
                         (builder, cs) -> {
                             throw new NullPointerException();
