@@ -23,6 +23,7 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -46,7 +47,10 @@ class BasicInsertionTests {
 
     @BeforeAll
     static void beforeAll() {
-        sessionFactory = new Configuration().addAnnotatedClass(Book.class).buildSessionFactory();
+        sessionFactory = new Configuration()
+                .addAnnotatedClass(Book.class)
+                .addAnnotatedClass(BookWithEmbeddedField.class)
+                .buildSessionFactory();
     }
 
     @AfterAll
@@ -62,7 +66,7 @@ class BasicInsertionTests {
     }
 
     @Test
-    void testInsertion() {
+    void testSimpleEntityInsertion() {
         sessionFactory.inTransaction(session -> {
             var book = new Book();
             book.id = 1;
@@ -78,6 +82,29 @@ class BasicInsertionTests {
                             _id: 1,
                             title: "War and Peace",
                             author: "Leo Tolstoy",
+                            publishYear: 1867
+                        }"""));
+        Assertions.assertEquals(expectedDocuments, getCollectionDocuments());
+    }
+
+    @Test
+    void testEntityWithEmbeddedFieldInsertion() {
+        sessionFactory.inTransaction(session -> {
+            var book = new BookWithEmbeddedField();
+            book.id = 1;
+            book.title = "War and Peace";
+            book.author = new Author("Leo", "Tolstoy");
+            book.publishYear = 1867;
+            session.persist(book);
+        });
+        var expectedDocuments = Set.of(
+                BsonDocument.parse(
+                        """
+                        {
+                            _id: 1,
+                            title: "War and Peace",
+                            authorFirstName: "Leo",
+                            authorLastName: "Tolstoy",
                             publishYear: 1867
                         }"""));
         Assertions.assertEquals(expectedDocuments, getCollectionDocuments());
@@ -111,5 +138,34 @@ class BasicInsertionTests {
         String title;
         String author;
         int publishYear;
+    }
+
+    @Entity(name = "BookWithEmbeddedField")
+    @Table(name = "books")
+    static class BookWithEmbeddedField {
+        @Id
+        @Column(name = "_id")
+        int id;
+
+        String title;
+        Author author;
+        int publishYear;
+    }
+
+    @Embeddable
+    static class Author {
+
+        @Column(name = "authorFirstName")
+        String firstName;
+
+        @Column(name = "authorLastName")
+        String lastName;
+
+        Author() {}
+
+        Author(String firstName, String lastName) {
+            this.firstName = firstName;
+            this.lastName = lastName;
+        }
     }
 }
