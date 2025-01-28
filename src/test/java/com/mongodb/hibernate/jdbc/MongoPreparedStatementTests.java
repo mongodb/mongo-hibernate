@@ -29,8 +29,15 @@ import static org.mockito.Mockito.verify;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import java.io.ByteArrayInputStream;
+import java.math.BigDecimal;
+import java.sql.Array;
+import java.sql.Date;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Calendar;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
@@ -45,6 +52,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -152,7 +160,7 @@ class MongoPreparedStatementTests {
 
         @FunctionalInterface
         interface PreparedStatementMethodInvocation {
-            void run(MongoPreparedStatement pstmt) throws SQLException;
+            void runOn(MongoPreparedStatement pstmt) throws SQLException;
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoPreparedStatement")
@@ -180,11 +188,13 @@ class MongoPreparedStatementTests {
             preparedStatement.close();
 
             // when && then
-            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.run(preparedStatement));
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
             assertEquals("MongoPreparedStatement has been closed", sqlException.getMessage());
         }
 
         private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsImpactedByClosing() {
+            var now = System.currentTimeMillis();
+            var calendar = Calendar.getInstance();
             return Map.<String, PreparedStatementMethodInvocation>ofEntries(
                             Map.entry("executeQuery()", MongoPreparedStatement::executeQuery),
                             Map.entry("executeUpdate()", MongoPreparedStatement::executeUpdate),
@@ -196,21 +206,28 @@ class MongoPreparedStatementTests {
                             Map.entry("setLong(int,long)", pstmt -> pstmt.setLong(1, 1L)),
                             Map.entry("setFloat(int,float)", pstmt -> pstmt.setFloat(1, 1.0F)),
                             Map.entry("setDouble(int,double)", pstmt -> pstmt.setDouble(1, 1.0)),
-                            Map.entry("setBigDecimal(int,BigDecimal)", pstmt -> pstmt.setBigDecimal(1, null)),
-                            Map.entry("setString(int,String)", pstmt -> pstmt.setString(1, null)),
-                            Map.entry("setBytes(int,byte[])", pstmt -> pstmt.setBytes(1, null)),
-                            Map.entry("setDate(int,Date)", pstmt -> pstmt.setDate(1, null)),
-                            Map.entry("setTime(int,Time)", pstmt -> pstmt.setTime(1, null)),
-                            Map.entry("setTimestamp(int,Timestamp)", pstmt -> pstmt.setTimestamp(1, null)),
                             Map.entry(
-                                    "setBinaryStream(int,InputStream,int)", pstmt -> pstmt.setBinaryStream(1, null, 0)),
-                            Map.entry("setObject(int,Object,int)", pstmt -> pstmt.setObject(1, null, Types.OTHER)),
+                                    "setBigDecimal(int,BigDecimal)",
+                                    pstmt -> pstmt.setBigDecimal(1, new BigDecimal(1))),
+                            Map.entry("setString(int,String)", pstmt -> pstmt.setString(1, "")),
+                            Map.entry("setBytes(int,byte[])", pstmt -> pstmt.setBytes(1, "".getBytes())),
+                            Map.entry("setDate(int,Date)", pstmt -> pstmt.setDate(1, new Date(now))),
+                            Map.entry("setTime(int,Time)", pstmt -> pstmt.setTime(1, new Time(now))),
+                            Map.entry(
+                                    "setTimestamp(int,Timestamp)", pstmt -> pstmt.setTimestamp(1, new Timestamp(now))),
+                            Map.entry(
+                                    "setBinaryStream(int,InputStream,int)",
+                                    pstmt -> pstmt.setBinaryStream(1, new ByteArrayInputStream("".getBytes()), 0)),
+                            Map.entry(
+                                    "setObject(int,Object,int)",
+                                    pstmt -> pstmt.setObject(1, Mockito.mock(Array.class), Types.OTHER)),
                             Map.entry("addBatch()", MongoPreparedStatement::addBatch),
-                            Map.entry("setArray(int,Array)", pstmt -> pstmt.setArray(1, null)),
-                            Map.entry("setDate(int,Date,Calendar)", pstmt -> pstmt.setDate(1, null, null)),
-                            Map.entry("setTime(int,Time,Calendar)", pstmt -> pstmt.setTime(1, null, null)),
+                            Map.entry("setArray(int,Array)", pstmt -> pstmt.setArray(1, Mockito.mock(Array.class))),
+                            Map.entry("setDate(int,Date,Calendar)", pstmt -> pstmt.setDate(1, new Date(now), calendar)),
+                            Map.entry("setTime(int,Time,Calendar)", pstmt -> pstmt.setTime(1, new Time(now), calendar)),
                             Map.entry(
-                                    "setTimestamp(int,Timestamp,Calendar)", pstmt -> pstmt.setTimestamp(1, null, null)),
+                                    "setTimestamp(int,Timestamp,Calendar)",
+                                    pstmt -> pstmt.setTimestamp(1, new Timestamp(now), calendar)),
                             Map.entry("setNull(int,Object,String)", pstmt -> pstmt.setNull(1, Types.STRUCT, "BOOK")))
                     .entrySet()
                     .stream()

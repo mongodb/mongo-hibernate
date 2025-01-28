@@ -103,6 +103,7 @@ tasks.withType<JavaCompile>().configureEach {
 tasks.compileJava {
     // The check defaults to a warning, bump it up to an error for the main sources
     options.errorprone.error("NullAway")
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
 }
 
 tasks.compileTestJava {
