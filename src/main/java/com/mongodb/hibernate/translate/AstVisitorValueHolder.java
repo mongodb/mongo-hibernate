@@ -21,7 +21,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static java.lang.String.format;
 
-import com.google.common.reflect.TypeToken;
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import org.jspecify.annotations.Nullable;
 
@@ -30,29 +29,28 @@ import org.jspecify.annotations.Nullable;
  * {@link org.hibernate.sql.ast.SqlAstWalker} don't return value; Returning values is required during MQL translation
  * (e.g. returning intermediate MQL {@link AstNode}).
  *
- * <p>Contains both value and its type info (using Guava's {@link TypeToken} so Java generics info is retained at
- * runtime), which will be used to ensure value provided has identical type with value consumer's expectation.
+ * <p>Contains both value and its type info, which will be used to ensure value provided has identical type with value
+ * consumer's expectation.
  *
  * <p>During one MQL translation process, one single object of this class should be created globally (or not within
  * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} could access it as
- * either producer calling {@link #setValue(TypeToken, Object)} method) or consumer calling {@link #getValue(TypeToken,
+ * either producer calling {@link #setValue(Class, Object)} method) or consumer calling {@link #getValue(Class,
  * Runnable)} method). Once the consumer grabs its expected value, it becomes the sole owner of the value with the
  * holder being blank.
  *
  * @see org.hibernate.sql.ast.SqlAstWalker
- * @see TypeToken
  */
 final class AstVisitorValueHolder {
 
-    private TypeToken<?> valueType;
+    private Class<?> valueType;
     private @Nullable Object value;
 
-    private AstVisitorValueHolder(TypeToken<?> valueType) {
+    private AstVisitorValueHolder(Class<?> valueType) {
         this.valueType = valueType;
     }
 
     public static AstVisitorValueHolder emptyHolder() {
-        return new AstVisitorValueHolder(new TypeToken<Void>() {});
+        return new AstVisitorValueHolder(Void.class);
     }
 
     /**
@@ -63,12 +61,12 @@ final class AstVisitorValueHolder {
      *
      * @param valueType expected type of the data to be grabbed.
      * @param valueSetter the {@code Runnable} wrapper of a void AST visitor method which is supposed to invoke
-     *     {@link #setValue(TypeToken, Object)} internally with type identical to the {@code valueType}.
+     *     {@link #setValue(Class, Object)} internally with type identical to the {@code valueType}.
      * @return the grabbed value set by {@code valueSetter}
      * @param <T> generics type of the value returned
      */
     @SuppressWarnings("unchecked")
-    public <T> T getValue(TypeToken<T> valueType, Runnable valueSetter) {
+    public <T> T getValue(Class<T> valueType, Runnable valueSetter) {
         var previousType = this.valueType;
         assertNull(value);
         this.valueType = valueType;
@@ -79,15 +77,6 @@ final class AstVisitorValueHolder {
             this.valueType = previousType;
             value = null;
         }
-    }
-
-    /**
-     * Overloaded method to simplify usage by providing {@code Class} instead of {@link TypeToken}.
-     *
-     * @see #getValue(TypeToken, Runnable)
-     */
-    public <T> T getValue(Class<T> clazz, Runnable valueSetter) {
-        return getValue(TypeToken.of(clazz), valueSetter);
     }
 
     /**
@@ -104,20 +93,11 @@ final class AstVisitorValueHolder {
      * @param value data returned inside some {@code void} method.
      * @param <T> generics type of the {@code value}
      */
-    public <T> void setValue(TypeToken<T> valueType, T value) {
+    public <T> void setValue(Class<T> valueType, T value) {
         assertTrue(
                 format("provided type [%s] should match expected [%s]", valueType, this.valueType),
                 valueType.equals(this.valueType));
         assertNull(this.value);
         this.value = value;
-    }
-
-    /**
-     * Overloaded method to simplify usage by providing {@code Class} instead of {@link TypeToken}.
-     *
-     * @see #setValue(TypeToken, Object)
-     */
-    public <T> void setValue(Class<T> clazz, T value) {
-        setValue(TypeToken.of(clazz), value);
     }
 }
