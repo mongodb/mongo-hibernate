@@ -16,11 +16,14 @@
 
 package com.mongodb.hibernate.translate;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.mongodb.hibernate.internal.mongoast.AstElement;
+import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
+import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,38 +42,35 @@ class AstVisitorValueHolderTests {
     void testSimpleUsage() {
         // given
 
-        var valueSet = Set.of("name", "address", "postCode");
-        Runnable valueSetter = () -> astVisitorValueHolder.setValue(Set.class, valueSet);
+        var valueSet = "field_value";
+        Runnable valueSetter = () -> astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, valueSet);
 
         // when
-        var valueGotten = astVisitorValueHolder.getValue(Set.class, valueSetter);
+        var valueGotten = astVisitorValueHolder.getValue(TypeReference.FIELD_NAME, valueSetter);
 
         // then
         assertEquals(valueSet, valueGotten);
     }
 
     @Test
-    void testRecursiveUsage() {
+    void testBacktrack() {
         // given
-        var level1Type = Long.class;
-
-        Runnable level1Setter = () -> {
-            var level2Type = String.class;
-            Runnable level2Setter = () -> {
-                var level3Type = List.class;
-                Runnable level3Setter = () -> astVisitorValueHolder.setValue(List.class, List.of("name", "address"));
-                var level3Value = astVisitorValueHolder.getValue(level3Type, level3Setter);
-                astVisitorValueHolder.setValue(level2Type, "fields: " + String.join(",", level3Value));
+        Runnable tableInserter = () -> {
+            Runnable fieldNameSetter = () -> {
+                astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "address");
             };
-            var level2Value = astVisitorValueHolder.getValue(level2Type, level2Setter);
-            astVisitorValueHolder.setValue(level1Type, level2Value.length() + 20L);
+            var fieldName = astVisitorValueHolder.getValue(TypeReference.FIELD_NAME, fieldNameSetter);
+            Runnable fielValueSetter = () -> {
+                astVisitorValueHolder.setValue(TypeReference.FIELD_VALUE, AstPlaceholder.INSTANCE);
+            };
+            var fieldValue = astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, fielValueSetter);
+            AstElement astElement = new AstElement(fieldName, fieldValue);
+            astVisitorValueHolder.setValue(
+                    TypeReference.COLLECTION_MUTATION, new AstInsertCommand("place", List.of(astElement)));
         };
 
-        // when
-        var resultLevel1 = astVisitorValueHolder.getValue(level1Type, level1Setter);
-
-        // then
-        assertEquals(40L, resultLevel1);
+        // when && then
+        assertDoesNotThrow(() -> astVisitorValueHolder.getValue(TypeReference.COLLECTION_MUTATION, tableInserter));
     }
 
     @Nested
@@ -81,21 +81,21 @@ class AstVisitorValueHolderTests {
         void testHolderNotEmptyWhenSetting() {
             // given
             Runnable valueSetter = () -> {
-                astVisitorValueHolder.setValue(String.class, "first load");
-                astVisitorValueHolder.setValue(String.class, "second load");
+                astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "address");
+                astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "country");
             };
             // when && then
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(String.class, valueSetter));
+            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_NAME, valueSetter));
         }
 
         @Test
         @DisplayName("Exception is thrown when holder is expecting a type different from that of real data")
         void testHolderExpectingDifferentType() {
             // given
-            Runnable valueSetter = () -> astVisitorValueHolder.setValue(List.class, List.of(1, 2, 3));
+            Runnable valueSetter = () -> astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "address");
 
             // when && then
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(Set.class, valueSetter));
+            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, valueSetter));
         }
     }
 
@@ -105,7 +105,7 @@ class AstVisitorValueHolderTests {
         @Test
         @DisplayName("Exception is thrown when getting value from an empty holder")
         void testHolderStillEmpty() {
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(String.class, () -> {}));
+            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, () -> {}));
         }
     }
 }

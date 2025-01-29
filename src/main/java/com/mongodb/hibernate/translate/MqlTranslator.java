@@ -20,7 +20,6 @@ import com.mongodb.hibernate.internal.NotYetImplementedException;
 import com.mongodb.hibernate.internal.mongoast.AstElement;
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
-import com.mongodb.hibernate.internal.mongoast.AstValue;
 import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -178,7 +177,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     }
 
     private T translateTableMutation(TableMutation<T> mutation) {
-        var rootAstNode = astReturnValueHolder.getValue(AstNode.class, () -> mutation.accept(this));
+        var rootAstNode = astReturnValueHolder.getValue(TypeReference.COLLECTION_MUTATION, () -> mutation.accept(this));
         return mutation.createMutationOperation(translateMongoAst(rootAstNode), parameterBinders);
     }
 
@@ -197,12 +196,12 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
         tableInsertStandard.forEachValueBinding((columnPosition, columnValueBinding) -> {
             var astValue = astReturnValueHolder.getValue(
-                    AstValue.class,
+                    TypeReference.FIELD_VALUE,
                     () -> columnValueBinding.getValueExpression().accept(this));
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
         });
-        astReturnValueHolder.setValue(AstNode.class, new AstInsertCommand(tableName, astElements));
+        astReturnValueHolder.setValue(TypeReference.COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
     }
 
     @Override
@@ -213,7 +212,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         var jdbcParameter = columnWriteFragment.getParameters().iterator().next();
         parameterBinders.add(jdbcParameter.getParameterBinder());
         jdbcParameters.addParameter(jdbcParameter);
-        astReturnValueHolder.setValue(AstValue.class, AstPlaceholder.INSTANCE);
+        astReturnValueHolder.setValue(TypeReference.FIELD_VALUE, AstPlaceholder.INSTANCE);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

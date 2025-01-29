@@ -34,23 +34,24 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>During one MQL translation process, one single object of this class should be created globally (or not within
  * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} could access it as
- * either producer calling {@link #setValue(Class, Object)} method) or consumer calling {@link #getValue(Class,
- * Runnable)} method). Once the consumer grabs its expected value, it becomes the sole owner of the value with the
- * holder being blank.
+ * either producer calling {@link #setValue(TypeReference, Object)} method) or consumer calling
+ * {@link #getValue(TypeReference, Runnable)} method). Once the consumer grabs its expected value, it becomes the sole
+ * owner of the value with the holder being blank.
  *
  * @see org.hibernate.sql.ast.SqlAstWalker
+ * @see TypeReference
  */
 final class AstVisitorValueHolder {
 
-    private Class<?> valueType;
+    private TypeReference<?> valueType;
     private @Nullable Object value;
 
-    private AstVisitorValueHolder(Class<?> valueType) {
+    private AstVisitorValueHolder(TypeReference<?> valueType) {
         this.valueType = valueType;
     }
 
     public static AstVisitorValueHolder emptyHolder() {
-        return new AstVisitorValueHolder(Void.class);
+        return new AstVisitorValueHolder(TypeReference.NULL);
     }
 
     /**
@@ -61,12 +62,12 @@ final class AstVisitorValueHolder {
      *
      * @param valueType expected type of the data to be grabbed.
      * @param valueSetter the {@code Runnable} wrapper of a void AST visitor method which is supposed to invoke
-     *     {@link #setValue(Class, Object)} internally with type identical to the {@code valueType}.
+     *     {@link #setValue(TypeReference, Object)} internally with type identical to the {@code valueType}.
      * @return the grabbed value set by {@code valueSetter}
      * @param <T> generics type of the value returned
      */
     @SuppressWarnings("unchecked")
-    public <T> T getValue(Class<T> valueType, Runnable valueSetter) {
+    public <T> T getValue(TypeReference<T> valueType, Runnable valueSetter) {
         var previousType = this.valueType;
         assertNull(value);
         this.valueType = valueType;
@@ -93,10 +94,10 @@ final class AstVisitorValueHolder {
      * @param value data returned inside some {@code void} method.
      * @param <T> generics type of the {@code value}
      */
-    public <T> void setValue(Class<T> valueType, T value) {
+    public <T> void setValue(TypeReference<T> valueType, T value) {
         assertTrue(
-                format("provided type [%s] should match expected [%s]", valueType, this.valueType),
-                valueType.equals(this.valueType));
+                format("provided type [%s] should match expected [%s]", valueType.render(), this.valueType.render()),
+                valueType == this.valueType);
         assertNull(this.value);
         this.value = value;
     }
