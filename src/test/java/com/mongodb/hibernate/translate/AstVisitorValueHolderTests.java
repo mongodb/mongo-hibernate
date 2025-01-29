@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.translate;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -68,7 +67,7 @@ class AstVisitorValueHolderTests {
         };
 
         // when && then
-        assertDoesNotThrow(() -> astVisitorValueHolder.getValue(TypeReference.COLLECTION_MUTATION, tableInserter));
+        astVisitorValueHolder.getValue(TypeReference.COLLECTION_MUTATION, tableInserter);
     }
 
     @Nested
@@ -109,10 +108,5 @@ class AstVisitorValueHolderTests {
         void testHolderStillEmpty() {
             assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, () -> {}));
         }
-    }
-
-    @Test
-    void test() {
-        System.out.println(TypeReference.COLLECTION_MUTATION);
     }
 }

@@ -88,7 +88,7 @@ final class AstVisitorValueHolder {
      */
     public <T> void setValue(TypeReference<T> valueType, T value) {
         assertTrue(
-                format("provided type [%s] should match expected [%s]", valueType, this.valueType),
+                format("provided type [%s] should match expected type [%s]", valueType, this.valueType),
                 valueType == this.valueType);
         assertNull(this.value);
         this.value = value;
