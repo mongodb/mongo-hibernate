@@ -27,9 +27,11 @@ import org.bson.BsonWriter;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  */
-public record AstPlaceholder() implements AstValue {
+public final class AstPlaceholder implements AstValue {
 
     public static AstPlaceholder INSTANCE = new AstPlaceholder();
+
+    private AstPlaceholder() {}
 
     @Override
     public void render(BsonWriter writer) {

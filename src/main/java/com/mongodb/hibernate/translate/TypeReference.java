@@ -19,6 +19,7 @@ package com.mongodb.hibernate.translate;
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstValue;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 /**
@@ -40,7 +41,7 @@ abstract class TypeReference<T> {
         return Arrays.stream(TypeReference.class.getDeclaredFields())
                 .filter(field -> {
                     try {
-                        return field.get(null) == this;
+                        return (field.getModifiers() & Modifier.STATIC) != 0 && field.get(null) == this;
                     } catch (IllegalAccessException e) {
                         throw new RuntimeException(e);
                     }
