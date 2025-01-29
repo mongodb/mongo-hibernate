@@ -21,10 +21,6 @@ import com.mongodb.hibernate.internal.mongoast.AstElement;
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
 import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -101,13 +97,11 @@ import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.ast.tree.select.SortSpecification;
 import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
-import org.hibernate.sql.exec.internal.JdbcParametersImpl;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
-import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
@@ -117,6 +111,11 @@ import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
 final class MqlTranslator<T extends JdbcOperation & MutationOperation> implements SqlAstTranslator<T> {
 
     private final SessionFactoryImplementor sessionFactory;
@@ -125,7 +124,6 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     private final AstVisitorValueHolder astReturnValueHolder = new AstVisitorValueHolder();
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
-    private final JdbcParametersImpl jdbcParameters = new JdbcParametersImpl();
 
     MqlTranslator(SessionFactoryImplementor sessionFactory, Statement statement) {
         this.sessionFactory = sessionFactory;
@@ -139,39 +137,34 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
 
     @Override
     public void render(SqlAstNode sqlAstNode, SqlAstNodeRenderingMode sqlAstNodeRenderingMode) {
-        throw new UnsupportedOperationException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public boolean supportsFilterClause() {
-        return true;
+        throw new NotYetImplementedException();
     }
 
     @Override
     public QueryPart getCurrentQueryPart() {
-        throw new UnsupportedOperationException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public Stack<Clause> getCurrentClauseStack() {
-        throw new UnsupportedOperationException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     public Set<String> getAffectedTableNames() {
-        throw new UnsupportedOperationException();
+        throw new NotYetImplementedException();
     }
 
     @Override
     @SuppressWarnings({"unchecked"})
     public T translate(JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
-        if (statement instanceof TableMutation) {
-            TableMutation<T> tableMutation = (TableMutation<T>) statement;
-            if (tableMutation instanceof TableInsert) {
-                return translateTableMutation(tableMutation);
-            } else {
-                return (T) new JdbcMutationOperationAdapter();
-            }
+        if (statement instanceof TableMutation tableMutation) {
+            return translateTableMutation((TableMutation<T>)tableMutation);
         }
         throw new NotYetImplementedException();
     }
@@ -211,7 +204,6 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         }
         var jdbcParameter = columnWriteFragment.getParameters().iterator().next();
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        jdbcParameters.addParameter(jdbcParameter);
         astReturnValueHolder.setValue(TypeReference.FIELD_VALUE, AstPlaceholder.INSTANCE);
     }
 
