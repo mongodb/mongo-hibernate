@@ -181,21 +181,21 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, Date x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
@@ -222,8 +222,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new NotYetImplementedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
@@ -237,21 +236,21 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override

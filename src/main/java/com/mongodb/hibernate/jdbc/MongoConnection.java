@@ -46,7 +46,7 @@ final class MongoConnection implements ConnectionAdapter {
 
     private final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
 
-    // temporary hard-coded database prior to the db config tech design finalizing
+    // TODO-HIBERNATE-38 temporary hard-coded database prior to the db config tech design finalizing
     public static final String DATABASE = "mongo-hibernate-test";
 
     private final MongoClient mongoClient;
@@ -156,8 +156,7 @@ final class MongoConnection implements ConnectionAdapter {
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

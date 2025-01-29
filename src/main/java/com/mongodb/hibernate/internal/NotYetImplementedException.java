@@ -25,8 +25,16 @@ import java.io.Serial;
  * <p>Ultimately all of its references should be eliminated sooner or later, and then this class is supposed to be
  * deleted prior to product release.
  *
- * <p>It is recommended to provide some message to explain when it will be implemented (e.g. JIRA ticket id is a good
- * idea), but that is optional.
+ * <p>It is recommended to provide a {@code TODO-<Jira ticket ID> ...} message, in which case one must mention in the
+ * ticket description that resolving the {@code TODO-<Jira ticket ID>} notes is in scope of the ticket. Examples:
+ *
+ * <pre>{@code
+ * throw new NotYetImplementedException("TODO-HIBERNATE-13 https://jira.mongodb.org/browse/HIBERNATE-13")
+ * }</pre>
+ *
+ * <pre>{@code
+ * throw new NotYetImplementedException("TODO-HIBERNATE-13")
+ * }</pre>
  *
  * <p>This class is not part of the public API and may be removed or changed at any time.
  */
