@@ -20,8 +20,8 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,58 +35,48 @@ import com.mongodb.event.ClusterClosedEvent;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterOpeningEvent;
 import com.mongodb.hibernate.BuildConfig;
-import com.mongodb.hibernate.service.MongoClientCustomizer;
+import com.mongodb.hibernate.service.MongoDialectConfigurator;
 import java.util.function.Consumer;
+import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.JdbcSettings;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.service.spi.ServiceException;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoConnectionProviderTests {
 
     @Nested
-    class MongoClientCustomizerTests {
+    class MongoDialectConfiguratorTests {
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testMongoClientCustomizerTakeEffect(boolean customizerAppliesConnectionString) {
+        @Test
+        void testMongoClientCustomizerTakeEffect() {
 
             // given
 
-            var hostInConnectionString = customizerAppliesConnectionString ? "my-host" : "localhost";
-            var connectionString = "mongodb://" + hostInConnectionString;
+            var hostInConnectionString = "my-host";
+            var connectionString = "mongodb://" + hostInConnectionString + "/my-db";
 
             var customizedClusterListener = mock(ClusterListener.class);
 
-            MongoClientCustomizer customizer = (builder, cs) -> {
-                builder.applyToClusterSettings(
-                        clusterSettingsBuilder -> clusterSettingsBuilder.addClusterListener(customizedClusterListener));
-                assertNotNull(cs);
-                if (customizerAppliesConnectionString) {
-                    builder.applyConnectionString(cs);
-                }
-            };
+            MongoDialectConfigurator configurator =
+                    dialectSettingsBuilder -> dialectSettingsBuilder.applyToMongoClientSettings(clientSettingsBuilder ->
+                            clientSettingsBuilder.applyToClusterSettings(clusterSettingsBuilder ->
+                                    clusterSettingsBuilder.addClusterListener(customizedClusterListener)));
 
             // when
-            verifyMongoClient(customizer, connectionString, mongoClient -> {
+            verifyMongoClient(configurator, connectionString, mongoClient -> {
                 var hosts = mongoClient.getClusterDescription().getClusterSettings().getHosts().stream()
                         .map(ServerAddress::getHost)
                         .collect(toSet());
 
                 // then
-                if (customizerAppliesConnectionString) {
-                    assertEquals(singleton(hostInConnectionString), hosts);
-                } else {
-                    assertNotEquals(singleton(hostInConnectionString), hosts);
-                }
+                assertEquals(singleton(hostInConnectionString), hosts);
                 verify(customizedClusterListener).clusterOpening(any(ClusterOpeningEvent.class));
             });
             verify(customizedClusterListener).clusterClosed(any(ClusterClosedEvent.class));
@@ -94,13 +84,15 @@ class MongoConnectionProviderTests {
 
         @Test
         void testMongoClientCustomizerThrowException() {
-            assertThrows(NullPointerException.class, () -> {
+            RuntimeException e = new RuntimeException();
+            HibernateException actual = assertThrows(HibernateException.class, () -> {
                 try (var ignored = buildSessionFactory(
-                        (builder, cs) -> {
-                            throw new NullPointerException();
+                        dialectSettingsBuilder -> {
+                            throw e;
                         },
                         null)) {}
             });
+            assertSame(e, actual.getCause());
         }
     }
 
@@ -120,11 +112,11 @@ class MongoConnectionProviderTests {
     }
 
     private void verifyMongoClient(
-            @Nullable MongoClientCustomizer mongoClientCustomizer,
+            @Nullable MongoDialectConfigurator mongoDialectConfigurator,
             @Nullable String connectionString,
             Consumer<MongoClient> verifier)
             throws ServiceException {
-        try (var sessionFactory = buildSessionFactory(mongoClientCustomizer, connectionString)) {
+        try (var sessionFactory = buildSessionFactory(mongoDialectConfigurator, connectionString)) {
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
                     .unwrap(SessionFactoryImplementor.class)
                     .getServiceRegistry()
@@ -138,13 +130,13 @@ class MongoConnectionProviderTests {
     }
 
     private SessionFactory buildSessionFactory(
-            @Nullable MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString) {
+            @Nullable MongoDialectConfigurator mongoDialectConfigurator, @Nullable String connectionString) {
         var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
-        if (mongoClientCustomizer != null) {
-            standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, mongoClientCustomizer);
+        if (mongoDialectConfigurator != null) {
+            standardServiceRegistryBuilder.addService(MongoDialectConfigurator.class, mongoDialectConfigurator);
         }
         if (connectionString != null) {
-            standardServiceRegistryBuilder.applySetting(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
+            standardServiceRegistryBuilder.applySetting(AvailableSettings.JAKARTA_JDBC_URL, connectionString);
         }
         return new MetadataSources(standardServiceRegistryBuilder.build())
                 .getMetadataBuilder()

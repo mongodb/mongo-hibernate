@@ -19,16 +19,17 @@ package com.mongodb.hibernate.jdbc;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoDriverInformation;
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.dialect.MongoDialect;
+import com.mongodb.hibernate.dialect.MongoDialectSettings;
 import com.mongodb.hibernate.internal.VisibleForTesting;
-import com.mongodb.hibernate.service.MongoClientCustomizer;
+import com.mongodb.hibernate.service.MongoDialectConfigurator;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
@@ -37,7 +38,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
 import org.hibernate.HibernateException;
-import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.UnknownUnwrapTypeException;
@@ -48,38 +48,34 @@ import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@linkplain com.mongodb.hibernate.dialect.MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider}
- * SPI implementation.
+ * {@linkplain MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider} SPI implementation.
  *
- * <p>{@link MongoConnectionProvider} uses the {@value JdbcSettings#JAKARTA_JDBC_URL} configuration property to create a
- * MongoDB <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>. The
- * configuration property is mandatory if {@link MongoClientCustomizer} service is not used. Otherwise, a
- * {@link ConnectionString} instance will be provided to the
- * {@link MongoClientCustomizer#customize(MongoClientSettings.Builder, ConnectionString)} method as a reference
- * ({@code null} if {@value JdbcSettings#JAKARTA_JDBC_URL} is not configured), and it is up to the
- * {@code MongoClientCustomizer} to use it or not.
+ * <p>All the work done via a {@link Connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from this
+ * {@linkplain ConnectionProvider} is done within the same {@link ClientSession}.
+ * {@linkplain ClientSession#startTransaction() MongoDB transactions} are used only if
+ * {@linkplain Connection#getAutoCommit() auto-commit} is disabled.
  *
- * @see ConnectionProvider
- * @see JdbcSettings#JAKARTA_JDBC_URL
- * @see MongoClientCustomizer
- * @see <a href="https://www.mongodb.com/docs/manual/reference/connection-string/">connection string</a>
+ * @see MongoDialectSettings
  */
 public final class MongoConnectionProvider
         implements ConnectionProvider, Configurable, Stoppable, ServiceRegistryAwareService {
-
     @Serial
     private static final long serialVersionUID = 1L;
 
+    private @Nullable MongoDialectSettings config;
     private @Nullable MongoClient mongoClient;
 
-    private @Nullable MongoClientCustomizer mongoClientCustomizer;
+    private @Nullable MongoDialectConfigurator mongoDialectConfigurator;
 
     @Override
     public Connection getConnection() throws SQLException {
         try {
             var client = assertNotNull(mongoClient);
             var clientSession = client.startSession();
-            return new MongoConnection(client, clientSession);
+            var initializedConfig = assertNotNull(config);
+            var connection = new MongoConnection(initializedConfig, client, clientSession);
+            connection.setAutoCommit(initializedConfig.isAutoCommit());
+            return connection;
         } catch (RuntimeException e) {
             throw new SQLException("Failed to get connection", e);
         }
@@ -106,49 +102,32 @@ public final class MongoConnectionProvider
     }
 
     @Override
-    public void configure(Map<String, Object> configValues) {
-        var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
+    public void configure(Map<String, Object> configProperties) {
+        var jdbcUrl = configProperties.get(JAKARTA_JDBC_URL);
 
-        if (mongoClientCustomizer == null && jdbcUrl == null) {
+        if (mongoDialectConfigurator == null && jdbcUrl == null) {
             throw new HibernateException(format(
                     "Configuration property [%s] is required unless %s is provided",
-                    JAKARTA_JDBC_URL, MongoClientCustomizer.class.getName()));
+                    JAKARTA_JDBC_URL, MongoDialectConfigurator.class.getName()));
         }
 
-        var connectionString = jdbcUrl == null ? null : getConnectionString(jdbcUrl);
-
-        final MongoClientSettings.Builder clientSettingsBuilder;
-        if (mongoClientCustomizer != null) {
-            clientSettingsBuilder = MongoClientSettings.builder();
-            mongoClientCustomizer.customize(clientSettingsBuilder, connectionString);
-        } else {
-            clientSettingsBuilder = MongoClientSettings.builder().applyConnectionString(connectionString);
+        try {
+            MongoDialectSettings.Builder mongoDialectSettingsBuilder = MongoDialectSettings.builder(configProperties);
+            if (mongoDialectConfigurator != null) {
+                mongoDialectConfigurator.configure(mongoDialectSettingsBuilder);
+            }
+            config = mongoDialectSettingsBuilder.build();
+        } catch (RuntimeException e) {
+            throw new HibernateException(
+                    format("Failed to construct %s", MongoDialectSettings.class.getSimpleName()), e);
         }
-
-        var clientSettings = clientSettingsBuilder.build();
 
         var driverInfo = MongoDriverInformation.builder()
                 .driverName(assertNotNull(BuildConfig.NAME))
                 .driverVersion(assertNotNull(BuildConfig.VERSION))
                 .build();
 
-        mongoClient = MongoClients.create(clientSettings, driverInfo);
-    }
-
-    private static ConnectionString getConnectionString(Object jdbcUrl) {
-        if (!(jdbcUrl instanceof String)) {
-            throw new HibernateException(
-                    format("Configuration property [%s] value [%s] not of string type", JAKARTA_JDBC_URL, jdbcUrl));
-        }
-        try {
-            return new ConnectionString((String) jdbcUrl);
-        } catch (RuntimeException e) {
-            throw new HibernateException(
-                    format(
-                            "Failed to create ConnectionString from configuration property [%s] with value [%s]",
-                            JAKARTA_JDBC_URL, jdbcUrl),
-                    e);
-        }
+        mongoClient = MongoClients.create(config.getMongoClientSettings(), driverInfo);
     }
 
     @Override
@@ -161,9 +140,9 @@ public final class MongoConnectionProvider
     @Override
     public void injectServices(ServiceRegistryImplementor serviceRegistry) {
         try {
-            mongoClientCustomizer = serviceRegistry.getService(MongoClientCustomizer.class);
-        } catch (UnknownServiceException ignored) {
-            // no-op
+            mongoDialectConfigurator = serviceRegistry.getService(MongoDialectConfigurator.class);
+        } catch (UnknownServiceException e) {
+            // TODO-HIBERNATE-43 `LOGGER.debug("{} is not detected", MongoDialectConfigurator.class.getSimpleName(), e)`
         }
     }
 

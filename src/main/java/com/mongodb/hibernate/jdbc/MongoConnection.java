@@ -21,7 +21,9 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.dialect.MongoDialectSettings;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
@@ -42,19 +44,19 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoConnection implements ConnectionAdapter {
 
-    // TODO-HIBERNATE-38 temporary hard-coded database prior to the db config tech design finalizing
-    public static final String DATABASE = "mongo-hibernate-test";
-
+    private final MongoDialectSettings config;
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
-
+    private MongoDatabase mongoDatabase;
     private boolean closed;
 
     private boolean autoCommit;
 
-    MongoConnection(MongoClient mongoClient, ClientSession clientSession) {
+    MongoConnection(MongoDialectSettings config, MongoClient mongoClient, ClientSession clientSession) {
+        this.config = config;
         this.mongoClient = mongoClient;
         this.clientSession = clientSession;
+        mongoDatabase = mongoDatabase(config.getDatabaseName());
         autoCommit = true;
     }
 
@@ -139,13 +141,13 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        return new MongoStatement(mongoClient, clientSession, this);
+        return new MongoStatement(mongoDatabase, clientSession, this);
     }
 
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        return new MongoPreparedStatement(mongoClient, clientSession, this, mql);
+        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
     }
 
     @Override
@@ -209,14 +211,29 @@ final class MongoConnection implements ConnectionAdapter {
     }
 
     /**
+     * @param schemaName {@inheritDoc}. If {@code null}, then {@link MongoDialectSettings#getDatabaseName()} is used.
+     */
+    @Override
+    public void setSchema(@Nullable String schemaName) throws SQLException {
+        checkClosed();
+        mongoDatabase = mongoDatabase(schemaName);
+    }
+
+    private MongoDatabase mongoDatabase(@Nullable String mongoDatabaseName) {
+        return mongoClient.getDatabase(mongoDatabaseName == null ? config.getDatabaseName() : mongoDatabaseName);
+    }
+
+    /**
      * Used during Hibernate's DDL step for Information Extraction purposes.
      *
+     * @return The current schema name.
+     *     <p>Default value: {@link MongoDialectSettings#getDatabaseName()}.
      * @see org.hibernate.tool.schema.extract.internal.AbstractInformationExtractorImpl
      */
     @Override
-    public @Nullable String getSchema() throws SQLException {
+    public String getSchema() throws SQLException {
         checkClosed();
-        return null;
+        return mongoDatabase.getName();
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
