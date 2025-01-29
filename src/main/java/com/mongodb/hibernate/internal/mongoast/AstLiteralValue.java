@@ -24,10 +24,10 @@ import org.bson.codecs.EncoderContext;
 /**
  * Represents a literal Bson value {@link AstNode} type, whose rendering is based on some {@link BsonValueCodec}.
  *
+ * <p>This class is not part of the public API and may be removed or changed at any time
+ *
  * @param literalValue some {@link BsonValue} instance to be rendered; not {@code null}
  * @see AstPlaceholder
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
  */
 public record AstLiteralValue(BsonValue literalValue) implements AstValue {
 
