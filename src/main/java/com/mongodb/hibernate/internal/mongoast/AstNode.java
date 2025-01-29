@@ -22,6 +22,8 @@ import org.bson.BsonWriter;
  * The ultimate ancestor interface representing any node in a Mongo AST tree model.
  *
  * <p>Its central concern is how to render the sub-tree rooted with it using a {@link BsonWriter} instance.
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
  */
 @FunctionalInterface
 public interface AstNode {

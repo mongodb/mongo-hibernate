@@ -25,6 +25,8 @@ import org.bson.BsonWriter;
  * Represents some insert MQL command which aims to insert one single document composed of a collection of
  * {@link AstElement}s.
  *
+ * <p>This class is not part of the public API and may be removed or changed at any time
+ *
  * @param collection collection name; never {@code null}
  * @param elements the fields of the inserted document; never {@code null}
  */

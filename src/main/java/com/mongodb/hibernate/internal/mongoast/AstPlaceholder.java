@@ -24,6 +24,8 @@ import org.bson.BsonWriter;
  *
  * <p>Note that MQL has no SQL parameter placeholder (JDBC uses {@code ?} as placeholder marker) counterpart; currently
  * {@code {"$undefined": true}} is chosen
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
  */
 public record AstPlaceholder() implements AstValue {
 
