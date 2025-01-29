@@ -43,16 +43,8 @@ import org.jspecify.annotations.Nullable;
  */
 final class AstVisitorValueHolder {
 
-    private TypeReference<?> valueType;
+    private @Nullable TypeReference<?> valueType;
     private @Nullable Object value;
-
-    private AstVisitorValueHolder(TypeReference<?> valueType) {
-        this.valueType = valueType;
-    }
-
-    public static AstVisitorValueHolder emptyHolder() {
-        return new AstVisitorValueHolder(TypeReference.NULL);
-    }
 
     /**
      * Grabs the value (matching the expected type) then empties the holder and restored its previous state.

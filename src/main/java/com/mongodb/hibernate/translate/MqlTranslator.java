@@ -122,7 +122,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     private final SessionFactoryImplementor sessionFactory;
     private final Statement statement;
 
-    private final AstVisitorValueHolder astReturnValueHolder = AstVisitorValueHolder.emptyHolder();
+    private final AstVisitorValueHolder astReturnValueHolder = new AstVisitorValueHolder();
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
     private final JdbcParametersImpl jdbcParameters = new JdbcParametersImpl();

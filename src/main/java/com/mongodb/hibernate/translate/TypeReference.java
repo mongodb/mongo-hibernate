@@ -32,9 +32,7 @@ import java.util.Arrays;
  * @see AstVisitorValueHolder
  */
 abstract class TypeReference<T> {
-    public static final TypeReference<Void> NULL = new TypeReference<>() {};
     public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
-    public static final TypeReference<String> FIELD_NAME = new TypeReference<>() {};
     public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
 
     @Override

@@ -21,9 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.hibernate.internal.mongoast.AstElement;
+import com.mongodb.hibernate.internal.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
 import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
 import java.util.List;
+import org.bson.BsonString;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,18 +37,18 @@ class AstVisitorValueHolderTests {
 
     @BeforeEach
     void setUp() {
-        astVisitorValueHolder = AstVisitorValueHolder.emptyHolder();
+        astVisitorValueHolder = new AstVisitorValueHolder();
     }
 
     @Test
     void testSimpleUsage() {
         // given
 
-        var valueSet = "field_value";
-        Runnable valueSetter = () -> astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, valueSet);
+        var valueSet = new AstLiteralValue(new BsonString("field_value"));
+        Runnable valueSetter = () -> astVisitorValueHolder.setValue(TypeReference.FIELD_VALUE, valueSet);
 
         // when
-        var valueGotten = astVisitorValueHolder.getValue(TypeReference.FIELD_NAME, valueSetter);
+        var valueGotten = astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, valueSetter);
 
         // then
         assertEquals(valueSet, valueGotten);
@@ -56,17 +58,13 @@ class AstVisitorValueHolderTests {
     void testBacktrack() {
         // given
         Runnable tableInserter = () -> {
-            Runnable fieldNameSetter = () -> {
-                astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "address");
-            };
-            var fieldName = astVisitorValueHolder.getValue(TypeReference.FIELD_NAME, fieldNameSetter);
             Runnable fielValueSetter = () -> {
                 astVisitorValueHolder.setValue(TypeReference.FIELD_VALUE, AstPlaceholder.INSTANCE);
             };
             var fieldValue = astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, fielValueSetter);
-            AstElement astElement = new AstElement(fieldName, fieldValue);
+            AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.setValue(
-                    TypeReference.COLLECTION_MUTATION, new AstInsertCommand("place", List.of(astElement)));
+                    TypeReference.COLLECTION_MUTATION, new AstInsertCommand("city", List.of(astElement)));
         };
 
         // when && then
@@ -81,21 +79,25 @@ class AstVisitorValueHolderTests {
         void testHolderNotEmptyWhenSetting() {
             // given
             Runnable valueSetter = () -> {
-                astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "address");
-                astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "country");
+                astVisitorValueHolder.setValue(
+                        TypeReference.FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
+                astVisitorValueHolder.setValue(
+                        TypeReference.FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
             };
             // when && then
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_NAME, valueSetter));
+            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, valueSetter));
         }
 
         @Test
         @DisplayName("Exception is thrown when holder is expecting a type different from that of real data")
         void testHolderExpectingDifferentType() {
             // given
-            Runnable valueSetter = () -> astVisitorValueHolder.setValue(TypeReference.FIELD_NAME, "address");
+            Runnable valueSetter = () -> astVisitorValueHolder.setValue(
+                    TypeReference.FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
 
             // when && then
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, valueSetter));
+            assertThrows(
+                    Error.class, () -> astVisitorValueHolder.getValue(TypeReference.COLLECTION_MUTATION, valueSetter));
         }
     }
 
