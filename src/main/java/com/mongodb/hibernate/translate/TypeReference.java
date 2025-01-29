@@ -16,11 +16,15 @@
 
 package com.mongodb.hibernate.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstValue;
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /**
  * An enum class denoting the possible types of the value in {@link AstVisitorValueHolder}, so the setter and getter
@@ -36,18 +40,26 @@ abstract class TypeReference<T> {
     public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
     public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
 
+    private static final Map<TypeReference<?>, String> toStringMap;
+
+    static {
+        var fields = TypeReference.class.getDeclaredFields();
+        IdentityHashMap<TypeReference<?>, String> map = new IdentityHashMap<>(fields.length);
+        for (var field : fields) {
+            if ((field.getModifiers() & (Modifier.STATIC | Modifier.PUBLIC)) != 0
+                    && TypeReference.class == field.getType()) {
+                try {
+                    map.put((TypeReference<?>) field.get(null), field.getName());
+                } catch (IllegalAccessException iae) {
+                    fail("IllegalAccessException should not have been thrown: " + iae.getMessage());
+                }
+            }
+        }
+        toStringMap = Collections.unmodifiableMap(map);
+    }
+
     @Override
     public String toString() {
-        return Arrays.stream(TypeReference.class.getDeclaredFields())
-                .filter(field -> {
-                    try {
-                        return (field.getModifiers() & Modifier.STATIC) != 0 && field.get(null) == this;
-                    } catch (IllegalAccessException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .findFirst()
-                .map(Field::getName)
-                .orElse(super.toString());
+        return assertNotNull(toStringMap.get(this));
     }
 }

@@ -17,6 +17,7 @@
 package com.mongodb.hibernate;
 
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -35,7 +36,6 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,7 +84,7 @@ class BasicInsertionTests {
                             author: "Leo Tolstoy",
                             publishYear: 1867
                         }"""));
-        Assertions.assertEquals(expectedDocuments, getCollectionDocuments());
+        assertEquals(expectedDocuments, getCollectionDocuments());
     }
 
     @Test
@@ -105,7 +105,7 @@ class BasicInsertionTests {
                             author: null,
                             publishYear: 1867
                         }"""));
-        Assertions.assertEquals(expectedDocuments, getCollectionDocuments());
+        assertEquals(expectedDocuments, getCollectionDocuments());
     }
 
     @Test
@@ -128,7 +128,7 @@ class BasicInsertionTests {
                             authorLastName: "Tolstoy",
                             publishYear: 1867
                         }"""));
-        Assertions.assertEquals(expectedDocuments, getCollectionDocuments());
+        assertEquals(expectedDocuments, getCollectionDocuments());
     }
 
     private void onMongoCollection(Consumer<MongoCollection<BsonDocument>> collectionConsumer) {
