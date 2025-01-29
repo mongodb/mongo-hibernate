@@ -114,7 +114,7 @@ class MongoStatement implements StatementAdapter {
                     .runCommand(clientSession, command)
                     .getInteger("n");
         } catch (Exception e) {
-            throw new SQLException("Failed to execute update command", e);
+            throw new SQLException("Failed to execute update command: " + e.getMessage(), e);
         }
     }
 

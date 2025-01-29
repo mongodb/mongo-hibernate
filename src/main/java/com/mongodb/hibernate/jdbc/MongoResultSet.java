@@ -104,7 +104,7 @@ final class MongoResultSet implements ResultSetAdapter {
             try {
                 mongoCursor.close();
             } catch (RuntimeException e) {
-                throw new SQLException("Failed to close MongoCursor", e);
+                throw new SQLException("Failed to close MongoCursor: " + e.getMessage(), e);
             }
         }
     }
@@ -191,35 +191,35 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Date getDate(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("To implement in scope of https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
