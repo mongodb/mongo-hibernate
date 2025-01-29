@@ -16,28 +16,29 @@
 
 package com.mongodb.hibernate.translate;
 
-import static java.lang.String.format;
-
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstValue;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 
 /**
- * An enum interface denoting the possible types of the value in {@link AstVisitorValueHolder}, so the setter and getter
- * sides could ensure data exchange safety by shariing the same type reference in this class.
+ * An enum class denoting the possible types of the value in {@link AstVisitorValueHolder}, so the setter and getter
+ * sides could ensure data exchange safety by sharing the same type reference in this class.
  *
- * <p>Note that Java Enum does not support generics. This interface combines both enum and type safety together.
+ * <p>Note that Java Enum does not support generics. This class combines benefits of both {@code Enum} and type safety
+ * together.
  *
  * @param <T> generics type
  * @see AstVisitorValueHolder
  */
-interface TypeReference<T> {
-    TypeReference<Void> NULL = new TypeReference<>() {};
-    TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
-    TypeReference<String> FIELD_NAME = new TypeReference<>() {};
-    TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
+abstract class TypeReference<T> {
+    public static final TypeReference<Void> NULL = new TypeReference<>() {};
+    public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
+    public static final TypeReference<String> FIELD_NAME = new TypeReference<>() {};
+    public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
 
-    default String render() {
+    @Override
+    public String toString() {
         return Arrays.stream(TypeReference.class.getDeclaredFields())
                 .filter(field -> {
                     try {
@@ -47,7 +48,7 @@ interface TypeReference<T> {
                     }
                 })
                 .findFirst()
-                .map(field -> format("%s: %s", field.getGenericType(), field.getName()))
-                .orElse(toString());
+                .map(Field::getName)
+                .orElse(super.toString());
     }
 }

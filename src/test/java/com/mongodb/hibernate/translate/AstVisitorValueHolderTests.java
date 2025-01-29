@@ -108,4 +108,9 @@ class AstVisitorValueHolderTests {
             assertThrows(Error.class, () -> astVisitorValueHolder.getValue(TypeReference.FIELD_VALUE, () -> {}));
         }
     }
+
+    @Test
+    void test() {
+        System.out.println(TypeReference.COLLECTION_MUTATION);
+    }
 }
