@@ -34,16 +34,6 @@ import org.hibernate.sql.ast.spi.ParameterMarkerStrategy;
 public final class MongoDialect extends Dialect {
     private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);
 
-    /** Default constructor used when no version info is available. */
-    public MongoDialect() {
-        super((DatabaseVersion) null);
-    }
-
-    /**
-     * Constructor used when MongoDB meta data is available.
-     *
-     * @param info MongoDB meta data
-     */
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
     }

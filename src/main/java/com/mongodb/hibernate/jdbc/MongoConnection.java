@@ -16,8 +16,12 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static java.lang.String.format;
+
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
@@ -26,7 +30,11 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.sql.Struct;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
@@ -36,7 +44,9 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoConnection implements ConnectionAdapter {
 
-    // temporary hard-coded database prior to the db config tech design finalizing
+    private final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
+
+    // TODO-HIBERNATE-38 temporary hard-coded database prior to the db config tech design finalizing
     public static final String DATABASE = "mongo-hibernate-test";
 
     private final MongoClient mongoClient;
@@ -146,8 +156,7 @@ final class MongoConnection implements ConnectionAdapter {
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -171,8 +180,25 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException(
-                "To be implemented in scope of https://jira.mongodb.org/browse/HIBERNATE-37");
+        try {
+            var commandResult = mongoClient
+                    .getDatabase("admin")
+                    .runCommand(clientSession, new BsonDocument("buildinfo", new BsonInt32(1)));
+            var versionText = commandResult.getString("version");
+            var versionArray = commandResult.getList("versionArray", Integer.class);
+            if (versionArray.size() < 2) {
+                throw new SQLException(
+                        format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
+            }
+            return new MongoDatabaseMetaData(
+                    this, versionText, versionArray.get(0), versionArray.get(1), assertNotNull(BuildConfig.VERSION));
+        } catch (RuntimeException e) {
+            var msg = "Failed to get metadata";
+            if (logger.isErrorEnabled()) {
+                logger.error(msg, e);
+            }
+            throw new SQLException(msg, e);
+        }
     }
 
     /**
@@ -218,7 +244,8 @@ final class MongoConnection implements ConnectionAdapter {
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) {
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+        checkClosed();
         return false;
     }
 
