@@ -21,6 +21,10 @@ import com.mongodb.hibernate.internal.mongoast.AstElement;
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
 import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -102,6 +106,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
+import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
@@ -110,11 +115,6 @@ import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
-
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
 final class MqlTranslator<T extends JdbcOperation & MutationOperation> implements SqlAstTranslator<T> {
 
@@ -163,8 +163,13 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     @Override
     @SuppressWarnings({"unchecked"})
     public T translate(JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
-        if (statement instanceof TableMutation tableMutation) {
-            return translateTableMutation((TableMutation<T>)tableMutation);
+        if (statement instanceof TableMutation) {
+            TableMutation<T> tableMutation = (TableMutation<T>) statement;
+            if (tableMutation instanceof TableInsert) {
+                return translateTableMutation(tableMutation);
+            } else {
+                return (T) new JdbcMutationOperationAdapter();
+            }
         }
         throw new NotYetImplementedException();
     }
