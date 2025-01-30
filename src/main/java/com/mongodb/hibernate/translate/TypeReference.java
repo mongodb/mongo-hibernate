@@ -16,8 +16,6 @@
 
 package com.mongodb.hibernate.translate;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstValue;
 import java.lang.reflect.Modifier;
@@ -36,10 +34,11 @@ import java.util.Map;
  * @see AstVisitorValueHolder
  */
 abstract class TypeReference<T> {
+
     public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
     public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
 
-    private static final Map<TypeReference<?>, String> TOSTRING_CONTENT_MAP;
+    private static final Map<TypeReference<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 
     static {
         var fields = TypeReference.class.getDeclaredFields();
@@ -48,6 +47,7 @@ abstract class TypeReference<T> {
             int modifiers = field.getModifiers();
             if (Modifier.isPublic(modifiers)
                     && Modifier.isStatic(modifiers)
+                    && Modifier.isFinal(modifiers)
                     && TypeReference.class == field.getType()) {
                 try {
                     map.put((TypeReference<?>) field.get(null), field.getName());
@@ -56,11 +56,11 @@ abstract class TypeReference<T> {
                 }
             }
         }
-        TOSTRING_CONTENT_MAP = Collections.unmodifiableMap(map);
+        CONSTANT_TOSTRING_CONTENT_MAP = Collections.unmodifiableMap(map);
     }
 
     @Override
     public String toString() {
-        return assertNotNull(TOSTRING_CONTENT_MAP.get(this));
+        return CONSTANT_TOSTRING_CONTENT_MAP.getOrDefault(this, super.toString());
     }
 }
