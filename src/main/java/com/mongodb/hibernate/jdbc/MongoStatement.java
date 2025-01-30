@@ -32,8 +32,6 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import org.bson.BsonDocument;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.Statement} implementation class.
@@ -42,7 +40,6 @@ import org.slf4j.LoggerFactory;
  * exceptions in its parent {@link StatementAdapter adapter interface}.
  */
 class MongoStatement implements StatementAdapter {
-    private final Logger logger = LoggerFactory.getLogger(MongoStatement.class);
 
     private final MongoClient mongoClient;
     private final MongoConnection mongoConnection;
@@ -70,9 +67,6 @@ class MongoStatement implements StatementAdapter {
     }
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
-        if (logger.isDebugEnabled()) {
-            logger.debug("update mql: {}", command.toJson());
-        }
         startTransactionIfNeeded();
         try {
             return mongoClient
