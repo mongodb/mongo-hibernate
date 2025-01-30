@@ -88,7 +88,7 @@ class BasicInsertionTests {
     }
 
     @Test
-    void testEntityWithNullFieldInsertion() {
+    void testEntityWithNullFieldValueInsertion() {
         sessionFactory.inTransaction(session -> {
             var book = new Book();
             book.id = 1;
@@ -137,10 +137,8 @@ class BasicInsertionTests {
                 .applyConnectionString(connectionString)
                 .build())) {
             var collection = mongoClient.getDatabase("mongo-hibernate-test").getCollection("books", BsonDocument.class);
-            ;
             collectionConsumer.accept(collection);
         }
-        ;
     }
 
     private Set<BsonDocument> getCollectionDocuments() {

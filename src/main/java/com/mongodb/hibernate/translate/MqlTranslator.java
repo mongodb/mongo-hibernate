@@ -16,6 +16,9 @@
 
 package com.mongodb.hibernate.translate;
 
+import static com.mongodb.hibernate.translate.TypeReference.COLLECTION_MUTATION;
+import static com.mongodb.hibernate.translate.TypeReference.FIELD_VALUE;
+
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import com.mongodb.hibernate.internal.mongoast.AstElement;
 import com.mongodb.hibernate.internal.mongoast.AstNode;
@@ -121,7 +124,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     private final SessionFactoryImplementor sessionFactory;
     private final Statement statement;
 
-    private final AstVisitorValueHolder astReturnValueHolder = new AstVisitorValueHolder();
+    private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
@@ -175,7 +178,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     }
 
     private T translateTableMutation(TableMutation<T> mutation) {
-        var rootAstNode = astReturnValueHolder.getValue(TypeReference.COLLECTION_MUTATION, () -> mutation.accept(this));
+        var rootAstNode = astVisitorValueHolder.getValue(COLLECTION_MUTATION, () -> mutation.accept(this));
         return mutation.createMutationOperation(translateMongoAst(rootAstNode), parameterBinders);
     }
 
@@ -193,13 +196,12 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         var tableName = tableInsertStandard.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
         tableInsertStandard.forEachValueBinding((columnPosition, columnValueBinding) -> {
-            var astValue = astReturnValueHolder.getValue(
-                    TypeReference.FIELD_VALUE,
-                    () -> columnValueBinding.getValueExpression().accept(this));
+            var astValue = astVisitorValueHolder.getValue(
+                    FIELD_VALUE, () -> columnValueBinding.getValueExpression().accept(this));
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
         });
-        astReturnValueHolder.setValue(TypeReference.COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
+        astVisitorValueHolder.setValue(COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
     }
 
     @Override
@@ -209,7 +211,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         }
         var jdbcParameter = columnWriteFragment.getParameters().iterator().next();
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astReturnValueHolder.setValue(TypeReference.FIELD_VALUE, AstPlaceholder.INSTANCE);
+        astVisitorValueHolder.setValue(FIELD_VALUE, AstPlaceholder.INSTANCE);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

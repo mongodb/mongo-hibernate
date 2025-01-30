@@ -40,7 +40,7 @@ abstract class TypeReference<T> {
     public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
     public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
 
-    private static final Map<TypeReference<?>, String> toStringMap;
+    private static final Map<TypeReference<?>, String> TOSTRING_MAP;
 
     static {
         var fields = TypeReference.class.getDeclaredFields();
@@ -55,11 +55,11 @@ abstract class TypeReference<T> {
                 }
             }
         }
-        toStringMap = Collections.unmodifiableMap(map);
+        TOSTRING_MAP = Collections.unmodifiableMap(map);
     }
 
     @Override
     public String toString() {
-        return assertNotNull(toStringMap.get(this));
+        return assertNotNull(TOSTRING_MAP.get(this));
     }
 }
