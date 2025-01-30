@@ -16,8 +16,8 @@
 
 package com.mongodb.hibernate;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -28,49 +28,31 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
-import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.jspecify.annotations.NullUnmarked;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @NullUnmarked
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {BasicInsertionTests.Book.class, BasicInsertionTests.BookWithEmbeddedField.class})
-class BasicInsertionTests implements SessionFactoryScopeAware {
-
-    private SessionFactoryScope sessionFactoryScope;
-    private SQLStatementInspector mqlStatementInspector;
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
-        mqlStatementInspector = sessionFactoryScope.getCollectingStatementInspector();
-    }
+class BasicInsertionTests {
 
     @BeforeEach
     void setUp() {
         onMongoCollection(MongoCollection::drop);
-        mqlStatementInspector.clear();
-    }
-
-    @AfterEach
-    void tearDown() {
-        mqlStatementInspector.getSqlQueries().forEach(mql -> System.out.println("execute mql: " + mql));
     }
 
     @Test
-    void testSimpleEntityInsertion() {
-        sessionFactoryScope.inTransaction(session -> {
+    void testSimpleEntityInsertion(SessionFactoryScope scope) {
+        scope.inTransaction(session -> {
             var book = new Book();
             book.id = 1;
             book.title = "War and Peace";
@@ -78,42 +60,40 @@ class BasicInsertionTests implements SessionFactoryScopeAware {
             book.publishYear = 1867;
             session.persist(book);
         });
-        var expectedDocuments = Set.of(
-                BsonDocument.parse(
-                        """
+        var expectedDocument = BsonDocument.parse(
+                """
                         {
                             _id: 1,
                             title: "War and Peace",
                             author: "Leo Tolstoy",
                             publishYear: 1867
-                        }"""));
-        assertEquals(expectedDocuments, getCollectionDocuments());
+                        }""");
+        assertCollectionContainsOnly(expectedDocument);
     }
 
     @Test
-    void testEntityWithNullFieldValueInsertion() {
-        sessionFactoryScope.inTransaction(session -> {
+    void testEntityWithNullFieldValueInsertion(SessionFactoryScope scope) {
+        scope.inTransaction(session -> {
             var book = new Book();
             book.id = 1;
             book.title = "War and Peace";
             book.publishYear = 1867;
             session.persist(book);
         });
-        var expectedDocuments = Set.of(
-                BsonDocument.parse(
-                        """
+        var expectedDocument = BsonDocument.parse(
+                """
                         {
                             _id: 1,
                             title: "War and Peace",
                             author: null,
                             publishYear: 1867
-                        }"""));
-        assertEquals(expectedDocuments, getCollectionDocuments());
+                        }""");
+        assertCollectionContainsOnly(expectedDocument);
     }
 
     @Test
-    void testEntityWithEmbeddedFieldInsertion() {
-        sessionFactoryScope.inTransaction(session -> {
+    void testEntityWithEmbeddedFieldInsertion(SessionFactoryScope scope) {
+        scope.inTransaction(session -> {
             var book = new BookWithEmbeddedField();
             book.id = 1;
             book.title = "War and Peace";
@@ -121,17 +101,16 @@ class BasicInsertionTests implements SessionFactoryScopeAware {
             book.publishYear = 1867;
             session.persist(book);
         });
-        var expectedDocuments = Set.of(
-                BsonDocument.parse(
-                        """
+        var expectedDocument = BsonDocument.parse(
+                """
                         {
                             _id: 1,
                             title: "War and Peace",
                             authorFirstName: "Leo",
                             authorLastName: "Tolstoy",
                             publishYear: 1867
-                        }"""));
-        assertEquals(expectedDocuments, getCollectionDocuments());
+                        }""");
+        assertCollectionContainsOnly(expectedDocument);
     }
 
     private void onMongoCollection(Consumer<MongoCollection<BsonDocument>> collectionConsumer) {
@@ -144,10 +123,14 @@ class BasicInsertionTests implements SessionFactoryScopeAware {
         }
     }
 
-    private Set<BsonDocument> getCollectionDocuments() {
-        var documents = new HashSet<BsonDocument>();
+    private List<BsonDocument> getCollectionDocuments() {
+        var documents = new ArrayList<BsonDocument>();
         onMongoCollection(collection -> collection.find().into(documents));
         return documents;
+    }
+
+    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
+        assertThat(getCollectionDocuments()).asList().singleElement().isEqualTo(expectedDoc);
     }
 
     @Entity(name = "Book")
