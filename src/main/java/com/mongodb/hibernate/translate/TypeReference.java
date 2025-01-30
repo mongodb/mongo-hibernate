@@ -17,7 +17,6 @@
 package com.mongodb.hibernate.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstValue;
@@ -40,26 +39,28 @@ abstract class TypeReference<T> {
     public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
     public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
 
-    private static final Map<TypeReference<?>, String> TOSTRING_MAP;
+    private static final Map<TypeReference<?>, String> TOSTRING_CONTENT_MAP;
 
     static {
         var fields = TypeReference.class.getDeclaredFields();
-        IdentityHashMap<TypeReference<?>, String> map = new IdentityHashMap<>(fields.length);
+        var map = new IdentityHashMap<TypeReference<?>, String>(fields.length);
         for (var field : fields) {
-            if ((field.getModifiers() & (Modifier.STATIC | Modifier.PUBLIC)) != 0
+            int modifiers = field.getModifiers();
+            if (Modifier.isPublic(modifiers)
+                    && Modifier.isStatic(modifiers)
                     && TypeReference.class == field.getType()) {
                 try {
                     map.put((TypeReference<?>) field.get(null), field.getName());
-                } catch (IllegalAccessException iae) {
-                    fail("IllegalAccessException should not have been thrown: " + iae.getMessage());
+                } catch (IllegalAccessException ignored) {
+                    // ignored
                 }
             }
         }
-        TOSTRING_MAP = Collections.unmodifiableMap(map);
+        TOSTRING_CONTENT_MAP = Collections.unmodifiableMap(map);
     }
 
     @Override
     public String toString() {
-        return assertNotNull(TOSTRING_MAP.get(this));
+        return assertNotNull(TOSTRING_CONTENT_MAP.get(this));
     }
 }
