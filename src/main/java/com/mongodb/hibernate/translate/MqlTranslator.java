@@ -195,12 +195,12 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     public void visitStandardTableInsert(TableInsertStandard tableInsertStandard) {
         var tableName = tableInsertStandard.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
-        tableInsertStandard.forEachValueBinding((columnPosition, columnValueBinding) -> {
+        for (var columnValueBinding : tableInsertStandard.getValueBindings()) {
             var astValue = astVisitorValueHolder.getValue(
                     FIELD_VALUE, () -> columnValueBinding.getValueExpression().accept(this));
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
-        });
+        }
         astVisitorValueHolder.setValue(COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
     }
 
