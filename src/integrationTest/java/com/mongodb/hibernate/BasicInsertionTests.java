@@ -32,42 +32,45 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import org.bson.BsonDocument;
-import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.testing.jdbc.SQLStatementInspector;
+import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.SessionFactory;
+import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.jspecify.annotations.NullUnmarked;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @NullUnmarked
-class BasicInsertionTests {
+@SessionFactory(exportSchema = false)
+@DomainModel(annotatedClasses = {BasicInsertionTests.Book.class, BasicInsertionTests.BookWithEmbeddedField.class})
+class BasicInsertionTests implements SessionFactoryScopeAware {
 
-    private static SessionFactory sessionFactory;
+    private SessionFactoryScope sessionFactoryScope;
+    private SQLStatementInspector mqlStatementInspector;
 
-    @BeforeAll
-    static void beforeAll() {
-        sessionFactory = new Configuration()
-                .addAnnotatedClass(Book.class)
-                .addAnnotatedClass(BookWithEmbeddedField.class)
-                .buildSessionFactory();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        if (sessionFactory != null) {
-            sessionFactory.close();
-        }
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+        mqlStatementInspector = sessionFactoryScope.getCollectingStatementInspector();
     }
 
     @BeforeEach
     void setUp() {
         onMongoCollection(MongoCollection::drop);
+        mqlStatementInspector.clear();
+    }
+
+    @AfterEach
+    void tearDown() {
+        mqlStatementInspector.getSqlQueries().forEach(mql -> System.out.println("execute mql: " + mql));
     }
 
     @Test
     void testSimpleEntityInsertion() {
-        sessionFactory.inTransaction(session -> {
+        sessionFactoryScope.inTransaction(session -> {
             var book = new Book();
             book.id = 1;
             book.title = "War and Peace";
@@ -89,7 +92,7 @@ class BasicInsertionTests {
 
     @Test
     void testEntityWithNullFieldValueInsertion() {
-        sessionFactory.inTransaction(session -> {
+        sessionFactoryScope.inTransaction(session -> {
             var book = new Book();
             book.id = 1;
             book.title = "War and Peace";
@@ -110,7 +113,7 @@ class BasicInsertionTests {
 
     @Test
     void testEntityWithEmbeddedFieldInsertion() {
-        sessionFactory.inTransaction(session -> {
+        sessionFactoryScope.inTransaction(session -> {
             var book = new BookWithEmbeddedField();
             book.id = 1;
             book.title = "War and Peace";

@@ -130,6 +130,7 @@ dependencies {
 
     integrationTestImplementation(libs.junit.jupiter)
     integrationTestImplementation(libs.logback.classic)
+    integrationTestImplementation(libs.hibernate.testing)
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     errorprone(libs.nullaway)
