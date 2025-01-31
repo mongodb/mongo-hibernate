@@ -46,6 +46,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -368,6 +369,48 @@ class MongoConnectionTests {
                             .equals(arg.toBsonDocument().getFirstKey())));
             // when && then
             assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
+        }
+    }
+
+    @Nested
+    class ResultSetSupportTests {
+
+        private static final String EXAMPLE_MQL =
+                """
+            {
+              find: "restaurants",
+              filter: { rating: { $gte: 9 }, cuisine: "italian" },
+              projection: { name: 1, rating: 1, address: 1 },
+              sort: { name: 1 },
+              limit: 5
+            }""";
+
+        @ParameterizedTest
+        @ValueSource(
+                ints = {ResultSet.TYPE_FORWARD_ONLY, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.TYPE_SCROLL_INSENSITIVE
+                })
+        void testType(int resultSetType) {
+            Executable executable = () -> mongoConnection
+                    .prepareStatement(EXAMPLE_MQL, resultSetType, ResultSet.CONCUR_READ_ONLY)
+                    .close();
+            if (resultSetType == ResultSet.TYPE_FORWARD_ONLY) {
+                assertDoesNotThrow(executable);
+            } else {
+                assertThrows(SQLException.class, executable);
+            }
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {ResultSet.CONCUR_READ_ONLY, ResultSet.CONCUR_UPDATABLE})
+        void testConcurrency(int resultSetConcurrency) {
+            Executable executable = () -> mongoConnection
+                    .prepareStatement(EXAMPLE_MQL, ResultSet.TYPE_FORWARD_ONLY, resultSetConcurrency)
+                    .close();
+            if (resultSetConcurrency == ResultSet.CONCUR_READ_ONLY) {
+                assertDoesNotThrow(executable);
+            } else {
+                assertThrows(SQLException.class, executable);
+            }
         }
     }
 }
