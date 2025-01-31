@@ -14,19 +14,6 @@
  * limitations under the License.
  */
 
-// The following describes the usual approach we use when implementing JDBC interfaces
-// using the example of `java.sql.Connection`:
-// - Create abstract `ConnectionAdapter` that implements all abstract methods from `java.sql.Connection`
-//   (note how we do not override default methods)
-//   such that they always complete abruptly with `java.sql.SQLFeatureNotSupportedException`.
-//   This provides a fallback implementation while all the methods Hibernate really called
-//   should have been overridden in `MongoConnection' below.
-// - Create concrete `MongoConnection` that overrides implementations from `ConnectionAdapter`
-//   only if they are called by Hibernate ORM:
-//   - if we support the corresponding Hibernate ORM functionality, we either provide a sufficient implementation,
-//     or defer doing so by throwing `NotYetImplementedException`;
-//   - if we do not support the corresponding functionality, we throw `java.sql.SQLFeatureNotSupportedException`,
-//     with a message explaining why MongoDB Dialect opted for not supporting it.
 @NullMarked
 package com.mongodb.hibernate.jdbc;
 
