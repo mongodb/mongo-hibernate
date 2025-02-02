@@ -50,6 +50,7 @@ import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
+import org.jspecify.annotations.Nullable;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.PreparedStatement} implementation class.
@@ -57,9 +58,9 @@ import org.bson.types.Decimal128;
  * <p>It only focuses on API methods MongoDB Dialect will support. All the other methods are implemented by throwing
  * exceptions in its parent {@link PreparedStatementAdapter adapter interface}.
  */
-final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
+class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
-    private final BsonDocument command;
+    private BsonDocument command;
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
@@ -69,6 +70,16 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         this.command = BsonDocument.parse(mql);
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
+    }
+
+    void setCommand(BsonDocument command) {
+        this.command = command;
+        parameterValueSetters.clear();
+        parseParameters(command, parameterValueSetters);
+    }
+
+    @Nullable BsonDocument getCommand() {
+        return command;
     }
 
     @Override
@@ -217,12 +228,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
-    }
-
-    @Override
-    public void addBatch() throws SQLException {
-        checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override

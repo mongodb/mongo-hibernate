@@ -37,6 +37,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
 import org.hibernate.HibernateException;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownServiceException;
@@ -74,12 +75,14 @@ public final class MongoConnectionProvider
 
     private @Nullable MongoClientCustomizer mongoClientCustomizer;
 
+    private int batchSize;
+
     @Override
     public Connection getConnection() throws SQLException {
         try {
             var client = assertNotNull(mongoClient);
             var clientSession = client.startSession();
-            return new MongoConnection(client, clientSession);
+            return new MongoConnection(client, clientSession, batchSize);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to get connection", e);
         }
@@ -107,6 +110,10 @@ public final class MongoConnectionProvider
 
     @Override
     public void configure(Map<String, Object> configValues) {
+
+        var batchSizeValue = configValues.get(AvailableSettings.STATEMENT_BATCH_SIZE);
+        batchSizeValue = batchSizeValue instanceof String && Integer.parseInt((String) batchSizeValue) > 0;
+
         var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
 
         if (mongoClientCustomizer == null && jdbcUrl == null) {
