@@ -16,11 +16,19 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.model.DeleteManyModel;
+import com.mongodb.client.model.DeleteOneModel;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.UpdateManyModel;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -30,11 +38,14 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
@@ -60,26 +71,38 @@ import org.jspecify.annotations.Nullable;
  */
 class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
+    private final boolean batchable;
+    private final List<BsonDocument> commandBatch;
+    private final @Nullable BsonDocument commandPrototype;
+
     private BsonDocument command;
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
     public MongoPreparedStatement(
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
+        this(mongoClient, clientSession, mongoConnection, mql, false);
+    }
+
+    public MongoPreparedStatement(
+            MongoClient mongoClient,
+            ClientSession clientSession,
+            MongoConnection mongoConnection,
+            String mql,
+            boolean batchable) {
         super(mongoClient, clientSession, mongoConnection);
-        this.command = BsonDocument.parse(mql);
+        this.batchable = batchable;
+        if (batchable) {
+            commandBatch = new ArrayList<>();
+            commandPrototype = BsonDocument.parse(mql);
+            command = commandPrototype.clone();
+        } else {
+            commandBatch = Collections.emptyList();
+            commandPrototype = null;
+            this.command = BsonDocument.parse(mql);
+        }
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
-    }
-
-    void setCommand(BsonDocument command) {
-        this.command = command;
-        parameterValueSetters.clear();
-        parseParameters(command, parameterValueSetters);
-    }
-
-    @Nullable BsonDocument getCommand() {
-        return command;
     }
 
     @Override
@@ -265,6 +288,37 @@ class MongoPreparedStatement extends MongoStatement implements PreparedStatement
         throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
     }
 
+    @Override
+    public void addBatch() throws SQLException {
+        checkClosed();
+        if (!batchable) {
+            throw new SQLFeatureNotSupportedException("MongoPreparedStatement not batchable");
+        }
+        assertNotNull(commandBatch).add(assertNotNull(command));
+        command = assertNotNull(commandPrototype).clone();
+        parameterValueSetters.clear();
+        parseParameters(command, parameterValueSetters);
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        if (!batchable) {
+            throw new SQLFeatureNotSupportedException("MongoPreparedStatement not batchable");
+        }
+        commandBatch.clear();
+        command = assertNotNull(commandPrototype).clone();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        if (!batchable) {
+            throw new SQLFeatureNotSupportedException("MongoPreparedStatement not batchable");
+        }
+        return doExecuteBatch();
+    }
+
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
@@ -315,6 +369,73 @@ class MongoPreparedStatement extends MongoStatement implements PreparedStatement
             throw new SQLException(format(
                     "Parameter index invalid: %d; should be within [1, %d]",
                     parameterIndex, parameterValueSetters.size()));
+        }
+    }
+
+    private int[] doExecuteBatch() throws SQLException {
+        startTransactionIfNeeded();
+        try {
+            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
+            String collectionName = null;
+            for (BsonDocument command : commandBatch) {
+                var commandName = command.getFirstKey();
+                var curCollectionName = command.getString(commandName).getValue();
+                if (collectionName == null) {
+                    collectionName = curCollectionName;
+                } else {
+                    assertTrue(collectionName.equals(curCollectionName));
+                }
+
+                List<WriteModel<BsonDocument>> subWriteModels;
+
+                switch (assertNotNull(commandName)) {
+                    case "insert":
+                        var documents = command.getArray("documents");
+                        subWriteModels = new ArrayList<>(documents.size());
+                        for (var document : documents) {
+                            subWriteModels.add(new InsertOneModel<>((BsonDocument) document));
+                        }
+                        break;
+                    case "update":
+                        var updates = command.getArray("updates").getValues();
+                        subWriteModels = new ArrayList<>(updates.size());
+                        for (var update : updates) {
+                            var updateDocument = (BsonDocument) update;
+                            WriteModel<BsonDocument> updateModel =
+                                    !updateDocument.getBoolean("multi").getValue()
+                                            ? new UpdateOneModel<>(
+                                                    updateDocument.getDocument("q"), updateDocument.getDocument("u"))
+                                            : new UpdateManyModel<>(
+                                                    updateDocument.getDocument("q"), updateDocument.getDocument("u"));
+                            subWriteModels.add(updateModel);
+                        }
+                        break;
+                    case "delete":
+                        var deletes = command.getArray("deleted");
+                        subWriteModels = new ArrayList<>(deletes.size());
+                        for (var delete : deletes) {
+                            var deleteDocument = (BsonDocument) delete;
+                            subWriteModels.add(
+                                    deleteDocument.getNumber("limit").intValue() == 1
+                                            ? new DeleteOneModel<>(deleteDocument.getDocument("q"))
+                                            : new DeleteManyModel<>(deleteDocument.getDocument("q")));
+                        }
+                        break;
+                    default:
+                        throw new NotYetImplementedException();
+                }
+                writeModels.addAll(subWriteModels);
+            }
+            getMongoDatabase()
+                    .getCollection(assertNotNull(collectionName), BsonDocument.class)
+                    .bulkWrite(getClientSession(), writeModels);
+            var rowCounts = new int[commandBatch.size()];
+            Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
+            return rowCounts;
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to run bulk operation: " + e.getMessage(), e);
+        } finally {
+            commandBatch.clear();
         }
     }
 }

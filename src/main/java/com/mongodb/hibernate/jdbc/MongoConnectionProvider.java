@@ -27,6 +27,7 @@ import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.internal.ConfigurationHelper;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
 import java.io.IOException;
@@ -82,7 +83,7 @@ public final class MongoConnectionProvider
         try {
             var client = assertNotNull(mongoClient);
             var clientSession = client.startSession();
-            return new MongoConnection(client, clientSession, batchSize);
+            return new MongoConnection(client, clientSession, batchSize != 0);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to get connection", e);
         }
@@ -109,12 +110,11 @@ public final class MongoConnectionProvider
     }
 
     @Override
-    public void configure(Map<String, Object> configValues) {
+    public void configure(Map<String, Object> configurationValues) {
 
-        var batchSizeValue = configValues.get(AvailableSettings.STATEMENT_BATCH_SIZE);
-        batchSizeValue = batchSizeValue instanceof String && Integer.parseInt((String) batchSizeValue) > 0;
+        batchSize = ConfigurationHelper.getInt(AvailableSettings.STATEMENT_BATCH_SIZE, configurationValues, 0);
 
-        var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
+        var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
 
         if (mongoClientCustomizer == null && jdbcUrl == null) {
             throw new HibernateException(format(

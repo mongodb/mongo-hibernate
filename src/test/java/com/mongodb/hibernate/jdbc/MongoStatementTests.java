@@ -166,9 +166,6 @@ class MongoStatementTests {
                             Map.entry("getUpdateCount()", MongoStatement::getUpdateCount),
                             Map.entry("setFetchSize(int)", stmt -> stmt.setFetchSize(1)),
                             Map.entry("getFetchSize()", MongoStatement::getFetchSize),
-                            Map.entry("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql)),
-                            Map.entry("clearBatch()", MongoStatement::clearBatch),
-                            Map.entry("executeBatch()", MongoStatement::executeBatch),
                             Map.entry("getConnection()", MongoStatement::getConnection),
                             Map.entry("isWrapperFor(Class)", stmt -> stmt.isWrapperFor(Statement.class)))
                     .entrySet()

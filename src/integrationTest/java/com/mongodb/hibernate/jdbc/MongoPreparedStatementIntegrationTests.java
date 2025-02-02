@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.sql.Connection;
@@ -27,8 +26,9 @@ import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -37,11 +37,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@NullUnmarked
 class MongoPreparedStatementIntegrationTests {
+    private static SessionFactory sessionFactory;
 
-    private static @Nullable SessionFactory sessionFactory;
-
-    private @Nullable Session session;
+    private Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -57,7 +57,18 @@ class MongoPreparedStatementIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        session = assertNotNull(sessionFactory).openSession();
+        session = sessionFactory.openSession();
+        session.doWork(conn -> {
+            conn.createStatement()
+                    .executeUpdate(
+                            """
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }""");
+        });
     }
 
     @AfterEach
@@ -69,21 +80,6 @@ class MongoPreparedStatementIntegrationTests {
 
     @Nested
     class ExecuteUpdateTests {
-
-        @BeforeEach
-        void setUp() {
-            assertNotNull(session).doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                    {
-                                        delete: "books",
-                                        deletes: [
-                                            { q: {}, limit: 0 }
-                                        ]
-                                    }""");
-            });
-        }
 
         private static final String INSERT_MQL =
                 """
@@ -181,7 +177,7 @@ class MongoPreparedStatementIntegrationTests {
         }
 
         private void prepareData() {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
@@ -193,7 +189,7 @@ class MongoPreparedStatementIntegrationTests {
                 boolean autoCommit,
                 int expectedUpdatedRowCount,
                 Set<? extends BsonDocument> expectedDocuments) {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var pstmt = pstmtProvider.apply(connection)) {
                     try {
@@ -204,6 +200,135 @@ class MongoPreparedStatementIntegrationTests {
                         }
                     }
                     var realDocuments = pstmt.getMongoDatabase()
+                            .getCollection("books", BsonDocument.class)
+                            .find()
+                            .into(new HashSet<>());
+                    assertEquals(expectedDocuments, realDocuments);
+                }
+            });
+        }
+    }
+
+    @Nested
+    class BatchTests {
+        private static final int BATCH_SIZE = 2;
+
+        private static SessionFactory batchableSessionFactory;
+
+        private Session batchableSession;
+
+        private static final String MQL =
+                """
+                {
+                    insert: "books",
+                    documents: [
+                        {
+                            _id: { $undefined: true },
+                            title: { $undefined: true }
+                        }
+                    ]
+                }""";
+
+        @BeforeAll
+        static void beforeAll() {
+            batchableSessionFactory = new Configuration()
+                    .setProperty(AvailableSettings.STATEMENT_BATCH_SIZE, BATCH_SIZE)
+                    .buildSessionFactory();
+        }
+
+        @AfterAll
+        static void afterAll() {
+            if (batchableSessionFactory != null) {
+                batchableSessionFactory.close();
+            }
+        }
+
+        @BeforeEach
+        void setUp() {
+            batchableSession = batchableSessionFactory.openSession();
+        }
+
+        @AfterEach
+        void tearDown() {
+            if (batchableSession != null) {
+                batchableSession.close();
+            }
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testExecuteBatch(boolean autoCommit) {
+            batchableSession.doWork(connection -> {
+                connection.setAutoCommit(autoCommit);
+                try (var pstmt = connection.prepareStatement(MQL)) {
+                    try {
+                        pstmt.setInt(1, 1);
+                        pstmt.setString(2, "War and Peace");
+                        pstmt.addBatch();
+
+                        pstmt.setInt(1, 2);
+                        pstmt.setString(2, "Anna Karenina");
+                        pstmt.addBatch();
+
+                        pstmt.executeBatch();
+
+                        pstmt.setInt(1, 3);
+                        pstmt.setString(2, "Crime and Punishment");
+                        pstmt.addBatch();
+
+                        pstmt.setInt(1, 4);
+                        pstmt.setString(2, "Notes from Underground");
+                        pstmt.addBatch();
+
+                        pstmt.executeBatch();
+
+                        pstmt.setInt(1, 5);
+                        pstmt.setString(2, "Fathers and Sons");
+
+                        pstmt.addBatch();
+
+                        pstmt.executeBatch();
+                    } finally {
+                        if (!autoCommit) {
+                            connection.commit();
+                        }
+                        pstmt.clearBatch();
+                    }
+
+                    var expectedDocuments = Set.of(
+                            BsonDocument.parse(
+                                    """
+                                        {
+                                            _id: 1,
+                                            title: "War and Peace"
+                                        }"""),
+                            BsonDocument.parse(
+                                    """
+                                        {
+                                            _id: 2,
+                                            title: "Anna Karenina"
+                                        }"""),
+                            BsonDocument.parse(
+                                    """
+                                        {
+                                            _id: 3,
+                                            title: "Crime and Punishment"
+                                        }"""),
+                            BsonDocument.parse(
+                                    """
+                                        {
+                                            _id: 4,
+                                            title: "Notes from Underground"
+                                        }"""),
+                            BsonDocument.parse(
+                                    """
+                                        {
+                                            _id: 5,
+                                            title: "Fathers and Sons"
+                                        }"""));
+
+                    var realDocuments = ((MongoPreparedStatement) pstmt)
+                            .getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
                             .into(new HashSet<>());
