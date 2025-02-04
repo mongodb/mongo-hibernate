@@ -17,11 +17,9 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
-import static com.mongodb.hibernate.jdbc.MongoConnection.DATABASE;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
@@ -41,14 +39,14 @@ import org.jspecify.annotations.Nullable;
  */
 class MongoStatement implements StatementAdapter {
 
-    private final MongoClient mongoClient;
+    private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
 
     private boolean closed;
 
-    public MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
-        this.mongoClient = mongoClient;
+    public MongoStatement(MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection) {
+        this.mongoDatabase = mongoDatabase;
         this.mongoConnection = mongoConnection;
         this.clientSession = clientSession;
     }
@@ -69,10 +67,7 @@ class MongoStatement implements StatementAdapter {
     int executeUpdateCommand(BsonDocument command) throws SQLException {
         startTransactionIfNeeded();
         try {
-            return mongoClient
-                    .getDatabase(DATABASE)
-                    .runCommand(clientSession, command)
-                    .getInteger("n");
+            return mongoDatabase.runCommand(clientSession, command).getInteger("n");
         } catch (Exception e) {
             throw new SQLException("Failed to execute update command", e);
         }
@@ -208,7 +203,7 @@ class MongoStatement implements StatementAdapter {
 
     @VisibleForTesting(otherwise = PRIVATE)
     MongoDatabase getMongoDatabase() {
-        return mongoClient.getDatabase(DATABASE);
+        return mongoDatabase;
     }
 
     private static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
