@@ -142,7 +142,7 @@ public final class MongoConnectionProvider
         try {
             mongoDialectConfigurator = serviceRegistry.getService(MongoDialectConfigurator.class);
         } catch (UnknownServiceException e) {
-            // TODO-HIBERNATE-43 `LOGGER.debug("{} is not detected", MongoDialectConfigurator.class.getSimpleName(), e)`
+            // TODO-HIBERNATE-43 `LOGGER.debug("{} is not detected", MongoDialectConfigurator.class.getName(), e)`
         }
     }
 
