@@ -16,10 +16,14 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
@@ -28,7 +32,7 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -37,11 +41,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@NullUnmarked
 class MongoPreparedStatementIntegrationTests {
 
-    private static @Nullable SessionFactory sessionFactory;
+    private static SessionFactory sessionFactory;
 
-    private @Nullable Session session;
+    private Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -57,7 +62,7 @@ class MongoPreparedStatementIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        session = assertNotNull(sessionFactory).openSession();
+        session = sessionFactory.openSession();
     }
 
     @AfterEach
@@ -68,21 +73,108 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @Nested
+    class ExecuteQueryTests {
+        @BeforeEach
+        void setUp() {
+            session.doWork(conn -> {
+                var stmt = conn.createStatement();
+                stmt.executeUpdate(
+                        """
+                            {
+                                delete: "books",
+                                deletes: [
+                                    { q: {}, limit: 0 }
+                                ]
+                            }""");
+                stmt.executeUpdate(
+                        """
+                           {
+                                insert: "books",
+                                documents: [
+                                   {
+                                       _id: 1,
+                                       title: "War and Peace",
+                                       author: "Leo Tolstoy",
+                                       publishYear: 1867
+                                   },
+                                   {
+                                       _id: 2,
+                                       title: "Anna Karenina",
+                                       author: "Leo Tolstoy",
+                                       publishYear: 1878
+                                   },
+                                   {
+                                       _id: 3,
+                                       title: "Crime and Punishment",
+                                       author: "Fyodor Dostoevsky",
+                                       publishYear: 1866
+                                   }
+                               ]
+                           }""");
+            });
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testQuery(boolean autoCommit) throws SQLException {
+            ResultSet rs = session.doReturningWork(conn -> {
+                conn.setAutoCommit(autoCommit);
+                try (PreparedStatement pstmt = conn.prepareStatement(
+                        """
+                            {
+                                aggregate: "books",
+                                pipeline: [
+                                    { $match: { author: { $eq: { $undefined: true } } } },
+                                    { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
+                                ]
+                            }""")) {
+
+                    pstmt.setString(1, "Leo Tolstoy");
+                    try {
+                        return pstmt.executeQuery();
+                    } finally {
+                        if (!autoCommit) {
+                            conn.commit();
+                        }
+                    }
+                }
+            });
+            assertTrue(rs.next());
+            var metadata = rs.getMetaData();
+            assertAll(
+                    () -> assertEquals(3, metadata.getColumnCount()),
+                    () -> assertEquals("author", metadata.getColumnLabel(1)),
+                    () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
+                    () -> assertEquals("title", metadata.getColumnLabel(3)));
+            assertEquals(3, metadata.getColumnCount());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertEquals(1867, rs.getInt(2)),
+                    () -> assertEquals("War and Peace", rs.getString(3)));
+            assertTrue(rs.next());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertEquals(1878, rs.getInt(2)),
+                    () -> assertEquals("Anna Karenina", rs.getString(3)));
+            assertFalse(rs.next());
+        }
+    }
+
+    @Nested
     class ExecuteUpdateTests {
 
         @BeforeEach
         void setUp() {
-            assertNotNull(session).doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                    {
-                                        delete: "books",
-                                        deletes: [
-                                            { q: {}, limit: 0 }
-                                        ]
-                                    }""");
-            });
+            session.doWork(
+                    conn -> conn.createStatement()
+                            .executeUpdate(
+                                    """
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }"""));
         }
 
         private static final String INSERT_MQL =
@@ -181,7 +273,7 @@ class MongoPreparedStatementIntegrationTests {
         }
 
         private void prepareData() {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
@@ -193,7 +285,7 @@ class MongoPreparedStatementIntegrationTests {
                 boolean autoCommit,
                 int expectedUpdatedRowCount,
                 Set<? extends BsonDocument> expectedDocuments) {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var pstmt = pstmtProvider.apply(connection)) {
                     try {
