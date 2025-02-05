@@ -298,6 +298,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
+        assertTrue(commandBatch.isEmpty());
     }
 
     @Override
@@ -366,10 +367,16 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
 
-            var commandName = commandBatch.get(0).getFirstKey();
-            var collectionName = commandBatch.get(0).getString(commandName).getValue();
+            // Hibernate will group PreparedStatement by both table and mutation type
+            var commandName = assertNotNull(commandBatch.get(0).getFirstKey());
+            var collectionName =
+                    assertNotNull(commandBatch.get(0).getString(commandName).getValue());
 
             for (var command : commandBatch) {
+
+                assertTrue(commandName.equals(command.getFirstKey()));
+                assertTrue(collectionName.equals(command.getString(commandName).getValue()));
+
                 List<WriteModel<BsonDocument>> subWriteModels;
 
                 switch (commandName) {
@@ -413,9 +420,15 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             getMongoDatabase()
                     .getCollection(collectionName, BsonDocument.class)
                     .bulkWrite(getClientSession(), writeModels);
+
             var rowCounts = new int[commandBatch.size()];
+
+            // MongoDB bulk write API returns row counts grouped by mutation types, not by each command in the batch,
+            // so returns 'SUCCESS_NO_INFO' to work around
             Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
+
             return rowCounts;
+
         } catch (RuntimeException e) {
             throw new SQLException("Failed to run bulk operation: " + e.getMessage(), e);
         } finally {
