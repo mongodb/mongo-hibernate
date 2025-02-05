@@ -298,7 +298,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        assertTrue(commandBatch.isEmpty());
     }
 
     @Override
@@ -363,17 +362,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private int[] doExecuteBatch() throws SQLException {
         startTransactionIfNeeded();
         try {
-            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
-            String collectionName = null;
-            for (var command : commandBatch) {
-                var commandName = assertNotNull(command.getFirstKey());
-                var curCollectionName = command.getString(commandName).getValue();
-                if (collectionName == null) {
-                    collectionName = curCollectionName;
-                } else {
-                    assertTrue(collectionName.equals(curCollectionName));
-                }
+            assertTrue(!commandBatch.isEmpty());
 
+            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
+
+            var commandName = commandBatch.get(0).getFirstKey();
+            var collectionName = commandBatch.get(0).getString(commandName).getValue();
+
+            for (var command : commandBatch) {
                 List<WriteModel<BsonDocument>> subWriteModels;
 
                 switch (commandName) {
@@ -415,7 +411,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 writeModels.addAll(subWriteModels);
             }
             getMongoDatabase()
-                    .getCollection(assertNotNull(collectionName), BsonDocument.class)
+                    .getCollection(collectionName, BsonDocument.class)
                     .bulkWrite(getClientSession(), writeModels);
             var rowCounts = new int[commandBatch.size()];
             Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
