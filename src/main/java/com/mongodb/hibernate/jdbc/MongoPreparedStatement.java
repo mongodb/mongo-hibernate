@@ -57,7 +57,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonString;
-import org.bson.BsonType;
+import org.bson.BsonUndefined;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 
@@ -69,10 +69,11 @@ import org.bson.types.Decimal128;
  */
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
-    private final List<BsonDocument> commandBatch;
-    private final BsonDocument commandPrototype;
+    private static final BsonUndefined PARAMETER_PLACEHOLDER = new BsonUndefined();
 
-    private BsonDocument command;
+    private final List<BsonDocument> commandBatch;
+
+    private final BsonDocument command;
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
@@ -80,8 +81,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
         super(mongoClient, clientSession, mongoConnection);
         commandBatch = new ArrayList<>();
-        commandPrototype = BsonDocument.parse(mql);
-        command = commandPrototype.clone();
+        command = BsonDocument.parse(mql);
         parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -272,10 +272,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        commandBatch.add(command);
-        command = commandPrototype.clone();
-        parameterValueSetters.clear();
-        parseParameters(command, parameterValueSetters);
+        commandBatch.add(command.clone());
+        parameterValueSetters.forEach(setter -> setter.accept(PARAMETER_PLACEHOLDER));
     }
 
     @Override
@@ -403,7 +401,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static boolean isParameterMarker(BsonValue value) {
-        return value.getBsonType() == BsonType.UNDEFINED;
+        return value.equals(PARAMETER_PLACEHOLDER);
     }
 
     private void checkParameterIndex(int parameterIndex) throws SQLException {
