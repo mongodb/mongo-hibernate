@@ -343,6 +343,22 @@ class MongoPreparedStatementTests {
             }
         }
 
+        @Test
+        void testClearBatch() throws SQLException {
+            // when
+            try (var pstmt = createMongoPreparedStatement(EXAMPLE_MQL)) {
+                pstmt.setString(1, "War and Peace");
+                pstmt.setInt(2, 1869);
+                pstmt.addBatch();
+
+                pstmt.clearBatch();
+                var rowCounts = pstmt.executeBatch();
+
+                // then
+                assertEquals(0, rowCounts.length);
+            }
+        }
+
         @ParameterizedTest
         @MethodSource("getBulkWriteModelsArguments")
         void testBulkWriteModels(String mql, List<? extends WriteModel<BsonDocument>> expectedWriteModels)
@@ -368,6 +384,8 @@ class MongoPreparedStatementTests {
                     }
                 } finally {
                     pstmt.clearBatch();
+                    var result = pstmt.executeBatch();
+                    assertEquals(0, result.length);
                 }
             }
         }

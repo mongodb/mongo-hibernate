@@ -281,72 +281,17 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        assertTrue(commandBatch.isEmpty());
+        commandBatch.clear();
     }
 
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
-        return doExecuteBatch();
-    }
-
-    private void setParameter(int parameterIndex, BsonValue parameterValue) {
-        var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
-        parameterValueSetter.accept(parameterValue);
-    }
-
-    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameterValueSetters) {
-        for (var entry : command.entrySet()) {
-            if (isParameterMarker(entry.getValue())) {
-                parameterValueSetters.add(entry::setValue);
-            } else if (entry.getValue().getBsonType().isContainer()) {
-                parseParameters(entry.getValue(), parameterValueSetters);
-            }
-        }
-    }
-
-    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameterValueSetters) {
-        for (var i = 0; i < array.size(); i++) {
-            var value = array.get(i);
-            if (isParameterMarker(value)) {
-                var idx = i;
-                parameterValueSetters.add(v -> array.set(idx, v));
-            } else if (value.getBsonType().isContainer()) {
-                parseParameters(value, parameterValueSetters);
-            }
-        }
-    }
-
-    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameterValueSetters) {
-        if (value.isDocument()) {
-            parseParameters(value.asDocument(), parameterValueSetters);
-        } else if (value.isArray()) {
-            parseParameters(value.asArray(), parameterValueSetters);
-        } else {
-            fail("Only BSON container type (BsonDocument or BsonArray) is accepted; provided type: "
-                    + value.getBsonType());
-        }
-    }
-
-    private static boolean isParameterMarker(BsonValue value) {
-        return value.getBsonType() == BsonType.UNDEFINED;
-    }
-
-    private void checkParameterIndex(int parameterIndex) throws SQLException {
-        if (parameterValueSetters.isEmpty()) {
-            throw new SQLException("No parameter exists");
-        }
-        if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
-            throw new SQLException(format(
-                    "Parameter index invalid: %d; should be within [1, %d]",
-                    parameterIndex, parameterValueSetters.size()));
-        }
-    }
-
-    private int[] doExecuteBatch() throws SQLException {
         startTransactionIfNeeded();
         try {
-            assertTrue(!commandBatch.isEmpty());
+            if (commandBatch.isEmpty()) {
+                return new int[0];
+            }
 
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
 
@@ -415,7 +360,60 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         } catch (RuntimeException e) {
             throw new SQLException("Failed to run bulk operation: " + e.getMessage(), e);
         } finally {
-            commandBatch.clear();
+            clearBatch();
+        }
+    }
+
+    private void setParameter(int parameterIndex, BsonValue parameterValue) {
+        var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
+        parameterValueSetter.accept(parameterValue);
+    }
+
+    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameterValueSetters) {
+        for (var entry : command.entrySet()) {
+            if (isParameterMarker(entry.getValue())) {
+                parameterValueSetters.add(entry::setValue);
+            } else if (entry.getValue().getBsonType().isContainer()) {
+                parseParameters(entry.getValue(), parameterValueSetters);
+            }
+        }
+    }
+
+    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameterValueSetters) {
+        for (var i = 0; i < array.size(); i++) {
+            var value = array.get(i);
+            if (isParameterMarker(value)) {
+                var idx = i;
+                parameterValueSetters.add(v -> array.set(idx, v));
+            } else if (value.getBsonType().isContainer()) {
+                parseParameters(value, parameterValueSetters);
+            }
+        }
+    }
+
+    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameterValueSetters) {
+        if (value.isDocument()) {
+            parseParameters(value.asDocument(), parameterValueSetters);
+        } else if (value.isArray()) {
+            parseParameters(value.asArray(), parameterValueSetters);
+        } else {
+            fail("Only BSON container type (BsonDocument or BsonArray) is accepted; provided type: "
+                    + value.getBsonType());
+        }
+    }
+
+    private static boolean isParameterMarker(BsonValue value) {
+        return value.getBsonType() == BsonType.UNDEFINED;
+    }
+
+    private void checkParameterIndex(int parameterIndex) throws SQLException {
+        if (parameterValueSetters.isEmpty()) {
+            throw new SQLException("No parameter exists");
+        }
+        if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
+            throw new SQLException(format(
+                    "Parameter index invalid: %d; should be within [1, %d]",
+                    parameterIndex, parameterValueSetters.size()));
         }
     }
 }
