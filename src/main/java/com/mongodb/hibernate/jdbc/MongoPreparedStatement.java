@@ -69,7 +69,7 @@ import org.jspecify.annotations.Nullable;
  * <p>It only focuses on API methods MongoDB Dialect will support. All the other methods are implemented by throwing
  * exceptions in its parent {@link PreparedStatementAdapter adapter interface}.
  */
-class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
+final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final boolean batchable;
     private final List<BsonDocument> commandBatch;
