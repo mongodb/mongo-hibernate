@@ -35,8 +35,6 @@ import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
@@ -45,8 +43,6 @@ import org.slf4j.LoggerFactory;
  * exceptions in its parent {@linkplain ConnectionAdapter adapter interface}.
  */
 final class MongoConnection implements ConnectionAdapter {
-
-    private final Logger logger = LoggerFactory.getLogger(MongoConnection.class);
 
     // TODO-HIBERNATE-38 temporary hard-coded database prior to the db config tech design finalizing
     public static final String DATABASE = "mongo-hibernate-test";
@@ -203,11 +199,11 @@ final class MongoConnection implements ConnectionAdapter {
             return new MongoDatabaseMetaData(
                     this, versionText, versionArray.get(0), versionArray.get(1), assertNotNull(BuildConfig.VERSION));
         } catch (RuntimeException e) {
-            var msg = "Failed to get metadata";
-            if (logger.isErrorEnabled()) {
-                logger.error(msg, e);
-            }
-            throw new SQLException(msg, e);
+            // TODO-HIBERNATE-43 Let's do `LOGGER.error(<message>, e)`.
+            // Hibernate ORM neither propagates, nor logs `e` (the cause of the `SQLException` we throw),
+            // so if we fail to get `DatabaseMetaData` due to being unable to connect to a MongoDB deployment,
+            // there is no easy way to know that.
+            throw new SQLException("Failed to get metadata", e);
         }
     }
 
