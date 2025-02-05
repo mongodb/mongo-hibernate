@@ -79,12 +79,12 @@ class MongoPreparedStatement extends MongoStatement implements PreparedStatement
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
-    public MongoPreparedStatement(
+    MongoPreparedStatement(
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
         this(mongoClient, clientSession, mongoConnection, mql, false);
     }
 
-    public MongoPreparedStatement(
+    MongoPreparedStatement(
             MongoClient mongoClient,
             ClientSession clientSession,
             MongoConnection mongoConnection,

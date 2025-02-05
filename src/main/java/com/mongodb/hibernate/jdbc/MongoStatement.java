@@ -47,7 +47,7 @@ class MongoStatement implements StatementAdapter {
 
     private boolean closed;
 
-    public MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
+    MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
         this.mongoClient = mongoClient;
         this.mongoConnection = mongoConnection;
         this.clientSession = clientSession;
