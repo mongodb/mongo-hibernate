@@ -155,8 +155,6 @@ class MongoConnectionTests {
                                     "createStruct(String,Object[])",
                                     conn -> conn.createStruct("myStructType", new Object[] {1, "Toronto"})),
                             Map.entry("getMetaData()", MongoConnection::getMetaData),
-                            Map.entry("getCatalog()", MongoConnection::getCatalog),
-                            Map.entry("getSchema()", MongoConnection::getSchema),
                             Map.entry("getWarnings()", MongoConnection::getWarnings),
                             Map.entry("clearWarnings()", MongoConnection::clearWarnings),
                             Map.entry("isWrapperFor()", conn -> conn.isWrapperFor(Connection.class)))

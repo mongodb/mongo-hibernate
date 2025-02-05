@@ -197,28 +197,6 @@ final class MongoConnection implements ConnectionAdapter {
         }
     }
 
-    /**
-     * Used during Hibernate's DDL step for Information Extraction purposes.
-     *
-     * @see org.hibernate.tool.schema.extract.internal.AbstractInformationExtractorImpl
-     */
-    @Override
-    public @Nullable String getCatalog() throws SQLException {
-        checkClosed();
-        return null;
-    }
-
-    /**
-     * Used during Hibernate's DDL step for Information Extraction purposes.
-     *
-     * @see org.hibernate.tool.schema.extract.internal.AbstractInformationExtractorImpl
-     */
-    @Override
-    public @Nullable String getSchema() throws SQLException {
-        checkClosed();
-        return null;
-    }
-
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // dummy implementations
 
