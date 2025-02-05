@@ -47,7 +47,6 @@ import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -277,29 +276,6 @@ class MongoPreparedStatementTests {
                         }
                     ]
                  }""";
-
-        @ParameterizedTest(
-                name = "SQLException is thrown when \"{0}\" is called on a MongoPreparedStatement not batchable")
-        @MethodSource("getMongoPreparedStatementBatchMethodInvocations")
-        void testRunOnNonBatchablePreparedStatement(String label, PreparedStatementMethodInvocation methodInvocation) {
-
-            // given
-            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL, false)) {
-
-                // when && then
-                assertThrows(SQLFeatureNotSupportedException.class, () -> methodInvocation.runOn(preparedStatement));
-            }
-        }
-
-        private static Stream<Arguments> getMongoPreparedStatementBatchMethodInvocations() {
-            return Map.<String, PreparedStatementMethodInvocation>ofEntries(
-                            Map.entry("addBatch()", MongoPreparedStatement::addBatch),
-                            Map.entry("clearBatch()", MongoPreparedStatement::clearBatch),
-                            Map.entry("executeBatch()", MongoPreparedStatement::executeBatch))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
-        }
 
         @Test
         void testSuccess() throws SQLException {

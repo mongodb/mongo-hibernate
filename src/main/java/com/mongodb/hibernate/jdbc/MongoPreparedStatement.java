@@ -99,7 +99,7 @@ class MongoPreparedStatement extends MongoStatement implements PreparedStatement
         } else {
             commandBatch = Collections.emptyList();
             commandPrototype = null;
-            this.command = BsonDocument.parse(mql);
+            command = BsonDocument.parse(mql);
         }
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
@@ -291,10 +291,7 @@ class MongoPreparedStatement extends MongoStatement implements PreparedStatement
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        if (!batchable) {
-            throw new SQLFeatureNotSupportedException("MongoPreparedStatement not batchable");
-        }
-        assertNotNull(commandBatch).add(assertNotNull(command));
+        commandBatch.add(command);
         command = assertNotNull(commandPrototype).clone();
         parameterValueSetters.clear();
         parseParameters(command, parameterValueSetters);
