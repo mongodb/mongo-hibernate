@@ -71,7 +71,6 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
-    private final boolean batchable;
     private final List<BsonDocument> commandBatch;
     private final @Nullable BsonDocument commandPrototype;
 
@@ -91,7 +90,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             String mql,
             boolean batchable) {
         super(mongoClient, clientSession, mongoConnection);
-        this.batchable = batchable;
         if (batchable) {
             commandBatch = new ArrayList<>();
             commandPrototype = BsonDocument.parse(mql);
@@ -101,7 +99,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             commandPrototype = null;
             command = BsonDocument.parse(mql);
         }
-        this.parameterValueSetters = new ArrayList<>();
+        parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -300,19 +298,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        if (!batchable) {
-            throw new SQLFeatureNotSupportedException("MongoPreparedStatement not batchable");
-        }
-        commandBatch.clear();
-        command = assertNotNull(commandPrototype).clone();
+        assertTrue(commandBatch.isEmpty());
     }
 
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
-        if (!batchable) {
-            throw new SQLFeatureNotSupportedException("MongoPreparedStatement not batchable");
-        }
         return doExecuteBatch();
     }
 
@@ -374,8 +365,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         try {
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
             String collectionName = null;
-            for (BsonDocument command : commandBatch) {
-                var commandName = command.getFirstKey();
+            for (var command : commandBatch) {
+                var commandName = assertNotNull(command.getFirstKey());
                 var curCollectionName = command.getString(commandName).getValue();
                 if (collectionName == null) {
                     collectionName = curCollectionName;
@@ -385,7 +376,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
                 List<WriteModel<BsonDocument>> subWriteModels;
 
-                switch (assertNotNull(commandName)) {
+                switch (commandName) {
                     case "insert":
                         var documents = command.getArray("documents");
                         subWriteModels = new ArrayList<>(documents.size());
