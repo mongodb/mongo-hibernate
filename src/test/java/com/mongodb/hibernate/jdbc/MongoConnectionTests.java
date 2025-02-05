@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static java.util.Collections.emptyMap;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,16 +33,19 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.dialect.MongoDialectSettings;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,6 +56,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,6 +67,10 @@ class MongoConnectionTests {
 
     @Mock
     private MongoClient mongoClient;
+
+    @Spy
+    private MongoDialectSettings config =
+            MongoDialectSettings.builder(emptyMap()).databaseName("testDbName").build();
 
     @InjectMocks
     private MongoConnection mongoConnection;
@@ -156,6 +165,7 @@ class MongoConnectionTests {
                                     conn -> conn.createStruct("myStructType", new Object[] {1, "Toronto"})),
                             Map.entry("getMetaData()", MongoConnection::getMetaData),
                             Map.entry("getCatalog()", MongoConnection::getCatalog),
+                            Map.entry("setSchema(String)", conn -> conn.setSchema("s")),
                             Map.entry("getSchema()", MongoConnection::getSchema),
                             Map.entry("getWarnings()", MongoConnection::getWarnings),
                             Map.entry("clearWarnings()", MongoConnection::clearWarnings),
@@ -368,6 +378,39 @@ class MongoConnectionTests {
                             .equals(arg.toBsonDocument().getFirstKey())));
             // when && then
             assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
+        }
+    }
+
+    @Nested
+    class SetGetSchemaTests {
+        @Mock
+        MongoDatabase mongoDatabase;
+
+        MongoConnection mongoConnection;
+
+        @BeforeEach
+        void setUp() {
+            String mongoDatabaseName = config.getDatabaseName();
+            doReturn(mongoDatabaseName).when(mongoDatabase).getName();
+            when(mongoClient.getDatabase(eq(mongoDatabaseName))).thenReturn(mongoDatabase);
+            mongoConnection = new MongoConnection(config, mongoClient, clientSession);
+        }
+
+        @Test
+        void getSchemaDefault() throws SQLException {
+            assertEquals(config.getDatabaseName(), mongoConnection.getSchema());
+        }
+
+        @Test
+        void setSchema(@Mock MongoDatabase mongoDatabase2) throws SQLException {
+            String mongoDatabaseName2 = config.getDatabaseName() + "2";
+            doReturn(mongoDatabaseName2).when(mongoDatabase2).getName();
+            when(mongoClient.getDatabase(eq(mongoDatabaseName2))).thenReturn(mongoDatabase2);
+            mongoConnection.setSchema(mongoDatabaseName2);
+            assertAll(() -> assertEquals(mongoDatabaseName2, mongoConnection.getSchema()), () -> {
+                mongoConnection.setSchema(null);
+                assertEquals(config.getDatabaseName(), mongoConnection.getSchema());
+            });
         }
     }
 }
