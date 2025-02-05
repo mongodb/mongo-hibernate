@@ -85,10 +85,6 @@ class MongoPreparedStatementTests {
         return new MongoPreparedStatement(mongoClient, clientSession, mongoConnection, mql);
     }
 
-    private MongoPreparedStatement createMongoPreparedStatement(String mql, boolean batchable) {
-        return new MongoPreparedStatement(mongoClient, clientSession, mongoConnection, mql, batchable);
-    }
-
     @Nested
     class ParameterValueSettingTests {
 
@@ -286,7 +282,7 @@ class MongoPreparedStatementTests {
             doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
 
             // when
-            try (var pstmt = createMongoPreparedStatement(EXAMPLE_MQL, true)) {
+            try (var pstmt = createMongoPreparedStatement(EXAMPLE_MQL)) {
                 try {
                     pstmt.setString(1, "War and Peace");
                     pstmt.setInt(2, 1869);
@@ -356,7 +352,7 @@ class MongoPreparedStatementTests {
             doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
             doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
 
-            try (var pstmt = createMongoPreparedStatement(mql, true)) {
+            try (var pstmt = createMongoPreparedStatement(mql)) {
                 try {
                     pstmt.addBatch();
                     pstmt.executeBatch();

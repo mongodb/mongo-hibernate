@@ -45,7 +45,6 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
@@ -61,7 +60,6 @@ import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
-import org.jspecify.annotations.Nullable;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.PreparedStatement} implementation class.
@@ -72,7 +70,7 @@ import org.jspecify.annotations.Nullable;
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final List<BsonDocument> commandBatch;
-    private final @Nullable BsonDocument commandPrototype;
+    private final BsonDocument commandPrototype;
 
     private BsonDocument command;
 
@@ -80,25 +78,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     MongoPreparedStatement(
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
-        this(mongoClient, clientSession, mongoConnection, mql, false);
-    }
-
-    MongoPreparedStatement(
-            MongoClient mongoClient,
-            ClientSession clientSession,
-            MongoConnection mongoConnection,
-            String mql,
-            boolean batchable) {
         super(mongoClient, clientSession, mongoConnection);
-        if (batchable) {
-            commandBatch = new ArrayList<>();
-            commandPrototype = BsonDocument.parse(mql);
-            command = commandPrototype.clone();
-        } else {
-            commandBatch = Collections.emptyList();
-            commandPrototype = null;
-            command = BsonDocument.parse(mql);
-        }
+        commandBatch = new ArrayList<>();
+        commandPrototype = BsonDocument.parse(mql);
+        command = commandPrototype.clone();
         parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -290,7 +273,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void addBatch() throws SQLException {
         checkClosed();
         commandBatch.add(command);
-        command = assertNotNull(commandPrototype).clone();
+        command = commandPrototype.clone();
         parameterValueSetters.clear();
         parseParameters(command, parameterValueSetters);
     }

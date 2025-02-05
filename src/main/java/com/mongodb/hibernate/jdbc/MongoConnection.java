@@ -47,20 +47,14 @@ final class MongoConnection implements ConnectionAdapter {
 
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
-    private final boolean batchable;
 
     private boolean closed;
 
     private boolean autoCommit;
 
     MongoConnection(MongoClient mongoClient, ClientSession clientSession) {
-        this(mongoClient, clientSession, false);
-    }
-
-    MongoConnection(MongoClient mongoClient, ClientSession clientSession, boolean batchable) {
         this.mongoClient = mongoClient;
         this.clientSession = clientSession;
-        this.batchable = batchable;
         autoCommit = true;
     }
 
@@ -151,7 +145,7 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        return new MongoPreparedStatement(mongoClient, clientSession, this, mql, batchable);
+        return new MongoPreparedStatement(mongoClient, clientSession, this, mql);
     }
 
     @Override
