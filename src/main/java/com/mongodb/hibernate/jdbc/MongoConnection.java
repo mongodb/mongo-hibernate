@@ -197,6 +197,18 @@ final class MongoConnection implements ConnectionAdapter {
         }
     }
 
+    @Override
+    public @Nullable String getCatalog() throws SQLException {
+        checkClosed();
+        return null;
+    }
+
+    @Override
+    public @Nullable String getSchema() throws SQLException {
+        checkClosed();
+        return null;
+    }
+
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // dummy implementations
 
