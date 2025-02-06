@@ -51,8 +51,8 @@ abstract class TypeReference<T> {
                     && TypeReference.class == field.getType()) {
                 try {
                     map.put((TypeReference<?>) field.get(null), field.getName());
-                } catch (IllegalAccessException ignored) {
-                    // ignored
+                } catch (IllegalAccessException e) {
+                    fail(e.toString());
                 }
             }
         }
