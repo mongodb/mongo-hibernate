@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
