@@ -23,7 +23,7 @@ import org.bson.BsonWriter;
  * various setter methods together with their position indexes.
  *
  * <p>Note that MQL has no SQL parameter placeholder (JDBC uses {@code ?} as placeholder marker) counterpart; currently
- * {@code {"$undefined": true}} is chosen
+ * the {@linkplain BsonWriter#writeUndefined() BSON Undefined} value is chosen.
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  */
