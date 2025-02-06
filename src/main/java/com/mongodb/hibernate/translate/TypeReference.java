@@ -63,6 +63,6 @@ abstract class TypeReference<T> {
 
     @Override
     public String toString() {
-        return CONSTANT_TOSTRING_CONTENT_MAP.getOrDefault(this, super.toString());
+        return assertNotNull(CONSTANT_TOSTRING_CONTENT_MAP.get(this));
     }
 }
