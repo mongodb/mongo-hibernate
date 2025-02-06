@@ -58,10 +58,9 @@ public final class MongoAssertions {
      * Asserts that some value is {@code null}.
      *
      * @param value A value to check.
-     * @param <T> The type of {@code value}.
      * @throws AssertionError If {@code value} is not {@code null}.
      */
-    public static <T> void assertNull(@Nullable T value) throws AssertionError {
+    public static void assertNull(@Nullable Object value) throws AssertionError {
         if (value != null) {
             throw new AssertionError();
         }
