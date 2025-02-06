@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.mongoast;
 import org.bson.BsonWriter;
 
 /**
- * The ultimate ancestor interface representing any node in a Mongo AST tree model.
+ * The ultimate ancestor interface representing any node in a Mongo AST.
  *
  * <p>Its central concern is how to render the sub-tree rooted with it using a {@link BsonWriter} instance.
  *
