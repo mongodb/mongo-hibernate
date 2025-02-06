@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
@@ -119,7 +119,9 @@ class BasicInsertionTests {
         try (var mongoClient = MongoClients.create(MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
                 .build())) {
-            var collection = mongoClient.getDatabase("mongo-hibernate-test").getCollection("books", BsonDocument.class);
+            var collection = mongoClient
+                    .getDatabase(MongoAssertions.assertNotNull(connectionString.getDatabase()))
+                    .getCollection("books", BsonDocument.class);
             collectionConsumer.accept(collection);
         }
     }
