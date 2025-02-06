@@ -23,6 +23,9 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+
 /**
  * An enum class denoting the possible types of the value in {@link AstVisitorValueHolder}, so the setter and getter
  * sides could ensure data exchange safety by sharing the same type reference in this class.
@@ -44,7 +47,7 @@ abstract class TypeReference<T> {
         var fields = TypeReference.class.getDeclaredFields();
         var map = new IdentityHashMap<TypeReference<?>, String>(fields.length);
         for (var field : fields) {
-            int modifiers = field.getModifiers();
+            var modifiers = field.getModifiers();
             if (Modifier.isPublic(modifiers)
                     && Modifier.isStatic(modifiers)
                     && Modifier.isFinal(modifiers)
