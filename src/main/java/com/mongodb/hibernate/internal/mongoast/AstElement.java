@@ -24,8 +24,8 @@ import org.bson.BsonWriter;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  *
- * @param name field name; not {@code null}
- * @param value field value; not {@code null}
+ * @param name field name
+ * @param value field value
  */
 public record AstElement(String name, AstValue value) implements AstNode {
     @Override

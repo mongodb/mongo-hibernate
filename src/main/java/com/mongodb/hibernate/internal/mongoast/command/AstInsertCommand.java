@@ -27,8 +27,8 @@ import org.bson.BsonWriter;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  *
- * @param collection collection name; never {@code null}
- * @param elements the fields of the inserted document; never {@code null}
+ * @param collection collection name
+ * @param elements the fields of the inserted document
  */
 public record AstInsertCommand(String collection, List<? extends AstElement> elements) implements AstNode {
     @Override

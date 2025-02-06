@@ -30,7 +30,7 @@ public interface AstNode {
     /**
      * Renders the AST sub-tree with {@code this} object as the root.
      *
-     * @param writer provided {@code BsonWriter} instance; not {@code null}
+     * @param writer provided {@code BsonWriter} instance
      */
     void render(BsonWriter writer);
 }

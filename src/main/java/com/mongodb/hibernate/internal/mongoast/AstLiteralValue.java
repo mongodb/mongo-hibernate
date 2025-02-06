@@ -26,7 +26,7 @@ import org.bson.codecs.EncoderContext;
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  *
- * @param literalValue some {@link BsonValue} instance to be rendered; not {@code null}
+ * @param literalValue some {@link BsonValue} instance to be rendered
  * @see AstPlaceholder
  */
 public record AstLiteralValue(BsonValue literalValue) implements AstValue {
