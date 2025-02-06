@@ -16,13 +16,23 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.hibernate.jdbc.MongoConnection.DATABASE;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.DeleteManyModel;
+import com.mongodb.client.model.DeleteOneModel;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.UpdateManyModel;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.NotYetImplementedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
@@ -30,6 +40,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.jspecify.annotations.Nullable;
 
@@ -71,14 +83,76 @@ class MongoStatement implements StatementAdapter {
     }
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
+        var bulkWriteResult = executeBulkWrite(singletonList(command));
+        return switch (command.getFirstKey()) {
+            case "insert" -> bulkWriteResult.getInsertedCount();
+            case "update" -> bulkWriteResult.getModifiedCount();
+            case "delete" -> bulkWriteResult.getDeletedCount();
+            default -> throw new NotYetImplementedException();
+        };
+    }
+
+    BulkWriteResult executeBulkWrite(List<? extends BsonDocument> commandBatch) throws SQLException {
         startTransactionIfNeeded();
+
         try {
-            return mongoClient
-                    .getDatabase(DATABASE)
-                    .runCommand(clientSession, command)
-                    .getInteger("n");
-        } catch (Exception e) {
-            throw new SQLException("Failed to execute update command", e);
+            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
+
+            // Hibernate will group PreparedStatement by both table and mutation type
+            var commandName = assertNotNull(commandBatch.get(0).getFirstKey());
+            var collectionName =
+                    assertNotNull(commandBatch.get(0).getString(commandName).getValue());
+
+            for (var command : commandBatch) {
+
+                assertTrue(commandName.equals(command.getFirstKey()));
+                assertTrue(collectionName.equals(command.getString(commandName).getValue()));
+
+                List<WriteModel<BsonDocument>> subWriteModels;
+
+                switch (commandName) {
+                    case "insert":
+                        var documents = command.getArray("documents");
+                        subWriteModels = new ArrayList<>(documents.size());
+                        for (var document : documents) {
+                            subWriteModels.add(new InsertOneModel<>((BsonDocument) document));
+                        }
+                        break;
+                    case "update":
+                        var updates = command.getArray("updates").getValues();
+                        subWriteModels = new ArrayList<>(updates.size());
+                        for (var update : updates) {
+                            var updateDocument = (BsonDocument) update;
+                            WriteModel<BsonDocument> updateModel =
+                                    !updateDocument.getBoolean("multi").getValue()
+                                            ? new UpdateOneModel<>(
+                                                    updateDocument.getDocument("q"), updateDocument.getDocument("u"))
+                                            : new UpdateManyModel<>(
+                                                    updateDocument.getDocument("q"), updateDocument.getDocument("u"));
+                            subWriteModels.add(updateModel);
+                        }
+                        break;
+                    case "delete":
+                        var deletes = command.getArray("deletes");
+                        subWriteModels = new ArrayList<>(deletes.size());
+                        for (var delete : deletes) {
+                            var deleteDocument = (BsonDocument) delete;
+                            subWriteModels.add(
+                                    deleteDocument.getNumber("limit").intValue() == 1
+                                            ? new DeleteOneModel<>(deleteDocument.getDocument("q"))
+                                            : new DeleteManyModel<>(deleteDocument.getDocument("q")));
+                        }
+                        break;
+                    default:
+                        throw new NotYetImplementedException();
+                }
+                writeModels.addAll(subWriteModels);
+            }
+            return getMongoDatabase()
+                    .getCollection(collectionName, BsonDocument.class)
+                    .bulkWrite(getClientSession(), writeModels);
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to run bulk write: " + e.getMessage(), e);
         }
     }
 

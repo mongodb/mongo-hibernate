@@ -20,14 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
@@ -90,11 +92,13 @@ class MongoStatementTests {
 
         @Test
         @DisplayName("SQLException is thrown when database access error occurs")
-        void testSQLExceptionThrownWhenDBAccessFailed(@Mock MongoDatabase mongoDatabase) {
+        void testSQLExceptionThrownWhenDBAccessFailed(
+                @Mock MongoDatabase mongoDatabase, @Mock MongoCollection<BsonDocument> mongoCollection) {
             // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq((BsonDocument.class)));
             var dbAccessException = new RuntimeException();
-            doThrow(dbAccessException).when(mongoDatabase).runCommand(same(clientSession), any(BsonDocument.class));
+            doThrow(dbAccessException).when(mongoCollection).bulkWrite(same(clientSession), anyList());
             String mql =
                     """
                 {
