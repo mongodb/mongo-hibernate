@@ -40,9 +40,10 @@ import org.jspecify.annotations.NullUnmarked;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-@NullUnmarked
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {BasicInsertionTests.Book.class, BasicInsertionTests.BookWithEmbeddedField.class})
+@DomainModel(
+        annotatedClasses = {BasicInsertionTests.Model.Book.class, BasicInsertionTests.Model.BookWithEmbeddedField.class
+        })
 class BasicInsertionTests {
 
     @BeforeEach
@@ -53,7 +54,7 @@ class BasicInsertionTests {
     @Test
     void testSimpleEntityInsertion(SessionFactoryScope scope) {
         scope.inTransaction(session -> {
-            var book = new Book();
+            var book = new Model.Book();
             book.id = 1;
             book.title = "War and Peace";
             book.author = "Leo Tolstoy";
@@ -74,7 +75,7 @@ class BasicInsertionTests {
     @Test
     void testEntityWithNullFieldValueInsertion(SessionFactoryScope scope) {
         scope.inTransaction(session -> {
-            var book = new Book();
+            var book = new Model.Book();
             book.id = 1;
             book.title = "War and Peace";
             book.publishYear = 1867;
@@ -94,10 +95,10 @@ class BasicInsertionTests {
     @Test
     void testEntityWithEmbeddedFieldInsertion(SessionFactoryScope scope) {
         scope.inTransaction(session -> {
-            var book = new BookWithEmbeddedField();
+            var book = new Model.BookWithEmbeddedField();
             book.id = 1;
             book.title = "War and Peace";
-            book.author = new Author("Leo", "Tolstoy");
+            book.author = new Model.Author("Leo", "Tolstoy");
             book.publishYear = 1867;
             session.persist(book);
         });
@@ -133,44 +134,47 @@ class BasicInsertionTests {
         assertThat(getCollectionDocuments()).asList().singleElement().isEqualTo(expectedDoc);
     }
 
-    @Entity(name = "Book")
-    @Table(name = "books")
-    static class Book {
-        @Id
-        @Column(name = "_id")
-        int id;
+    @NullUnmarked
+    static final class Model {
+        @Entity(name = "Book")
+        @Table(name = "books")
+        static class Book {
+            @Id
+            @Column(name = "_id")
+            int id;
 
-        String title;
-        String author;
-        int publishYear;
-    }
+            String title;
+            String author;
+            int publishYear;
+        }
 
-    @Entity(name = "BookWithEmbeddedField")
-    @Table(name = "books")
-    static class BookWithEmbeddedField {
-        @Id
-        @Column(name = "_id")
-        int id;
+        @Entity(name = "BookWithEmbeddedField")
+        @Table(name = "books")
+        static class BookWithEmbeddedField {
+            @Id
+            @Column(name = "_id")
+            int id;
 
-        String title;
-        Author author;
-        int publishYear;
-    }
+            String title;
+            Author author;
+            int publishYear;
+        }
 
-    @Embeddable
-    static class Author {
+        @Embeddable
+        static class Author {
 
-        @Column(name = "authorFirstName")
-        String firstName;
+            @Column(name = "authorFirstName")
+            String firstName;
 
-        @Column(name = "authorLastName")
-        String lastName;
+            @Column(name = "authorLastName")
+            String lastName;
 
-        Author() {}
+            Author() {}
 
-        Author(String firstName, String lastName) {
-            this.firstName = firstName;
-            this.lastName = lastName;
+            Author(String firstName, String lastName) {
+                this.firstName = firstName;
+                this.lastName = lastName;
+            }
         }
     }
 }
