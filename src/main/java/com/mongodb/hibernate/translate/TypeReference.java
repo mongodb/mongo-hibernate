@@ -59,6 +59,8 @@ abstract class TypeReference<T> {
         CONSTANT_TOSTRING_CONTENT_MAP = Collections.unmodifiableMap(map);
     }
 
+    private TypeReference() {}
+
     @Override
     public String toString() {
         return CONSTANT_TOSTRING_CONTENT_MAP.getOrDefault(this, super.toString());
