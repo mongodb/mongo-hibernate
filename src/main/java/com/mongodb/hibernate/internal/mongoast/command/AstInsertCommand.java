@@ -34,13 +34,19 @@ public record AstInsertCommand(String collection, List<? extends AstElement> ele
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
-        writer.writeString("insert", collection);
-        writer.writeName("documents");
-        writer.writeStartArray();
-        writer.writeStartDocument();
-        elements.forEach(element -> element.render(writer));
-        writer.writeEndDocument();
-        writer.writeEndArray();
+        {
+            writer.writeString("insert", collection);
+            writer.writeName("documents");
+            writer.writeStartArray();
+            {
+                writer.writeStartDocument();
+                {
+                    elements.forEach(element -> element.render(writer));
+                }
+                writer.writeEndDocument();
+            }
+            writer.writeEndArray();
+        }
         writer.writeEndDocument();
     }
 }
