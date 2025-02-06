@@ -119,7 +119,9 @@ class BasicInsertionTests {
         try (var mongoClient = MongoClients.create(MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
                 .build())) {
-            var collection = mongoClient.getDatabase("mongo-hibernate-test").getCollection("books", BsonDocument.class);
+            var collection = mongoClient
+                    .getDatabase(MongoAssertions.assertNotNull(connectionString.getDatabase()))
+                    .getCollection("books", BsonDocument.class);
             collectionConsumer.accept(collection);
         }
     }
