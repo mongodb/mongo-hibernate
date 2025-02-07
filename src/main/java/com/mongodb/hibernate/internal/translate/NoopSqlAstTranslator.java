@@ -109,8 +109,8 @@ import org.jspecify.annotations.NullUnmarked;
  * an option. Ultimately this adapter class should be phased out and deleted after the following tickets are done:
  *
  * <ul>
- *     <li><a href="https://jira.mongodb.org/browse/HIBERNATE-22">implement load MQL translation</a>
- *     <li><a href="https://jira.mongodb.org/browse/HIBERNATE-14">statement DML implementation</a>
+ *   <li><a href="https://jira.mongodb.org/browse/HIBERNATE-22">implement load MQL translation</a>
+ *   <li><a href="https://jira.mongodb.org/browse/HIBERNATE-14">statement DML implementation</a>
  * </ul>
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
