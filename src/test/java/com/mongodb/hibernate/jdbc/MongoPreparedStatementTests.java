@@ -314,7 +314,7 @@ class MongoPreparedStatementTests {
                 assertInsertOneModel(
                         firstBatch.get(0),
                         parse(
-                            """
+                                """
                             {
                                 title: "War and Peace",
                                 publishYear: 1869
@@ -323,7 +323,7 @@ class MongoPreparedStatementTests {
                 assertInsertOneModel(
                         firstBatch.get(1),
                         parse(
-                            """
+                                """
                             {
                                 title: "Crime and Punishment",
                                 publishYear: 1866
@@ -335,7 +335,7 @@ class MongoPreparedStatementTests {
                 assertInsertOneModel(
                         secondBatch.get(0),
                         parse(
-                            """
+                                """
                             {
                                 title: "Fathers and Sons",
                                 publishYear: 1862

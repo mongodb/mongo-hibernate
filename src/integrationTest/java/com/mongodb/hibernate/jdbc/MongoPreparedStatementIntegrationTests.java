@@ -36,7 +36,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @NullUnmarked
@@ -90,17 +89,7 @@ class MongoPreparedStatementIntegrationTests {
     @BeforeEach
     void setUp() {
         session = sessionFactory.openSession();
-        session.doWork(conn -> {
-            conn.createStatement()
-                    .executeUpdate(
-                            """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
-        });
+        clearData();
         prepareData();
     }
 
@@ -117,8 +106,6 @@ class MongoPreparedStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
-            // given
-            prepareData();
 
             // when && then
             var expectedDocs = Set.of(
@@ -179,7 +166,6 @@ class MongoPreparedStatementIntegrationTests {
             };
             assertExecuteUpdate(pstmtProvider, autoCommit, 2, expectedDocs);
         }
-
 
         private void assertExecuteUpdate(
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
@@ -258,6 +244,7 @@ class MongoPreparedStatementIntegrationTests {
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             void test(boolean autoCommit) {
+                clearData();
                 batchableSession.doWork(connection -> {
                     connection.setAutoCommit(autoCommit);
                     try (var pstmt = connection.prepareStatement(MQL)) {
@@ -367,7 +354,7 @@ class MongoPreparedStatementIntegrationTests {
                     }""";
 
             @ParameterizedTest
-            @ValueSource(booleans = {true,false})
+            @ValueSource(booleans = {true, false})
             void testUpdateOne(boolean autoCommit) {
                 batchableSession.doWork(connection -> {
                     connection.setAutoCommit(autoCommit);
@@ -436,7 +423,7 @@ class MongoPreparedStatementIntegrationTests {
             }
 
             @ParameterizedTest
-            @ValueSource(booleans = {true,false})
+            @ValueSource(booleans = {true, false})
             void testUpdateMany(boolean autoCommit) {
                 batchableSession.doWork(connection -> {
                     connection.setAutoCommit(autoCommit);
@@ -532,7 +519,7 @@ class MongoPreparedStatementIntegrationTests {
                     }""";
 
             @ParameterizedTest
-            @ValueSource(booleans = {true,false})
+            @ValueSource(booleans = {true, false})
             void testDeleteOne(boolean autoCommit) {
                 batchableSession.doWork(connection -> {
                     connection.setAutoCommit(autoCommit);
@@ -569,7 +556,7 @@ class MongoPreparedStatementIntegrationTests {
             }
 
             @ParameterizedTest
-            @ValueSource(booleans = {true,false})
+            @ValueSource(booleans = {true, false})
             void testDeleteMany(boolean autoCommit) {
                 batchableSession.doWork(connection -> {
                     connection.setAutoCommit(autoCommit);
@@ -600,7 +587,6 @@ class MongoPreparedStatementIntegrationTests {
                 });
             }
         }
-
     }
 
     private void prepareData() {
@@ -608,6 +594,20 @@ class MongoPreparedStatementIntegrationTests {
             connection.setAutoCommit(true);
             var statement = connection.createStatement();
             statement.executeUpdate(INSERT_MQL);
+        });
+    }
+
+    private void clearData() {
+        session.doWork(conn -> {
+            conn.createStatement()
+                    .executeUpdate(
+                            """
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }""");
         });
     }
 }
