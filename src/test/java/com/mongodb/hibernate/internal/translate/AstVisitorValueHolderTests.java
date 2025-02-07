@@ -43,25 +43,24 @@ class AstVisitorValueHolderTests {
     @Test
     void testSimpleUsage() {
         // given
-
-        var valueSet = new AstLiteralValue(new BsonString("field_value"));
-        Runnable valueSetter = () -> astVisitorValueHolder.yield(FIELD_VALUE, valueSet);
+        var value = new AstLiteralValue(new BsonString("field_value"));
+        Runnable valueYielder = () -> astVisitorValueHolder.yield(FIELD_VALUE, value);
 
         // when
-        var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueSetter);
+        var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueYielder);
 
         // then
-        assertSame(valueSet, valueGotten);
+        assertSame(value, valueGotten);
     }
 
     @Test
     void testRecursiveUsage() {
         // given
         Runnable tableInserter = () -> {
-            Runnable fieldValueSetter = () -> {
+            Runnable fieldValueYielder = () -> {
                 astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
             };
-            var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueSetter);
+            var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand("city", List.of(astElement)));
         };
@@ -71,30 +70,30 @@ class AstVisitorValueHolderTests {
     }
 
     @Test
-    @DisplayName("Exception is thrown when holder is not empty when setting data")
+    @DisplayName("Exception is thrown when holder is not empty when setting value")
     void testHolderNotEmptyWhenSetting() {
         // given
-        Runnable valueSetter = () -> {
+        Runnable valueYielder = () -> {
             astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
             astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
         };
         // when && then
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, valueSetter));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, valueYielder));
     }
 
     @Test
-    @DisplayName("Exception is thrown when holder is expecting a type different from that of real data")
+    @DisplayName("Exception is thrown when holder is expecting a semantics different from that of real data")
     void testHolderExpectingDifferentType() {
         // given
-        Runnable valueSetter =
+        Runnable valueYielder =
                 () -> astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
 
         // when && then
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueSetter));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueYielder));
     }
 
     @Test
-    @DisplayName("Exception is thrown when getting value from an empty holder")
+    @DisplayName("Exception is thrown when no value is yielded")
     void testHolderStillEmpty() {
         assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, () -> {}));
     }

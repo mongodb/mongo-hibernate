@@ -27,8 +27,9 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 /**
- * A class denoting the possible semantics of the value in {@link AstVisitorValueHolder}, so the setter and getter sides
- * could ensure data exchange safety by sharing the same descriptor in this class.
+ * A class denoting the semantics (including the Java types and its intention) of the value in
+ * {@link AstVisitorValueHolder}, so the value producer and consumer sides could ensure data exchange safety by sharing
+ * the same descriptor constant in this class.
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  *
@@ -48,7 +49,9 @@ final class AstVisitorValueDescriptor<T> {
         var map = new IdentityHashMap<AstVisitorValueDescriptor<?>, String>(fields.length);
         for (var field : fields) {
             var modifiers = field.getModifiers();
-            if (Modifier.isStatic(modifiers) && AstVisitorValueDescriptor.class == field.getType()) {
+            if (Modifier.isStatic(modifiers)
+                    && Modifier.isFinal(modifiers)
+                    && AstVisitorValueDescriptor.class == field.getType()) {
                 try {
                     map.put((AstVisitorValueDescriptor<?>) field.get(null), field.getName());
                 } catch (IllegalAccessException e) {

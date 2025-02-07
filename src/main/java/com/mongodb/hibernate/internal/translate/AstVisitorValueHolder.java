@@ -21,24 +21,17 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import org.hibernate.sql.ast.SqlAstWalker;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A data exchange mechanism to overcome the limitation of various visitor methods in
- * {@link org.hibernate.sql.ast.SqlAstWalker} not returning a value; Returning values is required during MQL translation
- * (e.g. returning intermediate MQL {@link AstNode}).
+ * A data exchange mechanism to overcome the limitation of various {@code void} methods of
+ * {@link org.hibernate.sql.ast.SqlAstWalker} or {@link org.hibernate.sql.ast.tree.SqlAstNode} not returning values,
+ * which are required during MQL translation (e.g. returning intermediate MQL {@link AstNode}s).
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  *
- * <p>During one MQL translation process, one single object of this class should be created globally (or not within
- * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} or the
- * {@link org.hibernate.sql.ast.tree.SqlAstNode#accept(SqlAstWalker)} could access it as either producer calling
- * {@link #yield(AstVisitorValueDescriptor, Object)} method) or consumer calling
- * {@link #execute(AstVisitorValueDescriptor, Runnable)} method). Once the consumer grabs its expected value, it becomes
- * the sole owner of the value with the holder being blank.
- *
  * @see org.hibernate.sql.ast.SqlAstWalker
+ * @see org.hibernate.sql.ast.tree.SqlAstNode
  * @see AstVisitorValueDescriptor
  */
 final class AstVisitorValueHolder {
@@ -49,25 +42,24 @@ final class AstVisitorValueHolder {
     AstVisitorValueHolder() {}
 
     /**
-     * Executes the {@link Runnable} which will internally invoke the {@link #yield(AstVisitorValueDescriptor, Object)}
-     * method with identical {@link AstVisitorValueDescriptor}.
+     * Executes the {@link Runnable} which internally invokes the {@link #yield(AstVisitorValueDescriptor, Object)}
+     * method with the identical {@link AstVisitorValueDescriptor}.
      *
-     * @param valueDescriptor expected semantics of the data to yield.
-     * @param yieldingRunnable the {@code Runnable} wrapper which is supposed to invoke
-     *     {@link #yield(AstVisitorValueDescriptor, Object)} internally sharing the identical {@code valueDescriptor}.
+     * @param valueDescriptor expected semantics of the data to yield
+     * @param yieldingRunnable the {@code Runnable} wrapper
      * @return the value to yield by {@code yieldingRunnable}
      * @param <T> generics type of the value
      */
     @SuppressWarnings("unchecked")
     public <T> T execute(AstVisitorValueDescriptor<T> valueDescriptor, Runnable yieldingRunnable) {
         assertNull(value);
-        var previousType = this.valueDescriptor;
+        var previousValueDescriptor = this.valueDescriptor;
         this.valueDescriptor = valueDescriptor;
         try {
             yieldingRunnable.run();
             return (T) assertNotNull(value);
         } finally {
-            this.valueDescriptor = previousType;
+            this.valueDescriptor = previousValueDescriptor;
             value = null;
         }
     }
@@ -75,8 +67,8 @@ final class AstVisitorValueHolder {
     /**
      * Yields the value matching the provided {@link AstVisitorValueDescriptor}.
      *
-     * @param valueDescriptor semantics of the {@code value}; should match the expected one in holder.
-     * @param value data returned inside some {@code void} method.
+     * @param valueDescriptor semantics of the {@code value}
+     * @param value data returned inside some {@code void} method
      * @param <T> generics type of the {@code value}
      */
     @SuppressWarnings("NamedLikeContextualKeyword")
