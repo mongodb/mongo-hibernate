@@ -31,6 +31,7 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
+        // TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22
         return new NoopSqlAstTranslator<>();
     }
 

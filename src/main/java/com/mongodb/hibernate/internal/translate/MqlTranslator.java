@@ -107,7 +107,6 @@ import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
 import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.TableMutation;
@@ -120,7 +119,7 @@ import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 
 /** This class is not part of the public API and may be removed or changed at any time */
-final class MqlTranslator<T extends JdbcOperation & MutationOperation> implements SqlAstTranslator<T> {
+final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
     private final SessionFactoryImplementor sessionFactory;
     private final Statement statement;
@@ -167,20 +166,23 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
     @Override
     @SuppressWarnings({"unchecked"})
     public T translate(JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
-        if (statement instanceof TableMutation) {
-            TableMutation<T> tableMutation = (TableMutation<T>) statement;
+        if (statement instanceof TableMutation<?> tableMutation) {
             if (tableMutation instanceof TableInsert) {
                 return translateTableMutation(tableMutation);
             } else {
+                // TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17
+                // TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19
+                // after the above deletion and updating translation is done, we can delete this branch.
                 return (T) new NoopJdbcMutationOperation();
             }
         }
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
     }
 
-    private T translateTableMutation(TableMutation<T> mutation) {
+    @SuppressWarnings({"unchecked"})
+    private T translateTableMutation(TableMutation<?> mutation) {
         var rootAstNode = astVisitorValueHolder.execute(COLLECTION_MUTATION, () -> mutation.accept(this));
-        return mutation.createMutationOperation(translateMongoAst(rootAstNode), parameterBinders);
+        return (T) mutation.createMutationOperation(translateMongoAst(rootAstNode), parameterBinders);
     }
 
     private String translateMongoAst(AstNode rootAstNode) {
