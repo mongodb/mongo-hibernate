@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A data exchange mechanism to overcome the limitation of various visitor methods in
- * {@link org.hibernate.sql.ast.SqlAstWalker} don't return value; Returning values is required during MQL translation
+ * {@link org.hibernate.sql.ast.SqlAstWalker} not returning a value; Returning values is required during MQL translation
  * (e.g. returning intermediate MQL {@link AstNode}).
  *
  * <p>Contains both value and its type info, which will be used to ensure value provided has identical type with value
