@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate;
+package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
-import static com.mongodb.hibernate.translate.AstVisitorValueDescriptor.FIELD_VALUE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 
 import com.mongodb.hibernate.internal.NotYetImplementedException;
-import com.mongodb.hibernate.internal.mongoast.AstElement;
-import com.mongodb.hibernate.internal.mongoast.AstNode;
-import com.mongodb.hibernate.internal.mongoast.AstPlaceholder;
-import com.mongodb.hibernate.internal.mongoast.command.AstInsertCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -119,6 +119,7 @@ import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 
+/** This class is not part of the public API and may be removed or changed at any time */
 final class MqlTranslator<T extends JdbcOperation & MutationOperation> implements SqlAstTranslator<T> {
 
     private final SessionFactoryImplementor sessionFactory;

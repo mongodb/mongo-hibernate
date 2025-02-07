@@ -14,16 +14,23 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast;
+
+import org.bson.BsonWriter;
 
 /**
- * Represents value type {@link AstNode}, e.g.
+ * The ultimate ancestor interface representing any node in a Mongo AST.
  *
- * <ul>
- *   <li>{@link AstLiteralValue}: non-parameter literal value
- *   <li>{@link AstPlaceholder}: parameter placeholder
- * </ul>
+ * <p>Its central concern is how to render the sub-tree rooted with it using a {@link BsonWriter} instance.
  *
  * <p>This class is not part of the public API and may be removed or changed at any time
  */
-public interface AstValue extends AstNode {}
+@FunctionalInterface
+public interface AstNode {
+    /**
+     * Renders the AST sub-tree with {@code this} object as the root.
+     *
+     * @param writer provided {@code BsonWriter} instance
+     */
+    void render(BsonWriter writer);
+}

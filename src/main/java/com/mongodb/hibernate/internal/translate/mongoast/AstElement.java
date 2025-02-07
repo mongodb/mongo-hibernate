@@ -14,7 +14,23 @@
  * limitations under the License.
  */
 
-@NullMarked
-package com.mongodb.hibernate.internal.mongoast.command;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.jspecify.annotations.NullMarked;
+import org.bson.BsonWriter;
+
+/**
+ * Represents some Bson field with name and value, which is usually rendered with other {@link AstElement}s to compose a
+ * {@link org.bson.BsonDocument}.
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
+ *
+ * @param name field name
+ * @param value field value
+ */
+public record AstElement(String name, AstValue value) implements AstNode {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeName(name);
+        value.render(writer);
+    }
+}

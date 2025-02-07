@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate;
+package com.mongodb.hibernate.internal.translate;
 
 import java.util.List;
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
@@ -31,6 +31,8 @@ import org.jspecify.annotations.NullUnmarked;
  * A {@link JdbcMutationOperation} no-op adapter class which is used temporarily as feature placeholder prior to its
  * implementation is done, when throwing {@link com.mongodb.hibernate.internal.NotYetImplementedException} would not be
  * an option. Ultimately this adapter class should be phased out and deleted.
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
  */
 @NullUnmarked
 final class NoopJdbcMutationOperation implements JdbcMutationOperation {

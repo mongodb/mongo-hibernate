@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate;
+package com.mongodb.hibernate.internal.translate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

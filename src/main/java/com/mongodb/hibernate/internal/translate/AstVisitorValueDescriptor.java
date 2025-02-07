@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate;
+package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
-import com.mongodb.hibernate.internal.mongoast.AstNode;
-import com.mongodb.hibernate.internal.mongoast.AstValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -29,6 +29,8 @@ import java.util.Map;
 /**
  * A class denoting the possible semantics of the value in {@link AstVisitorValueHolder}, so the setter and getter sides
  * could ensure data exchange safety by sharing the same descriptor in this class.
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
  *
  * @param <T> generics type
  * @see AstVisitorValueHolder
@@ -46,9 +48,7 @@ final class AstVisitorValueDescriptor<T> {
         var map = new IdentityHashMap<AstVisitorValueDescriptor<?>, String>(fields.length);
         for (var field : fields) {
             var modifiers = field.getModifiers();
-            if (Modifier.isStatic(modifiers)
-                    && Modifier.isFinal(modifiers)
-                    && AstVisitorValueDescriptor.class == field.getType()) {
+            if (Modifier.isStatic(modifiers) && AstVisitorValueDescriptor.class == field.getType()) {
                 try {
                     map.put((AstVisitorValueDescriptor<?>) field.get(null), field.getName());
                 } catch (IllegalAccessException e) {

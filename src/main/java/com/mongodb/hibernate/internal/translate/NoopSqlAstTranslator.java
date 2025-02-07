@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate;
+package com.mongodb.hibernate.internal.translate;
 
 import java.util.Set;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -107,6 +107,8 @@ import org.jspecify.annotations.NullUnmarked;
  * An {@link SqlAstTranslator} no-op adapter class which is used temporarily as a feature placeholder prior to its
  * implementation is done, when throwing {@link com.mongodb.hibernate.internal.NotYetImplementedException} would not be
  * an option. Ultimately this adapter class should be phased out and deleted.
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
  *
  * @param <T> {@link JdbcOperation} generics type
  */

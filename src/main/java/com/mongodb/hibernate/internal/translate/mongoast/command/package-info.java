@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 @NullMarked
-package com.mongodb.hibernate.internal.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import org.jspecify.annotations.NullMarked;

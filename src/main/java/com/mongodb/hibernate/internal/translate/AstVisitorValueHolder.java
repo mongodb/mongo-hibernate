@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.translate;
+package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 
-import com.mongodb.hibernate.internal.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.hibernate.sql.ast.SqlAstWalker;
 import org.jspecify.annotations.Nullable;
 
@@ -28,6 +28,8 @@ import org.jspecify.annotations.Nullable;
  * A data exchange mechanism to overcome the limitation of various visitor methods in
  * {@link org.hibernate.sql.ast.SqlAstWalker} not returning a value; Returning values is required during MQL translation
  * (e.g. returning intermediate MQL {@link AstNode}).
+ *
+ * <p>This class is not part of the public API and may be removed or changed at any time
  *
  * <p>During one MQL translation process, one single object of this class should be created globally (or not within
  * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} or the

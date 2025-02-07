@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.dialect;
 
-import com.mongodb.hibernate.translate.MongoTranslatorFactory;
+import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;

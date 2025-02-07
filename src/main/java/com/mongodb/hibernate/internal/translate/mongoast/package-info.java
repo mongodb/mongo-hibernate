@@ -13,24 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@NullMarked
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-package com.mongodb.hibernate.internal.mongoast;
-
-import org.bson.BsonWriter;
-
-/**
- * The ultimate ancestor interface representing any node in a Mongo AST.
- *
- * <p>Its central concern is how to render the sub-tree rooted with it using a {@link BsonWriter} instance.
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- */
-@FunctionalInterface
-public interface AstNode {
-    /**
-     * Renders the AST sub-tree with {@code this} object as the root.
-     *
-     * @param writer provided {@code BsonWriter} instance
-     */
-    void render(BsonWriter writer);
-}
+import org.jspecify.annotations.NullMarked;
