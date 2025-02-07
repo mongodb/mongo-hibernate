@@ -328,7 +328,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                         }
                         break;
                     case "delete":
-                        var deletes = command.getArray("deleted");
+                        var deletes = command.getArray("deletes");
                         subWriteModels = new ArrayList<>(deletes.size());
                         for (var delete : deletes) {
                             var deleteDocument = (BsonDocument) delete;
