@@ -30,6 +30,7 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -63,10 +64,11 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
-    public MongoPreparedStatement(
-            MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
+    MongoPreparedStatement(
+            MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql)
+            throws SQLSyntaxErrorException {
         super(mongoClient, clientSession, mongoConnection);
-        this.command = BsonDocument.parse(mql);
+        this.command = parse(mql);
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
