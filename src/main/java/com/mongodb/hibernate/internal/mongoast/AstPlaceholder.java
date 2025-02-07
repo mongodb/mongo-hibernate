@@ -19,8 +19,8 @@ package com.mongodb.hibernate.internal.mongoast;
 import org.bson.BsonWriter;
 
 /**
- * Represents an MQL parameter placeholder, whose values are provided to {@link java.sql.PreparedStatement}'s
- * various setter methods together with their position indexes.
+ * Represents an MQL parameter placeholder, whose values are provided to {@link java.sql.PreparedStatement}'s various
+ * setter methods together with their position indexes.
  *
  * <p>Note that MQL has no SQL parameter placeholder (JDBC uses {@code ?} as placeholder marker) counterpart; currently
  * the {@linkplain BsonWriter#writeUndefined() BSON Undefined} value is chosen.

@@ -19,7 +19,6 @@ package com.mongodb.hibernate.translate;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
-import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import org.jspecify.annotations.Nullable;

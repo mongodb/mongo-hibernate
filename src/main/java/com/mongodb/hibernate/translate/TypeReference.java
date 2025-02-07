@@ -16,15 +16,15 @@
 
 package com.mongodb.hibernate.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+
 import com.mongodb.hibernate.internal.mongoast.AstNode;
 import com.mongodb.hibernate.internal.mongoast.AstValue;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
-
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
 /**
  * An enum class denoting the possible types of the value in {@link AstVisitorValueHolder}, so the setter and getter
@@ -36,10 +36,10 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
  * @param <T> generics type
  * @see AstVisitorValueHolder
  */
-abstract class TypeReference<T> {
+final class TypeReference<T> {
 
-    public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>() {};
-    public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>() {};
+    public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>();
+    public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>();
 
     private static final Map<TypeReference<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 
