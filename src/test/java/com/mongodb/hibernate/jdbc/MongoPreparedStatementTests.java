@@ -248,7 +248,7 @@ class MongoPreparedStatementTests {
             preparedStatement.close();
         }
 
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index of 0")
+        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too low")
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow")
         void testParameterIndexUnderflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
