@@ -16,8 +16,8 @@
 
 package com.mongodb.hibernate.translate;
 
-import static com.mongodb.hibernate.translate.TypeReference.COLLECTION_MUTATION;
-import static com.mongodb.hibernate.translate.TypeReference.FIELD_VALUE;
+import static com.mongodb.hibernate.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
+import static com.mongodb.hibernate.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 

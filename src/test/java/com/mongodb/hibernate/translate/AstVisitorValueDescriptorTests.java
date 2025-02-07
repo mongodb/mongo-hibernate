@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
-class TypeReferenceTests {
+class AstVisitorValueDescriptorTests {
 
     @Test
     void testToString() {
-        assertEquals("COLLECTION_MUTATION", TypeReference.COLLECTION_MUTATION.toString());
+        assertEquals("COLLECTION_MUTATION", AstVisitorValueDescriptor.COLLECTION_MUTATION.toString());
     }
 }

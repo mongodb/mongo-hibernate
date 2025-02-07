@@ -33,16 +33,16 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>During one MQL translation process, one single object of this class should be created globally (or not within
  * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} could access it as
- * either producer calling {@link #setValue(TypeReference, Object)} method) or consumer calling
- * {@link #getValue(TypeReference, Runnable)} method). Once the consumer grabs its expected value, it becomes the sole
+ * either producer calling {@link #setValue(AstVisitorValueDescriptor, Object)} method) or consumer calling
+ * {@link #getValue(AstVisitorValueDescriptor, Runnable)} method). Once the consumer grabs its expected value, it becomes the sole
  * owner of the value with the holder being blank.
  *
  * @see org.hibernate.sql.ast.SqlAstWalker
- * @see TypeReference
+ * @see AstVisitorValueDescriptor
  */
 final class AstVisitorValueHolder {
 
-    private @Nullable TypeReference<?> valueType;
+    private @Nullable AstVisitorValueDescriptor<?> valueDescriptor;
     private @Nullable Object value;
 
     /**
@@ -51,22 +51,22 @@ final class AstVisitorValueHolder {
      * <p>Note that during SQL AST tree traversal, it is common to call this method recursively, so one salient feature
      * of this class is the capability to restore previous state.
      *
-     * @param valueType expected type of the data to be grabbed.
+     * @param valueDescriptor expected type of the data to be grabbed.
      * @param valueSetter the {@code Runnable} wrapper of a void AST visitor method which is supposed to invoke
-     *     {@link #setValue(TypeReference, Object)} internally with type identical to the {@code valueType}.
+     *     {@link #setValue(AstVisitorValueDescriptor, Object)} internally with type identical to the {@code valueType}.
      * @return the grabbed value set by {@code valueSetter}
      * @param <T> generics type of the value returned
      */
     @SuppressWarnings("unchecked")
-    public <T> T getValue(TypeReference<T> valueType, Runnable valueSetter) {
-        var previousType = this.valueType;
+    public <T> T getValue(AstVisitorValueDescriptor<T> valueDescriptor, Runnable valueSetter) {
+        var previousType = this.valueDescriptor;
         assertNull(value);
-        this.valueType = valueType;
+        this.valueDescriptor = valueDescriptor;
         try {
             valueSetter.run();
             return (T) assertNotNull(value);
         } finally {
-            this.valueType = previousType;
+            this.valueDescriptor = previousType;
             value = null;
         }
     }
@@ -81,12 +81,12 @@ final class AstVisitorValueHolder {
      *   <li>the holder's data type matches the real data type
      * </ul>
      *
-     * @param valueType data type of the {@code value}; should match the expected type in holder.
+     * @param valueDescriptor data type of the {@code value}; should match the expected type in holder.
      * @param value data returned inside some {@code void} method.
      * @param <T> generics type of the {@code value}
      */
-    public <T> void setValue(TypeReference<T> valueType, T value) {
-        assertTrue(valueType == this.valueType);
+    public <T> void setValue(AstVisitorValueDescriptor<T> valueDescriptor, T value) {
+        assertTrue(valueDescriptor == this.valueDescriptor);
         assertNull(this.value);
         this.value = value;
     }

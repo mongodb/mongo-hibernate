@@ -36,24 +36,24 @@ import java.util.Map;
  * @param <T> generics type
  * @see AstVisitorValueHolder
  */
-final class TypeReference<T> {
+@SuppressWarnings("UnusedTypeParameter")
+final class AstVisitorValueDescriptor<T> {
 
-    public static final TypeReference<AstNode> COLLECTION_MUTATION = new TypeReference<>();
-    public static final TypeReference<AstValue> FIELD_VALUE = new TypeReference<>();
+    static final AstVisitorValueDescriptor<AstNode> COLLECTION_MUTATION = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<AstValue> FIELD_VALUE = new AstVisitorValueDescriptor<>();
 
-    private static final Map<TypeReference<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
+    private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 
     static {
-        var fields = TypeReference.class.getDeclaredFields();
-        var map = new IdentityHashMap<TypeReference<?>, String>(fields.length);
+        var fields = AstVisitorValueDescriptor.class.getDeclaredFields();
+        var map = new IdentityHashMap<AstVisitorValueDescriptor<?>, String>(fields.length);
         for (var field : fields) {
             var modifiers = field.getModifiers();
-            if (Modifier.isPublic(modifiers)
-                    && Modifier.isStatic(modifiers)
+            if (Modifier.isStatic(modifiers)
                     && Modifier.isFinal(modifiers)
-                    && TypeReference.class == field.getType()) {
+                    && AstVisitorValueDescriptor.class == field.getType()) {
                 try {
-                    map.put((TypeReference<?>) field.get(null), field.getName());
+                    map.put((AstVisitorValueDescriptor<?>) field.get(null), field.getName());
                 } catch (IllegalAccessException e) {
                     fail(e.toString());
                 }
@@ -62,7 +62,7 @@ final class TypeReference<T> {
         CONSTANT_TOSTRING_CONTENT_MAP = Collections.unmodifiableMap(map);
     }
 
-    private TypeReference() {}
+    private AstVisitorValueDescriptor() {}
 
     @Override
     public String toString() {
