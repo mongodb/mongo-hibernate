@@ -255,7 +255,7 @@ class MongoPreparedStatementTests {
             assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
         }
 
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index of 6")
+        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too high")
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow")
         void testParameterIndexOverflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
