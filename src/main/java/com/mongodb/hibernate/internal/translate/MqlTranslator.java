@@ -171,7 +171,7 @@ final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T
                 return translateTableMutation(tableMutation);
             } else {
                 // TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17
-                // TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19
+                // TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-18
                 // after the above deletion and updating translation is done, we can delete this branch.
                 return (T) new NoopJdbcMutationOperation();
             }
