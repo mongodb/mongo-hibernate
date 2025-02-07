@@ -182,10 +182,10 @@ final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T
     @SuppressWarnings({"unchecked"})
     private T translateTableMutation(TableMutation<?> mutation) {
         var rootAstNode = astVisitorValueHolder.execute(COLLECTION_MUTATION, () -> mutation.accept(this));
-        return (T) mutation.createMutationOperation(translateMongoAst(rootAstNode), parameterBinders);
+        return (T) mutation.createMutationOperation(renderMongoAstNode(rootAstNode), parameterBinders);
     }
 
-    private String translateMongoAst(AstNode rootAstNode) {
+    private String renderMongoAstNode(AstNode rootAstNode) {
         var writer = new StringWriter();
         rootAstNode.render(new JsonWriter(writer));
         return writer.toString();
@@ -212,12 +212,16 @@ final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T
         if (columnWriteFragment.getParameters().size() != 1) {
             throw new NotYetImplementedException();
         }
-        var jdbcParameter = columnWriteFragment.getParameters().iterator().next();
-        parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
+        columnWriteFragment.getParameters().iterator().next().accept(this);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    @Override
+    public void visitParameter(JdbcParameter jdbcParameter) {
+        parameterBinders.add(jdbcParameter.getParameterBinder());
+        astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
+    }
 
     @Override
     public void visitSelectStatement(SelectStatement selectStatement) {
@@ -426,11 +430,6 @@ final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T
 
     @Override
     public void visitCollation(Collation collation) {
-        throw new NotYetImplementedException();
-    }
-
-    @Override
-    public void visitParameter(JdbcParameter jdbcParameter) {
         throw new NotYetImplementedException();
     }
 
