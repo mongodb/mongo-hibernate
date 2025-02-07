@@ -18,7 +18,7 @@ package com.mongodb.hibernate.translate;
 
 import static com.mongodb.hibernate.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.translate.AstVisitorValueDescriptor.FIELD_VALUE;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.hibernate.internal.mongoast.AstElement;
@@ -29,7 +29,6 @@ import java.util.List;
 import org.bson.BsonString;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class AstVisitorValueHolderTests {
@@ -46,65 +45,57 @@ class AstVisitorValueHolderTests {
         // given
 
         var valueSet = new AstLiteralValue(new BsonString("field_value"));
-        Runnable valueSetter = () -> astVisitorValueHolder.setValue(FIELD_VALUE, valueSet);
+        Runnable valueSetter = () -> astVisitorValueHolder.yield(FIELD_VALUE, valueSet);
 
         // when
-        var valueGotten = astVisitorValueHolder.getValue(FIELD_VALUE, valueSetter);
+        var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueSetter);
 
         // then
-        assertEquals(valueSet, valueGotten);
+        assertSame(valueSet, valueGotten);
     }
 
     @Test
     void testRecursiveUsage() {
         // given
         Runnable tableInserter = () -> {
-            Runnable fielValueSetter = () -> {
-                astVisitorValueHolder.setValue(FIELD_VALUE, AstPlaceholder.INSTANCE);
+            Runnable fieldValueSetter = () -> {
+                astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
             };
-            var fieldValue = astVisitorValueHolder.getValue(FIELD_VALUE, fielValueSetter);
+            var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueSetter);
             AstElement astElement = new AstElement("province", fieldValue);
-            astVisitorValueHolder.setValue(COLLECTION_MUTATION, new AstInsertCommand("city", List.of(astElement)));
+            astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand("city", List.of(astElement)));
         };
 
         // when && then
-        astVisitorValueHolder.getValue(COLLECTION_MUTATION, tableInserter);
+        astVisitorValueHolder.execute(COLLECTION_MUTATION, tableInserter);
     }
 
-    @Nested
-    class ValueSettingTests {
-
-        @Test
-        @DisplayName("Exception is thrown when holder is not empty when setting data")
-        void testHolderNotEmptyWhenSetting() {
-            // given
-            Runnable valueSetter = () -> {
-                astVisitorValueHolder.setValue(FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
-                astVisitorValueHolder.setValue(FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
-            };
-            // when && then
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(FIELD_VALUE, valueSetter));
-        }
-
-        @Test
-        @DisplayName("Exception is thrown when holder is expecting a type different from that of real data")
-        void testHolderExpectingDifferentType() {
-            // given
-            Runnable valueSetter = () ->
-                    astVisitorValueHolder.setValue(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
-
-            // when && then
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(COLLECTION_MUTATION, valueSetter));
-        }
+    @Test
+    @DisplayName("Exception is thrown when holder is not empty when setting data")
+    void testHolderNotEmptyWhenSetting() {
+        // given
+        Runnable valueSetter = () -> {
+            astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
+            astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
+        };
+        // when && then
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, valueSetter));
     }
 
-    @Nested
-    class ValueGettingTests {
+    @Test
+    @DisplayName("Exception is thrown when holder is expecting a type different from that of real data")
+    void testHolderExpectingDifferentType() {
+        // given
+        Runnable valueSetter =
+                () -> astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
 
-        @Test
-        @DisplayName("Exception is thrown when getting value from an empty holder")
-        void testHolderStillEmpty() {
-            assertThrows(Error.class, () -> astVisitorValueHolder.getValue(FIELD_VALUE, () -> {}));
-        }
+        // when && then
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueSetter));
+    }
+
+    @Test
+    @DisplayName("Exception is thrown when getting value from an empty holder")
+    void testHolderStillEmpty() {
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, () -> {}));
     }
 }

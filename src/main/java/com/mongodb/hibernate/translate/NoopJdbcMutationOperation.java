@@ -33,7 +33,10 @@ import org.jspecify.annotations.NullUnmarked;
  * an option. Ultimately this adapter class should be phased out and deleted.
  */
 @NullUnmarked
-final class JdbcMutationOperationAdapter implements JdbcMutationOperation {
+final class NoopJdbcMutationOperation implements JdbcMutationOperation {
+
+    NoopJdbcMutationOperation() {}
+
     @Override
     public String getSqlString() {
         return "";

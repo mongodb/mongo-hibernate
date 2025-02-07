@@ -111,7 +111,10 @@ import org.jspecify.annotations.NullUnmarked;
  * @param <T> {@link JdbcOperation} generics type
  */
 @NullUnmarked
-final class SqlAstTranslatorAdapter<T extends JdbcOperation> implements SqlAstTranslator<T> {
+final class NoopSqlAstTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+
+    NoopSqlAstTranslator() {}
+
     @Override
     public SessionFactoryImplementor getSessionFactory() {
         return null;

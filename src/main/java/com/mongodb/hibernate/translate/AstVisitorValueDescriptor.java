@@ -27,11 +27,8 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 /**
- * An enum class denoting the possible types of the value in {@link AstVisitorValueHolder}, so the setter and getter
- * sides could ensure data exchange safety by sharing the same type reference in this class.
- *
- * <p>Note that Java Enum does not support generics. This class combines benefits of both {@code Enum} and type safety
- * together.
+ * A class denoting the possible semantics of the value in {@link AstVisitorValueHolder}, so the setter and getter sides
+ * could ensure data exchange safety by sharing the same descriptor in this class.
  *
  * @param <T> generics type
  * @see AstVisitorValueHolder

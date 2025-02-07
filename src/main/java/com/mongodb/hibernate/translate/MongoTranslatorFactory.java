@@ -30,18 +30,18 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
-        return new SqlAstTranslatorAdapter<>();
+        return new NoopSqlAstTranslator<>();
     }
 
     @Override
     public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, MutationStatement mutationStatement) {
-        return new SqlAstTranslatorAdapter<>();
+        return new NoopSqlAstTranslator<>();
     }
 
     @Override
     public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
             TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactoryImplementor) {
-        return new MqlTranslator<>(sessionFactoryImplementor, tableMutation);
+        return new MqlTranslator<>(tableMutation, sessionFactoryImplementor);
     }
 }

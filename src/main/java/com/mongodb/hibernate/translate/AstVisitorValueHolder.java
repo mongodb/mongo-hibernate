@@ -21,6 +21,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 
 import com.mongodb.hibernate.internal.mongoast.AstNode;
+import org.hibernate.sql.ast.SqlAstWalker;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -28,14 +29,12 @@ import org.jspecify.annotations.Nullable;
  * {@link org.hibernate.sql.ast.SqlAstWalker} not returning a value; Returning values is required during MQL translation
  * (e.g. returning intermediate MQL {@link AstNode}).
  *
- * <p>Contains both value and its type info, which will be used to ensure value provided has identical type with value
- * consumer's expectation.
- *
  * <p>During one MQL translation process, one single object of this class should be created globally (or not within
- * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} could access it as
- * either producer calling {@link #setValue(AstVisitorValueDescriptor, Object)} method) or consumer calling
- * {@link #getValue(AstVisitorValueDescriptor, Runnable)} method). Once the consumer grabs its expected value, it becomes the sole
- * owner of the value with the holder being blank.
+ * methods as temporary variable) so various {@code void} visitor methods of {@code SqlAstWalker} or the
+ * {@link org.hibernate.sql.ast.tree.SqlAstNode#accept(SqlAstWalker)} could access it as either producer calling
+ * {@link #yield(AstVisitorValueDescriptor, Object)} method) or consumer calling
+ * {@link #execute(AstVisitorValueDescriptor, Runnable)} method). Once the consumer grabs its expected value, it becomes
+ * the sole owner of the value with the holder being blank.
  *
  * @see org.hibernate.sql.ast.SqlAstWalker
  * @see AstVisitorValueDescriptor
@@ -45,25 +44,25 @@ final class AstVisitorValueHolder {
     private @Nullable AstVisitorValueDescriptor<?> valueDescriptor;
     private @Nullable Object value;
 
+    AstVisitorValueHolder() {}
+
     /**
-     * Grabs the value (matching the expected type) then empties the holder and restored its previous state.
+     * Executes the {@link Runnable} which will internally invoke the {@link #yield(AstVisitorValueDescriptor, Object)}
+     * method with identical {@link AstVisitorValueDescriptor}.
      *
-     * <p>Note that during SQL AST tree traversal, it is common to call this method recursively, so one salient feature
-     * of this class is the capability to restore previous state.
-     *
-     * @param valueDescriptor expected type of the data to be grabbed.
-     * @param valueSetter the {@code Runnable} wrapper of a void AST visitor method which is supposed to invoke
-     *     {@link #setValue(AstVisitorValueDescriptor, Object)} internally with type identical to the {@code valueType}.
-     * @return the grabbed value set by {@code valueSetter}
-     * @param <T> generics type of the value returned
+     * @param valueDescriptor expected semantics of the data to yield.
+     * @param yieldingRunnable the {@code Runnable} wrapper which is supposed to invoke
+     *     {@link #yield(AstVisitorValueDescriptor, Object)} internally sharing the identical {@code valueDescriptor}.
+     * @return the value to yield by {@code yieldingRunnable}
+     * @param <T> generics type of the value
      */
     @SuppressWarnings("unchecked")
-    public <T> T getValue(AstVisitorValueDescriptor<T> valueDescriptor, Runnable valueSetter) {
-        var previousType = this.valueDescriptor;
+    public <T> T execute(AstVisitorValueDescriptor<T> valueDescriptor, Runnable yieldingRunnable) {
         assertNull(value);
+        var previousType = this.valueDescriptor;
         this.valueDescriptor = valueDescriptor;
         try {
-            valueSetter.run();
+            yieldingRunnable.run();
             return (T) assertNotNull(value);
         } finally {
             this.valueDescriptor = previousType;
@@ -72,21 +71,15 @@ final class AstVisitorValueHolder {
     }
 
     /**
-     * Sets the value matching type expectation.
+     * Yields the value matching the provided {@link AstVisitorValueDescriptor}.
      *
-     * <p>To ensure smooth data exchange, the following preconditions need to be satisfied:
-     *
-     * <ul>
-     *   <li>the holder contains empty value
-     *   <li>the holder's data type matches the real data type
-     * </ul>
-     *
-     * @param valueDescriptor data type of the {@code value}; should match the expected type in holder.
+     * @param valueDescriptor semantics of the {@code value}; should match the expected one in holder.
      * @param value data returned inside some {@code void} method.
      * @param <T> generics type of the {@code value}
      */
-    public <T> void setValue(AstVisitorValueDescriptor<T> valueDescriptor, T value) {
-        assertTrue(valueDescriptor == this.valueDescriptor);
+    @SuppressWarnings("NamedLikeContextualKeyword")
+    public <T> void yield(AstVisitorValueDescriptor<T> valueDescriptor, T value) {
+        assertTrue(valueDescriptor.equals(this.valueDescriptor));
         assertNull(this.value);
         this.value = value;
     }

@@ -128,9 +128,9 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
-    MqlTranslator(SessionFactoryImplementor sessionFactory, Statement statement) {
-        this.sessionFactory = sessionFactory;
+    MqlTranslator(Statement statement, SessionFactoryImplementor sessionFactory) {
         this.statement = statement;
+        this.sessionFactory = sessionFactory;
     }
 
     @Override
@@ -171,14 +171,14 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
             if (tableMutation instanceof TableInsert) {
                 return translateTableMutation(tableMutation);
             } else {
-                return (T) new JdbcMutationOperationAdapter();
+                return (T) new NoopJdbcMutationOperation();
             }
         }
         throw new NotYetImplementedException();
     }
 
     private T translateTableMutation(TableMutation<T> mutation) {
-        var rootAstNode = astVisitorValueHolder.getValue(COLLECTION_MUTATION, () -> mutation.accept(this));
+        var rootAstNode = astVisitorValueHolder.execute(COLLECTION_MUTATION, () -> mutation.accept(this));
         return mutation.createMutationOperation(translateMongoAst(rootAstNode), parameterBinders);
     }
 
@@ -196,12 +196,12 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         var tableName = tableInsertStandard.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsertStandard.getValueBindings()) {
-            var astValue = astVisitorValueHolder.getValue(
+            var astValue = astVisitorValueHolder.execute(
                     FIELD_VALUE, () -> columnValueBinding.getValueExpression().accept(this));
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
         }
-        astVisitorValueHolder.setValue(COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
     }
 
     @Override
@@ -211,7 +211,7 @@ final class MqlTranslator<T extends JdbcOperation & MutationOperation> implement
         }
         var jdbcParameter = columnWriteFragment.getParameters().iterator().next();
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.setValue(FIELD_VALUE, AstPlaceholder.INSTANCE);
+        astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
