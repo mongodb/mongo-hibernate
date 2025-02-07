@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,9 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.mongodb.bulk.BulkWriteInsert;
 import com.mongodb.bulk.BulkWriteResult;
-import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -56,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
+import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -110,52 +110,16 @@ class MongoPreparedStatementTests {
         private MongoDatabase mongoDatabase;
 
         @Captor
-        private ArgumentCaptor<List<WriteModel<BsonDocument>>> writeModelsCaptor;
+        private ArgumentCaptor<BsonDocument> commandCaptor;
 
         @Test
         @DisplayName("Happy path when all parameters are provided values")
-        void testSuccess(@Mock MongoCollection<BsonDocument> mongoCollection) throws SQLException {
+        void testSuccess() throws SQLException {
             // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
-            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
-            doReturn(new BulkWriteResult() {
-                        @Override
-                        public boolean wasAcknowledged() {
-                            return false;
-                        }
-
-                        @Override
-                        public int getInsertedCount() {
-                            return 1;
-                        }
-
-                        @Override
-                        public int getMatchedCount() {
-                            return 0;
-                        }
-
-                        @Override
-                        public int getDeletedCount() {
-                            return 0;
-                        }
-
-                        @Override
-                        public int getModifiedCount() {
-                            return 0;
-                        }
-
-                        @Override
-                        public List<BulkWriteInsert> getInserts() {
-                            return List.of();
-                        }
-
-                        @Override
-                        public List<BulkWriteUpsert> getUpserts() {
-                            return List.of();
-                        }
-                    })
-                    .when(mongoCollection)
-                    .bulkWrite(eq(clientSession), anyList());
+            doReturn(Document.parse("{ok: 1.0, n: 1}"))
+                    .when(mongoDatabase)
+                    .runCommand(eq(clientSession), any(BsonDocument.class));
 
             // when && then
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
@@ -168,24 +132,26 @@ class MongoPreparedStatementTests {
 
                 preparedStatement.executeUpdate();
 
-                verify(mongoCollection).bulkWrite(eq(clientSession), writeModelsCaptor.capture());
-                var writeModels = writeModelsCaptor.getValue();
-                assertEquals(1, writeModels.size());
-                var writeModel = writeModels.get(0);
-                assertInstanceOf(InsertOneModel.class, writeModel);
-                var insertDoc = ((InsertOneModel<BsonDocument>) writeModel).getDocument();
+                verify(mongoDatabase).runCommand(eq(clientSession), commandCaptor.capture());
+                var command = commandCaptor.getValue();
                 var expectedDoc = parse(
                         """
-                           {
-                                title: "War and Peace",
-                                author: "Leo Tolstoy",
-                                publishYear: 1869,
-                                outOfStock: false,
-                                tags: [
-                                    "classic"
+                            {
+                                insert: "books",
+                                documents: [
+                                    {
+                                        title: "War and Peace",
+                                        author: "Leo Tolstoy",
+                                        publishYear: 1869,
+                                        outOfStock: false,
+                                        tags: [
+                                            "classic"
+                                        ]
+                                    }
                                 ]
-                           } """);
-                assertEquals(expectedDoc, insertDoc);
+                            }
+                            """);
+                assertEquals(expectedDoc, command);
             }
         }
 
@@ -474,7 +440,7 @@ class MongoPreparedStatementTests {
                                     """
                                     {
                                         delete: "books",
-                                        deletes: [
+                                        deleted: [
                                             { q: { _id: 1 }, limit: 1 },
                                             { q: {}, limit: 0 }
                                         ]
