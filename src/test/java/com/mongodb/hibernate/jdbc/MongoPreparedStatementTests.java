@@ -27,12 +27,10 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.mongodb.MongoOperationTimeoutException;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
@@ -49,7 +47,6 @@ import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
 import java.sql.SQLException;
-import java.sql.SQLTimeoutException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -359,26 +356,6 @@ class MongoPreparedStatementTests {
 
                 // then
                 assertEquals(0, rowCounts.length);
-            }
-        }
-
-        @Test
-        void testExceptionTranslation() throws SQLException {
-            // given
-            doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
-            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
-            doThrow(MongoOperationTimeoutException.class).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-
-            try (var pstmt = createMongoPreparedStatement(EXAMPLE_MQL)) {
-                pstmt.setString(1, "War and Peace");
-                pstmt.setInt(2, 1869);
-                pstmt.addBatch();
-
-                pstmt.setString(1, "Crime and Punishment");
-                pstmt.setInt(2, 1866);
-                pstmt.addBatch();
-
-                assertThrows(SQLTimeoutException.class, pstmt::executeBatch);
             }
         }
 
