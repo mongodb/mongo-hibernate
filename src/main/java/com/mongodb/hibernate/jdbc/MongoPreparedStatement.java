@@ -21,6 +21,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
+import com.mongodb.MongoOperationTimeoutException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.DeleteManyModel;
@@ -38,6 +39,7 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLTimeoutException;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -354,9 +356,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
 
             return rowCounts;
-
+        } catch (MongoOperationTimeoutException e) {
+            throw new SQLTimeoutException(e.getMessage(), e);
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to run bulk operation: " + e.getMessage(), e);
+            throw new SQLException("Failed to execute batch: " + e.getMessage(), e);
         } finally {
             clearBatch();
         }
