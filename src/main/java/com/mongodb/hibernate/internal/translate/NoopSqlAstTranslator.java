@@ -103,20 +103,6 @@ import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.jspecify.annotations.NullUnmarked;
 
-/**
- * An {@link SqlAstTranslator} no-op adapter class which is used temporarily as a feature placeholder prior to its
- * implementation is done, when throwing {@link com.mongodb.hibernate.internal.NotYetImplementedException} would not be
- * an option. Ultimately this adapter class should be phased out and deleted after the following tickets are done:
- *
- * <ul>
- *   <li><a href="https://jira.mongodb.org/browse/HIBERNATE-22">implement load MQL translation</a>
- *   <li><a href="https://jira.mongodb.org/browse/HIBERNATE-14">statement DML implementation</a>
- * </ul>
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- *
- * @param <T> {@link JdbcOperation} generics type
- */
 @NullUnmarked
 final class NoopSqlAstTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 

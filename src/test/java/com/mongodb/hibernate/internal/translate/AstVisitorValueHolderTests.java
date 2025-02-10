@@ -21,6 +21,7 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
@@ -62,7 +63,8 @@ class AstVisitorValueHolderTests {
             };
             var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
-            astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand("city", List.of(astElement)));
+            astVisitorValueHolder.yield(
+                    COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
         };
 
         // when && then

@@ -26,16 +26,6 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-/**
- * A class denoting the semantics (including the Java types and its intention) of the value in
- * {@link AstVisitorValueHolder}, so the value producer and consumer sides could ensure data exchange safety by sharing
- * the same descriptor constant in this class.
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- *
- * @param <T> generics type
- * @see AstVisitorValueHolder
- */
 @SuppressWarnings("UnusedTypeParameter")
 final class AstVisitorValueDescriptor<T> {
 

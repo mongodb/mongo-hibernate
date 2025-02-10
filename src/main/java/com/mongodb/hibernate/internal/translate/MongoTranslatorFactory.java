@@ -44,6 +44,6 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
             TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactoryImplementor) {
-        return new MqlTranslator<>(tableMutation, sessionFactoryImplementor);
+        return new TableMutationMqlTranslator<>(tableMutation, sessionFactoryImplementor);
     }
 }

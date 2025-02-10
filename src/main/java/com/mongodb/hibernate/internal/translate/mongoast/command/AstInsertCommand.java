@@ -16,21 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
+import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import java.util.List;
 import org.bson.BsonWriter;
 
-/**
- * Represents some insert MQL command which aims to insert one single document composed of a collection of
- * {@link AstElement}s.
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- *
- * @param collection collection name
- * @param elements the fields of the inserted document
- */
-public record AstInsertCommand(String collection, List<? extends AstElement> elements) implements AstNode {
+public record AstInsertCommand(String collection, AstDocument document) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
@@ -39,11 +29,7 @@ public record AstInsertCommand(String collection, List<? extends AstElement> ele
             writer.writeName("documents");
             writer.writeStartArray();
             {
-                writer.writeStartDocument();
-                {
-                    elements.forEach(element -> element.render(writer));
-                }
-                writer.writeEndDocument();
+                document.render(writer);
             }
             writer.writeEndArray();
         }

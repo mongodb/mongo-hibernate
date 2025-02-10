@@ -20,6 +20,7 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 
 import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
@@ -32,14 +33,12 @@ import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
-import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.SqlAstNode;
-import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.delete.DeleteStatement;
 import org.hibernate.sql.ast.tree.expression.AggregateColumnWriteExpression;
 import org.hibernate.sql.ast.tree.expression.Any;
@@ -106,10 +105,7 @@ import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
-import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
-import org.hibernate.sql.model.ast.TableInsert;
-import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
 import org.hibernate.sql.model.internal.TableDeleteStandard;
@@ -119,17 +115,15 @@ import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 
 /** This class is not part of the public API and may be removed or changed at any time */
-final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
-    private final SessionFactoryImplementor sessionFactory;
-    private final Statement statement;
+    final SessionFactoryImplementor sessionFactory;
 
-    private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
+    final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
 
-    private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
+    final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
-    MqlTranslator(Statement statement, SessionFactoryImplementor sessionFactory) {
-        this.statement = statement;
+    AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
     }
 
@@ -163,29 +157,7 @@ final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T
         throw new NotYetImplementedException();
     }
 
-    @Override
-    @SuppressWarnings({"unchecked"})
-    public T translate(JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
-        if (statement instanceof TableMutation<?> tableMutation) {
-            if (tableMutation instanceof TableInsert) {
-                return translateTableMutation(tableMutation);
-            } else {
-                // TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17
-                // TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-18
-                // after the above deletion and updating translation is done, we can delete this branch.
-                return (T) new NoopJdbcMutationOperation();
-            }
-        }
-        throw new NotYetImplementedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
-    }
-
-    @SuppressWarnings({"unchecked"})
-    private T translateTableMutation(TableMutation<?> mutation) {
-        var rootAstNode = astVisitorValueHolder.execute(COLLECTION_MUTATION, () -> mutation.accept(this));
-        return (T) mutation.createMutationOperation(renderMongoAstNode(rootAstNode), parameterBinders);
-    }
-
-    private String renderMongoAstNode(AstNode rootAstNode) {
+    String renderMongoAstNode(AstNode rootAstNode) {
         var writer = new StringWriter();
         rootAstNode.render(new JsonWriter(writer));
         return writer.toString();
@@ -204,7 +176,7 @@ final class MqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
         }
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(tableName, astElements));
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(tableName, new AstDocument(astElements)));
     }
 
     @Override

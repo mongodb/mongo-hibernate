@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,16 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.bson.BsonValue;
+import java.util.List;
 import org.bson.BsonWriter;
-import org.bson.codecs.BsonValueCodec;
-import org.bson.codecs.EncoderContext;
 
-public record AstLiteralValue(BsonValue literalValue) implements AstValue {
-
-    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
-    private static final EncoderContext DEFAULT_CONTEXT =
-            EncoderContext.builder().build();
-
+public record AstDocument(List<? extends AstElement> elements) implements AstValue {
     @Override
-    public void render(final BsonWriter writer) {
-        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
+    public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        {
+            elements.forEach(element -> element.render(writer));
+        }
+        writer.writeEndDocument();
     }
 }

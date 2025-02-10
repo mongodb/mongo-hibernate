@@ -18,15 +18,6 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonWriter;
 
-/**
- * Represents an MQL parameter placeholder, whose values are provided to {@link java.sql.PreparedStatement}'s various
- * setter methods together with their position indexes.
- *
- * <p>Note that MQL has no SQL parameter placeholder (JDBC uses {@code ?} as placeholder marker) counterpart; currently
- * the {@linkplain BsonWriter#writeUndefined() BSON Undefined} value is chosen.
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- */
 public final class AstPlaceholder implements AstValue {
 
     public static AstPlaceholder INSTANCE = new AstPlaceholder();

@@ -27,19 +27,6 @@ import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.hibernate.sql.model.jdbc.JdbcValueDescriptor;
 import org.jspecify.annotations.NullUnmarked;
 
-/**
- * A {@link JdbcMutationOperation} no-op adapter class which is used temporarily as feature placeholder prior to its
- * implementation is done, when throwing {@link com.mongodb.hibernate.internal.NotYetImplementedException} would not be
- * an option. Ultimately this adapter class should be phased out and deleted after the completion of the following
- * tickets:
- *
- * <ul>
- *   <li><a href="https://jira.mongodb.org/browse/HIBERNATE-17">deletion MQL translation</a>
- *   <li><a href="https://jira.mongodb.org/browse/HIBERNATE-18">updating MQL translation</a>
- * </ul>
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- */
 @NullUnmarked
 final class NoopJdbcMutationOperation implements JdbcMutationOperation {
 
