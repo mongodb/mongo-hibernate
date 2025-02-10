@@ -29,7 +29,9 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
+import org.bson.json.JsonWriterSettings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
@@ -116,6 +118,8 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 
 /** This class is not part of the public API and may be removed or changed at any time */
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+    private static final JsonWriterSettings JSON_WRITER_SETTINGS =
+            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     final SessionFactoryImplementor sessionFactory;
 
@@ -159,7 +163,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     String renderMongoAstNode(AstNode rootAstNode) {
         var writer = new StringWriter();
-        rootAstNode.render(new JsonWriter(writer));
+        rootAstNode.render(new JsonWriter(writer, JSON_WRITER_SETTINGS));
         return writer.toString();
     }
 
