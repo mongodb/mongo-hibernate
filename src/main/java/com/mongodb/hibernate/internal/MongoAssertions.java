@@ -43,7 +43,7 @@ public final class MongoAssertions {
     }
 
     /**
-     * Asserts that failure happens invariably.
+     * Asserts that failure happens invariably with message.
      *
      * @param msg The failure message.
      * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
@@ -52,6 +52,17 @@ public final class MongoAssertions {
      */
     public static AssertionError fail(String msg) throws AssertionError {
         throw new AssertionError(assertNotNull(msg));
+    }
+
+    /**
+     * Asserts that failure happens invariably.
+     *
+     * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
+     *     fail()}. This may be helpful in non-{@code void} methods.
+     * @throws AssertionError Always
+     */
+    public static AssertionError fail() throws AssertionError {
+        throw new AssertionError();
     }
 
     /**

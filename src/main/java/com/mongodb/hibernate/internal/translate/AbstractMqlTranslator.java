@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 
@@ -139,22 +140,22 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void render(SqlAstNode sqlAstNode, SqlAstNodeRenderingMode sqlAstNodeRenderingMode) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public boolean supportsFilterClause() {
-        throw new NotYetImplementedException();
+        throw fail();
     }
 
     @Override
     public QueryPart getCurrentQueryPart() {
-        throw new NotYetImplementedException();
+        throw fail();
     }
 
     @Override
     public Stack<Clause> getCurrentClauseStack() {
-        throw new NotYetImplementedException();
+        throw fail();
     }
 
     @Override
@@ -198,7 +199,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitColumnWriteFragment(ColumnWriteFragment columnWriteFragment) {
         if (columnWriteFragment.getParameters().size() != 1) {
-            throw new NotYetImplementedException();
+            fail();
         }
         columnWriteFragment.getParameters().iterator().next().accept(this);
     }
@@ -233,322 +234,322 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitAssignment(Assignment assignment) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitQueryGroup(QueryGroup queryGroup) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitQuerySpec(QuerySpec querySpec) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitOffsetFetchClause(QueryPart queryPart) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSelectClause(SelectClause selectClause) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSqlSelection(SqlSelection sqlSelection) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitFromClause(FromClause fromClause) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitTableGroup(TableGroup tableGroup) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitTableGroupJoin(TableGroupJoin tableGroupJoin) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitNamedTableReference(NamedTableReference namedTableReference) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitValuesTableReference(ValuesTableReference valuesTableReference) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitQueryPartTableReference(QueryPartTableReference queryPartTableReference) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitFunctionTableReference(FunctionTableReference functionTableReference) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitTableReferenceJoin(TableReferenceJoin tableReferenceJoin) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitColumnReference(ColumnReference columnReference) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitNestedColumnReference(NestedColumnReference nestedColumnReference) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitAggregateColumnWriteExpression(AggregateColumnWriteExpression aggregateColumnWriteExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitExtractUnit(ExtractUnit extractUnit) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitFormat(Format format) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitDistinct(Distinct distinct) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitOverflow(Overflow overflow) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitStar(Star star) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitTrimSpecification(TrimSpecification trimSpecification) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitCastTarget(CastTarget castTarget) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitBinaryArithmeticExpression(BinaryArithmeticExpression binaryArithmeticExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitCaseSearchedExpression(CaseSearchedExpression caseSearchedExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitAny(Any any) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitEvery(Every every) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSummarization(Summarization summarization) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitOver(Over<?> over) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitEntityTypeLiteral(EntityTypeLiteral entityTypeLiteral) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitEmbeddableTypeLiteral(EmbeddableTypeLiteral embeddableTypeLiteral) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitTuple(SqlTuple sqlTuple) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitCollation(Collation collation) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitJdbcLiteral(JdbcLiteral<?> jdbcLiteral) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitUnaryOperationExpression(UnaryOperation unaryOperation) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitModifiedSubQueryExpression(ModifiedSubQueryExpression modifiedSubQueryExpression) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitBetweenPredicate(BetweenPredicate betweenPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitFilterPredicate(FilterPredicate filterPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitFilterFragmentPredicate(FilterPredicate.FilterFragmentPredicate filterFragmentPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSqlFragmentPredicate(SqlFragmentPredicate sqlFragmentPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitGroupedPredicate(GroupedPredicate groupedPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitInSubQueryPredicate(InSubQueryPredicate inSubQueryPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitInArrayPredicate(InArrayPredicate inArrayPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitExistsPredicate(ExistsPredicate existsPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitJunction(Junction junction) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitThruthnessPredicate(ThruthnessPredicate thruthnessPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitSelfRenderingPredicate(SelfRenderingPredicate selfRenderingPredicate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitDurationUnit(DurationUnit durationUnit) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitDuration(Duration duration) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitConversion(Conversion conversion) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitCustomTableInsert(TableInsertCustomSql tableInsertCustomSql) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
@@ -558,7 +559,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitCustomTableDelete(TableDeleteCustomSql tableDeleteCustomSql) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
@@ -568,11 +569,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitOptionalTableUpdate(OptionalTableUpdate optionalTableUpdate) {
-        throw new NotYetImplementedException();
+        fail();
     }
 
     @Override
     public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdateCustomSql) {
-        throw new NotYetImplementedException();
+        fail();
     }
 }
