@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
 import java.sql.SQLException;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -67,7 +68,7 @@ class MongoPreparedStatementTests {
     @Mock
     private MongoConnection mongoConnection;
 
-    private MongoPreparedStatement createMongoPreparedStatement(String mql) {
+    private MongoPreparedStatement createMongoPreparedStatement(String mql) throws SQLSyntaxErrorException {
         return new MongoPreparedStatement(mongoClient, clientSession, mongoConnection, mql);
     }
 
@@ -143,7 +144,7 @@ class MongoPreparedStatementTests {
 
         @Test
         @DisplayName("SQLException is thrown when parameter index is invalid")
-        void testParameterIndexInvalid() {
+        void testParameterIndexInvalid() throws SQLSyntaxErrorException {
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
                 var sqlException =
                         assertThrows(SQLException.class, () -> preparedStatement.setString(0, "War and Peace"));
@@ -165,7 +166,8 @@ class MongoPreparedStatementTests {
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoPreparedStatement")
         @MethodSource("getMongoPreparedStatementMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation) {
+        void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation)
+                throws SQLSyntaxErrorException {
             // given
             var mql =
                     """
