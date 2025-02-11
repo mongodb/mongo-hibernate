@@ -51,7 +51,7 @@ class MongoStatement implements StatementAdapter {
 
     private boolean closed;
 
-    public MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
+    MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
         this.mongoClient = mongoClient;
         this.mongoConnection = mongoConnection;
         this.clientSession = clientSession;
@@ -251,7 +251,7 @@ class MongoStatement implements StatementAdapter {
         return mongoClient.getDatabase(DATABASE);
     }
 
-    private static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
+    static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
         try {
             return BsonDocument.parse(mql);
         } catch (RuntimeException e) {
