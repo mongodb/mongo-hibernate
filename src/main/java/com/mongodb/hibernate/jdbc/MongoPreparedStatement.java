@@ -38,7 +38,7 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Statement;
+import java.sql.SQLSyntaxErrorException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -57,6 +57,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonString;
+import org.bson.BsonType;
 import org.bson.BsonUndefined;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
@@ -78,10 +79,11 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
     MongoPreparedStatement(
-            MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql) {
+            MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql)
+            throws SQLSyntaxErrorException {
         super(mongoClient, clientSession, mongoConnection);
         commandBatch = new ArrayList<>();
-        command = BsonDocument.parse(mql);
+        command = MongoStatement.parse(mql);
         parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -401,7 +403,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static boolean isParameterMarker(BsonValue value) {
-        return value.equals(PARAMETER_PLACEHOLDER);
+        return value.getBsonType() == BsonType.UNDEFINED;
     }
 
     private void checkParameterIndex(int parameterIndex) throws SQLException {
