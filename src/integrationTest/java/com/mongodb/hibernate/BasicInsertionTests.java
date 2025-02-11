@@ -37,7 +37,6 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -142,9 +141,9 @@ class BasicInsertionTests {
         @Column(name = "_id")
         int id;
 
-        @Nullable String title;
+        String title;
 
-        @Nullable String author;
+        String author;
 
         int publishYear;
     }
@@ -156,9 +155,9 @@ class BasicInsertionTests {
         @Column(name = "_id")
         int id;
 
-        @Nullable String title;
+        String title;
 
-        @Nullable Author author;
+        Author author;
 
         int publishYear;
     }
@@ -167,10 +166,10 @@ class BasicInsertionTests {
     static class Author {
 
         @Column(name = "authorFirstName")
-        @Nullable String firstName;
+        String firstName;
 
         @Column(name = "authorLastName")
-        @Nullable String lastName;
+        String lastName;
 
         Author() {}
 
