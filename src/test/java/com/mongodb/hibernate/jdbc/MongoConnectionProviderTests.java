@@ -133,7 +133,7 @@ class MongoConnectionProviderTests {
                 assertDone(closedEvent);
             }
 
-            private static void assertDone(final Future<?> future) {
+            private static void assertDone(Future<?> future) {
                 try {
                     future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
