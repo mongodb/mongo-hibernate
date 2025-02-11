@@ -160,7 +160,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public Set<String> getAffectedTableNames() {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
     }
 
     List<JdbcParameterBinder> getParameterBinders() {
@@ -214,22 +214,22 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelectStatement(SelectStatement selectStatement) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
     }
 
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
 
     @Override
     public void visitInsertStatement(InsertSelectStatement insertSelectStatement) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
 
     @Override
@@ -554,7 +554,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitStandardTableDelete(TableDeleteStandard tableDeleteStandard) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17");
     }
 
     @Override
@@ -564,7 +564,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitStandardTableUpdate(TableUpdateStandard tableUpdateStandard) {
-        throw new NotYetImplementedException();
+        throw new NotYetImplementedException("TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19");
     }
 
     @Override
