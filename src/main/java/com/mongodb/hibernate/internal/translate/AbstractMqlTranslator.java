@@ -41,6 +41,7 @@ import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.SqlAstNode;
+import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.delete.DeleteStatement;
 import org.hibernate.sql.ast.tree.expression.AggregateColumnWriteExpression;
 import org.hibernate.sql.ast.tree.expression.Any;
@@ -161,10 +162,18 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         throw new NotYetImplementedException();
     }
 
-    String renderMongoAstNode(AstNode rootAstNode) {
+    static String renderMongoAstNode(AstNode rootAstNode) {
         var writer = new StringWriter();
         rootAstNode.render(new JsonWriter(writer, JSON_WRITER_SETTINGS));
         return writer.toString();
+    }
+
+    <R extends AstNode> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
+        return astVisitorValueHolder.execute(resultDescriptor, () -> statement.accept(this));
+    }
+
+    <R extends AstNode> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
+        return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -175,8 +184,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var tableName = tableInsertStandard.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsertStandard.getValueBindings()) {
-            var astValue = astVisitorValueHolder.execute(
-                    FIELD_VALUE, () -> columnValueBinding.getValueExpression().accept(this));
+            var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
         }
