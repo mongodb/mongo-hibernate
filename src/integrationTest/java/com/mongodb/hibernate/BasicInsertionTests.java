@@ -96,7 +96,10 @@ class BasicInsertionTests {
             var book = new BookWithEmbeddedField();
             book.id = 1;
             book.title = "War and Peace";
-            book.author = new Author("Leo", "Tolstoy");
+            var author = new Author();
+            author.firstName = "Leo";
+            author.lastName = "Tolstoy";
+            book.author = author;
             book.publishYear = 1867;
             session.persist(book);
         });
@@ -170,12 +173,5 @@ class BasicInsertionTests {
 
         @Column(name = "authorLastName")
         String lastName;
-
-        Author() {}
-
-        Author(String firstName, String lastName) {
-            this.firstName = firstName;
-            this.lastName = lastName;
-        }
     }
 }
