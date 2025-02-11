@@ -21,12 +21,9 @@ import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
@@ -36,6 +33,12 @@ import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterOpeningEvent;
 import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.service.MongoClientCustomizer;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
@@ -44,7 +47,6 @@ import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.service.spi.ServiceException;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -64,12 +66,11 @@ class MongoConnectionProviderTests {
             var hostInConnectionString = customizerAppliesConnectionString ? "my-host" : "localhost";
             var connectionString = "mongodb://" + hostInConnectionString;
 
-            var customizedClusterListener = mock(ClusterListener.class);
+            var clusterListener = new TestClusterListener();
 
             MongoClientCustomizer customizer = (builder, cs) -> {
                 builder.applyToClusterSettings(
-                        clusterSettingsBuilder -> clusterSettingsBuilder.addClusterListener(customizedClusterListener));
-                assertNotNull(cs);
+                        clusterSettingsBuilder -> clusterSettingsBuilder.addClusterListener(clusterListener));
                 if (customizerAppliesConnectionString) {
                     builder.applyConnectionString(cs);
                 }
@@ -87,9 +88,9 @@ class MongoConnectionProviderTests {
                 } else {
                     assertNotEquals(singleton(hostInConnectionString), hosts);
                 }
-                verify(customizedClusterListener).clusterOpening(any(ClusterOpeningEvent.class));
+                clusterListener.assertClusterOpening();
             });
-            verify(customizedClusterListener).clusterClosed(any(ClusterClosedEvent.class));
+            clusterListener.assertClusterClosed();
         }
 
         @Test
@@ -101,6 +102,49 @@ class MongoConnectionProviderTests {
                         },
                         null)) {}
             });
+        }
+
+        private static class TestClusterListener implements ClusterListener {
+            private static final Duration TIMEOUT = Duration.ofSeconds(5);
+
+            private final CompletableFuture<ClusterOpeningEvent> openingEvent;
+            private final CompletableFuture<ClusterClosedEvent> closedEvent;
+
+            TestClusterListener() {
+                openingEvent = new CompletableFuture<>();
+                closedEvent = new CompletableFuture<>();
+            }
+
+            @Override
+            public void clusterOpening(ClusterOpeningEvent event) {
+                assertTrue(openingEvent.complete(event));
+            }
+
+            @Override
+            public void clusterClosed(ClusterClosedEvent event) {
+                assertTrue(closedEvent.complete(event));
+            }
+
+            void assertClusterOpening() {
+                assertDone(openingEvent);
+            }
+
+            void assertClusterClosed() {
+                assertDone(closedEvent);
+            }
+
+            private static void assertDone(final Future<?> future) {
+                try {
+                    future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e);
+                } catch (TimeoutException e) {
+                    fail(e);
+                }
+            }
         }
     }
 
@@ -120,9 +164,7 @@ class MongoConnectionProviderTests {
     }
 
     private void verifyMongoClient(
-            @Nullable MongoClientCustomizer mongoClientCustomizer,
-            @Nullable String connectionString,
-            Consumer<MongoClient> verifier)
+            MongoClientCustomizer mongoClientCustomizer, String connectionString, Consumer<MongoClient> verifier)
             throws ServiceException {
         try (var sessionFactory = buildSessionFactory(mongoClientCustomizer, connectionString)) {
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
@@ -130,15 +172,12 @@ class MongoConnectionProviderTests {
                     .getServiceRegistry()
                     .requireService(ConnectionProvider.class);
 
-            var mongoClient = (MongoClientImpl) mongoConnectionProvider.getMongoClient();
-            assertNotNull(mongoClient);
-
+            var mongoClient = mongoConnectionProvider.getMongoClient();
             verifier.accept(mongoClient);
         }
     }
 
-    private SessionFactory buildSessionFactory(
-            @Nullable MongoClientCustomizer mongoClientCustomizer, @Nullable String connectionString) {
+    private SessionFactory buildSessionFactory(MongoClientCustomizer mongoClientCustomizer, String connectionString) {
         var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
         if (mongoClientCustomizer != null) {
             standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, mongoClientCustomizer);
