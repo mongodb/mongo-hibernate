@@ -122,11 +122,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private static final JsonWriterSettings JSON_WRITER_SETTINGS =
             JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
-    final SessionFactoryImplementor sessionFactory;
+    private final SessionFactoryImplementor sessionFactory;
 
-    final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
+    private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
 
-    final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
+    private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -160,6 +160,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public Set<String> getAffectedTableNames() {
         throw new NotYetImplementedException();
+    }
+
+    List<JdbcParameterBinder> getParameterBinders() {
+        return parameterBinders;
     }
 
     static String renderMongoAstNode(AstNode rootAstNode) {

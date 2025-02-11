@@ -48,6 +48,6 @@ final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends 
 
     private O translateTableMutation() {
         var rootAstNode = acceptAndYield(tableMutation, COLLECTION_MUTATION);
-        return tableMutation.createMutationOperation(renderMongoAstNode(rootAstNode), parameterBinders);
+        return tableMutation.createMutationOperation(renderMongoAstNode(rootAstNode), getParameterBinders());
     }
 }
