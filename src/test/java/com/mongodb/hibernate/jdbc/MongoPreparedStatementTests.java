@@ -241,7 +241,7 @@ class MongoPreparedStatementTests {
         private MongoPreparedStatement preparedStatement;
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws SQLSyntaxErrorException {
             preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
         }
 
