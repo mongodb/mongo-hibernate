@@ -22,8 +22,8 @@ import java.io.Serial;
  * A temporary marker exception to denote that the feature in question is in the scope of MongoDB dialect but has not
  * been implemented yet.
  *
- * <p>Ultimately all of its references should be eliminated sooner or later, and then this class is supposed to be
- * deleted prior to product release.
+ * <p>TODO-HIBERNATE-45 Ultimately all of its references should be eliminated sooner or later, and then this class is
+ * supposed to be deleted prior to product release.
  *
  * <p>It is recommended to provide a {@code TODO-<Jira ticket ID> ...} message, in which case one must mention in the
  * ticket description that resolving the {@code TODO-<Jira ticket ID>} notes is in scope of the ticket. Examples:
