@@ -95,13 +95,13 @@ spotless {
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
     if (name == "compileJava") {
         options.errorprone {
             disableWarningsInGeneratedCode.set(true)
             option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
             error("NullAway")
         }
-        options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
     } else {
         options.errorprone.isEnabled.set(false)
     }
