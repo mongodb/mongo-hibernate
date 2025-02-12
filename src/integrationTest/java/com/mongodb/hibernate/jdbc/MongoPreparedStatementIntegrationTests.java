@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
@@ -92,22 +93,22 @@ class MongoPreparedStatementIntegrationTests {
                             documents: [
                                {
                                    _id: 1,
-                                   title: "War and Peace",
                                    author: "Leo Tolstoy",
                                    publishYear: 1867,
-                                   comment: "reference only"
+                                   comment: "reference only",
+                                   title: "War and Peace"
                                },
                                {
                                    _id: 2,
-                                   title: "Anna Karenina",
-                                   author: "Leo Tolstoy",
                                    publishYear: 1878,
-                                   vintage: true
+                                   vintage: true,
+                                   title: "Anna Karenina",
+                                   author: "Leo Tolstoy"
                                },
                                {
                                    _id: 3,
-                                   title: "Crime and Punishment",
                                    author: "Fyodor Dostoevsky",
+                                   title: "Crime and Punishment",
                                    publishYear: 1866,
                                    vintage: false
                                }
@@ -119,7 +120,7 @@ class MongoPreparedStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testQuery(boolean autoCommit) throws SQLException {
-            var rs = session.doReturningWork(conn -> {
+            ResultSet rs = session.doReturningWork(conn -> {
                 conn.setAutoCommit(autoCommit);
                 try (var pstmt = conn.prepareStatement(
                         """
@@ -127,7 +128,7 @@ class MongoPreparedStatementIntegrationTests {
                             aggregate: "books",
                             pipeline: [
                                 { $match: { author: { $eq: { $undefined: true } } } },
-                                { $project: { author: 1, _id: 0, publishYear: 1, title: 1, vintage: 1, comment: 1 } }
+                                { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }
                             ]
                         }""")) {
 
@@ -148,10 +149,10 @@ class MongoPreparedStatementIntegrationTests {
             assertAll(
                     () -> assertEquals(5, metadata.getColumnCount()),
                     () -> assertEquals("author", metadata.getColumnLabel(1)),
-                    () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
-                    () -> assertEquals("title", metadata.getColumnLabel(3)),
-                    () -> assertEquals("vintage", metadata.getColumnLabel(4)),
-                    () -> assertEquals("comment", metadata.getColumnLabel(5)));
+                    () -> assertEquals("vintage", metadata.getColumnLabel(2)),
+                    () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
+                    () -> assertEquals("comment", metadata.getColumnLabel(4)),
+                    () -> assertEquals("title", metadata.getColumnLabel(5)));
 
             // assert columns
 
@@ -160,17 +161,17 @@ class MongoPreparedStatementIntegrationTests {
             assertEquals(5, metadata.getColumnCount());
             assertAll(
                     () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                    () -> assertEquals(1867, rs.getInt(2)),
-                    () -> assertEquals("War and Peace", rs.getString(3)),
-                    () -> assertFalse(rs.getBoolean(4)),
-                    () -> assertEquals("reference only", rs.getString(5)));
+                    () -> assertFalse(rs.getBoolean(2)),
+                    () -> assertEquals(1867, rs.getInt(3)),
+                    () -> assertEquals("reference only", rs.getString(4)),
+                    () -> assertEquals("War and Peace", rs.getString(5)));
             assertTrue(rs.next());
             assertAll(
                     () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                    () -> assertEquals(1878, rs.getInt(2)),
-                    () -> assertEquals("Anna Karenina", rs.getString(3)),
-                    () -> assertTrue(rs.getBoolean(4)),
-                    () -> assertNull(rs.getString(5)));
+                    () -> assertTrue(rs.getBoolean(2)),
+                    () -> assertEquals(1878, rs.getInt(3)),
+                    () -> assertNull(rs.getString(4)),
+                    () -> assertEquals("Anna Karenina", rs.getString(5)));
             assertFalse(rs.next());
         }
     }
