@@ -17,18 +17,26 @@
 package com.mongodb.hibernate.jdbc;
 
 import static java.lang.String.format;
+import static org.bson.BsonDocument.parse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.mongodb.bulk.BulkWriteInsert;
+import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.WriteModel;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -39,10 +47,10 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
-import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -97,16 +105,52 @@ class MongoPreparedStatementTests {
         private MongoDatabase mongoDatabase;
 
         @Captor
-        private ArgumentCaptor<BsonDocument> commandCaptor;
+        private ArgumentCaptor<List<WriteModel<BsonDocument>>> writeModelsCaptor;
 
         @Test
         @DisplayName("Happy path when all parameters are provided values")
-        void testSuccess() throws SQLException {
+        void testSuccess(@Mock MongoCollection<BsonDocument> mongoCollection) throws SQLException {
             // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
-            doReturn(Document.parse("{ok: 1.0, n: 1}"))
-                    .when(mongoDatabase)
-                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(new BulkWriteResult() {
+                        @Override
+                        public boolean wasAcknowledged() {
+                            return false;
+                        }
+
+                        @Override
+                        public int getInsertedCount() {
+                            return 1;
+                        }
+
+                        @Override
+                        public int getMatchedCount() {
+                            return 0;
+                        }
+
+                        @Override
+                        public int getDeletedCount() {
+                            return 0;
+                        }
+
+                        @Override
+                        public int getModifiedCount() {
+                            return 0;
+                        }
+
+                        @Override
+                        public List<BulkWriteInsert> getInserts() {
+                            return List.of();
+                        }
+
+                        @Override
+                        public List<BulkWriteUpsert> getUpserts() {
+                            return List.of();
+                        }
+                    })
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
 
             // when && then
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
@@ -119,26 +163,24 @@ class MongoPreparedStatementTests {
 
                 preparedStatement.executeUpdate();
 
-                verify(mongoDatabase).runCommand(eq(clientSession), commandCaptor.capture());
-                var command = commandCaptor.getValue();
-                var expectedDoc = BsonDocument.parse(
+                verify(mongoCollection).bulkWrite(eq(clientSession), writeModelsCaptor.capture());
+                var writeModels = writeModelsCaptor.getValue();
+                assertEquals(1, writeModels.size());
+                var writeModel = writeModels.get(0);
+                assertInstanceOf(InsertOneModel.class, writeModel);
+                var insertDoc = ((InsertOneModel<BsonDocument>) writeModel).getDocument();
+                var expectedDoc = parse(
                         """
-                            {
-                                insert: "books",
-                                documents: [
-                                    {
-                                        title: "War and Peace",
-                                        author: "Leo Tolstoy",
-                                        publishYear: 1869,
-                                        outOfStock: false,
-                                        tags: [
-                                            "classic"
-                                        ]
-                                    }
+                           {
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                publishYear: 1869,
+                                outOfStock: false,
+                                tags: [
+                                    "classic"
                                 ]
-                            }
-                            """);
-                assertEquals(expectedDoc, command);
+                           } """);
+                assertEquals(expectedDoc, insertDoc);
             }
         }
 
@@ -158,11 +200,6 @@ class MongoPreparedStatementTests {
 
     @Nested
     class CloseTests {
-
-        @FunctionalInterface
-        interface PreparedStatementMethodInvocation {
-            void runOn(MongoPreparedStatement pstmt) throws SQLException;
-        }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoPreparedStatement")
         @MethodSource("getMongoPreparedStatementMethodInvocationsImpactedByClosing")
@@ -223,17 +260,24 @@ class MongoPreparedStatementTests {
                             Map.entry(
                                     "setObject(int,Object,int)",
                                     pstmt -> pstmt.setObject(1, Mockito.mock(Array.class), Types.OTHER)),
-                            Map.entry("addBatch()", MongoPreparedStatement::addBatch),
                             Map.entry("setArray(int,Array)", pstmt -> pstmt.setArray(1, Mockito.mock(Array.class))),
                             Map.entry("setDate(int,Date,Calendar)", pstmt -> pstmt.setDate(1, new Date(now), calendar)),
                             Map.entry("setTime(int,Time,Calendar)", pstmt -> pstmt.setTime(1, new Time(now), calendar)),
                             Map.entry(
                                     "setTimestamp(int,Timestamp,Calendar)",
                                     pstmt -> pstmt.setTimestamp(1, new Timestamp(now), calendar)),
-                            Map.entry("setNull(int,Object,String)", pstmt -> pstmt.setNull(1, Types.STRUCT, "BOOK")))
+                            Map.entry("setNull(int,Object,String)", pstmt -> pstmt.setNull(1, Types.STRUCT, "BOOK")),
+                            Map.entry("addBatch()", MongoPreparedStatement::addBatch),
+                            Map.entry("clearBatch()", MongoPreparedStatement::clearBatch),
+                            Map.entry("executeBatch()", MongoPreparedStatement::executeBatch))
                     .entrySet()
                     .stream()
                     .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
         }
+    }
+
+    @FunctionalInterface
+    interface PreparedStatementMethodInvocation {
+        void runOn(MongoPreparedStatement pstmt) throws SQLException;
     }
 }
