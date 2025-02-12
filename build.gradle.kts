@@ -95,19 +95,16 @@ spotless {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.errorprone {
-        disableWarningsInGeneratedCode.set(true)
-        option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+    if (name == "compileJava") {
+        options.errorprone {
+            disableWarningsInGeneratedCode.set(true)
+            option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+            error("NullAway")
+        }
+        options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
+    } else {
+        options.errorprone.isEnabled.set(false)
     }
-}
-tasks.compileJava {
-    // The check defaults to a warning, bump it up to an error for the main sources
-    options.errorprone.error("NullAway")
-    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
-}
-
-tasks.compileTestJava {
-    options.errorprone.isEnabled.set(false)
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,4 +138,3 @@ dependencies {
     implementation(libs.mongo.java.driver.sync)
     implementation(libs.sl4j.api)
 }
-
