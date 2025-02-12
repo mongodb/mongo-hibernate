@@ -78,15 +78,15 @@ class MongoStatementIntegrationTests {
                 var stmt = conn.createStatement();
                 stmt.executeUpdate(
                         """
-                                    {
-                                        delete: "books",
-                                        deletes: [
-                                            { q: {}, limit: 0 }
-                                        ]
-                                    }""");
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
                 stmt.executeUpdate(
                         """
-                                {
+                        {
                             insert: "books",
                             documents: [
                                 {
@@ -121,13 +121,13 @@ class MongoStatementIntegrationTests {
                     try {
                         return stmt.executeQuery(
                                 """
-                                        {
-                                            aggregate: "books",
-                                            pipeline: [
-                                                { $match: { author: { $eq: "Leo Tolstoy" } } },
-                                                { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
-                                            ]
-                                        }""");
+                                {
+                                    aggregate: "books",
+                                    pipeline: [
+                                        { $match: { author: { $eq: "Leo Tolstoy" } } },
+                                        { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
+                                    ]
+                                }""");
                     } finally {
                         if (!autoCommit) {
                             conn.commit();
@@ -165,12 +165,12 @@ class MongoStatementIntegrationTests {
                 conn.createStatement()
                         .executeUpdate(
                                 """
-                                    {
-                                        delete: "books",
-                                        deletes: [
-                                            { q: {}, limit: 0 }
-                                        ]
-                                    }""");
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }""");
             });
         }
 
@@ -206,28 +206,28 @@ class MongoStatementIntegrationTests {
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false
-                               }"""));
+                           {
+                               _id: 3,
+                               title: "Crime and Punishment",
+                               author: "Fyodor Dostoevsky",
+                               outOfStock: false
+                           }"""));
             assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
         }
 
@@ -255,28 +255,28 @@ class MongoStatementIntegrationTests {
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: true
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: true
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false
-                               }"""));
+                           {
+                               _id: 3,
+                               title: "Crime and Punishment",
+                               author: "Fyodor Dostoevsky",
+                               outOfStock: false
+                           }"""));
             assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
         }
 
@@ -301,20 +301,20 @@ class MongoStatementIntegrationTests {
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                    _id: 3,
-                                    title: "Crime and Punishment",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                               }"""));
+                           {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                           }"""));
             assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
         }
 

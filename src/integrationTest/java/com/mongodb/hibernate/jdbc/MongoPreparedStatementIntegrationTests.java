@@ -19,11 +19,10 @@ package com.mongodb.hibernate.jdbc;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
@@ -80,54 +79,57 @@ class MongoPreparedStatementIntegrationTests {
                 var stmt = conn.createStatement();
                 stmt.executeUpdate(
                         """
-                            {
-                                delete: "books",
-                                deletes: [
-                                    { q: {}, limit: 0 }
-                                ]
-                            }""");
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
                 stmt.executeUpdate(
                         """
-                           {
-                                insert: "books",
-                                documents: [
-                                   {
-                                       _id: 1,
-                                       title: "War and Peace",
-                                       author: "Leo Tolstoy",
-                                       publishYear: 1867
-                                   },
-                                   {
-                                       _id: 2,
-                                       title: "Anna Karenina",
-                                       author: "Leo Tolstoy",
-                                       publishYear: 1878
-                                   },
-                                   {
-                                       _id: 3,
-                                       title: "Crime and Punishment",
-                                       author: "Fyodor Dostoevsky",
-                                       publishYear: 1866
-                                   }
-                               ]
-                           }""");
+                       {
+                            insert: "books",
+                            documents: [
+                               {
+                                   _id: 1,
+                                   title: "War and Peace",
+                                   author: "Leo Tolstoy",
+                                   publishYear: 1867,
+                                   comment: "reference only"
+                               },
+                               {
+                                   _id: 2,
+                                   title: "Anna Karenina",
+                                   author: "Leo Tolstoy",
+                                   publishYear: 1878,
+                                   vintage: true
+                               },
+                               {
+                                   _id: 3,
+                                   title: "Crime and Punishment",
+                                   author: "Fyodor Dostoevsky",
+                                   publishYear: 1866,
+                                   vintage: false
+                               }
+                           ]
+                       }""");
             });
         }
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testQuery(boolean autoCommit) throws SQLException {
-            ResultSet rs = session.doReturningWork(conn -> {
+            var rs = session.doReturningWork(conn -> {
                 conn.setAutoCommit(autoCommit);
-                try (PreparedStatement pstmt = conn.prepareStatement(
+                try (var pstmt = conn.prepareStatement(
                         """
-                            {
-                                aggregate: "books",
-                                pipeline: [
-                                    { $match: { author: { $eq: { $undefined: true } } } },
-                                    { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
-                                ]
-                            }""")) {
+                        {
+                            aggregate: "books",
+                            pipeline: [
+                                { $match: { author: { $eq: { $undefined: true } } } },
+                                { $project: { author: 1, _id: 0, publishYear: 1, title: 1, vintage: 1, comment: 1 } }
+                            ]
+                        }""")) {
 
                     pstmt.setString(1, "Leo Tolstoy");
                     try {
@@ -139,23 +141,36 @@ class MongoPreparedStatementIntegrationTests {
                     }
                 }
             });
-            assertTrue(rs.next());
+
             var metadata = rs.getMetaData();
+
+            // assert metadata
             assertAll(
-                    () -> assertEquals(3, metadata.getColumnCount()),
+                    () -> assertEquals(5, metadata.getColumnCount()),
                     () -> assertEquals("author", metadata.getColumnLabel(1)),
                     () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
-                    () -> assertEquals("title", metadata.getColumnLabel(3)));
-            assertEquals(3, metadata.getColumnCount());
+                    () -> assertEquals("title", metadata.getColumnLabel(3)),
+                    () -> assertEquals("vintage", metadata.getColumnLabel(4)),
+                    () -> assertEquals("comment", metadata.getColumnLabel(5)));
+
+            // assert columns
+
+            assertTrue(rs.next());
+
+            assertEquals(5, metadata.getColumnCount());
             assertAll(
                     () -> assertEquals("Leo Tolstoy", rs.getString(1)),
                     () -> assertEquals(1867, rs.getInt(2)),
-                    () -> assertEquals("War and Peace", rs.getString(3)));
+                    () -> assertEquals("War and Peace", rs.getString(3)),
+                    () -> assertFalse(rs.getBoolean(4)),
+                    () -> assertEquals("reference only", rs.getString(5)));
             assertTrue(rs.next());
             assertAll(
                     () -> assertEquals("Leo Tolstoy", rs.getString(1)),
                     () -> assertEquals(1878, rs.getInt(2)),
-                    () -> assertEquals("Anna Karenina", rs.getString(3)));
+                    () -> assertEquals("Anna Karenina", rs.getString(3)),
+                    () -> assertTrue(rs.getBoolean(4)),
+                    () -> assertNull(rs.getString(5)));
             assertFalse(rs.next());
         }
     }
@@ -216,51 +231,51 @@ class MongoPreparedStatementIntegrationTests {
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true,
-                                    tags: [ "classic", "tolstoy", "literature" ]
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: true,
+                                tags: [ "classic", "tolstoy", "literature" ]
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true,
-                                    tags: [ "classic", "tolstoy", "literature" ]
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: true,
+                                tags: [ "classic", "tolstoy", "literature" ]
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false,
-                                   tags: [ "classic", "Dostoevsky", "literature" ]
-                               }"""));
+                           {
+                               _id: 3,
+                               title: "Crime and Punishment",
+                               author: "Fyodor Dostoevsky",
+                               outOfStock: false,
+                               tags: [ "classic", "Dostoevsky", "literature" ]
+                           }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)
                             connection.prepareStatement(
                                     """
-                                        {
-                                            update: "books",
-                                            updates: [
-                                                {
-                                                    q: { author: { $undefined: true } },
-                                                    u: {
-                                                        $set: {
-                                                            outOfStock: { $undefined: true }
-                                                        },
-                                                        $push: { tags: { $undefined: true } }
+                                    {
+                                        update: "books",
+                                        updates: [
+                                            {
+                                                q: { author: { $undefined: true } },
+                                                u: {
+                                                    $set: {
+                                                        outOfStock: { $undefined: true }
                                                     },
-                                                    multi: true
-                                                }
-                                            ]
-                                        }""");
+                                                    $push: { tags: { $undefined: true } }
+                                                },
+                                                multi: true
+                                            }
+                                        ]
+                                    }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     pstmt.setBoolean(2, true);
                     pstmt.setString(3, "literature");
