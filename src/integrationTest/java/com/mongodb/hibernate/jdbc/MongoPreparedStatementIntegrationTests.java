@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.sql.Connection;
@@ -28,7 +27,6 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,9 +37,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoPreparedStatementIntegrationTests {
 
-    private static @Nullable SessionFactory sessionFactory;
+    private static SessionFactory sessionFactory;
 
-    private @Nullable Session session;
+    private Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -57,7 +55,7 @@ class MongoPreparedStatementIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        session = assertNotNull(sessionFactory).openSession();
+        session = sessionFactory.openSession();
     }
 
     @AfterEach
@@ -72,7 +70,7 @@ class MongoPreparedStatementIntegrationTests {
 
         @BeforeEach
         void setUp() {
-            assertNotNull(session).doWork(conn -> {
+            session.doWork(conn -> {
                 conn.createStatement()
                         .executeUpdate(
                                 """
@@ -181,7 +179,7 @@ class MongoPreparedStatementIntegrationTests {
         }
 
         private void prepareData() {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
@@ -193,7 +191,7 @@ class MongoPreparedStatementIntegrationTests {
                 boolean autoCommit,
                 int expectedUpdatedRowCount,
                 Set<? extends BsonDocument> expectedDocuments) {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var pstmt = pstmtProvider.apply(connection)) {
                     try {
