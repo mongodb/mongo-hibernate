@@ -20,8 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import org.bson.BsonDocument;
@@ -106,7 +109,7 @@ class MongoPreparedStatementIntegrationTests {
         void testUpdate(boolean autoCommit) {
 
             // when && then
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
                             {
@@ -132,7 +135,7 @@ class MongoPreparedStatementIntegrationTests {
                                 title: "Crime and Punishment",
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false,
-                                tags: [ "classic", "Dostoevsky", "literature" ]
+                                tags: [ "classic", "dostoevsky", "literature" ]
                             }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
@@ -169,7 +172,7 @@ class MongoPreparedStatementIntegrationTests {
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
                 boolean autoCommit,
                 int expectedUpdatedRowCount,
-                Set<? extends BsonDocument> expectedDocuments) {
+                List<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var pstmt = pstmtProvider.apply(connection)) {
@@ -180,10 +183,14 @@ class MongoPreparedStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var realDocuments = pstmt.getMongoDatabase()
+                    var realDocuments = pstmt
+                            .getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
-                            .into(new HashSet<>());
+                            .into(new ArrayList<>())
+                            .stream()
+                            .sorted(Comparator.comparing(doc -> doc.getInt32("_id")))
+                            .toList();
                     assertEquals(expectedDocuments, realDocuments);
                 }
             });
