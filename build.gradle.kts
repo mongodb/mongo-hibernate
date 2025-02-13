@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+import com.diffplug.spotless.FormatterFunc
+import com.diffplug.spotless.FormatterStep
 import net.ltgt.gradle.errorprone.errorprone
+import java.io.Serializable
 
 version = "1.0.0-SNAPSHOT"
 
@@ -91,6 +94,52 @@ spotless {
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
 
         targetExclude("**/generated/**/*.java")
+
+        val formatter = MultilineFormatter()
+        addStep(FormatterStep.create(
+            "multilineFormatter",
+            object : Serializable {},
+            { _: Any? -> FormatterFunc { input: String -> formatter.format(input) } }
+        ))
+    }
+}
+
+/**
+ * Format multiline strings to match the initial """ indentation level
+ */
+class MultilineFormatter : Serializable {
+    fun format(content: String): String {
+        val tripleQuote = "\"\"\""
+        val lines = content.lines()
+        val result = StringBuilder()
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            if (!line.trimEnd().endsWith(tripleQuote)) {
+                result.append(line)
+                if (i + 1 < lines.size) result.append("\n")
+                i++
+                continue
+            }
+            val baseIndent = line.indexOf(tripleQuote)
+            result.append(line).append("\n")
+            i++
+            val multilineStringLines = mutableListOf<String>()
+            while (i < lines.size) {
+                val multilineStringLine = lines[i++]
+                multilineStringLines.add(multilineStringLine)
+                if (multilineStringLine.contains(tripleQuote)) break
+            }
+            val minIndent = multilineStringLines.filter { it.isNotBlank() }
+                .map { l -> l.indexOfFirst { ch -> !ch.isWhitespace() }.takeIf { it >= 0 } ?: line.length }
+                .minOrNull() ?: 0
+            multilineStringLines.forEach { blockLine ->
+                result.append(" ".repeat(baseIndent))
+                    .append(blockLine.drop(minIndent))
+                    .append("\n")
+            }
+        }
+        return result.toString()
     }
 }
 
