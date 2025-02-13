@@ -100,7 +100,7 @@ class MongoPreparedStatementIntegrationTests {
 
     @Nested
     class ExecuteUpdateTests {
-
+      
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
@@ -109,51 +109,51 @@ class MongoPreparedStatementIntegrationTests {
             var expectedDocs = Set.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true,
-                                    tags: [ "classic", "tolstoy", "literature" ]
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: true,
+                                tags: [ "classic", "tolstoy", "literature" ]
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true,
-                                    tags: [ "classic", "tolstoy", "literature" ]
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: true,
+                                tags: [ "classic", "tolstoy", "literature" ]
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false,
-                                   tags: [ "classic", "dostoevsky", "literature" ]
-                               }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false,
+                                tags: [ "classic", "Dostoevsky", "literature" ]
+                            }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)
                             connection.prepareStatement(
                                     """
-                                        {
-                                            update: "books",
-                                            updates: [
-                                                {
-                                                    q: { author: { $undefined: true } },
-                                                    u: {
-                                                        $set: {
-                                                            outOfStock: { $undefined: true }
-                                                        },
-                                                        $push: { tags: { $undefined: true } }
+                                    {
+                                        update: "books",
+                                        updates: [
+                                            {
+                                                q: { author: { $undefined: true } },
+                                                u: {
+                                                    $set: {
+                                                        outOfStock: { $undefined: true }
                                                     },
-                                                    multi: true
-                                                }
-                                            ]
-                                        }""");
+                                                    $push: { tags: { $undefined: true } }
+                                                },
+                                                multi: true
+                                            }
+                                        ]
+                                    }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     pstmt.setBoolean(2, true);
                     pstmt.setString(3, "literature");
