@@ -16,8 +16,13 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 import org.bson.BsonDocument;
@@ -59,6 +64,93 @@ class MongoStatementIntegrationTests {
     void tearDown() {
         if (session != null) {
             session.close();
+        }
+    }
+
+    @Nested
+    class ExecuteQueryTests {
+
+        @BeforeEach
+        void setUp() {
+            session.doWork(conn -> {
+                var stmt = conn.createStatement();
+                stmt.executeUpdate(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
+                stmt.executeUpdate(
+                        """
+                        {
+                            insert: "books",
+                            documents: [
+                                {
+                                    _id: 1,
+                                    title: "War and Peace",
+                                    author: "Leo Tolstoy",
+                                    publishYear: 1867
+                                },
+                                {
+                                    _id: 2,
+                                    title: "Anna Karenina",
+                                    author: "Leo Tolstoy",
+                                    publishYear: 1878
+                                },
+                                {
+                                    _id: 3,
+                                    title: "Crime and Punishment",
+                                    author: "Fyodor Dostoevsky",
+                                    publishYear: 1866
+                                }
+                            ]
+                        }""");
+            });
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testQuery(boolean autoCommit) throws SQLException {
+            ResultSet rs = session.doReturningWork(conn -> {
+                conn.setAutoCommit(autoCommit);
+                try (var stmt = conn.createStatement()) {
+                    try {
+                        return stmt.executeQuery(
+                                """
+                                {
+                                    aggregate: "books",
+                                    pipeline: [
+                                        { $match: { author: { $eq: "Leo Tolstoy" } } },
+                                        { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
+                                    ]
+                                }""");
+                    } finally {
+                        if (!autoCommit) {
+                            conn.commit();
+                        }
+                    }
+                }
+            });
+            assertTrue(rs.next());
+            var metadata = rs.getMetaData();
+            assertAll(
+                    () -> assertEquals(3, metadata.getColumnCount()),
+                    () -> assertEquals("author", metadata.getColumnLabel(1)),
+                    () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
+                    () -> assertEquals("title", metadata.getColumnLabel(3)));
+            assertEquals(3, metadata.getColumnCount());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertEquals(1867, rs.getInt(2)),
+                    () -> assertEquals("War and Peace", rs.getString(3)));
+            assertTrue(rs.next());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertEquals(1878, rs.getInt(2)),
+                    () -> assertEquals("Anna Karenina", rs.getString(3)));
+            assertFalse(rs.next());
         }
     }
 

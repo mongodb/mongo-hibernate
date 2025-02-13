@@ -26,7 +26,9 @@ import com.mongodb.hibernate.internal.NotYetImplementedException;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.sql.Struct;
@@ -152,7 +154,15 @@ final class MongoConnection implements ConnectionAdapter {
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        if (resultSetType != ResultSet.TYPE_FORWARD_ONLY) {
+            throw new SQLFeatureNotSupportedException(
+                    "Unsupported result set type (only TYPE_FORWARD_ONLY is supported): " + resultSetType);
+        }
+        if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
+            throw new SQLFeatureNotSupportedException(
+                    "Unsupported result set concurrency (only CONCUR_READ_ONLY is supported): " + resultSetConcurrency);
+        }
+        return prepareStatement(mql);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -237,7 +247,7 @@ final class MongoConnection implements ConnectionAdapter {
 
     private void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("Connection has been closed");
+            throw new SQLException("MongoConnection has been closed");
         }
     }
 }
