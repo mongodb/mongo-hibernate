@@ -265,15 +265,15 @@ class MongoPreparedStatementTests {
 
         private static final String EXAMPLE_MQL =
                 """
-                 {
-                    insert: "books",
-                    documents: [
-                        {
-                            title: { $undefined: true },
-                            publishYear: { $undefined: true }
-                        }
-                    ]
-                 }""";
+                {
+                   insert: "books",
+                   documents: [
+                       {
+                           title: { $undefined: true },
+                           publishYear: { $undefined: true }
+                       }
+                   ]
+                }""";
 
         @Test
         void testSuccess() throws SQLException {
@@ -317,19 +317,19 @@ class MongoPreparedStatementTests {
                         firstBatch.get(0),
                         parse(
                                 """
-                            {
-                                title: "War and Peace",
-                                publishYear: 1869
-                            }"""));
+                                {
+                                    title: "War and Peace",
+                                    publishYear: 1869
+                                }"""));
 
                 assertInsertOneModel(
                         firstBatch.get(1),
                         parse(
                                 """
-                            {
-                                title: "Crime and Punishment",
-                                publishYear: 1866
-                            }"""));
+                                {
+                                    title: "Crime and Punishment",
+                                    publishYear: 1866
+                                }"""));
 
                 var secondBatch = batches.get(1);
                 assertEquals(1, secondBatch.size());
@@ -338,10 +338,10 @@ class MongoPreparedStatementTests {
                         secondBatch.get(0),
                         parse(
                                 """
-                            {
-                                title: "Fathers and Sons",
-                                publishYear: 1862
-                            }"""));
+                                {
+                                    title: "Fathers and Sons",
+                                    publishYear: 1862
+                                }"""));
             }
         }
 

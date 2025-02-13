@@ -100,7 +100,7 @@ class MongoPreparedStatementIntegrationTests {
 
     @Nested
     class ExecuteUpdateTests {
-      
+
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
@@ -283,34 +283,34 @@ class MongoPreparedStatementIntegrationTests {
                         var expectedDocuments = Set.of(
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 1,
-                                                title: "War and Peace"
-                                            }"""),
+                                        {
+                                            _id: 1,
+                                            title: "War and Peace"
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 2,
-                                                title: "Anna Karenina"
-                                            }"""),
+                                        {
+                                            _id: 2,
+                                            title: "Anna Karenina"
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 3,
-                                                title: "Crime and Punishment"
-                                            }"""),
+                                        {
+                                            _id: 3,
+                                            title: "Crime and Punishment"
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 4,
-                                                title: "Notes from Underground"
-                                            }"""),
+                                        {
+                                            _id: 4,
+                                            title: "Notes from Underground"
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 5,
-                                                title: "Fathers and Sons"
-                                            }"""));
+                                        {
+                                            _id: 5,
+                                            title: "Fathers and Sons"
+                                        }"""));
 
                         var realDocuments = ((MongoPreparedStatement) pstmt)
                                 .getMongoDatabase()
@@ -384,31 +384,31 @@ class MongoPreparedStatementIntegrationTests {
                         var expectedDocuments = Set.of(
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 1,
-                                                title: "Insurrection",
-                                                author: "Leo Tolstoy",
-                                                outOfStock: false,
-                                                tags: [ "classic", "tolstoy" ]
-                                            }"""),
+                                        {
+                                            _id: 1,
+                                            title: "Insurrection",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy" ]
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 2,
-                                                title: "Hadji Murat",
-                                                author: "Leo Tolstoy",
-                                                outOfStock: false,
-                                                tags: [ "classic", "tolstoy" ]
-                                            }"""),
+                                        {
+                                            _id: 2,
+                                            title: "Hadji Murat",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy" ]
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 3,
-                                               title: "The Brothers Karamazov",
-                                               author: "Fyodor Dostoevsky",
-                                               outOfStock: false,
-                                               tags: [ "classic", "dostoevsky", "literature" ]
-                                            }"""));
+                                        {
+                                            _id: 3,
+                                           title: "The Brothers Karamazov",
+                                           author: "Fyodor Dostoevsky",
+                                           outOfStock: false,
+                                           tags: [ "classic", "dostoevsky", "literature" ]
+                                        }"""));
 
                         var realDocuments = ((MongoPreparedStatement) pstmt)
                                 .getMongoDatabase()
@@ -453,31 +453,31 @@ class MongoPreparedStatementIntegrationTests {
                         var expectedDocuments = Set.of(
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 1,
-                                                title: "War and Peace",
-                                                author: "Leo Tolstoy",
-                                                outOfStock: false,
-                                                tags: [ "classic", "tolstoy", "russian", "literature" ]
-                                            }"""),
+                                        {
+                                            _id: 1,
+                                            title: "War and Peace",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy", "russian", "literature" ]
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 2,
-                                                title: "Anna Karenina",
-                                                author: "Leo Tolstoy",
-                                                outOfStock: false,
-                                                tags: [ "classic", "tolstoy", "russian", "literature" ]
-                                            }"""),
+                                        {
+                                            _id: 2,
+                                            title: "Anna Karenina",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy", "russian", "literature" ]
+                                        }"""),
                                 BsonDocument.parse(
                                         """
-                                            {
-                                                _id: 3,
-                                               title: "Crime and Punishment",
-                                               author: "Fyodor Dostoevsky",
-                                               outOfStock: false,
-                                               tags: [ "classic", "dostoevsky", "literature", "russian" ]
-                                            }"""));
+                                        {
+                                            _id: 3,
+                                           title: "Crime and Punishment",
+                                           author: "Fyodor Dostoevsky",
+                                           outOfStock: false,
+                                           tags: [ "classic", "dostoevsky", "literature", "russian" ]
+                                        }"""));
 
                         var realDocuments = ((MongoPreparedStatement) pstmt)
                                 .getMongoDatabase()
@@ -600,12 +600,12 @@ class MongoPreparedStatementIntegrationTests {
             conn.createStatement()
                     .executeUpdate(
                             """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
+                            {
+                                delete: "books",
+                                deletes: [
+                                    { q: {}, limit: 0 }
+                                ]
+                            }""");
         });
     }
 }
