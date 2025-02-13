@@ -172,21 +172,15 @@ class MongoPreparedStatementTests {
                 var expectedDoc = parse(
                         """
                         {
-                            insert: "books",
-                            documents: [
-                                {
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    publishYear: 1869,
-                                    outOfStock: false,
-                                    tags: [
-                                        "classic"
-                                    ]
-                                }
+                            title: "War and Peace",
+                            author: "Leo Tolstoy",
+                            publishYear: 1869,
+                            outOfStock: false,
+                            tags: [
+                                "classic"
                             ]
-                        }
-                        """);
-                assertEquals(expectedDoc, command);
+                        }""");
+                assertEquals(expectedDoc, insertDoc);
             }
         }
 
