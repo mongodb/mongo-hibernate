@@ -61,12 +61,12 @@ class BasicInsertionTests {
         });
         var expectedDocument = BsonDocument.parse(
                 """
-                        {
-                            _id: 1,
-                            title: "War and Peace",
-                            author: "Leo Tolstoy",
-                            publishYear: 1867
-                        }""");
+                {
+                    _id: 1,
+                    title: "War and Peace",
+                    author: "Leo Tolstoy",
+                    publishYear: 1867
+                }""");
         assertCollectionContainsOnly(expectedDocument);
     }
 
@@ -81,12 +81,12 @@ class BasicInsertionTests {
         });
         var expectedDocument = BsonDocument.parse(
                 """
-                        {
-                            _id: 1,
-                            title: "War and Peace",
-                            author: null,
-                            publishYear: 1867
-                        }""");
+                {
+                    _id: 1,
+                    title: "War and Peace",
+                    author: null,
+                    publishYear: 1867
+                }""");
         assertCollectionContainsOnly(expectedDocument);
     }
 
@@ -105,13 +105,13 @@ class BasicInsertionTests {
         });
         var expectedDocument = BsonDocument.parse(
                 """
-                        {
-                            _id: 1,
-                            title: "War and Peace",
-                            authorFirstName: "Leo",
-                            authorLastName: "Tolstoy",
-                            publishYear: 1867
-                        }""");
+                {
+                    _id: 1,
+                    title: "War and Peace",
+                    authorFirstName: "Leo",
+                    authorLastName: "Tolstoy",
+                    publishYear: 1867
+                }""");
         assertCollectionContainsOnly(expectedDocument);
     }
 
