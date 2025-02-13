@@ -77,21 +77,21 @@ class MongoPreparedStatementTests {
 
     private static final String EXAMPLE_MQL =
             """
-             {
-                insert: "books",
-                documents: [
-                    {
-                        title: { $undefined: true },
-                        author: { $undefined: true },
-                        publishYear: { $undefined: true },
-                        outOfStock: { $undefined: true },
-                        tags: [
-                            { $undefined: true }
-                        ]
-                    }
-                ]
-             }
-             """;
+            {
+               insert: "books",
+               documents: [
+                   {
+                       title: { $undefined: true },
+                       author: { $undefined: true },
+                       publishYear: { $undefined: true },
+                       outOfStock: { $undefined: true },
+                       tags: [
+                           { $undefined: true }
+                       ]
+                   }
+               ]
+            }
+            """;
 
     @Nested
     class ParameterValueSettingTests {

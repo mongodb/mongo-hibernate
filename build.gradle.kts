@@ -144,19 +144,16 @@ class MultilineFormatter : Serializable {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.errorprone {
-        disableWarningsInGeneratedCode.set(true)
-        option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
-    }
-}
-tasks.compileJava {
-    // The check defaults to a warning, bump it up to an error for the main sources
-    options.errorprone.error("NullAway")
     options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
-}
-
-tasks.compileTestJava {
-    options.errorprone.isEnabled.set(false)
+    if (name == "compileJava") {
+        options.errorprone {
+            disableWarningsInGeneratedCode.set(true)
+            option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+            error("NullAway")
+        }
+    } else {
+        options.errorprone.isEnabled.set(false)
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
