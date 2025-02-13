@@ -249,13 +249,13 @@ class MongoPreparedStatementIntegrationTests {
                             }"""),
                     BsonDocument.parse(
                             """
-                           {
-                               _id: 3,
-                               title: "Crime and Punishment",
-                               author: "Fyodor Dostoevsky",
-                               outOfStock: false,
-                               tags: [ "classic", "Dostoevsky", "literature" ]
-                           }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false,
+                                tags: [ "classic", "Dostoevsky", "literature" ]
+                            }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)

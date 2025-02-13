@@ -220,12 +220,12 @@ class MongoStatementIntegrationTests {
                             }"""),
                     BsonDocument.parse(
                             """
-                           {
-                               _id: 3,
-                               title: "Crime and Punishment",
-                               author: "Fyodor Dostoevsky",
-                               outOfStock: false
-                           }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                            }"""));
             assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
         }
 
@@ -269,12 +269,12 @@ class MongoStatementIntegrationTests {
                             }"""),
                     BsonDocument.parse(
                             """
-                           {
-                               _id: 3,
-                               title: "Crime and Punishment",
-                               author: "Fyodor Dostoevsky",
-                               outOfStock: false
-                           }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                            }"""));
             assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
         }
 
@@ -307,12 +307,12 @@ class MongoStatementIntegrationTests {
                             }"""),
                     BsonDocument.parse(
                             """
-                           {
-                                _id: 3,
-                                title: "Crime and Punishment",
-                                author: "Fyodor Dostoevsky",
-                                outOfStock: false
-                           }"""));
+                            {
+                                 _id: 3,
+                                 title: "Crime and Punishment",
+                                 author: "Fyodor Dostoevsky",
+                                 outOfStock: false
+                            }"""));
             assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
         }
 

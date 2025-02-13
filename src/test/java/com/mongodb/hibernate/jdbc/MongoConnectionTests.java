@@ -123,25 +123,25 @@ class MongoConnectionTests {
         private static Stream<Arguments> getMongoConnectionMethodInvocationsImpactedByClosing() {
             var exampleQueryMql =
                     """
-                {
-                  find: "restaurants",
-                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
-                  projection: { name: 1, rating: 1, address: 1 },
-                  sort: { name: 1 },
-                  limit: 5
-                }""";
+                    {
+                      find: "restaurants",
+                      filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                      projection: { name: 1, rating: 1, address: 1 },
+                      sort: { name: 1 },
+                      limit: 5
+                    }""";
             var exampleUpdateMql =
                     """
-                {
-                  update: "members",
-                  updates: [
                     {
-                      q: {},
-                      u: { $inc: { points: 1 } },
-                      multi: true
-                    }
-                  ]
-                }""";
+                      update: "members",
+                      updates: [
+                        {
+                          q: {},
+                          u: { $inc: { points: 1 } },
+                          multi: true
+                        }
+                      ]
+                    }""";
             return Map.<String, ConnectionMethodInvocation>ofEntries(
                             Map.entry("setAutoCommit(boolean)", conn -> conn.setAutoCommit(false)),
                             Map.entry("getAutoCommit()", MongoConnection::getAutoCommit),
