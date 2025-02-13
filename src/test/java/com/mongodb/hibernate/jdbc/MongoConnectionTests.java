@@ -381,13 +381,13 @@ class MongoConnectionTests {
 
         private static final String EXAMPLE_MQL =
                 """
-            {
-              find: "restaurants",
-              filter: { rating: { $gte: 9 }, cuisine: "italian" },
-              projection: { name: 1, rating: 1, address: 1 },
-              sort: { name: 1 },
-              limit: 5
-            }""";
+                {
+                  find: "restaurants",
+                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                  projection: { name: 1, rating: 1, address: 1 },
+                  sort: { name: 1 },
+                  limit: 5
+                }""";
 
         @ParameterizedTest
         @ValueSource(ints = {TYPE_FORWARD_ONLY, TYPE_SCROLL_SENSITIVE, TYPE_SCROLL_INSENSITIVE})

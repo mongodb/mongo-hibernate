@@ -86,32 +86,32 @@ class MongoPreparedStatementIntegrationTests {
                         }""");
                 stmt.executeUpdate(
                         """
-                       {
-                            insert: "books",
-                            documents: [
-                               {
-                                   _id: 1,
-                                   author: "Leo Tolstoy",
-                                   publishYear: 1867,
-                                   comment: "reference only",
-                                   title: "War and Peace"
-                               },
-                               {
-                                   _id: 2,
-                                   publishYear: 1878,
-                                   vintage: true,
-                                   title: "Anna Karenina",
-                                   author: "Leo Tolstoy"
-                               },
-                               {
-                                   _id: 3,
-                                   author: "Fyodor Dostoevsky",
-                                   title: "Crime and Punishment",
-                                   publishYear: 1866,
-                                   vintage: false
-                               }
-                           ]
-                       }""");
+                        {
+                             insert: "books",
+                             documents: [
+                                {
+                                    _id: 1,
+                                    author: "Leo Tolstoy",
+                                    publishYear: 1867,
+                                    comment: "reference only",
+                                    title: "War and Peace"
+                                },
+                                {
+                                    _id: 2,
+                                    publishYear: 1878,
+                                    vintage: true,
+                                    title: "Anna Karenina",
+                                    author: "Leo Tolstoy"
+                                },
+                                {
+                                    _id: 3,
+                                    author: "Fyodor Dostoevsky",
+                                    title: "Crime and Punishment",
+                                    publishYear: 1866,
+                                    vintage: false
+                                }
+                            ]
+                        }""");
             });
         }
 
