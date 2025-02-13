@@ -85,21 +85,21 @@ class MongoPreparedStatementTests {
 
         private static final String EXAMPLE_MQL =
                 """
-                 {
-                    insert: "books",
-                    documents: [
-                        {
-                            title: { $undefined: true },
-                            author: { $undefined: true },
-                            publishYear: { $undefined: true },
-                            outOfStock: { $undefined: true },
-                            tags: [
-                                { $undefined: true }
-                            ]
-                        }
-                    ]
-                 }
-                 """;
+                {
+                   insert: "books",
+                   documents: [
+                       {
+                           title: { $undefined: true },
+                           author: { $undefined: true },
+                           publishYear: { $undefined: true },
+                           outOfStock: { $undefined: true },
+                           tags: [
+                               { $undefined: true }
+                           ]
+                       }
+                   ]
+                }
+                """;
 
         @Mock
         private MongoDatabase mongoDatabase;
@@ -171,16 +171,22 @@ class MongoPreparedStatementTests {
                 var insertDoc = ((InsertOneModel<BsonDocument>) writeModel).getDocument();
                 var expectedDoc = parse(
                         """
-                           {
-                                title: "War and Peace",
-                                author: "Leo Tolstoy",
-                                publishYear: 1869,
-                                outOfStock: false,
-                                tags: [
-                                    "classic"
-                                ]
-                           } """);
-                assertEquals(expectedDoc, insertDoc);
+                        {
+                            insert: "books",
+                            documents: [
+                                {
+                                    title: "War and Peace",
+                                    author: "Leo Tolstoy",
+                                    publishYear: 1869,
+                                    outOfStock: false,
+                                    tags: [
+                                        "classic"
+                                    ]
+                                }
+                            ]
+                        }
+                        """);
+                assertEquals(expectedDoc, command);
             }
         }
 
@@ -208,20 +214,20 @@ class MongoPreparedStatementTests {
             // given
             var mql =
                     """
-                     {
-                        insert: "books",
-                        documents: [
-                            {
-                                title: "War and Peace",
-                                author: "Leo Tolstoy",
-                                outOfStock: false,
-                                values: [
-                                    { $undefined: true }
-                                ]
-                            }
-                        ]
-                     }
-                     """;
+                    {
+                       insert: "books",
+                       documents: [
+                           {
+                               title: "War and Peace",
+                               author: "Leo Tolstoy",
+                               outOfStock: false,
+                               values: [
+                                   { $undefined: true }
+                               ]
+                           }
+                       ]
+                    }
+                    """;
 
             var preparedStatement = createMongoPreparedStatement(mql);
             preparedStatement.close();

@@ -83,8 +83,8 @@ class MongoStatementTests {
             // given
             String invalidMql =
                     """
-                { insert: "books"'", documents: [ { title: "War and Peace" } ]
-                """;
+                    { insert: "books"'", documents: [ { title: "War and Peace" } ]
+                    """;
 
             // when && then
             assertThrows(SQLSyntaxErrorException.class, () -> mongoStatement.executeUpdate(invalidMql));
@@ -101,11 +101,11 @@ class MongoStatementTests {
             doThrow(dbAccessException).when(mongoCollection).bulkWrite(same(clientSession), anyList());
             String mql =
                     """
-                {
-                    delete: "orders",
-                    deletes: [ { q: { status: "D" }, limit: 1 }, { q: { outOfStock: true }, limit: 0 } ]
-                }
-                """;
+                    {
+                        delete: "orders",
+                        deletes: [ { q: { status: "D" }, limit: 1 }, { q: { outOfStock: true }, limit: 0 } ]
+                    }
+                    """;
 
             // when && then
             var sqlException = assertThrows(SQLException.class, () -> mongoStatement.executeUpdate(mql));
@@ -135,25 +135,25 @@ class MongoStatementTests {
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {
             var exampleQueryMql =
                     """
-                {
-                  find: "restaurants",
-                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
-                  projection: { name: 1, rating: 1, address: 1 },
-                  sort: { name: 1 },
-                  limit: 5
-                }""";
+                    {
+                      find: "restaurants",
+                      filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                      projection: { name: 1, rating: 1, address: 1 },
+                      sort: { name: 1 },
+                      limit: 5
+                    }""";
             var exampleUpdateMql =
                     """
-                {
-                  update: "members",
-                  updates: [
                     {
-                      q: {},
-                      u: { $inc: { points: 1 } },
-                      multi: true
-                    }
-                  ]
-                }""";
+                      update: "members",
+                      updates: [
+                        {
+                          q: {},
+                          u: { $inc: { points: 1 } },
+                          multi: true
+                        }
+                      ]
+                    }""";
             return Map.<String, StatementMethodInvocation>ofEntries(
                             Map.entry("executeQuery(String)", stmt -> stmt.executeQuery(exampleQueryMql)),
                             Map.entry("executeUpdate(String)", stmt -> stmt.executeUpdate(exampleUpdateMql)),
