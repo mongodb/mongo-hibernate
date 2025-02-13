@@ -42,6 +42,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -63,8 +63,12 @@ class MongoConnectionTests {
     @Mock
     private MongoClient mongoClient;
 
-    @InjectMocks
     private MongoConnection mongoConnection;
+
+    @BeforeEach
+    void setUp() {
+        mongoConnection = new MongoConnection(mongoClient, clientSession);
+    }
 
     @Nested
     class CloseTests {
