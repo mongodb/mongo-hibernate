@@ -18,8 +18,8 @@ package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.mongodb.client.model.Sorts;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
@@ -245,8 +245,7 @@ class MongoStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var realDocuments = stmt
-                            .getMongoDatabase()
+                    var realDocuments = stmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
                             .sort(Sorts.ascending("_id"))
