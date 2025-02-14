@@ -16,11 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 
-import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
@@ -139,27 +138,27 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void render(SqlAstNode sqlAstNode, SqlAstNodeRenderingMode sqlAstNodeRenderingMode) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public boolean supportsFilterClause() {
-        throw fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public QueryPart getCurrentQueryPart() {
-        throw fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public Stack<Clause> getCurrentClauseStack() {
-        throw fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public Set<String> getAffectedTableNames() {
-        throw new NotYetImplementedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
     }
 
     List<JdbcParameterBinder> getParameterBinders() {
@@ -198,7 +197,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitColumnWriteFragment(ColumnWriteFragment columnWriteFragment) {
         if (columnWriteFragment.getParameters().size() != 1) {
-            fail();
+            throw new FeatureNotSupportedException();
         }
         columnWriteFragment.getParameters().iterator().next().accept(this);
     }
@@ -213,366 +212,366 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelectStatement(SelectStatement selectStatement) {
-        throw new NotYetImplementedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
     }
 
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
-        throw new NotYetImplementedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
-        throw new NotYetImplementedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
 
     @Override
     public void visitInsertStatement(InsertSelectStatement insertSelectStatement) {
-        throw new NotYetImplementedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
 
     @Override
     public void visitAssignment(Assignment assignment) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitQueryGroup(QueryGroup queryGroup) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitQuerySpec(QuerySpec querySpec) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitOffsetFetchClause(QueryPart queryPart) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSelectClause(SelectClause selectClause) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSqlSelection(SqlSelection sqlSelection) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitFromClause(FromClause fromClause) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitTableGroup(TableGroup tableGroup) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitTableGroupJoin(TableGroupJoin tableGroupJoin) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitNamedTableReference(NamedTableReference namedTableReference) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitValuesTableReference(ValuesTableReference valuesTableReference) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitQueryPartTableReference(QueryPartTableReference queryPartTableReference) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitFunctionTableReference(FunctionTableReference functionTableReference) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitTableReferenceJoin(TableReferenceJoin tableReferenceJoin) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitColumnReference(ColumnReference columnReference) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitNestedColumnReference(NestedColumnReference nestedColumnReference) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitAggregateColumnWriteExpression(AggregateColumnWriteExpression aggregateColumnWriteExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitExtractUnit(ExtractUnit extractUnit) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitFormat(Format format) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitDistinct(Distinct distinct) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitOverflow(Overflow overflow) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitStar(Star star) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitTrimSpecification(TrimSpecification trimSpecification) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitCastTarget(CastTarget castTarget) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitBinaryArithmeticExpression(BinaryArithmeticExpression binaryArithmeticExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitCaseSearchedExpression(CaseSearchedExpression caseSearchedExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitAny(Any any) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitEvery(Every every) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSummarization(Summarization summarization) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitOver(Over<?> over) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitEntityTypeLiteral(EntityTypeLiteral entityTypeLiteral) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitEmbeddableTypeLiteral(EmbeddableTypeLiteral embeddableTypeLiteral) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitTuple(SqlTuple sqlTuple) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitCollation(Collation collation) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitJdbcLiteral(JdbcLiteral<?> jdbcLiteral) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitUnaryOperationExpression(UnaryOperation unaryOperation) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitModifiedSubQueryExpression(ModifiedSubQueryExpression modifiedSubQueryExpression) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitBetweenPredicate(BetweenPredicate betweenPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitFilterPredicate(FilterPredicate filterPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitFilterFragmentPredicate(FilterPredicate.FilterFragmentPredicate filterFragmentPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSqlFragmentPredicate(SqlFragmentPredicate sqlFragmentPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitGroupedPredicate(GroupedPredicate groupedPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitInSubQueryPredicate(InSubQueryPredicate inSubQueryPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitInArrayPredicate(InArrayPredicate inArrayPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitExistsPredicate(ExistsPredicate existsPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitJunction(Junction junction) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitThruthnessPredicate(ThruthnessPredicate thruthnessPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitSelfRenderingPredicate(SelfRenderingPredicate selfRenderingPredicate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitDurationUnit(DurationUnit durationUnit) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitDuration(Duration duration) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitConversion(Conversion conversion) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitCustomTableInsert(TableInsertCustomSql tableInsertCustomSql) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitStandardTableDelete(TableDeleteStandard tableDeleteStandard) {
-        throw new NotYetImplementedException("TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17");
     }
 
     @Override
     public void visitCustomTableDelete(TableDeleteCustomSql tableDeleteCustomSql) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitStandardTableUpdate(TableUpdateStandard tableUpdateStandard) {
-        throw new NotYetImplementedException("TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19");
     }
 
     @Override
     public void visitOptionalTableUpdate(OptionalTableUpdate optionalTableUpdate) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdateCustomSql) {
-        fail();
+        throw new FeatureNotSupportedException();
     }
 }
