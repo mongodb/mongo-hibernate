@@ -21,6 +21,7 @@ import static org.bson.BsonDocument.parse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,6 +52,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -80,26 +83,26 @@ class MongoPreparedStatementTests {
         return new MongoPreparedStatement(mongoClient, clientSession, mongoConnection, mql);
     }
 
+    private static final String EXAMPLE_MQL =
+            """
+            {
+               insert: "books",
+               documents: [
+                   {
+                       title: { $undefined: true },
+                       author: { $undefined: true },
+                       publishYear: { $undefined: true },
+                       outOfStock: { $undefined: true },
+                       tags: [
+                           { $undefined: true }
+                       ]
+                   }
+               ]
+            }
+            """;
+
     @Nested
     class ParameterValueSettingTests {
-
-        private static final String EXAMPLE_MQL =
-                """
-                {
-                   insert: "books",
-                   documents: [
-                       {
-                           title: { $undefined: true },
-                           author: { $undefined: true },
-                           publishYear: { $undefined: true },
-                           outOfStock: { $undefined: true },
-                           tags: [
-                               { $undefined: true }
-                           ]
-                       }
-                   ]
-                }
-                """;
 
         @Mock
         private MongoDatabase mongoDatabase;
