@@ -5,6 +5,7 @@
 junit-jupiter = "5.11.4"
 spotless = "7.0.2"
 palantir = "2.50.0"
+ktfmt = "0.54"
 errorprone = "4.1.0"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.3"

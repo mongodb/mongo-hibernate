@@ -276,6 +276,94 @@ class MongoPreparedStatementTests {
         }
     }
 
+    @Nested
+    class ParameterIndexCheckingTests {
+
+        private MongoPreparedStatement preparedStatement;
+
+        @BeforeEach
+        void setUp() throws SQLSyntaxErrorException {
+            preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
+        }
+
+        @AfterEach
+        void tearDown() {
+            preparedStatement.close();
+        }
+
+        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too low")
+        @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow")
+        void testParameterIndexUnderflow(String label, PreparedStatementMethodInvocation methodInvocation) {
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
+            assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
+        }
+
+        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too high")
+        @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow")
+        void testParameterIndexOverflow(String label, PreparedStatementMethodInvocation methodInvocation) {
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
+            assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
+        }
+
+        private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow() {
+            return doGetMongoPreparedStatementMethodInvocationsWithParameterIndex(0);
+        }
+
+        private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow() {
+            return doGetMongoPreparedStatementMethodInvocationsWithParameterIndex(6);
+        }
+
+        private static Stream<Arguments> doGetMongoPreparedStatementMethodInvocationsWithParameterIndex(
+                int parameterIndex) {
+            var now = System.currentTimeMillis();
+            var calendar = Calendar.getInstance();
+            return Map.<String, PreparedStatementMethodInvocation>ofEntries(
+                            Map.entry("setNull(int,int)", pstmt -> pstmt.setNull(parameterIndex, Types.INTEGER)),
+                            Map.entry("setBoolean(int,boolean)", pstmt -> pstmt.setBoolean(parameterIndex, true)),
+                            Map.entry("setByte(int,byte)", pstmt -> pstmt.setByte(parameterIndex, (byte) 10)),
+                            Map.entry("setShort(int,short)", pstmt -> pstmt.setShort(parameterIndex, (short) 10)),
+                            Map.entry("setInt(int,int)", pstmt -> pstmt.setInt(parameterIndex, 1)),
+                            Map.entry("setLong(int,long)", pstmt -> pstmt.setLong(parameterIndex, 1L)),
+                            Map.entry("setFloat(int,float)", pstmt -> pstmt.setFloat(parameterIndex, 1.0F)),
+                            Map.entry("setDouble(int,double)", pstmt -> pstmt.setDouble(parameterIndex, 1.0)),
+                            Map.entry(
+                                    "setBigDecimal(int,BigDecimal)",
+                                    pstmt -> pstmt.setBigDecimal(parameterIndex, new BigDecimal(1))),
+                            Map.entry("setString(int,String)", pstmt -> pstmt.setString(parameterIndex, "")),
+                            Map.entry("setBytes(int,byte[])", pstmt -> pstmt.setBytes(parameterIndex, "".getBytes())),
+                            Map.entry("setDate(int,Date)", pstmt -> pstmt.setDate(parameterIndex, new Date(now))),
+                            Map.entry("setTime(int,Time)", pstmt -> pstmt.setTime(parameterIndex, new Time(now))),
+                            Map.entry(
+                                    "setTimestamp(int,Timestamp)",
+                                    pstmt -> pstmt.setTimestamp(parameterIndex, new Timestamp(now))),
+                            Map.entry(
+                                    "setBinaryStream(int,InputStream,int)",
+                                    pstmt -> pstmt.setBinaryStream(
+                                            parameterIndex, new ByteArrayInputStream("".getBytes()), 0)),
+                            Map.entry(
+                                    "setObject(int,Object,int)",
+                                    pstmt -> pstmt.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
+                            Map.entry(
+                                    "setArray(int,Array)",
+                                    pstmt -> pstmt.setArray(parameterIndex, Mockito.mock(Array.class))),
+                            Map.entry(
+                                    "setDate(int,Date,Calendar)",
+                                    pstmt -> pstmt.setDate(parameterIndex, new Date(now), calendar)),
+                            Map.entry(
+                                    "setTime(int,Time,Calendar)",
+                                    pstmt -> pstmt.setTime(parameterIndex, new Time(now), calendar)),
+                            Map.entry(
+                                    "setTimestamp(int,Timestamp,Calendar)",
+                                    pstmt -> pstmt.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
+                            Map.entry(
+                                    "setNull(int,Object,String)",
+                                    pstmt -> pstmt.setNull(parameterIndex, Types.STRUCT, "BOOK")))
+                    .entrySet()
+                    .stream()
+                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
+        }
+    }
+
     @FunctionalInterface
     interface PreparedStatementMethodInvocation {
         void runOn(MongoPreparedStatement pstmt) throws SQLException;
