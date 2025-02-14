@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -24,6 +25,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
+import org.jspecify.annotations.Nullable;
 
 final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
 
@@ -36,7 +38,10 @@ final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends 
 
     @Override
     @SuppressWarnings("unchecked")
-    public O translate(JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
+    public O translate(@Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
+        assertNull(jdbcParameterBindings);
+        // QueryOptions class is not applicable to table mutation so a dummy value is always passed in
+
         if (tableMutation instanceof TableInsert) {
             return translateTableMutation();
         } else {

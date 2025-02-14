@@ -323,7 +323,6 @@ class MongoPreparedStatementTests {
         }
     }
 
-    @FunctionalInterface
     interface PreparedStatementMethodInvocation {
         void runOn(MongoPreparedStatement pstmt) throws SQLException;
     }

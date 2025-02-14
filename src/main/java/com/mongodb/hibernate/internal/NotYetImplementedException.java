@@ -35,8 +35,6 @@ import java.io.Serial;
  * <pre>{@code
  * throw new NotYetImplementedException("TODO-HIBERNATE-13")
  * }</pre>
- *
- * <p>This class is not part of the public API and may be removed or changed at any time.
  */
 public final class NotYetImplementedException extends RuntimeException {
 
