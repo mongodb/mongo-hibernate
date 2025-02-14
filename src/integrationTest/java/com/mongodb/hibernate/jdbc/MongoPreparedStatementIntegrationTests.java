@@ -22,11 +22,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mongodb.client.model.Sorts;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
@@ -216,7 +217,7 @@ class MongoPreparedStatementIntegrationTests {
                             title: "Crime and Punishment",
                             author: "Fyodor Dostoevsky",
                             outOfStock: false,
-                            tags: [ "classic", "Dostoevsky", "literature" ]
+                            tags: [ "classic", "dostoevsky", "literature" ]
                         }
                     ]
                 }""";
@@ -228,7 +229,7 @@ class MongoPreparedStatementIntegrationTests {
             prepareData();
 
             // when && then
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
                             {
@@ -254,7 +255,7 @@ class MongoPreparedStatementIntegrationTests {
                                 title: "Crime and Punishment",
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false,
-                                tags: [ "classic", "Dostoevsky", "literature" ]
+                                tags: [ "classic", "dostoevsky", "literature" ]
                             }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
@@ -299,7 +300,7 @@ class MongoPreparedStatementIntegrationTests {
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
                 boolean autoCommit,
                 int expectedUpdatedRowCount,
-                Set<? extends BsonDocument> expectedDocuments) {
+                List<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var pstmt = pstmtProvider.apply(connection)) {
@@ -313,7 +314,8 @@ class MongoPreparedStatementIntegrationTests {
                     var realDocuments = pstmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
-                            .into(new HashSet<>());
+                            .sort(Sorts.ascending("_id"))
+                            .into(new ArrayList<>());
                     assertEquals(expectedDocuments, realDocuments);
                 }
             });
