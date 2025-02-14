@@ -16,8 +16,8 @@
 
 import com.diffplug.spotless.FormatterFunc
 import com.diffplug.spotless.FormatterStep
-import net.ltgt.gradle.errorprone.errorprone
 import java.io.Serializable
+import net.ltgt.gradle.errorprone.errorprone
 
 version = "1.0.0-SNAPSHOT"
 
@@ -28,19 +28,11 @@ plugins {
     alias(libs.plugins.buildconfig)
 }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
-tasks.named<Test>("test") {
-    useJUnitPlatform()
-}
+tasks.named<Test>("test") { useJUnitPlatform() }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Integration Tests
@@ -52,27 +44,24 @@ sourceSets {
     }
 }
 
-val integrationTestImplementation by configurations.getting {
-    extendsFrom(configurations.implementation.get())
-}
+val integrationTestImplementation by configurations.getting { extendsFrom(configurations.implementation.get()) }
 val integrationTestRuntimeOnly: Configuration by configurations.getting
 
 configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.runtimeOnly.get())
 
-val integrationTest = task<Test>("integrationTest") {
-    description = "Runs integration tests."
-    group = "verification"
+val integrationTest =
+    task<Test>("integrationTest") {
+        description = "Runs integration tests requiring external MongoDB deployment"
+        group = "verification"
 
-    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
-    classpath = sourceSets["integrationTest"].runtimeClasspath
-    shouldRunAfter("test")
+        testClassesDirs = sourceSets["integrationTest"].output.classesDirs
+        classpath = sourceSets["integrationTest"].runtimeClasspath
+        shouldRunAfter("test")
 
-    useJUnitPlatform()
+        useJUnitPlatform()
 
-    testLogging {
-        events("passed")
+        testLogging { events("passed") }
     }
-}
 
 tasks.check { dependsOn(integrationTest) }
 
@@ -93,20 +82,26 @@ spotless {
         // due to the bug: https://github.com/diffplug/spotless/issues/532
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
 
-        targetExclude("**/generated/**/*.java")
+        targetExclude("${layout.buildDirectory.get().asFile.name}/generated/**/*.java")
 
         val formatter = MultilineFormatter()
-        addStep(FormatterStep.create(
-            "multilineFormatter",
-            object : Serializable {},
-            { _: Any? -> FormatterFunc { input: String -> formatter.format(input) } }
-        ))
+        addStep(
+            FormatterStep.create(
+                "multilineFormatter",
+                object : Serializable {},
+                { _: Any? -> FormatterFunc { input: String -> formatter.format(input) } }))
+    }
+
+    kotlinGradle {
+        ktfmt(libs.versions.ktfmt.get()).configure {
+            it.setMaxWidth(120)
+            it.setBlockIndent(4)
+            it.setContinuationIndent(4)
+        }
     }
 }
 
-/**
- * Format multiline strings to match the initial """ indentation level
- */
+/** Format multiline strings to match the initial """ indentation level */
 class MultilineFormatter : Serializable {
     fun format(content: String): String {
         val tripleQuote = "\"\"\""
@@ -130,13 +125,13 @@ class MultilineFormatter : Serializable {
                 multilineStringLines.add(multilineStringLine)
                 if (multilineStringLine.contains(tripleQuote)) break
             }
-            val minIndent = multilineStringLines.filter { it.isNotBlank() }
-                .map { l -> l.indexOfFirst { ch -> !ch.isWhitespace() }.takeIf { it >= 0 } ?: line.length }
-                .minOrNull() ?: 0
+            val minIndent =
+                multilineStringLines
+                    .filter { it.isNotBlank() }
+                    .map { l -> l.indexOfFirst { ch -> !ch.isWhitespace() }.takeIf { it >= 0 } ?: line.length }
+                    .minOrNull() ?: 0
             multilineStringLines.forEach { blockLine ->
-                result.append(" ".repeat(baseIndent))
-                    .append(blockLine.drop(minIndent))
-                    .append("\n")
+                result.append(" ".repeat(baseIndent)).append(blockLine.drop(minIndent)).append("\n")
             }
         }
         return result.toString()
