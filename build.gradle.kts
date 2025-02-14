@@ -82,7 +82,7 @@ spotless {
         // due to the bug: https://github.com/diffplug/spotless/issues/532
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
 
-        targetExclude("{${layout.buildDirectory}}/generated/sources/buildConfig/**/*.java")
+        targetExclude("${layout.buildDirectory.get().asFile.name}/generated/sources/buildConfig/**/*.java")
 
         val formatter = MultilineFormatter()
         addStep(
