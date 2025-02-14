@@ -18,7 +18,6 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonWriter;
 
-@FunctionalInterface
 public interface AstNode {
     void render(BsonWriter writer);
 }
