@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
@@ -120,9 +119,8 @@ class BasicInsertionTests {
         try (var mongoClient = MongoClients.create(MongoClientSettings.builder()
                 .applyConnectionString(connectionString)
                 .build())) {
-            var collection = mongoClient
-                    .getDatabase(assertNotNull(connectionString.getDatabase()))
-                    .getCollection("books", BsonDocument.class);
+            var collection =
+                    mongoClient.getDatabase(connectionString.getDatabase()).getCollection("books", BsonDocument.class);
             collectionConsumer.accept(collection);
         }
     }
