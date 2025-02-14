@@ -85,7 +85,7 @@ class AstVisitorValueHolderTests {
 
     @Test
     @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of real data")
-    void testHolderExpectingDifferentType() {
+    void testHolderExpectingDifferentDescriptor() {
         // given
         Runnable valueYielder =
                 () -> astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
