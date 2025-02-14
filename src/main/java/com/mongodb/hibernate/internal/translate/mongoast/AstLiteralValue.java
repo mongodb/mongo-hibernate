@@ -14,8 +14,21 @@
  * limitations under the License.
  */
 
-/** The program elements within this package are not part of the public API and may be removed or changed at any time */
-@NullMarked
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.jspecify.annotations.NullMarked;
+import org.bson.BsonValue;
+import org.bson.BsonWriter;
+import org.bson.codecs.BsonValueCodec;
+import org.bson.codecs.EncoderContext;
+
+public record AstLiteralValue(BsonValue literalValue) implements AstValue {
+
+    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
+    private static final EncoderContext DEFAULT_CONTEXT =
+            EncoderContext.builder().build();
+
+    @Override
+    public void render(final BsonWriter writer) {
+        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
+    }
+}

@@ -171,6 +171,9 @@ dependencies {
 
     integrationTestImplementation(libs.junit.jupiter)
     integrationTestImplementation(libs.logback.classic)
+    integrationTestImplementation(libs.hibernate.testing) {
+        exclude(group = "org.apache.logging.log4j", module = "log4j-core")
+    }
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     errorprone(libs.nullaway)

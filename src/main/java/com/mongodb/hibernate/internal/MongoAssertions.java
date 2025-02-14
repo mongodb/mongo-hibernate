@@ -18,11 +18,7 @@ package com.mongodb.hibernate.internal;
 
 import org.jspecify.annotations.Nullable;
 
-/**
- * Util class for various assertion purposes.
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
- */
+/** Util class for various assertion purposes. */
 public final class MongoAssertions {
 
     private MongoAssertions() {}
@@ -43,7 +39,7 @@ public final class MongoAssertions {
     }
 
     /**
-     * Asserts that failure happens invariably.
+     * Asserts that failure happens invariably with message.
      *
      * @param msg The failure message.
      * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
@@ -52,6 +48,29 @@ public final class MongoAssertions {
      */
     public static AssertionError fail(String msg) throws AssertionError {
         throw new AssertionError(assertNotNull(msg));
+    }
+
+    /**
+     * Asserts that failure happens invariably.
+     *
+     * @return Never completes normally. The return type is {@link AssertionError} to allow writing {@code throw
+     *     fail()}. This may be helpful in non-{@code void} methods.
+     * @throws AssertionError Always
+     */
+    public static AssertionError fail() throws AssertionError {
+        throw new AssertionError();
+    }
+
+    /**
+     * Asserts that some value is {@code null}.
+     *
+     * @param value A value to check.
+     * @throws AssertionError If {@code value} is not {@code null}.
+     */
+    public static void assertNull(@Nullable Object value) throws AssertionError {
+        if (value != null) {
+            throw new AssertionError();
+        }
     }
 
     /**
@@ -64,6 +83,21 @@ public final class MongoAssertions {
     public static boolean assertTrue(boolean value) throws AssertionError {
         if (!value) {
             throw new AssertionError();
+        }
+        return true;
+    }
+
+    /**
+     * Asserts that {@code value} is {@code true} with message.
+     *
+     * @param message the message to explain details.
+     * @param value A value to check.
+     * @return {@code true}.
+     * @throws AssertionError If {@code value} is {@code false}.
+     */
+    public static boolean assertTrue(String message, boolean value) throws AssertionError {
+        if (!value) {
+            throw new AssertionError(message);
         }
         return true;
     }
