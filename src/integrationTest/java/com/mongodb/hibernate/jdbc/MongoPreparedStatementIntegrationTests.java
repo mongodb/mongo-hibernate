@@ -206,10 +206,8 @@ class MongoPreparedStatementIntegrationTests {
                             .getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
-                            .into(new ArrayList<>())
-                            .stream()
-                            .sorted(Comparator.comparing(doc -> doc.getInt32("_id")))
-                            .toList();
+                            .sort(Sorts.ascending("_id"))
+                            .into(new ArrayList<>());
                     assertEquals(expectedDocuments, realDocuments);
                 }
             });
