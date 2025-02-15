@@ -36,7 +36,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
-import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -191,35 +191,35 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Date getDate(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
@@ -236,14 +236,14 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Array getArray(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new NotYetImplementedException("In scope of Array / Struct implementation");
+        throw new FeatureNotSupportedException("In scope of Array / Struct implementation");
     }
 
     @Override
