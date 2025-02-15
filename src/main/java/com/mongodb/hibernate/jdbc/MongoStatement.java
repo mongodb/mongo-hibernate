@@ -89,7 +89,7 @@ class MongoStatement implements StatementAdapter {
             case "insert" -> bulkWriteResult.getInsertedCount();
             case "update" -> bulkWriteResult.getModifiedCount();
             case "delete" -> bulkWriteResult.getDeletedCount();
-            default -> throw new NotYetImplementedException();
+            default -> throw new FeatureNotSupportedException();
         };
     }
 
@@ -144,7 +144,7 @@ class MongoStatement implements StatementAdapter {
                         }
                         break;
                     default:
-                        throw new NotYetImplementedException();
+                        throw new FeatureNotSupportedException();
                 }
                 writeModels.addAll(subWriteModels);
             }
