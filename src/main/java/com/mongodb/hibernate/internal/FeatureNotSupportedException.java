@@ -14,8 +14,28 @@
  * limitations under the License.
  */
 
-/** The program elements within this package are not part of the public API and may be removed or changed at any time */
-@NullMarked
 package com.mongodb.hibernate.internal;
 
-import org.jspecify.annotations.NullMarked;
+import java.io.Serial;
+
+public final class FeatureNotSupportedException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Default constructor.
+     *
+     * <p>It is recommended to use the other constructor with some explanation.
+     */
+    public FeatureNotSupportedException() {}
+
+    /**
+     * Constructor with message parameter.
+     *
+     * @param message explanation on when the feature is to be implemented
+     */
+    public FeatureNotSupportedException(String message) {
+        super(message);
+    }
+}

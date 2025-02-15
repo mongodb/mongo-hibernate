@@ -18,8 +18,9 @@ package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.mongodb.client.model.Sorts;
+import java.util.ArrayList;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -109,7 +110,7 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testInsert(boolean autoCommit) {
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
                             {
@@ -158,7 +159,7 @@ class MongoStatementIntegrationTests {
                             }
                         ]
                     }""";
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
                             {
@@ -204,7 +205,7 @@ class MongoStatementIntegrationTests {
                             }
                         ]
                     }""";
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
                             {
@@ -233,7 +234,7 @@ class MongoStatementIntegrationTests {
         }
 
         private void assertExecuteUpdate(
-                String mql, boolean autoCommit, int expectedRowCount, Set<? extends BsonDocument> expectedDocuments) {
+                String mql, boolean autoCommit, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var stmt = (MongoStatement) connection.createStatement()) {
@@ -247,7 +248,8 @@ class MongoStatementIntegrationTests {
                     var realDocuments = stmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
-                            .into(new HashSet<>());
+                            .sort(Sorts.ascending("_id"))
+                            .into(new ArrayList<>());
                     assertEquals(expectedDocuments, realDocuments);
                 }
             });

@@ -23,6 +23,7 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
@@ -92,7 +93,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public ResultSet executeQuery() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
@@ -199,77 +200,83 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, Date x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
     }
 
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+    }
+
+    @Override
+    public void addBatch() throws SQLException {
+        checkClosed();
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new NotYetImplementedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
     }
 
     @Override

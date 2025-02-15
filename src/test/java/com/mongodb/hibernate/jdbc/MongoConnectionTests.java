@@ -103,7 +103,6 @@ class MongoConnectionTests {
     @Nested
     class ClosedTests {
 
-        @FunctionalInterface
         interface ConnectionMethodInvocation {
             void runOn(MongoConnection conn) throws SQLException;
         }
