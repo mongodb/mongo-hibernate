@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+@file:Suppress("UnstableApiUsage")
+
 import com.diffplug.spotless.FormatterFunc
 import com.diffplug.spotless.FormatterStep
 import java.io.Serializable
@@ -23,6 +25,7 @@ version = "1.0.0-SNAPSHOT"
 
 plugins {
     `java-library`
+    idea
     alias(libs.plugins.spotless)
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
@@ -35,7 +38,7 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 tasks.named<Test>("test") { useJUnitPlatform() }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Integration Tests
+// Integration Test
 
 sourceSets {
     create("integrationTest") {
@@ -65,8 +68,17 @@ val integrationTest =
 
 tasks.check { dependsOn(integrationTest) }
 
+// work around the IDEA bug:
+// https://youtrack.jetbrains.com/issue/IDEA-234382/Gradle-integration-tests-are-not-marked-as-test-sources-resources
+idea {
+    module {
+        testSources.from(sourceSets["integrationTest"].allSource.srcDirs)
+        testResources.from(sourceSets["integrationTest"].resources.srcDirs)
+    }
+}
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Static Analysis Tasks
+// Static Analysis
 
 spotless {
     java {
