@@ -16,7 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.mongodb.client.model.Sorts;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -29,17 +37,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Function;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MongoPreparedStatementIntegrationTests {
 
@@ -104,50 +101,6 @@ class MongoPreparedStatementIntegrationTests {
 
     @Nested
     class ExecuteUpdateTests {
-
-        @BeforeEach
-        void setUp() {
-            session.doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
-            });
-        }
-
-        private static final String INSERT_MQL =
-                """
-                {
-                    insert: "books",
-                    documents: [
-                        {
-                            _id: 1,
-                            title: "War and Peace",
-                            author: "Leo Tolstoy",
-                            outOfStock: false,
-                            tags: [ "classic", "tolstoy" ]
-                        },
-                        {
-                            _id: 2,
-                            title: "Anna Karenina",
-                            author: "Leo Tolstoy",
-                            outOfStock: false,
-                            tags: [ "classic", "tolstoy" ]
-                        },
-                        {
-                            _id: 3,
-                            title: "Crime and Punishment",
-                            author: "Fyodor Dostoevsky",
-                            outOfStock: false,
-                            tags: [ "classic", "dostoevsky", "literature" ]
-                        }
-                    ]
-                }""";
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
@@ -228,8 +181,7 @@ class MongoPreparedStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var realDocuments = pstmt
-                            .getMongoDatabase()
+                    var realDocuments = pstmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
                             .sort(Sorts.ascending("_id"))
@@ -330,7 +282,7 @@ class MongoPreparedStatementIntegrationTests {
                             pstmt.clearBatch();
                         }
 
-                        var expectedDocuments = Set.of(
+                        var expectedDocuments = List.of(
                                 BsonDocument.parse(
                                         """
                                         {
@@ -366,7 +318,8 @@ class MongoPreparedStatementIntegrationTests {
                                 .getMongoDatabase()
                                 .getCollection("books", BsonDocument.class)
                                 .find()
-                                .into(new HashSet<>());
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
                         assertEquals(expectedDocuments, realDocuments);
                     }
                 });
@@ -431,7 +384,7 @@ class MongoPreparedStatementIntegrationTests {
                             pstmt.clearBatch();
                         }
 
-                        var expectedDocuments = Set.of(
+                        var expectedDocuments = List.of(
                                 BsonDocument.parse(
                                         """
                                         {
@@ -464,7 +417,8 @@ class MongoPreparedStatementIntegrationTests {
                                 .getMongoDatabase()
                                 .getCollection("books", BsonDocument.class)
                                 .find()
-                                .into(new HashSet<>());
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
                         assertEquals(expectedDocuments, realDocuments);
                     }
                 });
@@ -500,7 +454,7 @@ class MongoPreparedStatementIntegrationTests {
                             pstmt.clearBatch();
                         }
 
-                        var expectedDocuments = Set.of(
+                        var expectedDocuments = List.of(
                                 BsonDocument.parse(
                                         """
                                         {
@@ -533,7 +487,8 @@ class MongoPreparedStatementIntegrationTests {
                                 .getMongoDatabase()
                                 .getCollection("books", BsonDocument.class)
                                 .find()
-                                .into(new HashSet<>());
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
                         assertEquals(expectedDocuments, realDocuments);
                     }
                 });
@@ -597,8 +552,9 @@ class MongoPreparedStatementIntegrationTests {
                                 .getMongoDatabase()
                                 .getCollection("books", BsonDocument.class)
                                 .find()
-                                .into(new HashSet<>());
-                        assertEquals(Collections.emptySet(), realDocuments);
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(Collections.emptyList(), realDocuments);
                     }
                 });
             }
@@ -629,8 +585,9 @@ class MongoPreparedStatementIntegrationTests {
                                 .getMongoDatabase()
                                 .getCollection("books", BsonDocument.class)
                                 .find()
-                                .into(new HashSet<>());
-                        assertEquals(Collections.emptySet(), realDocuments);
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(Collections.emptyList(), realDocuments);
                     }
                 });
             }

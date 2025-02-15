@@ -23,14 +23,13 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
-import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -239,12 +238,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void addBatch() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
@@ -349,7 +342,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                         }
                         break;
                     default:
-                        throw new NotYetImplementedException();
+                        throw new FeatureNotSupportedException();
                 }
                 writeModels.addAll(subWriteModels);
             }
