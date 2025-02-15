@@ -53,6 +53,10 @@ class MongoStatement implements StatementAdapter {
         this.clientSession = clientSession;
     }
 
+    ClientSession getClientSession() {
+        return clientSession;
+    }
+
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
@@ -223,7 +227,7 @@ class MongoStatement implements StatementAdapter {
      * Starts transaction for the first {@link java.sql.Statement} executing if
      * {@linkplain MongoConnection#getAutoCommit() auto-commit} is disabled.
      */
-    private void startTransactionIfNeeded() throws SQLException {
+    void startTransactionIfNeeded() throws SQLException {
         if (!mongoConnection.getAutoCommit() && !clientSession.hasActiveTransaction()) {
             clientSession.startTransaction();
         }
