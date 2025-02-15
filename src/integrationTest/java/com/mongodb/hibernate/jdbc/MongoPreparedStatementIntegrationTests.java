@@ -16,10 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.model.Sorts;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +68,110 @@ class MongoPreparedStatementIntegrationTests {
     void tearDown() {
         if (session != null) {
             session.close();
+        }
+    }
+
+    @Nested
+    class ExecuteQueryTests {
+        @BeforeEach
+        void setUp() {
+            session.doWork(conn -> {
+                var stmt = conn.createStatement();
+                stmt.executeUpdate(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
+                stmt.executeUpdate(
+                        """
+                        {
+                             insert: "books",
+                             documents: [
+                                {
+                                    _id: 1,
+                                    author: "Leo Tolstoy",
+                                    publishYear: 1867,
+                                    comment: "reference only",
+                                    title: "War and Peace"
+                                },
+                                {
+                                    _id: 2,
+                                    publishYear: 1878,
+                                    vintage: true,
+                                    title: "Anna Karenina",
+                                    author: "Leo Tolstoy"
+                                },
+                                {
+                                    _id: 3,
+                                    author: "Fyodor Dostoevsky",
+                                    title: "Crime and Punishment",
+                                    publishYear: 1866,
+                                    vintage: false
+                                }
+                            ]
+                        }""");
+            });
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testQuery(boolean autoCommit) throws SQLException {
+            ResultSet rs = session.doReturningWork(conn -> {
+                conn.setAutoCommit(autoCommit);
+                try (var pstmt = conn.prepareStatement(
+                        """
+                        {
+                            aggregate: "books",
+                            pipeline: [
+                                { $match: { author: { $eq: { $undefined: true } } } },
+                                { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }
+                            ]
+                        }""")) {
+
+                    pstmt.setString(1, "Leo Tolstoy");
+                    try {
+                        return pstmt.executeQuery();
+                    } finally {
+                        if (!autoCommit) {
+                            conn.commit();
+                        }
+                    }
+                }
+            });
+
+            var metadata = rs.getMetaData();
+
+            // assert metadata
+            assertAll(
+                    () -> assertEquals(5, metadata.getColumnCount()),
+                    () -> assertEquals("author", metadata.getColumnLabel(1)),
+                    () -> assertEquals("vintage", metadata.getColumnLabel(2)),
+                    () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
+                    () -> assertEquals("comment", metadata.getColumnLabel(4)),
+                    () -> assertEquals("title", metadata.getColumnLabel(5)));
+
+            // assert columns
+
+            assertTrue(rs.next());
+
+            assertEquals(5, metadata.getColumnCount());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertFalse(rs.getBoolean(2)),
+                    () -> assertEquals(1867, rs.getInt(3)),
+                    () -> assertEquals("reference only", rs.getString(4)),
+                    () -> assertEquals("War and Peace", rs.getString(5)));
+            assertTrue(rs.next());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertTrue(rs.getBoolean(2)),
+                    () -> assertEquals(1878, rs.getInt(3)),
+                    () -> assertNull(rs.getString(4)),
+                    () -> assertEquals("Anna Karenina", rs.getString(5)));
+            assertFalse(rs.next());
         }
     }
 
