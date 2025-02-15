@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,16 @@
  * limitations under the License.
  */
 
-/** The program elements within this package are not part of the public API and may be removed or changed at any time */
-@NullMarked
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.translate;
 
-import org.jspecify.annotations.NullMarked;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class AstVisitorValueDescriptorTests {
+
+    @Test
+    void testToString() {
+        assertEquals("COLLECTION_MUTATION", AstVisitorValueDescriptor.COLLECTION_MUTATION.toString());
+    }
+}

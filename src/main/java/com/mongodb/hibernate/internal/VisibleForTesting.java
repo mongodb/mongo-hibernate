@@ -26,8 +26,6 @@ import java.lang.annotation.Target;
  * Denotes that the annotated program element is made more accessible than otherwise necessary for the purpose of
  * testing. The annotated program element must be used as if it had the {@linkplain #otherwise() intended} access
  * modifier for any purpose other than testing.
- *
- * <p>This class is not part of the public API and may be removed or changed at any time
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)

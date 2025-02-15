@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,18 @@
  * limitations under the License.
  */
 
-/** The program elements within this package are not part of the public API and may be removed or changed at any time */
-@NullMarked
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.jspecify.annotations.NullMarked;
+import java.util.List;
+import org.bson.BsonWriter;
+
+public record AstDocument(List<? extends AstElement> elements) implements AstValue {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        {
+            elements.forEach(element -> element.render(writer));
+        }
+        writer.writeEndDocument();
+    }
+}

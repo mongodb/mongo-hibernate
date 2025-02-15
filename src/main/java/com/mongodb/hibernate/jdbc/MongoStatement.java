@@ -37,7 +37,7 @@ import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
-import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -73,7 +73,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
@@ -171,31 +171,31 @@ class MongoStatement implements StatementAdapter {
     @Override
     public int getMaxRows() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void setMaxRows(int max) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public int getQueryTimeout() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void setQueryTimeout(int seconds) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void cancel() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
@@ -215,55 +215,55 @@ class MongoStatement implements StatementAdapter {
     @Override
     public boolean execute(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
+        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public @Nullable ResultSet getResultSet() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
+        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public boolean getMoreResults() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
+        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public int getUpdateCount() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("To be implemented in scope of index and unique constraint creation");
+        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public void setFetchSize(int rows) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public int getFetchSize() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
     public void addBatch(String mql) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override

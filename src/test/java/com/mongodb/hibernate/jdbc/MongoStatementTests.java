@@ -116,7 +116,6 @@ class MongoStatementTests {
     @Nested
     class ClosedTests {
 
-        @FunctionalInterface
         interface StatementMethodInvocation {
             void runOn(MongoStatement stmt) throws SQLException;
         }
