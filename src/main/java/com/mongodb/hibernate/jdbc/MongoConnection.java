@@ -22,7 +22,7 @@ import static java.lang.String.format;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.BuildConfig;
-import com.mongodb.hibernate.internal.NotYetImplementedException;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -171,13 +171,13 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         checkClosed();
-        throw new NotYetImplementedException();
+        throw new FeatureNotSupportedException();
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
