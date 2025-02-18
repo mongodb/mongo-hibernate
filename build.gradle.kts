@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-@file:Suppress("UnstableApiUsage")
-
 import com.diffplug.spotless.FormatterFunc
 import com.diffplug.spotless.FormatterStep
 import java.io.Serializable
@@ -181,9 +179,12 @@ dependencies {
 
     integrationTestImplementation(libs.junit.jupiter)
     integrationTestImplementation(libs.logback.classic)
+
+    @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
+
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     api(libs.jspecify)
