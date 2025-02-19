@@ -65,14 +65,12 @@ class MongoResultSetTests {
         @Test
         @DisplayName("No-op when 'close()' is called on a closed MongoResultSet")
         void testNoopWhenCloseResultSetClosed() throws SQLException {
-            // when && then
             assertDoesNotThrow(() -> mongoResultSet.close());
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoResultSet")
         @MethodSource("getMongoResultSetMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, ResultSetMethodInvocation methodInvocation) throws SQLException {
-            // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoResultSet));
             assertEquals("MongoResultSet has been closed", exception.getMessage());
         }
@@ -114,7 +112,6 @@ class MongoResultSetTests {
                 name = "SQLException is thrown when \"{0}\" is called on a MongoResultSet with columnIndex too low")
         @MethodSource("getMongoResultSetMethodInvocationsWithColumnIndexUnderflow")
         void testColumnIndexUnderflow(String label, ResultSetMethodInvocation methodInvocation) {
-            // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoResultSet));
             assertTrue(exception.getMessage().startsWith("Invalid column index"));
         }
@@ -123,7 +120,6 @@ class MongoResultSetTests {
                 name = "SQLException is thrown when \"{0}\" is called on a MongoResultSet with columnIndex too high")
         @MethodSource("getMongoResultSetMethodInvocationsWithColumnIndexOverflow")
         void testColumnIndexOverflow(String label, ResultSetMethodInvocation methodInvocation) {
-            // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoResultSet));
             assertTrue(exception.getMessage().startsWith("Invalid column index"));
         }
