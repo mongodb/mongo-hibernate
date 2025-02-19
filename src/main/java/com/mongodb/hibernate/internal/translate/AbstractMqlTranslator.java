@@ -32,6 +32,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertComman
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterField;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -173,9 +174,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     static String renderMongoAstNode(AstNode rootAstNode) {
-        var writer = new StringWriter();
-        rootAstNode.render(new JsonWriter(writer, JSON_WRITER_SETTINGS));
-        return writer.toString();
+        try (var stringWriter = new StringWriter();
+                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
+            rootAstNode.render(jsonWriter);
+            jsonWriter.flush();
+            return stringWriter.toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     <R extends AstNode> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
