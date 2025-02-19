@@ -24,7 +24,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterField;
-
 import java.io.StringWriter;
 import java.util.List;
 import org.bson.BsonInt32;
@@ -54,10 +53,9 @@ class AstNodeRenderTests {
                     AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt32(1)));
 
             // when && then
-            var expectedJson =
-                    """
-                    {"$eq": 1}\
-                    """;
+            var expectedJson = """
+                               {"$eq": 1}\
+                               """;
             assertJsonRendered(astComparisonFilterOperation, expectedJson);
         }
 
