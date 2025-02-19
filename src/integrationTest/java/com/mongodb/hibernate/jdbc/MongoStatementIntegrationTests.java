@@ -88,24 +88,9 @@ class MongoStatementIntegrationTests {
                         {
                             insert: "books",
                             documents: [
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    publishYear: 1867
-                                },
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    publishYear: 1878
-                                },
-                                {
-                                    _id: 3,
-                                    title: "Crime and Punishment",
-                                    author: "Fyodor Dostoevsky",
-                                    publishYear: 1866
-                                }
+                                { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy" },
+                                { _id: 2, publishYear: 1878, author: "Leo Tolstoy", title: "Anna Karenina" },
+                                { _id: 3, publishYear: 1866, title: "Crime and Punishment", author: "Fyodor Dostoevsky" }
                             ]
                         }""");
             });
