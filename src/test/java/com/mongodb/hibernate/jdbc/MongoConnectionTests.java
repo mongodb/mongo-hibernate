@@ -378,17 +378,9 @@ class MongoConnectionTests {
     @Nested
     class ResultSetSupportTests {
 
-        private static final String EXAMPLE_MQL =
-                """
-                {
-                  find: "restaurants",
-                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
-                  projection: { name: 1, rating: 1, address: 1 },
-                  sort: { name: 1 },
-                  limit: 5
-                }""";
+        private static final String EXAMPLE_MQL = "{}";
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "ResultSet type: {0}")
         @ValueSource(ints = {TYPE_FORWARD_ONLY, TYPE_SCROLL_SENSITIVE, TYPE_SCROLL_INSENSITIVE})
         void testType(int resultSetType) {
             Executable executable = () -> mongoConnection
@@ -401,7 +393,7 @@ class MongoConnectionTests {
             }
         }
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "ResultSet concurrency: {0}")
         @ValueSource(ints = {CONCUR_READ_ONLY, CONCUR_UPDATABLE})
         void testConcurrency(int resultSetConcurrency) {
             Executable executable = () -> mongoConnection
