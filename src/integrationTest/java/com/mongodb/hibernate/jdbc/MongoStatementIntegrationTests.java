@@ -99,7 +99,7 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testQuery(boolean autoCommit) throws SQLException {
-            ResultSet rs = session.doReturningWork(conn -> {
+            try (ResultSet rs = session.doReturningWork(conn -> {
                 conn.setAutoCommit(autoCommit);
                 try (var stmt = conn.createStatement()) {
                     try {
@@ -118,25 +118,31 @@ class MongoStatementIntegrationTests {
                         }
                     }
                 }
-            });
-            assertTrue(rs.next());
-            var metadata = rs.getMetaData();
-            assertAll(
-                    () -> assertEquals(3, metadata.getColumnCount()),
-                    () -> assertEquals("author", metadata.getColumnLabel(1)),
-                    () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
-                    () -> assertEquals("title", metadata.getColumnLabel(3)));
-            assertEquals(3, metadata.getColumnCount());
-            assertAll(
-                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                    () -> assertEquals(1867, rs.getInt(2)),
-                    () -> assertEquals("War and Peace", rs.getString(3)));
-            assertTrue(rs.next());
-            assertAll(
-                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                    () -> assertEquals(1878, rs.getInt(2)),
-                    () -> assertEquals("Anna Karenina", rs.getString(3)));
-            assertFalse(rs.next());
+            })) {
+                // assert metadata
+                var metadata = rs.getMetaData();
+                assertAll(
+                        () -> assertEquals(3, metadata.getColumnCount()),
+                        () -> assertEquals("author", metadata.getColumnLabel(1)),
+                        () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
+                        () -> assertEquals("title", metadata.getColumnLabel(3)));
+                assertEquals(3, metadata.getColumnCount());
+
+                // assert columns
+                assertTrue(rs.next());
+                assertAll(
+                        () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                        () -> assertEquals(1867, rs.getInt(2)),
+                        () -> assertEquals("War and Peace", rs.getString(3)));
+
+                assertTrue(rs.next());
+                assertAll(
+                        () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                        () -> assertEquals(1878, rs.getInt(2)),
+                        () -> assertEquals("Anna Karenina", rs.getString(3)));
+
+                assertFalse(rs.next());
+            }
         }
     }
 
