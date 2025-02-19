@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/** The program elements within this package are not part of the public API and may be removed or changed at any time */
 @NullMarked
 package com.mongodb.hibernate.internal;
 

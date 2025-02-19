@@ -14,7 +14,18 @@
  * limitations under the License.
  */
 
-@NullMarked
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.jspecify.annotations.NullMarked;
+import org.bson.BsonWriter;
+
+public final class AstPlaceholder implements AstValue {
+
+    public static AstPlaceholder INSTANCE = new AstPlaceholder();
+
+    private AstPlaceholder() {}
+
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeUndefined();
+    }
+}

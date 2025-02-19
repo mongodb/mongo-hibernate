@@ -16,19 +16,18 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.mongodb.client.model.Sorts;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,9 +38,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoPreparedStatementIntegrationTests {
 
-    private static @Nullable SessionFactory sessionFactory;
+    private static SessionFactory sessionFactory;
 
-    private @Nullable Session session;
+    private Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -57,7 +56,7 @@ class MongoPreparedStatementIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        session = assertNotNull(sessionFactory).openSession();
+        session = sessionFactory.openSession();
     }
 
     @AfterEach
@@ -72,16 +71,16 @@ class MongoPreparedStatementIntegrationTests {
 
         @BeforeEach
         void setUp() {
-            assertNotNull(session).doWork(conn -> {
+            session.doWork(conn -> {
                 conn.createStatement()
                         .executeUpdate(
                                 """
-                                    {
-                                        delete: "books",
-                                        deletes: [
-                                            { q: {}, limit: 0 }
-                                        ]
-                                    }""");
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }""");
             });
         }
 
@@ -109,7 +108,7 @@ class MongoPreparedStatementIntegrationTests {
                             title: "Crime and Punishment",
                             author: "Fyodor Dostoevsky",
                             outOfStock: false,
-                            tags: [ "classic", "Dostoevsky", "literature" ]
+                            tags: [ "classic", "dostoevsky", "literature" ]
                         }
                     ]
                 }""";
@@ -121,54 +120,54 @@ class MongoPreparedStatementIntegrationTests {
             prepareData();
 
             // when && then
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true,
-                                    tags: [ "classic", "tolstoy", "literature" ]
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: true,
+                                tags: [ "classic", "tolstoy", "literature" ]
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true,
-                                    tags: [ "classic", "tolstoy", "literature" ]
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: true,
+                                tags: [ "classic", "tolstoy", "literature" ]
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false,
-                                   tags: [ "classic", "Dostoevsky", "literature" ]
-                               }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false,
+                                tags: [ "classic", "dostoevsky", "literature" ]
+                            }"""));
             Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)
                             connection.prepareStatement(
                                     """
-                                        {
-                                            update: "books",
-                                            updates: [
-                                                {
-                                                    q: { author: { $undefined: true } },
-                                                    u: {
-                                                        $set: {
-                                                            outOfStock: { $undefined: true }
-                                                        },
-                                                        $push: { tags: { $undefined: true } }
+                                    {
+                                        update: "books",
+                                        updates: [
+                                            {
+                                                q: { author: { $undefined: true } },
+                                                u: {
+                                                    $set: {
+                                                        outOfStock: { $undefined: true }
                                                     },
-                                                    multi: true
-                                                }
-                                            ]
-                                        }""");
+                                                    $push: { tags: { $undefined: true } }
+                                                },
+                                                multi: true
+                                            }
+                                        ]
+                                    }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     pstmt.setBoolean(2, true);
                     pstmt.setString(3, "literature");
@@ -181,7 +180,7 @@ class MongoPreparedStatementIntegrationTests {
         }
 
         private void prepareData() {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
@@ -192,8 +191,8 @@ class MongoPreparedStatementIntegrationTests {
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
                 boolean autoCommit,
                 int expectedUpdatedRowCount,
-                Set<? extends BsonDocument> expectedDocuments) {
-            assertNotNull(session).doWork(connection -> {
+                List<? extends BsonDocument> expectedDocuments) {
+            session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var pstmt = pstmtProvider.apply(connection)) {
                     try {
@@ -206,7 +205,8 @@ class MongoPreparedStatementIntegrationTests {
                     var realDocuments = pstmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
-                            .into(new HashSet<>());
+                            .sort(Sorts.ascending("_id"))
+                            .into(new ArrayList<>());
                     assertEquals(expectedDocuments, realDocuments);
                 }
             });

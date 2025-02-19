@@ -60,12 +60,9 @@ functions:
   stop-mongo-orchestration:
     - command: subprocess.exec
       params:
-        working_dir: src
         binary: bash
-        include_expansions_in_env:
-          - MONGO_ORCHESTRATION_HOME
         args:
-          - .evergreen/stop-mongo-orchestration.sh
+          - ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
   upload-test-results:
     - command: attach.xunit_results

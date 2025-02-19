@@ -16,10 +16,12 @@
 
 package com.mongodb.hibernate.dialect;
 
+import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 
 /**
  * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}. Must be used together
@@ -42,5 +44,10 @@ public final class MongoDialect extends Dialect {
     @Override
     protected DatabaseVersion getMinimumSupportedVersion() {
         return MINIMUM_VERSION;
+    }
+
+    @Override
+    public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
+        return new MongoTranslatorFactory();
     }
 }

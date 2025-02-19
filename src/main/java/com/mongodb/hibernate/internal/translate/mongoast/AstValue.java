@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-@NullMarked
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.jspecify.annotations.NullMarked;
+public interface AstValue extends AstNode {}

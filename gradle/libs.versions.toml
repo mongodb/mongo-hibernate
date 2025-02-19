@@ -6,11 +6,12 @@ junit-jupiter = "5.11.4"
 assertj = "3.27.3"
 spotless = "7.0.2"
 palantir = "2.50.0"
+ktfmt = "0.54"
 errorprone = "4.1.0"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.3"
 jspecify = "1.0.0"
-hibernate-core = "6.6.5.Final"
+hibernate-orm = "6.6.5.Final"
 mongo-java-driver-sync = "5.3.0"
 slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
@@ -24,7 +25,8 @@ assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 google-errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "google-errorprone-core" }
-hibernate-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-core" }
+hibernate-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-orm" }
+hibernate-testing = { module = "org.hibernate.orm:hibernate-testing", version.ref = "hibernate-orm" }
 mongo-java-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongo-java-driver-sync" }
 sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }

@@ -20,13 +20,10 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
@@ -36,6 +33,12 @@ import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterOpeningEvent;
 import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.service.MongoDialectConfigurator;
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
@@ -45,7 +48,6 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.service.spi.ServiceException;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -62,12 +64,12 @@ class MongoConnectionProviderTests {
             var hostInConnectionString = "my-host";
             var connectionString = "mongodb://" + hostInConnectionString + "/my-db";
 
-            var customizedClusterListener = mock(ClusterListener.class);
+            var clusterListener = new TestClusterListener();
 
             MongoDialectConfigurator configurator =
                     dialectSettingsBuilder -> dialectSettingsBuilder.applyToMongoClientSettings(clientSettingsBuilder ->
                             clientSettingsBuilder.applyToClusterSettings(clusterSettingsBuilder ->
-                                    clusterSettingsBuilder.addClusterListener(customizedClusterListener)));
+                                    clusterSettingsBuilder.addClusterListener(clusterListener)));
 
             // when
             verifyMongoClient(configurator, connectionString, mongoClient -> {
@@ -77,9 +79,9 @@ class MongoConnectionProviderTests {
 
                 // then
                 assertEquals(singleton(hostInConnectionString), hosts);
-                verify(customizedClusterListener).clusterOpening(any(ClusterOpeningEvent.class));
+                clusterListener.assertClusterOpening();
             });
-            verify(customizedClusterListener).clusterClosed(any(ClusterClosedEvent.class));
+            clusterListener.assertClusterClosed();
         }
 
         @Test
@@ -93,6 +95,49 @@ class MongoConnectionProviderTests {
                         null)) {}
             });
             assertSame(e, actual.getCause());
+        }
+
+        private static class TestClusterListener implements ClusterListener {
+            private static final Duration TIMEOUT = Duration.ofSeconds(5);
+
+            private final CompletableFuture<ClusterOpeningEvent> openingEvent;
+            private final CompletableFuture<ClusterClosedEvent> closedEvent;
+
+            TestClusterListener() {
+                openingEvent = new CompletableFuture<>();
+                closedEvent = new CompletableFuture<>();
+            }
+
+            @Override
+            public void clusterOpening(ClusterOpeningEvent event) {
+                assertTrue(openingEvent.complete(event));
+            }
+
+            @Override
+            public void clusterClosed(ClusterClosedEvent event) {
+                assertTrue(closedEvent.complete(event));
+            }
+
+            void assertClusterOpening() {
+                assertDone(openingEvent);
+            }
+
+            void assertClusterClosed() {
+                assertDone(closedEvent);
+            }
+
+            private static void assertDone(Future<?> future) {
+                try {
+                    future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e);
+                } catch (TimeoutException e) {
+                    fail(e);
+                }
+            }
         }
     }
 
@@ -112,9 +157,7 @@ class MongoConnectionProviderTests {
     }
 
     private void verifyMongoClient(
-            @Nullable MongoDialectConfigurator mongoDialectConfigurator,
-            @Nullable String connectionString,
-            Consumer<MongoClient> verifier)
+            MongoDialectConfigurator mongoDialectConfigurator, String connectionString, Consumer<MongoClient> verifier)
             throws ServiceException {
         try (var sessionFactory = buildSessionFactory(mongoDialectConfigurator, connectionString)) {
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
@@ -122,15 +165,13 @@ class MongoConnectionProviderTests {
                     .getServiceRegistry()
                     .requireService(ConnectionProvider.class);
 
-            var mongoClient = (MongoClientImpl) mongoConnectionProvider.getMongoClient();
-            assertNotNull(mongoClient);
-
+            var mongoClient = mongoConnectionProvider.getMongoClient();
             verifier.accept(mongoClient);
         }
     }
 
     private SessionFactory buildSessionFactory(
-            @Nullable MongoDialectConfigurator mongoDialectConfigurator, @Nullable String connectionString) {
+            MongoDialectConfigurator mongoDialectConfigurator, String connectionString) {
         var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
         if (mongoDialectConfigurator != null) {
             standardServiceRegistryBuilder.addService(MongoDialectConfigurator.class, mongoDialectConfigurator);

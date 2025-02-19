@@ -16,16 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.mongodb.client.model.Sorts;
+import java.util.ArrayList;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,9 +35,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoStatementIntegrationTests {
 
-    private static @Nullable SessionFactory sessionFactory;
+    private static SessionFactory sessionFactory;
 
-    private @Nullable Session session;
+    private Session session;
 
     @BeforeAll
     static void beforeAll() {
@@ -54,7 +53,7 @@ class MongoStatementIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        session = assertNotNull(sessionFactory).openSession();
+        session = sessionFactory.openSession();
     }
 
     @AfterEach
@@ -69,16 +68,16 @@ class MongoStatementIntegrationTests {
 
         @BeforeEach
         void setUp() {
-            assertNotNull(session).doWork(conn -> {
+            session.doWork(conn -> {
                 conn.createStatement()
                         .executeUpdate(
                                 """
-                                    {
-                                        delete: "books",
-                                        deletes: [
-                                            { q: {}, limit: 0 }
-                                        ]
-                                    }""");
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }""");
             });
         }
 
@@ -111,31 +110,31 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testInsert(boolean autoCommit) {
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false
-                               }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                            }"""));
             assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
         }
 
@@ -160,31 +159,31 @@ class MongoStatementIntegrationTests {
                             }
                         ]
                     }""";
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 1,
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true
-                                }"""),
+                            {
+                                _id: 1,
+                                title: "War and Peace",
+                                author: "Leo Tolstoy",
+                                outOfStock: true
+                            }"""),
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: true
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: true
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                   _id: 3,
-                                   title: "Crime and Punishment",
-                                   author: "Fyodor Dostoevsky",
-                                   outOfStock: false
-                               }"""));
+                            {
+                                _id: 3,
+                                title: "Crime and Punishment",
+                                author: "Fyodor Dostoevsky",
+                                outOfStock: false
+                            }"""));
             assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
         }
 
@@ -206,28 +205,28 @@ class MongoStatementIntegrationTests {
                             }
                         ]
                     }""";
-            var expectedDocs = Set.of(
+            var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
-                                {
-                                    _id: 2,
-                                    title: "Anna Karenina",
-                                    author: "Leo Tolstoy",
-                                    outOfStock: false
-                                }"""),
+                            {
+                                _id: 2,
+                                title: "Anna Karenina",
+                                author: "Leo Tolstoy",
+                                outOfStock: false
+                            }"""),
                     BsonDocument.parse(
                             """
-                               {
-                                    _id: 3,
-                                    title: "Crime and Punishment",
-                                    author: "Fyodor Dostoevsky",
-                                    outOfStock: false
-                               }"""));
+                            {
+                                 _id: 3,
+                                 title: "Crime and Punishment",
+                                 author: "Fyodor Dostoevsky",
+                                 outOfStock: false
+                            }"""));
             assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
         }
 
         private void prepareData() {
-            assertNotNull(session).doWork(connection -> {
+            session.doWork(connection -> {
                 connection.setAutoCommit(true);
                 var statement = connection.createStatement();
                 statement.executeUpdate(INSERT_MQL);
@@ -235,8 +234,8 @@ class MongoStatementIntegrationTests {
         }
 
         private void assertExecuteUpdate(
-                String mql, boolean autoCommit, int expectedRowCount, Set<? extends BsonDocument> expectedDocuments) {
-            assertNotNull(session).doWork(connection -> {
+                String mql, boolean autoCommit, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
+            session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit);
                 try (var stmt = (MongoStatement) connection.createStatement()) {
                     try {
@@ -249,7 +248,8 @@ class MongoStatementIntegrationTests {
                     var realDocuments = stmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
-                            .into(new HashSet<>());
+                            .sort(Sorts.ascending("_id"))
+                            .into(new ArrayList<>());
                     assertEquals(expectedDocuments, realDocuments);
                 }
             });

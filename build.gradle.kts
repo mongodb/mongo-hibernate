@@ -14,33 +14,28 @@
  * limitations under the License.
  */
 
+import com.diffplug.spotless.FormatterFunc
+import com.diffplug.spotless.FormatterStep
+import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 version = "1.0.0-SNAPSHOT"
 
 plugins {
+    idea
     `java-library`
     alias(libs.plugins.spotless)
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
 }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-tasks.named<Test>("test") {
-    useJUnitPlatform()
-}
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Integration Tests
+// Integration Test
 
 sourceSets {
     create("integrationTest") {
@@ -49,32 +44,37 @@ sourceSets {
     }
 }
 
-val integrationTestImplementation by configurations.getting {
-    extendsFrom(configurations.implementation.get())
-}
-val integrationTestRuntimeOnly: Configuration by configurations.getting
+val integrationTestSourceSet: SourceSet = sourceSets["integrationTest"]
 
-configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.runtimeOnly.get())
+val integrationTestImplementation: Configuration by
+    configurations.getting { extendsFrom(configurations.implementation.get()) }
+val integrationTestRuntimeOnly: Configuration by
+    configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
 
-val integrationTest = task<Test>("integrationTest") {
-    description = "Runs integration tests."
-    group = "verification"
+val integrationTestTask: Task =
+    task<Test>("integrationTest") {
+        group = LifecycleBasePlugin.VERIFICATION_GROUP
+        testClassesDirs = integrationTestSourceSet.output.classesDirs
+        classpath = integrationTestSourceSet.runtimeClasspath
+    }
 
-    testClassesDirs = sourceSets["integrationTest"].output.classesDirs
-    classpath = sourceSets["integrationTest"].runtimeClasspath
-    shouldRunAfter("test")
+tasks.check { dependsOn(integrationTestTask) }
 
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    testLogging { events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED) }
+}
 
-    testLogging {
-        events("passed")
+// https://youtrack.jetbrains.com/issue/IDEA-234382/Gradle-integration-tests-are-not-marked-as-test-sources-resources
+idea {
+    module {
+        testSources.from(integrationTestSourceSet.allSource.srcDirs)
+        testResources.from(integrationTestSourceSet.resources.srcDirs)
     }
 }
 
-tasks.check { dependsOn(integrationTest) }
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Static Analysis Tasks
+// Static Analysis
 
 spotless {
     java {
@@ -90,24 +90,73 @@ spotless {
         // due to the bug: https://github.com/diffplug/spotless/issues/532
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
 
-        targetExclude("**/generated/**/*.java")
+        targetExclude("${layout.buildDirectory.get().asFile.name}/generated/**/*.java")
+
+        val formatter = MultilineFormatter()
+        addStep(
+            FormatterStep.create(
+                "multilineFormatter",
+                object : Serializable {},
+                { _: Any? -> FormatterFunc { input: String -> formatter.format(input) } }))
+    }
+
+    kotlinGradle {
+        ktfmt(libs.versions.ktfmt.get()).configure {
+            it.setMaxWidth(120)
+            it.setBlockIndent(4)
+            it.setContinuationIndent(4)
+        }
+    }
+}
+
+/** Format multiline strings to match the initial """ indentation level */
+class MultilineFormatter : Serializable {
+    fun format(content: String): String {
+        val tripleQuote = "\"\"\""
+        val lines = content.lines()
+        val result = StringBuilder()
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            if (!line.trimEnd().endsWith(tripleQuote)) {
+                result.append(line)
+                if (i + 1 < lines.size) result.append("\n")
+                i++
+                continue
+            }
+            val baseIndent = line.indexOf(tripleQuote)
+            result.append(line).append("\n")
+            i++
+            val multilineStringLines = mutableListOf<String>()
+            while (i < lines.size) {
+                val multilineStringLine = lines[i++]
+                multilineStringLines.add(multilineStringLine)
+                if (multilineStringLine.contains(tripleQuote)) break
+            }
+            val minIndent =
+                multilineStringLines
+                    .filter { it.isNotBlank() }
+                    .map { l -> l.indexOfFirst { ch -> !ch.isWhitespace() }.takeIf { it >= 0 } ?: line.length }
+                    .minOrNull() ?: 0
+            multilineStringLines.forEach { blockLine ->
+                result.append(" ".repeat(baseIndent)).append(blockLine.drop(minIndent)).append("\n")
+            }
+        }
+        return result.toString()
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.errorprone {
-        disableWarningsInGeneratedCode.set(true)
-        option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
-    }
-}
-tasks.compileJava {
-    // The check defaults to a warning, bump it up to an error for the main sources
-    options.errorprone.error("NullAway")
     options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
-}
-
-tasks.compileTestJava {
-    options.errorprone.isEnabled.set(false)
+    if (name == "compileJava") {
+        options.errorprone {
+            disableWarningsInGeneratedCode.set(true)
+            option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+            error("NullAway")
+        }
+    } else {
+        options.errorprone.isEnabled.set(false)
+    }
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,15 +181,20 @@ dependencies {
     integrationTestImplementation(libs.junit.jupiter)
     integrationTestImplementation(libs.assertj)
     integrationTestImplementation(libs.logback.classic)
+
+    @Suppress("UnstableApiUsage")
+    integrationTestImplementation(libs.hibernate.testing) {
+        exclude(group = "org.apache.logging.log4j", module = "log4j-core")
+    }
+
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
-    errorprone(libs.nullaway)
     api(libs.jspecify)
 
+    errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
     implementation(libs.hibernate.core)
     implementation(libs.mongo.java.driver.sync)
     implementation(libs.sl4j.api)
 }
-
