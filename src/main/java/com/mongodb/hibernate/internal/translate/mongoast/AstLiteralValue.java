@@ -16,15 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
 import org.bson.codecs.BsonValueCodec;
 import org.bson.codecs.EncoderContext;
 
 public record AstLiteralValue(BsonValue literalValue) implements AstValue {
-
-    public static final AstLiteralValue NULL = new AstLiteralValue(new BsonNull());
 
     private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
     private static final EncoderContext DEFAULT_CONTEXT =

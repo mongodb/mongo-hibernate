@@ -20,7 +20,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
-import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.NULL;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -30,10 +29,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstAndFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterField;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -118,7 +115,6 @@ import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
-import org.hibernate.sql.model.ast.ColumnValueBinding;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
@@ -219,7 +215,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitStandardTableDelete(TableDeleteStandard tableDeleteStandard) {
         if (tableDeleteStandard.getWhereFragment() != null) {
-            // only applies when the table is a collection table with where restriction
             throw new FeatureNotSupportedException();
         }
 
@@ -227,25 +222,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("MongoDB doesn't support id spanning across multiple columns");
         }
         assertTrue(tableDeleteStandard.getNumberOfKeyBindings() == 1);
+        var keyBinding = tableDeleteStandard.getKeyBindings().get(0);
 
-        var tableName = tableDeleteStandard.getTableName();
-
-        var filters = new ArrayList<AstFilter>(1 + tableDeleteStandard.getNumberOfOptimisticLockBindings());
-        filters.add(getAstFieldFilter(tableDeleteStandard.getKeyBindings().get(0)));
-        tableDeleteStandard.forEachOptimisticLockBinding(
-                (idx, optimisticLockBinding) -> filters.add(getAstFieldFilter(optimisticLockBinding)));
-
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, new AstAndFilter(filters)));
-    }
-
-    private AstFilter getAstFieldFilter(ColumnValueBinding columnValueBinding) {
-        var astFilterField =
-                new AstFilterField(columnValueBinding.getColumnReference().getColumnExpression());
-        if (columnValueBinding.getValueExpression() == null) {
-            return new AstFieldOperationFilter(astFilterField, new AstComparisonFilterOperation(EQ, NULL));
-        }
-        var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
-        return new AstFieldOperationFilter(astFilterField, new AstComparisonFilterOperation(EQ, astValue));
+        var tableName = tableDeleteStandard.getMutatingTable().getTableName();
+        var astFilterField = new AstFilterField(keyBinding.getColumnReference().getColumnExpression());
+        var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
+        var keyFilter = new AstFieldOperationFilter(astFilterField, new AstComparisonFilterOperation(EQ, astValue));
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, keyFilter));
     }
 
     @Override

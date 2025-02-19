@@ -18,14 +18,4 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 
-public interface AstFilter extends AstNode {
-
-    /**
-     * Useful for determining whether it's safe to do an updateOne/deleteOne instead of updateMany/deleteMany. The
-     * former is preferred if possible because the server can automatically retry updateOne/deleteOne but not
-     * updateMany/deleteMany.
-     */
-    default boolean isIdEqualityFilter() {
-        return false;
-    }
-}
+public interface AstFilter extends AstNode {}

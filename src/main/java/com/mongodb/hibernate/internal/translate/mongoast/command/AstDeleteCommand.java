@@ -33,7 +33,7 @@ public record AstDeleteCommand(String collection, AstFilter filter) implements A
                 {
                     writer.writeName("q");
                     filter.render(writer);
-                    writer.writeInt32("limit", filter.isIdEqualityFilter() ? 1 : 0);
+                    writer.writeInt32("limit", 0);
                 }
                 writer.writeEndDocument();
             }

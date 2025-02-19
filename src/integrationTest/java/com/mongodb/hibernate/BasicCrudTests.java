@@ -29,14 +29,10 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonDocument;
-import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.OptimisticLockType;
-import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -47,13 +43,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(
-        annotatedClasses = {
-            BasicCrudTests.Book.class,
-            BasicCrudTests.BookWithEmbeddedField.class,
-            BasicCrudTests.BookWithVersionOptimisticLock.class,
-            BasicCrudTests.BookWithVersionlessOptimisticLock.class
-        })
+@DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
 class BasicCrudTests implements SessionFactoryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
@@ -153,49 +143,11 @@ class BasicCrudTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
                 session.persist(book);
             });
-            assertThat(getCollectionDocuments())
-                    .singleElement()
-                    .satisfies(doc -> assertThat(doc.getInt32("_id").getValue()).isEqualTo(id));
+            assertThat(getCollectionDocuments()).hasSize(1);
 
             // when
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
-                session.remove(book);
-            });
-
-            // then
-            assertThat(getCollectionDocuments()).isEmpty();
-        }
-
-        @Test
-        void testVersionOptimisticLockEntityDeletion() {
-
-            // given
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new BookWithVersionOptimisticLock();
-                book.id = 1;
-                book.title = "War and Peace";
-                session.persist(book);
-
-                // when
-                session.remove(book);
-            });
-
-            // then
-            assertThat(getCollectionDocuments()).isEmpty();
-        }
-
-        @Test
-        void testVersionlessOptimisticLockEntityDeletion() {
-
-            // given
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new BookWithVersionlessOptimisticLock();
-                book.id = 1;
-                book.publishYear = 1867;
-                session.persist(book);
-
-                // when
                 session.remove(book);
             });
 
@@ -262,31 +214,5 @@ class BasicCrudTests implements SessionFactoryScopeAware {
 
         @Column(name = "authorLastName")
         String lastName;
-    }
-
-    @Entity(name = "BookWithVersionOptimisticLock")
-    @Table(name = "books")
-    static class BookWithVersionOptimisticLock {
-        @Id
-        @Column(name = "_id")
-        int id;
-
-        String title;
-
-        @Version
-        int version;
-    }
-
-    @Entity(name = "BookWithVersionlessOptimisticLock")
-    @Table(name = "books")
-    @OptimisticLocking(type = OptimisticLockType.ALL)
-    @DynamicUpdate
-    static class BookWithVersionlessOptimisticLock {
-        @Id
-        @Column(name = "_id")
-        int id;
-
-        String title;
-        int publishYear;
     }
 }

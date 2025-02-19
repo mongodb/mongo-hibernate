@@ -16,8 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
-
 import org.bson.BsonWriter;
 
 public record AstFieldOperationFilter(AstFilterField field, AstFilterOperation filterOperation) implements AstFilter {
@@ -29,12 +27,5 @@ public record AstFieldOperationFilter(AstFilterField field, AstFilterOperation f
             filterOperation.render(writer);
         }
         writer.writeEndDocument();
-    }
-
-    @Override
-    public boolean isIdEqualityFilter() {
-        return "_id".equals(field.path())
-                && filterOperation instanceof AstComparisonFilterOperation comparisonFilterOperation
-                && EQ == comparisonFilterOperation.operator();
     }
 }
