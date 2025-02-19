@@ -63,7 +63,7 @@ class MongoConnectionProviderTests {
 
             // given
 
-            var hostInConnectionString = customizerAppliesConnectionString ? "my-host" : "localhost";
+            var hostInConnectionString = "host";
             var connectionString = "mongodb://" + hostInConnectionString;
 
             var clusterListener = new TestClusterListener();
@@ -151,9 +151,7 @@ class MongoConnectionProviderTests {
     @Test
     void testMongoDriverInformationPopulated() {
         verifyMongoClient(
-                null,
-                "mongodb://localhost/db",
-                MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
+                null, "mongodb://host/db", MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
     }
 
     private void verifyMongoDriverInformationPopulated(MongoClient mongoClient) {
