@@ -224,6 +224,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException();
         }
 
+        if (tableDeleteStandard.getNumberOfOptimisticLockBindings() > 0) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
+        }
+
         if (tableDeleteStandard.getNumberOfKeyBindings() > 1) {
             throw new FeatureNotSupportedException("MongoDB doesn't support id spanning across multiple columns");
         }
