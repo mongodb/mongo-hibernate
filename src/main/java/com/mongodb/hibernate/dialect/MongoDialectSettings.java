@@ -18,7 +18,6 @@ package com.mongodb.hibernate.dialect;
 
 import static com.mongodb.hibernate.internal.MongoChecks.notNull;
 import static java.lang.String.format;
-import static org.hibernate.cfg.AvailableSettings.AUTOCOMMIT;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
@@ -81,18 +80,6 @@ import org.jspecify.annotations.Nullable;
  *             if {@linkplain ConnectionString#getDatabase() configured};
  *             otherwise there is no default value, and a value must be configured via {@link Builder#databaseName(String)}.</td>
  *         </tr>
- *         <tr>
- *             <td>{@link #isAutoCommit()}</td>
- *             <td>✓</td>
- *             <td>{@value AvailableSettings#AUTOCOMMIT}</td>
- *             <td>
- *                 <ul>
- *                     <li>{@link String}, only {@code "true"}, {@code "false"} are allowed</li>
- *                     <li>{@link Boolean}</li>
- *                 </ul>
- *             </td>
- *             <td>{@value AvailableSettings#AUTOCOMMIT}, if configured; otherwise {@code false}.</td>
- *         </tr>
  *     </tbody>
  * </table>
  *
@@ -101,12 +88,10 @@ import org.jspecify.annotations.Nullable;
 public final class MongoDialectSettings {
     private final MongoClientSettings mongoClientSettings;
     private final String databaseName;
-    private final boolean autoCommit;
 
     private MongoDialectSettings(Builder builder) {
         this.mongoClientSettings = builder.mongoClientSettingsBuilder.build();
         this.databaseName = notNull("databaseName", builder.databaseName);
-        this.autoCommit = builder.autoCommit;
     }
 
     /**
@@ -133,17 +118,6 @@ public final class MongoDialectSettings {
     }
 
     /**
-     * The {@linkplain Connection#getAutoCommit() auto-commit mode} of {@linkplain Connection connections}
-     * {@linkplain MongoConnectionProvider#getConnection() obtained} from {@link MongoConnectionProvider}.
-     *
-     * @return The default auto-commit mode.
-     * @see Builder#autoCommit(boolean)
-     */
-    public boolean isAutoCommit() {
-        return autoCommit;
-    }
-
-    /**
      * Creates a new {@link MongoDialectSettings.Builder} based on {@code configProperties}.
      *
      * @param configProperties The {@linkplain Configurable#configure(Map) configuration properties}.
@@ -157,7 +131,6 @@ public final class MongoDialectSettings {
     public static final class Builder {
         private final MongoClientSettings.Builder mongoClientSettingsBuilder;
         private @Nullable String databaseName;
-        private boolean autoCommit;
 
         private Builder(Map<String, Object> configProperties) {
             mongoClientSettingsBuilder = MongoClientSettings.builder();
@@ -165,10 +138,6 @@ public final class MongoDialectSettings {
             if (connectionString != null) {
                 mongoClientSettingsBuilder.applyConnectionString(connectionString);
                 databaseName = connectionString.getDatabase();
-            }
-            var autoCommit = ConfigPropertiesParser.getAutoCommit(configProperties);
-            if (autoCommit != null) {
-                this.autoCommit = autoCommit;
             }
         }
 
@@ -205,19 +174,6 @@ public final class MongoDialectSettings {
         }
 
         /**
-         * The {@linkplain Connection#getAutoCommit() auto-commit mode} of {@linkplain Connection connections}
-         * {@linkplain MongoConnectionProvider#getConnection() obtained} from {@link MongoConnectionProvider}.
-         *
-         * @param autoCommit The auto-commit mode.
-         * @return {@code this}.
-         * @see MongoDialectSettings#isAutoCommit()
-         */
-        public MongoDialectSettings.Builder autoCommit(boolean autoCommit) {
-            this.autoCommit = autoCommit;
-            return this;
-        }
-
-        /**
          * Creates a new {@link MongoDialectSettings}.
          *
          * @return A new {@link MongoDialectSettings}.
@@ -241,34 +197,12 @@ public final class MongoDialectSettings {
                 }
             }
 
-            static @Nullable Boolean getAutoCommit(Map<String, Object> configProperties) {
-                var autoCommit = configProperties.get(AUTOCOMMIT);
-                if (autoCommit == null) {
-                    return null;
-                }
-                if (autoCommit instanceof String autoCommitText) {
-                    return parseBooleanString(AUTOCOMMIT, autoCommitText);
-                } else if (autoCommit instanceof Boolean autoCommitBoolean) {
-                    return autoCommitBoolean;
-                } else {
-                    throw Exceptions.unsupportedType(AUTOCOMMIT, autoCommit, String.class, Boolean.class);
-                }
-            }
-
             private static ConnectionString parseConnectionString(String propertyName, String propertyValue) {
                 try {
                     return new ConnectionString(propertyValue);
                 } catch (RuntimeException e) {
                     throw Exceptions.failedToParse(propertyName, propertyValue, ConnectionString.class);
                 }
-            }
-
-            private static boolean parseBooleanString(String propertyName, String propertyValue) {
-                return switch (propertyValue) {
-                    case "true" -> true;
-                    case "false" -> false;
-                    default -> throw Exceptions.failedToParse(propertyName, propertyValue, boolean.class);
-                };
             }
 
             private static final class Exceptions {

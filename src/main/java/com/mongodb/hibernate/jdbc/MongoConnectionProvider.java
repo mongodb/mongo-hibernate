@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
@@ -55,6 +56,10 @@ import org.jspecify.annotations.Nullable;
  * {@linkplain ClientSession#startTransaction() MongoDB transactions} are used only if
  * {@linkplain Connection#getAutoCommit() auto-commit} is disabled.
  *
+ * <p>This {@link ConnectionProvider} does not respect the {@value org.hibernate.cfg.AvailableSettings#AUTOCOMMIT}
+ * configuration property, and {@linkplain MongoConnectionProvider#getConnection() provides} {@link Connection}s with
+ * {@linkplain Connection#getAutoCommit() auto-commit} enabled.
+ *
  * @see MongoDialectSettings
  */
 public final class MongoConnectionProvider
@@ -65,6 +70,7 @@ public final class MongoConnectionProvider
     private @Nullable MongoDialectSettings config;
     private @Nullable MongoClient mongoClient;
 
+    private boolean servicesWereInjected = false;
     private @Nullable MongoDialectConfigurator mongoDialectConfigurator;
 
     @Override
@@ -73,9 +79,7 @@ public final class MongoConnectionProvider
             var client = assertNotNull(mongoClient);
             var clientSession = client.startSession();
             var initializedConfig = assertNotNull(config);
-            var connection = new MongoConnection(initializedConfig, client, clientSession);
-            connection.setAutoCommit(initializedConfig.isAutoCommit());
-            return connection;
+            return new MongoConnection(initializedConfig, client, clientSession);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to get connection", e);
         }
@@ -103,6 +107,7 @@ public final class MongoConnectionProvider
 
     @Override
     public void configure(Map<String, Object> configProperties) {
+        assertTrue(servicesWereInjected);
         var jdbcUrl = configProperties.get(JAKARTA_JDBC_URL);
 
         if (mongoDialectConfigurator == null && jdbcUrl == null) {
@@ -143,6 +148,8 @@ public final class MongoConnectionProvider
             mongoDialectConfigurator = serviceRegistry.getService(MongoDialectConfigurator.class);
         } catch (UnknownServiceException e) {
             // TODO-HIBERNATE-43 `LOGGER.debug("{} is not detected", MongoDialectConfigurator.class.getName(), e)`
+        } finally {
+            servicesWereInjected = true;
         }
     }
 

@@ -22,9 +22,7 @@ import static org.hibernate.cfg.JdbcSettings.AUTOCOMMIT;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -46,7 +44,6 @@ class MongoDialectSettingsTests {
                 .databaseName("testDbName")
                 .build();
         assertEquals(MongoClientSettings.builder().build(), config.getMongoClientSettings());
-        assertFalse(config.isAutoCommit());
     }
 
     @Test
@@ -55,13 +52,11 @@ class MongoDialectSettingsTests {
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
                         new ConnectionString("mongodb://localhost?replicaSet=testReplicaSetName")))
                 .databaseName("testDbName")
-                .autoCommit(true)
                 .build();
         assertEquals(
                 "testReplicaSetName",
                 config.getMongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
         assertEquals("testDbName", config.getDatabaseName());
-        assertTrue(config.isAutoCommit());
     }
 
     @Test
@@ -71,13 +66,11 @@ class MongoDialectSettingsTests {
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
                         new ConnectionString("mongodb://localhost?replicaSet=testReplicaSetName")))
                 .databaseName("testDbName2")
-                .autoCommit(false)
                 .build();
         assertEquals(
                 "testReplicaSetName",
                 config.getMongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
         assertEquals("testDbName2", config.getDatabaseName());
-        assertFalse(config.isAutoCommit());
     }
 
     @Nested
@@ -101,24 +94,6 @@ class MongoDialectSettingsTests {
                     expectedRequiredReplicaSetName,
                     config.getMongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
             assertEquals(expectedDatabaseName, config.getDatabaseName());
-        }
-
-        @Test
-        void autocommit() {
-            assertAll(
-                    () -> assertAutocommit(true, "true"),
-                    () -> assertAutocommit(true, Boolean.TRUE),
-                    () -> assertAutocommit(false, "false"),
-                    () -> assertAutocommit(false, Boolean.FALSE),
-                    () -> assertFailedToParse(AUTOCOMMIT, "yes"),
-                    () -> assertUnsupportedType(AUTOCOMMIT, 1));
-        }
-
-        private static void assertAutocommit(boolean expectedPropertyValue, Object propertyValue) {
-            MongoDialectSettings config = MongoDialectSettings.builder(Map.of(AUTOCOMMIT, propertyValue))
-                    .databaseName("testDbName")
-                    .build();
-            assertEquals(expectedPropertyValue, config.isAutoCommit());
         }
 
         private static void assertFailedToParse(String propertyName, Object propertyValue) {
