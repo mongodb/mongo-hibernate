@@ -18,8 +18,7 @@ package com.mongodb.hibernate.dialect;
 
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.cfg.JdbcSettings.AUTOCOMMIT;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -50,7 +49,7 @@ class MongoDialectSettingsTests {
     void builderOverridesDefaults() {
         MongoDialectSettings config = MongoDialectSettings.builder(emptyMap())
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
-                        new ConnectionString("mongodb://localhost?replicaSet=testReplicaSetName")))
+                        new ConnectionString("mongodb://host?replicaSet=testReplicaSetName")))
                 .databaseName("testDbName")
                 .build();
         assertEquals(
@@ -62,9 +61,9 @@ class MongoDialectSettingsTests {
     @Test
     void builderOverrides() {
         MongoDialectSettings config = MongoDialectSettings.builder(
-                        Map.of(JAKARTA_JDBC_URL, "mongodb://localhost/testDbName", AUTOCOMMIT, true))
+                        Map.of(JAKARTA_JDBC_URL, "mongodb://host/testDbName"))
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
-                        new ConnectionString("mongodb://localhost?replicaSet=testReplicaSetName")))
+                        new ConnectionString("mongodb://host?replicaSet=testReplicaSetName")))
                 .databaseName("testDbName2")
                 .build();
         assertEquals(
@@ -77,7 +76,7 @@ class MongoDialectSettingsTests {
     class IndividualTests {
         @Test
         void jakartaJdbcUrl() {
-            String connectionStringText = "mongodb://localhost/testDbName?replicaSet=testReplicaSetName";
+            String connectionStringText = "mongodb://host/testDbName?replicaSet=testReplicaSetName";
             assertAll(
                     () -> assertJakartaJdbcUrl("testReplicaSetName", "testDbName", connectionStringText),
                     () -> assertJakartaJdbcUrl(

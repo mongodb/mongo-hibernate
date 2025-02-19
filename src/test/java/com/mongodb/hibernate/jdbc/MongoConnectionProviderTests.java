@@ -18,7 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -68,8 +68,8 @@ class MongoConnectionProviderTests {
 
             // given
 
-            var hostInConnectionString = "my-host";
-            var connectionString = "mongodb://" + hostInConnectionString + "/my-db";
+            var hostInConnectionString = "host";
+            var connectionString = "mongodb://" + hostInConnectionString + "/db";
 
             var clusterListener = new TestClusterListener();
 
@@ -164,7 +164,7 @@ class MongoConnectionProviderTests {
     void testMongoDriverInformationPopulated() {
         verifyMongoClient(
                 null,
-                "mongodb://localhost/db",
+                "mongodb://host/db",
                 MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
     }
 
