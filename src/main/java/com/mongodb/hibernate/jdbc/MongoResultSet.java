@@ -243,7 +243,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("In scope of Array / Struct implementation");
+        throw new FeatureNotSupportedException();
     }
 
     @Override
