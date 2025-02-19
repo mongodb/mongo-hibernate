@@ -64,7 +64,7 @@ class MongoResultSetTests {
 
         @Test
         @DisplayName("No-op when 'close()' is called on a closed MongoResultSet")
-        void testNoopWhenCloseStatementClosed() throws SQLException {
+        void testNoopWhenCloseResultSetClosed() throws SQLException {
             // when && then
             assertDoesNotThrow(() -> mongoResultSet.close());
         }

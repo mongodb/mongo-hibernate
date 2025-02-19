@@ -90,7 +90,7 @@ class MongoPreparedStatementIntegrationTests {
                         {
                              insert: "books",
                              documents: [
-                                { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy" },
+                                { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy", comment: "reference only" },
                                 { _id: 2, publishYear: 1878, title: "Anna Karenina", author: "Leo Tolstoy",  vintage: true},
                                 { _id: 3, publishYear: 1866, author: "Fyodor Dostoevsky", title: "Crime and Punishment", vintage: false },
                             ]
@@ -101,7 +101,7 @@ class MongoPreparedStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testQuery(boolean autoCommit) throws SQLException {
-            ResultSet rs = session.doReturningWork(conn -> {
+            try (ResultSet rs = session.doReturningWork(conn -> {
                 conn.setAutoCommit(autoCommit);
                 try (var pstmt = conn.prepareStatement(
                         """
@@ -122,38 +122,39 @@ class MongoPreparedStatementIntegrationTests {
                         }
                     }
                 }
-            });
+            })) {
 
-            var metadata = rs.getMetaData();
+                var metadata = rs.getMetaData();
 
-            // assert metadata
-            assertAll(
-                    () -> assertEquals(5, metadata.getColumnCount()),
-                    () -> assertEquals("author", metadata.getColumnLabel(1)),
-                    () -> assertEquals("vintage", metadata.getColumnLabel(2)),
-                    () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
-                    () -> assertEquals("comment", metadata.getColumnLabel(4)),
-                    () -> assertEquals("title", metadata.getColumnLabel(5)));
+                // assert metadata
+                assertAll(
+                        () -> assertEquals(5, metadata.getColumnCount()),
+                        () -> assertEquals("author", metadata.getColumnLabel(1)),
+                        () -> assertEquals("vintage", metadata.getColumnLabel(2)),
+                        () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
+                        () -> assertEquals("comment", metadata.getColumnLabel(4)),
+                        () -> assertEquals("title", metadata.getColumnLabel(5)));
 
-            // assert columns
+                // assert columns
 
-            assertTrue(rs.next());
+                assertTrue(rs.next());
 
-            assertEquals(5, metadata.getColumnCount());
-            assertAll(
-                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                    () -> assertFalse(rs.getBoolean(2)),
-                    () -> assertEquals(1867, rs.getInt(3)),
-                    () -> assertEquals("reference only", rs.getString(4)),
-                    () -> assertEquals("War and Peace", rs.getString(5)));
-            assertTrue(rs.next());
-            assertAll(
-                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                    () -> assertTrue(rs.getBoolean(2)),
-                    () -> assertEquals(1878, rs.getInt(3)),
-                    () -> assertNull(rs.getString(4)),
-                    () -> assertEquals("Anna Karenina", rs.getString(5)));
-            assertFalse(rs.next());
+                assertEquals(5, metadata.getColumnCount());
+                assertAll(
+                        () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                        () -> assertFalse(rs.getBoolean(2)),
+                        () -> assertEquals(1867, rs.getInt(3)),
+                        () -> assertEquals("reference only", rs.getString(4)),
+                        () -> assertEquals("War and Peace", rs.getString(5)));
+                assertTrue(rs.next());
+                assertAll(
+                        () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                        () -> assertTrue(rs.getBoolean(2)),
+                        () -> assertEquals(1878, rs.getInt(3)),
+                        () -> assertNull(rs.getString(4)),
+                        () -> assertEquals("Anna Karenina", rs.getString(5)));
+                assertFalse(rs.next());
+            }
         }
     }
 
