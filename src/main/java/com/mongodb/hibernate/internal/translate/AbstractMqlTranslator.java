@@ -26,7 +26,7 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
+import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
@@ -244,7 +244,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
+        astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
     }
 
     @Override

@@ -18,11 +18,11 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonWriter;
 
-public final class AstPlaceholder implements AstValue {
+public final class AstParameterMarker implements AstValue {
 
-    public static AstPlaceholder INSTANCE = new AstPlaceholder();
+    public static AstParameterMarker INSTANCE = new AstParameterMarker();
 
-    private AstPlaceholder() {}
+    private AstParameterMarker() {}
 
     @Override
     public void render(BsonWriter writer) {

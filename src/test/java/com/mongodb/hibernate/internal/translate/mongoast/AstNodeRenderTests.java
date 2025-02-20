@@ -86,7 +86,7 @@ class AstNodeRenderTests {
             var elements = List.of(
                     new AstElement("$title", new AstLiteralValue(new BsonString("War and Peace"))),
                     new AstElement("$year", new AstLiteralValue(new BsonInt32(1867))),
-                    new AstElement("_id", AstPlaceholder.INSTANCE));
+                    new AstElement("_id", AstParameterMarker.INSTANCE));
             var insertCommand = new AstInsertCommand(collection, new AstDocument(elements));
 
             // when && then
