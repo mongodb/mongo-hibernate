@@ -76,32 +76,7 @@ class MongoResultSetTests {
         }
 
         private static Stream<Arguments> getMongoResultSetMethodInvocationsImpactedByClosing() {
-            return Map.<String, ResultSetMethodInvocation>ofEntries(
-                            Map.entry("next()", ResultSet::next),
-                            Map.entry("wasNull()", ResultSet::wasNull),
-                            Map.entry("getString(int)", rs -> rs.getString(1)),
-                            Map.entry("getBoolean(int)", rs -> rs.getBoolean(1)),
-                            Map.entry("getByte(int)", rs -> rs.getByte(1)),
-                            Map.entry("getShort(int)", rs -> rs.getShort(1)),
-                            Map.entry("getInt(int)", rs -> rs.getInt(1)),
-                            Map.entry("getLong(int)", rs -> rs.getLong(1)),
-                            Map.entry("getFloat(int)", rs -> rs.getFloat(1)),
-                            Map.entry("getDouble(int)", rs -> rs.getDouble(1)),
-                            Map.entry("getBytes(int)", rs -> rs.getBytes(1)),
-                            Map.entry("getDate(int)", rs -> rs.getDate(1)),
-                            Map.entry("getTime(int)", rs -> rs.getTime(1)),
-                            Map.entry("getTime(int,Calendar)", rs -> rs.getTime(1, Calendar.getInstance())),
-                            Map.entry("getTimestamp(int)", rs -> rs.getTimestamp(1)),
-                            Map.entry("getTimestamp(int,Calendar)", rs -> rs.getTimestamp(1, Calendar.getInstance())),
-                            Map.entry("getBigDecimal(int)", rs -> rs.getBigDecimal(1)),
-                            Map.entry("getArray(int)", rs -> rs.getArray(1)),
-                            Map.entry("getObject(int,Class)", rs -> rs.getObject(1, String.class)),
-                            Map.entry("getMetaData()", ResultSet::getMetaData),
-                            Map.entry("findColumn(String)", rs -> rs.findColumn("name")),
-                            Map.entry("isWrapperFor(Class)", rs -> rs.isWrapperFor(MongoResultSet.class)))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
+            return doGetMongoResultSetMethodInvocationsImpactedByClosing();
         }
     }
 
@@ -131,32 +106,46 @@ class MongoResultSetTests {
         private static Stream<Arguments> getMongoResultSetMethodInvocationsWithColumnIndexOverflow() {
             return doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(FIELDS.size() + 1);
         }
+    }
 
-        private static Stream<Arguments> doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(int columnIndex) {
-            return Map.<String, ResultSetMethodInvocation>ofEntries(
-                            Map.entry("getString(int)", rs -> rs.getString(columnIndex)),
-                            Map.entry("getBoolean(int)", rs -> rs.getBoolean(columnIndex)),
-                            Map.entry("getByte(int)", rs -> rs.getByte(columnIndex)),
-                            Map.entry("getShort(int)", rs -> rs.getShort(columnIndex)),
-                            Map.entry("getInt(int)", rs -> rs.getInt(columnIndex)),
-                            Map.entry("getLong(int)", rs -> rs.getLong(columnIndex)),
-                            Map.entry("getFloat(int)", rs -> rs.getFloat(columnIndex)),
-                            Map.entry("getDouble(int)", rs -> rs.getDouble(columnIndex)),
-                            Map.entry("getBytes(int)", rs -> rs.getBytes(columnIndex)),
-                            Map.entry("getDate(int)", rs -> rs.getDate(columnIndex)),
-                            Map.entry("getTime(int)", rs -> rs.getTime(columnIndex)),
-                            Map.entry("getTime(int,Calendar)", rs -> rs.getTime(columnIndex, Calendar.getInstance())),
-                            Map.entry("getTimestamp(int)", rs -> rs.getTimestamp(columnIndex)),
-                            Map.entry(
-                                    "getTimestamp(int,Calendar)",
-                                    rs -> rs.getTimestamp(columnIndex, Calendar.getInstance())),
-                            Map.entry("getBigDecimal(int)", rs -> rs.getBigDecimal(columnIndex)),
-                            Map.entry("getArray(int)", rs -> rs.getArray(columnIndex)),
-                            Map.entry("getObject(int,Class)", rs -> rs.getObject(columnIndex, String.class)))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
-        }
+    static Stream<Arguments> doGetMongoResultSetMethodInvocationsImpactedByClosing() {
+        var invocationsImpactedByColumnIndex = doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(1);
+        var additionalArguments = Map.<String, ResultSetMethodInvocation>ofEntries(
+                        Map.entry("next()", ResultSet::next),
+                        Map.entry("wasNull()", ResultSet::wasNull),
+                        Map.entry("getMetaData()", ResultSet::getMetaData),
+                        Map.entry("findColumn(String)", rs -> rs.findColumn("name")),
+                        Map.entry("isWrapperFor(Class)", rs -> rs.isWrapperFor(MongoResultSet.class)))
+                .entrySet()
+                .stream()
+                .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
+        return Stream.concat(invocationsImpactedByColumnIndex, additionalArguments);
+    }
+
+    static Stream<Arguments> doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(int columnIndex) {
+        return Map.<String, ResultSetMethodInvocation>ofEntries(
+                        Map.entry("getString(int)", rs -> rs.getString(columnIndex)),
+                        Map.entry("getBoolean(int)", rs -> rs.getBoolean(columnIndex)),
+                        Map.entry("getByte(int)", rs -> rs.getByte(columnIndex)),
+                        Map.entry("getShort(int)", rs -> rs.getShort(columnIndex)),
+                        Map.entry("getInt(int)", rs -> rs.getInt(columnIndex)),
+                        Map.entry("getLong(int)", rs -> rs.getLong(columnIndex)),
+                        Map.entry("getFloat(int)", rs -> rs.getFloat(columnIndex)),
+                        Map.entry("getDouble(int)", rs -> rs.getDouble(columnIndex)),
+                        Map.entry("getBytes(int)", rs -> rs.getBytes(columnIndex)),
+                        Map.entry("getDate(int)", rs -> rs.getDate(columnIndex)),
+                        Map.entry("getTime(int)", rs -> rs.getTime(columnIndex)),
+                        Map.entry("getTime(int,Calendar)", rs -> rs.getTime(columnIndex, Calendar.getInstance())),
+                        Map.entry("getTimestamp(int)", rs -> rs.getTimestamp(columnIndex)),
+                        Map.entry(
+                                "getTimestamp(int,Calendar)",
+                                rs -> rs.getTimestamp(columnIndex, Calendar.getInstance())),
+                        Map.entry("getBigDecimal(int)", rs -> rs.getBigDecimal(columnIndex)),
+                        Map.entry("getArray(int)", rs -> rs.getArray(columnIndex)),
+                        Map.entry("getObject(int,Class)", rs -> rs.getObject(columnIndex, String.class)))
+                .entrySet()
+                .stream()
+                .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
     }
 
     @FunctionalInterface
