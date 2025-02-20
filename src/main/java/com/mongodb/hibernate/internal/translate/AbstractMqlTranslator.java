@@ -16,15 +16,22 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
+import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterField;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -193,7 +200,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var tableName = tableInsertStandard.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsertStandard.getValueBindings()) {
-            var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
+            var astValue = acceptAndYield(assertNotNull(columnValueBinding.getValueExpression()), FIELD_VALUE);
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
         }
@@ -209,11 +216,35 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Table Mutation: deletion
+
+    @Override
+    public void visitStandardTableDelete(TableDeleteStandard tableDeleteStandard) {
+        if (tableDeleteStandard.getWhereFragment() != null) {
+            throw new FeatureNotSupportedException();
+        }
+
+        if (tableDeleteStandard.getNumberOfOptimisticLockBindings() > 0) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
+        }
+
+        if (tableDeleteStandard.getNumberOfKeyBindings() > 1) {
+            throw new FeatureNotSupportedException("MongoDB doesn't support id spanning across multiple columns");
+        }
+        assertTrue(tableDeleteStandard.getNumberOfKeyBindings() == 1);
+        var keyBinding = tableDeleteStandard.getKeyBindings().get(0);
+
+        var tableName = tableDeleteStandard.getMutatingTable().getTableName();
+        var astFilterField = new AstFilterField(keyBinding.getColumnReference().getColumnExpression());
+        var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
+        var keyFilter = new AstFieldOperationFilter(astFilterField, new AstComparisonFilterOperation(EQ, astValue));
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, keyFilter));
+    }
 
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
+        astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
     }
 
     @Override
@@ -554,11 +585,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitCustomTableInsert(TableInsertCustomSql tableInsertCustomSql) {
         throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitStandardTableDelete(TableDeleteStandard tableDeleteStandard) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-17 https://jira.mongodb.org/browse/HIBERNATE-17");
     }
 
     @Override
