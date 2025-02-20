@@ -43,7 +43,6 @@ import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,8 +75,7 @@ class MongoResultSetTests {
         }
 
         @Test
-        @DisplayName("No-op when 'close()' is called on a closed MongoResultSet")
-        void testNoopWhenCloseResultSetClosed() {
+        void testIsIdempotent() {
             assertDoesNotThrow(() -> mongoResultSet.close());
         }
 
