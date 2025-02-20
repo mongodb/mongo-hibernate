@@ -26,8 +26,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
 import com.mongodb.hibernate.service.MongoDialectConfigurator;
 import java.lang.reflect.Type;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -105,13 +103,10 @@ public final class MongoDialectSettings {
     }
 
     /**
-     * Gets the name of a MongoDB database used as the {@linkplain Connection#getSchema() JDBC schema} of a
-     * {@linkplain Connection connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from
-     * {@link MongoConnectionProvider}.
+     * Gets the name of a MongoDB database to use.
      *
-     * @return The name of the default MongoDB database.
+     * @return The name of a MongoDB database to use.
      * @see Builder#databaseName(String)
-     * @see DatabaseMetaData#getSchemaTerm()
      */
     public String getDatabaseName() {
         return databaseName;
@@ -159,14 +154,11 @@ public final class MongoDialectSettings {
         }
 
         /**
-         * Sets the name of a MongoDB database used as the {@linkplain Connection#getSchema() JDBC schema} of a
-         * {@linkplain Connection connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from
-         * {@link MongoConnectionProvider}.
+         * Sets the name of a MongoDB database to use.
          *
-         * @param databaseName The name of the default MongoDB database.
+         * @param databaseName The name of a MongoDB database to use.
          * @return {@code this}.
          * @see MongoDialectSettings#getDatabaseName()
-         * @see DatabaseMetaData#getSchemaTerm()
          */
         public MongoDialectSettings.Builder databaseName(String databaseName) {
             this.databaseName = notNull("databaseName", databaseName);

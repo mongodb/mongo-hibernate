@@ -44,19 +44,17 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoConnection implements ConnectionAdapter {
 
-    private final MongoDialectSettings config;
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
-    private MongoDatabase mongoDatabase;
+    private final MongoDatabase mongoDatabase;
     private boolean closed;
 
     private boolean autoCommit;
 
     MongoConnection(MongoDialectSettings config, MongoClient mongoClient, ClientSession clientSession) {
-        this.config = config;
         this.mongoClient = mongoClient;
         this.clientSession = clientSession;
-        mongoDatabase = mongoDatabase(config.getDatabaseName());
+        mongoDatabase = mongoClient.getDatabase(config.getDatabaseName());
         autoCommit = true;
     }
 
@@ -205,28 +203,10 @@ final class MongoConnection implements ConnectionAdapter {
         return null;
     }
 
-    /**
-     * @param schemaName {@inheritDoc}. If {@code null}, then {@link MongoDialectSettings#getDatabaseName()} is used.
-     */
     @Override
-    public void setSchema(@Nullable String schemaName) throws SQLException {
+    public @Nullable String getSchema() throws SQLException {
         checkClosed();
-        mongoDatabase = mongoDatabase(schemaName);
-    }
-
-    private MongoDatabase mongoDatabase(@Nullable String mongoDatabaseName) {
-        return mongoClient.getDatabase(mongoDatabaseName == null ? config.getDatabaseName() : mongoDatabaseName);
-    }
-
-    /**
-     * @return The current schema name.
-     *     <p>Default value: {@link MongoDialectSettings#getDatabaseName()}.
-     * @see org.hibernate.tool.schema.extract.internal.AbstractInformationExtractorImpl
-     */
-    @Override
-    public String getSchema() throws SQLException {
-        checkClosed();
-        return mongoDatabase.getName();
+        return null;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

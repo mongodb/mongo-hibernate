@@ -35,7 +35,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
-    private static final String SCHEMA_TERM = "database";
 
     @VisibleForTesting(otherwise = PRIVATE)
     record VersionNumPair(int majorVersion, int minVersion) {}
@@ -89,12 +88,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     @Override
     public String getSQLKeywords() {
         return "";
-    }
-
-    /** @return {@value #SCHEMA_TERM}. */
-    @Override
-    public String getSchemaTerm() {
-        return SCHEMA_TERM;
     }
 
     @Override

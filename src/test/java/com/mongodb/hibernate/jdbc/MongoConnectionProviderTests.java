@@ -163,9 +163,7 @@ class MongoConnectionProviderTests {
     @Test
     void testMongoDriverInformationPopulated() {
         verifyMongoClient(
-                null,
-                "mongodb://host/db",
-                MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
+                null, "mongodb://host/db", MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
     }
 
     private void verifyMongoDriverInformationPopulated(MongoClient mongoClient) {
