@@ -32,9 +32,7 @@ import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Stream;
-import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
@@ -163,7 +161,6 @@ class MongoResultSetTests {
                 .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
     }
 
-    @FunctionalInterface
     interface ResultSetMethodInvocation {
         void runOn(ResultSet rs) throws SQLException;
     }
@@ -172,7 +169,6 @@ class MongoResultSetTests {
     void testGetValues() throws SQLException {
 
         // given
-        var bytes = UUID.randomUUID().toString().getBytes();
         var string = "Hello World";
         var bigDecimal = new BigDecimal(12345678);
         var entries = List.of(
@@ -181,9 +177,8 @@ class MongoResultSetTests {
                 Map.entry("f3", new BsonDouble(3.1415)),
                 Map.entry("f4", new BsonInt32(120)),
                 Map.entry("f5", new BsonInt64(12345678)),
-                Map.entry("f6", new BsonBinary(bytes)),
-                Map.entry("f7", new BsonString(string)),
-                Map.entry("f8", new BsonDecimal128(new Decimal128(bigDecimal))));
+                Map.entry("f6", new BsonString(string)),
+                Map.entry("f7", new BsonDecimal128(new Decimal128(bigDecimal))));
 
         var bsonDocument = new BsonDocument();
         entries.forEach(entry -> bsonDocument.put(entry.getKey(), entry.getValue()));
@@ -209,7 +204,6 @@ class MongoResultSetTests {
                         () -> assertEquals(0L, mongoResultSet.getLong(1)),
                         () -> assertEquals(0f, mongoResultSet.getFloat(1)),
                         () -> assertEquals(0d, mongoResultSet.getDouble(1)),
-                        () -> assertNull(mongoResultSet.getBytes(1)),
                         () -> assertNull(mongoResultSet.getBigDecimal(1))),
 
                 // f2: new new BsonBoolean(true)
@@ -222,7 +216,6 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(2)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(2)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBytes(2)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(2))),
 
                 // f3: new BsonDouble(3.1415)
@@ -235,7 +228,6 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(3)),
                         () -> assertEquals(3.1415f, mongoResultSet.getFloat(3)),
                         () -> assertEquals(3.1415d, mongoResultSet.getDouble(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBytes(3)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(3))),
 
                 // f4: new BsonInt32(2015)
@@ -248,7 +240,6 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(4)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(4)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(4)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBytes(4)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(4))),
 
                 // f5: new BsonInt64(12345678)
@@ -261,12 +252,11 @@ class MongoResultSetTests {
                         () -> assertEquals(12345678L, mongoResultSet.getLong(5)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(5)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBytes(5)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(5))),
 
-                // f6: new BsonBinary(bytes)
+                // f6: new BsonString(string)
                 () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(6)),
+                        () -> assertEquals(string, mongoResultSet.getString(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(6)),
@@ -274,12 +264,11 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(6)),
-                        () -> assertEquals(bytes, mongoResultSet.getBytes(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(6))),
 
-                // f7: new BsonString(string)
+                // f7: new new BsonDecimal128(bigDecimal))
                 () -> assertAll(
-                        () -> assertEquals(string, mongoResultSet.getString(7)),
+                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(7)),
@@ -287,20 +276,6 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBytes(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(7))),
-
-                // f8: new new BsonDecimal128(bigDecimal))
-                () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getInt(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(8)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBytes(8)),
-                        () -> assertEquals(bigDecimal, mongoResultSet.getBigDecimal(8))));
+                        () -> assertEquals(bigDecimal, mongoResultSet.getBigDecimal(7))));
     }
 }

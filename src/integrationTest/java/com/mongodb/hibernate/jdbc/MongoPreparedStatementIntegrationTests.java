@@ -23,11 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.model.Sorts;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
@@ -75,6 +77,7 @@ class MongoPreparedStatementIntegrationTests {
     @ValueSource(booleans = {true, false})
     void testExecuteQuery(boolean autoCommit) throws SQLException {
 
+        // given
         session.doWork(conn -> {
             var stmt = conn.createStatement();
             stmt.executeUpdate(
@@ -97,6 +100,7 @@ class MongoPreparedStatementIntegrationTests {
                     }""");
         });
 
+        // when
         try (ResultSet rs = session.doReturningWork(conn -> {
             conn.setAutoCommit(autoCommit);
             try (var pstmt = conn.prepareStatement(
@@ -120,6 +124,7 @@ class MongoPreparedStatementIntegrationTests {
             }
         })) {
 
+            // then
             var metadata = rs.getMetaData();
 
             // assert metadata
@@ -131,11 +136,11 @@ class MongoPreparedStatementIntegrationTests {
                     () -> assertEquals("comment", metadata.getColumnLabel(4)),
                     () -> assertEquals("title", metadata.getColumnLabel(5)));
 
+            assertEquals(5, metadata.getColumnCount());
+
             // assert columns
 
             assertTrue(rs.next());
-
-            assertEquals(5, metadata.getColumnCount());
             assertAll(
                     () -> assertEquals("Leo Tolstoy", rs.getString(1)),
                     () -> assertFalse(rs.getBoolean(2)),
@@ -149,6 +154,131 @@ class MongoPreparedStatementIntegrationTests {
                     () -> assertEquals(1878, rs.getInt(3)),
                     () -> assertNull(rs.getString(4)),
                     () -> assertEquals("Anna Karenina", rs.getString(5)));
+            assertFalse(rs.next());
+        }
+    }
+
+    @ParameterizedTest(name = "autoCommit: {0}")
+    @ValueSource(booleans = {true, false})
+    void testPreparedStatementAndResultSetRoundTrip(boolean autoCommit) throws SQLException {
+
+        // given
+        var random = new Random();
+
+        boolean booleanValue = random.nextBoolean();
+        float floatValue = random.nextFloat();
+        double doubleValue = random.nextDouble();
+        byte byteValue = (byte) random.nextInt(Byte.MAX_VALUE + 1);
+        short shortValue = (short) random.nextInt(Short.MAX_VALUE + 1);
+        int intValue = random.nextInt();
+        long longValue = random.nextLong();
+
+        byte[] bytes = new byte[64];
+        random.nextBytes(bytes);
+        String stringValue = new String(bytes);
+
+        BigDecimal bigDecimalValue = new BigDecimal(random.nextInt());
+
+        session.doWork(conn -> {
+            conn.setAutoCommit(true);
+            var stmt = conn.createStatement();
+            stmt.executeUpdate(
+                    """
+                    {
+                        delete: "books",
+                        deletes: [
+                            { q: {}, limit: 0 }
+                        ]
+                    }""");
+            conn.setAutoCommit(autoCommit);
+            try (var pstmt = conn.prepareStatement(
+                    """
+                    {
+                        insert: "books",
+                        documents: [
+                            {
+                                _id: 1,
+                                booleanField: { $undefined: true },
+                                floatField: { $undefined: true },
+                                doubleField: { $undefined: true },
+                                byteField: { $undefined: true },
+                                shortField: { $undefined: true },
+                                intField: { $undefined: true },
+                                longField: { $undefined: true },
+                                stringField: { $undefined: true },
+                                bigDecimalField: { $undefined: true }
+                            }
+                        ]
+                    }""")) {
+
+                pstmt.setBoolean(1, booleanValue);
+                pstmt.setFloat(2, floatValue);
+                pstmt.setDouble(3, doubleValue);
+                pstmt.setByte(4, byteValue);
+                pstmt.setShort(5, shortValue);
+                pstmt.setInt(6, intValue);
+                pstmt.setLong(7, longValue);
+                pstmt.setString(8, stringValue);
+                pstmt.setBigDecimal(9, bigDecimalValue);
+                try {
+                    pstmt.executeUpdate();
+                } finally {
+                    if (!autoCommit) {
+                        conn.commit();
+                    }
+                }
+            }
+        });
+
+        // when
+        try (ResultSet rs = session.doReturningWork(conn -> {
+            conn.setAutoCommit(autoCommit);
+            try (var pstmt = conn.prepareStatement(
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { _id: { $eq: { $undefined: true } } } },
+                            { $project:
+                                {
+                                    _id: 0,
+                                    booleanField: 1,
+                                    floatField: 1,
+                                    doubleField: 1,
+                                    byteField: 1,
+                                    shortField: 1,
+                                    intField: 1,
+                                    longField: 1,
+                                    stringField: 1,
+                                    bigDecimalField: 1
+                                }
+                            }
+                        ]
+                    }""")) {
+
+                pstmt.setInt(1, 1);
+                try {
+                    return pstmt.executeQuery();
+                } finally {
+                    if (!autoCommit) {
+                        conn.commit();
+                    }
+                }
+            }
+        })) {
+
+            // then
+            assertTrue(rs.next());
+            assertAll(
+                    () -> assertEquals(booleanValue, rs.getBoolean(1)),
+                    () -> assertEquals(floatValue, rs.getFloat(2)),
+                    () -> assertEquals(doubleValue, rs.getDouble(3)),
+                    () -> assertEquals(byteValue, rs.getByte(4)),
+                    () -> assertEquals(shortValue, rs.getShort(5)),
+                    () -> assertEquals(intValue, rs.getInt(6)),
+                    () -> assertEquals(longValue, rs.getLong(7)),
+                    () -> assertEquals(stringValue, rs.getString(8)),
+                    () -> assertEquals(bigDecimalValue, rs.getBigDecimal(9)));
             assertFalse(rs.next());
         }
     }

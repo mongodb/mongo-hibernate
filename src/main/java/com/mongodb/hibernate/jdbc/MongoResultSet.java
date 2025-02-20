@@ -181,7 +181,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public byte @Nullable [] getBytes(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asBinary().getData());
+        throw new FeatureNotSupportedException();
     }
 
     @Override
