@@ -71,90 +71,85 @@ class MongoPreparedStatementIntegrationTests {
         }
     }
 
-    @Nested
-    class ExecuteQueryTests {
-        @BeforeEach
-        void setUp() {
-            session.doWork(conn -> {
-                var stmt = conn.createStatement();
-                stmt.executeUpdate(
-                        """
-                        {
-                            delete: "books",
-                            deletes: [
-                                { q: {}, limit: 0 }
-                            ]
-                        }""");
-                stmt.executeUpdate(
-                        """
-                        {
-                             insert: "books",
-                             documents: [
-                                { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy", comment: "reference only" },
-                                { _id: 2, publishYear: 1878, title: "Anna Karenina", author: "Leo Tolstoy",  vintage: true},
-                                { _id: 3, publishYear: 1866, author: "Fyodor Dostoevsky", title: "Crime and Punishment", vintage: false },
-                            ]
-                        }""");
-            });
-        }
+    @ParameterizedTest(name = "autoCommit: {0}")
+    @ValueSource(booleans = {true, false})
+    void testExecuteQuery(boolean autoCommit) throws SQLException {
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testQuery(boolean autoCommit) throws SQLException {
-            try (ResultSet rs = session.doReturningWork(conn -> {
-                conn.setAutoCommit(autoCommit);
-                try (var pstmt = conn.prepareStatement(
-                        """
-                        {
-                            aggregate: "books",
-                            pipeline: [
-                                { $match: { author: { $eq: { $undefined: true } } } },
-                                { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }
-                            ]
-                        }""")) {
+        session.doWork(conn -> {
+            var stmt = conn.createStatement();
+            stmt.executeUpdate(
+                    """
+                    {
+                        delete: "books",
+                        deletes: [
+                            { q: {}, limit: 0 }
+                        ]
+                    }""");
+            stmt.executeUpdate(
+                    """
+                    {
+                         insert: "books",
+                         documents: [
+                            { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy", comment: "reference only" },
+                            { _id: 2, publishYear: 1878, title: "Anna Karenina", author: "Leo Tolstoy",  vintage: true},
+                            { _id: 3, publishYear: 1866, author: "Fyodor Dostoevsky", title: "Crime and Punishment", vintage: false },
+                        ]
+                    }""");
+        });
 
-                    pstmt.setString(1, "Leo Tolstoy");
-                    try {
-                        return pstmt.executeQuery();
-                    } finally {
-                        if (!autoCommit) {
-                            conn.commit();
-                        }
+        try (ResultSet rs = session.doReturningWork(conn -> {
+            conn.setAutoCommit(autoCommit);
+            try (var pstmt = conn.prepareStatement(
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { author: { $eq: { $undefined: true } } } },
+                            { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }
+                        ]
+                    }""")) {
+
+                pstmt.setString(1, "Leo Tolstoy");
+                try {
+                    return pstmt.executeQuery();
+                } finally {
+                    if (!autoCommit) {
+                        conn.commit();
                     }
                 }
-            })) {
-
-                var metadata = rs.getMetaData();
-
-                // assert metadata
-                assertAll(
-                        () -> assertEquals(5, metadata.getColumnCount()),
-                        () -> assertEquals("author", metadata.getColumnLabel(1)),
-                        () -> assertEquals("vintage", metadata.getColumnLabel(2)),
-                        () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
-                        () -> assertEquals("comment", metadata.getColumnLabel(4)),
-                        () -> assertEquals("title", metadata.getColumnLabel(5)));
-
-                // assert columns
-
-                assertTrue(rs.next());
-
-                assertEquals(5, metadata.getColumnCount());
-                assertAll(
-                        () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                        () -> assertFalse(rs.getBoolean(2)),
-                        () -> assertEquals(1867, rs.getInt(3)),
-                        () -> assertEquals("reference only", rs.getString(4)),
-                        () -> assertEquals("War and Peace", rs.getString(5)));
-                assertTrue(rs.next());
-                assertAll(
-                        () -> assertEquals("Leo Tolstoy", rs.getString(1)),
-                        () -> assertTrue(rs.getBoolean(2)),
-                        () -> assertEquals(1878, rs.getInt(3)),
-                        () -> assertNull(rs.getString(4)),
-                        () -> assertEquals("Anna Karenina", rs.getString(5)));
-                assertFalse(rs.next());
             }
+        })) {
+
+            var metadata = rs.getMetaData();
+
+            // assert metadata
+            assertAll(
+                    () -> assertEquals(5, metadata.getColumnCount()),
+                    () -> assertEquals("author", metadata.getColumnLabel(1)),
+                    () -> assertEquals("vintage", metadata.getColumnLabel(2)),
+                    () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
+                    () -> assertEquals("comment", metadata.getColumnLabel(4)),
+                    () -> assertEquals("title", metadata.getColumnLabel(5)));
+
+            // assert columns
+
+            assertTrue(rs.next());
+
+            assertEquals(5, metadata.getColumnCount());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertFalse(rs.getBoolean(2)),
+                    () -> assertEquals(1867, rs.getInt(3)),
+                    () -> assertEquals("reference only", rs.getString(4)),
+                    () -> assertEquals("War and Peace", rs.getString(5)));
+            assertTrue(rs.next());
+            assertAll(
+                    () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                    () -> assertTrue(rs.getBoolean(2)),
+                    () -> assertEquals(1878, rs.getInt(3)),
+                    () -> assertNull(rs.getString(4)),
+                    () -> assertEquals("Anna Karenina", rs.getString(5)));
+            assertFalse(rs.next());
         }
     }
 
@@ -205,7 +200,7 @@ class MongoPreparedStatementIntegrationTests {
                     ]
                 }""";
 
-        @ParameterizedTest
+        @ParameterizedTest(name = "autoCommit: {0}")
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
             // given
