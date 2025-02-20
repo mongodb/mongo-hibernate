@@ -291,12 +291,10 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     private void checkColumnIndex(int columnIndex) throws SQLException {
-        if (fieldNames.isEmpty()) {
-            throw new SQLException("No field exists");
-        }
         if (columnIndex < 1 || columnIndex > fieldNames.size()) {
-            throw new SQLException(
-                    format("Invalid column index [%d]; should be within [1, %d]", columnIndex, fieldNames.size()));
+            throw new SQLException(format(
+                    "Invalid column index [%d]; cannot be under 1 or over the current number of fields [%d]",
+                    columnIndex, fieldNames.size()));
         }
     }
 }
