@@ -18,9 +18,10 @@ package com.mongodb.hibernate.jdbc;
 
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -32,62 +33,59 @@ import com.mongodb.event.ClusterClosedEvent;
 import com.mongodb.event.ClusterListener;
 import com.mongodb.event.ClusterOpeningEvent;
 import com.mongodb.hibernate.BuildConfig;
-import com.mongodb.hibernate.service.MongoClientCustomizer;
+import com.mongodb.hibernate.service.MongoDialectConfigurator;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.service.Service;
+import org.hibernate.service.ServiceRegistry;
+import org.hibernate.service.spi.ServiceBinding;
 import org.hibernate.service.spi.ServiceException;
+import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoConnectionProviderTests {
 
     @Nested
-    class MongoClientCustomizerTests {
+    class MongoDialectConfiguratorTests {
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testMongoClientCustomizerTakeEffect(boolean customizerAppliesConnectionString) {
+        @Test
+        void testMongoClientCustomizerTakeEffect() {
 
             // given
 
             var hostInConnectionString = "host";
-            var connectionString = "mongodb://" + hostInConnectionString;
+            var connectionString = "mongodb://" + hostInConnectionString + "/db";
 
             var clusterListener = new TestClusterListener();
 
-            MongoClientCustomizer customizer = (builder, cs) -> {
-                builder.applyToClusterSettings(
-                        clusterSettingsBuilder -> clusterSettingsBuilder.addClusterListener(clusterListener));
-                if (customizerAppliesConnectionString) {
-                    builder.applyConnectionString(cs);
-                }
-            };
+            MongoDialectConfigurator configurator =
+                    dialectSettingsBuilder -> dialectSettingsBuilder.applyToMongoClientSettings(clientSettingsBuilder ->
+                            clientSettingsBuilder.applyToClusterSettings(clusterSettingsBuilder ->
+                                    clusterSettingsBuilder.addClusterListener(clusterListener)));
 
             // when
-            verifyMongoClient(customizer, connectionString, mongoClient -> {
+            verifyMongoClient(configurator, connectionString, mongoClient -> {
                 var hosts = mongoClient.getClusterDescription().getClusterSettings().getHosts().stream()
                         .map(ServerAddress::getHost)
                         .collect(toSet());
 
                 // then
-                if (customizerAppliesConnectionString) {
-                    assertEquals(singleton(hostInConnectionString), hosts);
-                } else {
-                    assertNotEquals(singleton(hostInConnectionString), hosts);
-                }
+                assertEquals(singleton(hostInConnectionString), hosts);
                 clusterListener.assertClusterOpening();
             });
             clusterListener.assertClusterClosed();
@@ -95,13 +93,15 @@ class MongoConnectionProviderTests {
 
         @Test
         void testMongoClientCustomizerThrowException() {
-            assertThrows(NullPointerException.class, () -> {
+            RuntimeException e = new RuntimeException();
+            HibernateException actual = assertThrows(HibernateException.class, () -> {
                 try (var ignored = buildSessionFactory(
-                        (builder, cs) -> {
-                            throw new NullPointerException();
+                        dialectSettingsBuilder -> {
+                            throw e;
                         },
                         null)) {}
             });
+            assertSame(e, actual.getCause());
         }
 
         private static class TestClusterListener implements ClusterListener {
@@ -149,6 +149,18 @@ class MongoConnectionProviderTests {
     }
 
     @Test
+    void defaultAutoCommit() throws SQLException {
+        MongoConnectionProvider connectionProvider = new MongoConnectionProvider();
+        connectionProvider.injectServices(NoopServiceRegistryImplementor.INSTANCE);
+        connectionProvider.configure(Map.of(JAKARTA_JDBC_URL, "mongodb://host/db"));
+        try (Connection connection = connectionProvider.getConnection()) {
+            assertTrue(connection.getAutoCommit());
+        } finally {
+            connectionProvider.stop();
+        }
+    }
+
+    @Test
     void testMongoDriverInformationPopulated() {
         verifyMongoClient(
                 null, "mongodb://host/db", MongoConnectionProviderTests.this::verifyMongoDriverInformationPopulated);
@@ -162,9 +174,9 @@ class MongoConnectionProviderTests {
     }
 
     private void verifyMongoClient(
-            MongoClientCustomizer mongoClientCustomizer, String connectionString, Consumer<MongoClient> verifier)
+            MongoDialectConfigurator mongoDialectConfigurator, String connectionString, Consumer<MongoClient> verifier)
             throws ServiceException {
-        try (var sessionFactory = buildSessionFactory(mongoClientCustomizer, connectionString)) {
+        try (var sessionFactory = buildSessionFactory(mongoDialectConfigurator, connectionString)) {
             var mongoConnectionProvider = (MongoConnectionProvider) sessionFactory
                     .unwrap(SessionFactoryImplementor.class)
                     .getServiceRegistry()
@@ -175,18 +187,54 @@ class MongoConnectionProviderTests {
         }
     }
 
-    private SessionFactory buildSessionFactory(MongoClientCustomizer mongoClientCustomizer, String connectionString) {
+    private SessionFactory buildSessionFactory(
+            MongoDialectConfigurator mongoDialectConfigurator, String connectionString) {
         var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
-        if (mongoClientCustomizer != null) {
-            standardServiceRegistryBuilder.addService(MongoClientCustomizer.class, mongoClientCustomizer);
+        if (mongoDialectConfigurator != null) {
+            standardServiceRegistryBuilder.addService(MongoDialectConfigurator.class, mongoDialectConfigurator);
         }
         if (connectionString != null) {
-            standardServiceRegistryBuilder.applySetting(JdbcSettings.JAKARTA_JDBC_URL, connectionString);
+            standardServiceRegistryBuilder.applySetting(JAKARTA_JDBC_URL, connectionString);
         }
         return new MetadataSources(standardServiceRegistryBuilder.build())
                 .getMetadataBuilder()
                 .build()
                 .getSessionFactoryBuilder()
                 .build();
+    }
+
+    private static final class NoopServiceRegistryImplementor implements ServiceRegistryImplementor {
+        static final NoopServiceRegistryImplementor INSTANCE = new NoopServiceRegistryImplementor();
+
+        private NoopServiceRegistryImplementor() {}
+
+        @Override
+        public <R extends Service> ServiceBinding<R> locateServiceBinding(Class<R> serviceRole) {
+            return null;
+        }
+
+        @Override
+        public void destroy() {}
+
+        @Override
+        public void registerChild(ServiceRegistryImplementor child) {}
+
+        @Override
+        public void deRegisterChild(ServiceRegistryImplementor child) {}
+
+        @Override
+        public <T extends Service> T fromRegistryOrChildren(Class<T> serviceRole) {
+            return null;
+        }
+
+        @Override
+        public ServiceRegistry getParentServiceRegistry() {
+            return null;
+        }
+
+        @Override
+        public <R extends Service> R getService(Class<R> serviceRole) {
+            return null;
+        }
     }
 }

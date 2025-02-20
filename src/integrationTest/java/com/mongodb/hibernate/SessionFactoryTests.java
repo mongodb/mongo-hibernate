@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate;
 
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;

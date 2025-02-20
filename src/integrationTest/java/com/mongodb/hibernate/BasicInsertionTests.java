@@ -17,12 +17,11 @@
 package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.dialect.MongoDialectSettings;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -32,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonDocument;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -115,12 +114,11 @@ class BasicInsertionTests {
     }
 
     private void onMongoCollection(Consumer<MongoCollection<BsonDocument>> collectionConsumer) {
-        var connectionString = new ConnectionString(new Configuration().getProperty(JAKARTA_JDBC_URL));
-        try (var mongoClient = MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(connectionString)
-                .build())) {
+        MongoDialectSettings config = MongoDialectSettings.builder(new StandardServiceRegistryBuilder().getSettings())
+                .build();
+        try (var mongoClient = MongoClients.create(config.getMongoClientSettings())) {
             var collection =
-                    mongoClient.getDatabase(connectionString.getDatabase()).getCollection("books", BsonDocument.class);
+                    mongoClient.getDatabase(config.getDatabaseName()).getCollection("books", BsonDocument.class);
             collectionConsumer.accept(collection);
         }
     }
@@ -132,7 +130,7 @@ class BasicInsertionTests {
     }
 
     private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).asList().singleElement().isEqualTo(expectedDoc);
+        assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
     @Entity(name = "Book")
