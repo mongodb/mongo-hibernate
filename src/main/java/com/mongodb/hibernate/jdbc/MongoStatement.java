@@ -77,7 +77,7 @@ class MongoStatement implements StatementAdapter {
                     pipeline.get(pipeline.size() - 1).asDocument().getDocument("$project"));
             return new MongoResultSet(cursor, fieldNames);
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to run aggregate command: " + e.getMessage(), e);
+            throw new SQLException("Failed to execute query: " + e.getMessage(), e);
         }
     }
 
