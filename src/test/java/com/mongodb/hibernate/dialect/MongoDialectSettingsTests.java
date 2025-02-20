@@ -34,7 +34,7 @@ class MongoDialectSettingsTests {
     void requiresPropertiesThatHaveNoDefaults() {
         NullPointerException e = assertThrows(NullPointerException.class, () -> MongoDialectSettings.builder(emptyMap())
                 .build());
-        assertThat(e.getMessage()).matches("databaseName must not be null");
+        assertEquals("databaseName must not be null", e.getMessage());
     }
 
     @Test

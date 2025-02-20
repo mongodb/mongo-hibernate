@@ -27,7 +27,7 @@ import org.hibernate.service.Service;
  *
  * <pre>{@code
  * var dialectConfigurator = (dialectSettingsBuilder) -> {
- *     // configure client settings to your heart's content
+ *     // configure the dialect to your heart's content
  *     ...
  * };
  *
@@ -48,7 +48,7 @@ import org.hibernate.service.Service;
 public interface MongoDialectConfigurator extends Service {
 
     /**
-     * Configures {@code dialectSettingsBuilder}.
+     * Configures {@link MongoDialectSettings} via {@code dialectSettingsBuilder}.
      *
      * @param dialectSettingsBuilder The {@linkplain MongoDialectSettings#builder(Map) pre-configured}
      *     {@link MongoDialectSettings.Builder}.

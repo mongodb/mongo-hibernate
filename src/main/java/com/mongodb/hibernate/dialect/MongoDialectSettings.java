@@ -113,13 +113,13 @@ public final class MongoDialectSettings {
     }
 
     /**
-     * Creates a new {@link MongoDialectSettings.Builder} based on {@code configProperties}.
+     * Creates a new {@link MongoDialectSettings.Builder} based on {@code configurationValues}.
      *
-     * @param configProperties The {@linkplain Configurable#configure(Map) configuration properties}.
+     * @param configurationValues The {@linkplain Configurable#configure(Map) configuration properties}.
      * @return A new {@link MongoDialectSettings.Builder}.
      */
-    public static MongoDialectSettings.Builder builder(Map<String, Object> configProperties) {
-        return new MongoDialectSettings.Builder(notNull("configProperties", configProperties));
+    public static MongoDialectSettings.Builder builder(Map<String, Object> configurationValues) {
+        return new MongoDialectSettings.Builder(notNull("configurationValues", configurationValues));
     }
 
     /** A builder for {@code MongoDialectSettings}. */
@@ -127,9 +127,9 @@ public final class MongoDialectSettings {
         private final MongoClientSettings.Builder mongoClientSettingsBuilder;
         private @Nullable String databaseName;
 
-        private Builder(Map<String, Object> configProperties) {
+        private Builder(Map<String, Object> configurationValues) {
             mongoClientSettingsBuilder = MongoClientSettings.builder();
-            var connectionString = ConfigPropertiesParser.getConnectionString(configProperties);
+            var connectionString = ConfigPropertiesParser.getConnectionString(configurationValues);
             if (connectionString != null) {
                 mongoClientSettingsBuilder.applyConnectionString(connectionString);
                 databaseName = connectionString.getDatabase();
@@ -175,8 +175,8 @@ public final class MongoDialectSettings {
         }
 
         private static final class ConfigPropertiesParser {
-            static @Nullable ConnectionString getConnectionString(Map<String, Object> configProperties) {
-                var jdbcUrl = configProperties.get(JAKARTA_JDBC_URL);
+            static @Nullable ConnectionString getConnectionString(Map<String, Object> configurationValues) {
+                var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
                 if (jdbcUrl == null) {
                     return null;
                 }

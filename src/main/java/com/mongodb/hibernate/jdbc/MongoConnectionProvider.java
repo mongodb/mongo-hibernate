@@ -106,9 +106,9 @@ public final class MongoConnectionProvider
     }
 
     @Override
-    public void configure(Map<String, Object> configProperties) {
+    public void configure(Map<String, Object> configurationValues) {
         assertTrue(servicesWereInjected);
-        var jdbcUrl = configProperties.get(JAKARTA_JDBC_URL);
+        var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
 
         if (mongoDialectConfigurator == null && jdbcUrl == null) {
             throw new HibernateException(format(
@@ -117,7 +117,8 @@ public final class MongoConnectionProvider
         }
 
         try {
-            MongoDialectSettings.Builder mongoDialectSettingsBuilder = MongoDialectSettings.builder(configProperties);
+            MongoDialectSettings.Builder mongoDialectSettingsBuilder =
+                    MongoDialectSettings.builder(configurationValues);
             if (mongoDialectConfigurator != null) {
                 mongoDialectConfigurator.configure(mongoDialectSettingsBuilder);
             }
