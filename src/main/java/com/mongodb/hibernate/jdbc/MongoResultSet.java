@@ -46,6 +46,8 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.bson.BsonNull;
 import org.bson.BsonValue;
@@ -119,72 +121,67 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable String getString(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull() ? null : bsonValue.asString().getValue();
+        return getValue(columnIndex, bsonValue -> bsonValue.asString().getValue());
     }
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return !bsonValue.isNull() && bsonValue.asBoolean().getValue();
+        return getValue(columnIndex, bsonValue -> bsonValue.asBoolean().getValue(), false);
     }
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return (byte) (bsonValue.isNull() ? 0 : bsonValue.asNumber().intValue());
+        return getValue(columnIndex, bsonValue -> bsonValue.asInt32().intValue(), 0)
+                .byteValue();
     }
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return (short) (bsonValue.isNull() ? 0 : bsonValue.asNumber().intValue());
+        return getValue(columnIndex, bsonValue -> bsonValue.asInt32().intValue(), 0)
+                .shortValue();
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull() ? 0 : bsonValue.asNumber().intValue();
+        return getValue(columnIndex, bsonValue -> bsonValue.asInt32().intValue(), 0);
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull() ? 0 : bsonValue.asNumber().longValue();
+        return getValue(columnIndex, bsonValue -> bsonValue.asInt64().longValue(), 0L);
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull() ? 0 : (float) bsonValue.asNumber().doubleValue();
+        return getValue(columnIndex, bsonValue -> bsonValue.asDouble().getValue(), 0)
+                .floatValue();
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull() ? 0 : bsonValue.asNumber().doubleValue();
+        return getValue(columnIndex, bsonValue -> bsonValue.asDouble().getValue(), 0)
+                .doubleValue();
     }
 
     @Override
     public byte @Nullable [] getBytes(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull() ? null : bsonValue.asBinary().getData();
+        return getValue(columnIndex, bsonValue -> bsonValue.asBinary().getData());
     }
 
     @Override
@@ -226,10 +223,9 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable BigDecimal getBigDecimal(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        BsonValue bsonValue = getBsonValue(columnIndex);
-        return bsonValue.isNull()
-                ? null
-                : bsonValue.asDecimal128().decimal128Value().bigDecimalValue();
+        return getValue(
+                columnIndex,
+                bsonValue -> bsonValue.asDecimal128().decimal128Value().bigDecimalValue());
     }
 
     @Override
@@ -278,9 +274,20 @@ final class MongoResultSet implements ResultSetAdapter {
         }
     }
 
-    private BsonValue getBsonValue(int columnIndex) throws SQLException {
-        lastReadColumnValue = assertNotNull(currentDocument).get(getKey(columnIndex), BsonNull.VALUE);
-        return lastReadColumnValue;
+    private <T> T getValue(int columnIndex, Function<BsonValue, T> function, T defaultValue) throws SQLException {
+        return Objects.requireNonNullElse(getValue(columnIndex, function), defaultValue);
+    }
+
+    private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> function) throws SQLException {
+        try {
+            lastReadColumnValue = assertNotNull(currentDocument).get(getKey(columnIndex), BsonNull.VALUE);
+            if (lastReadColumnValue.isNull()) {
+                return null;
+            }
+            return function.apply(lastReadColumnValue);
+        } catch (RuntimeException e) {
+            throw new SQLException(format("Failed to get value from column [%d]: %s", columnIndex, e.getMessage()), e);
+        }
     }
 
     private void checkColumnIndex(int columnIndex) throws SQLException {
