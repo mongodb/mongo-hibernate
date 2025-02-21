@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
-import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -70,12 +69,14 @@ class MongoStatement implements StatementAdapter {
         try {
             var collectionName = command.getString("aggregate").getValue();
             var collection = mongoClient.getDatabase(DATABASE).getCollection(collectionName, BsonDocument.class);
-            var pipeline = command.getArray("pipeline").stream()
-                    .map(BsonValue::asDocument)
-                    .toList();
+            var pipelineArray = command.getArray("pipeline");
+
+            var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
+            pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
+
             var cursor = collection.aggregate(clientSession, pipeline).cursor();
             var fieldNames = getFieldNamesFromProjectDocument(
-                    pipeline.get(pipeline.size() - 1).asDocument().getDocument("$project"));
+                    pipeline.get(pipeline.size() - 1).getDocument("$project"));
             resultSet = new MongoResultSet(cursor, fieldNames);
             return resultSet;
         } catch (RuntimeException e) {
