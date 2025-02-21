@@ -112,6 +112,11 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
+    public boolean isClosed() {
+        return closed;
+    }
+
+    @Override
     public boolean wasNull() throws SQLException {
         checkClosed();
         return assertNotNull(lastReadColumnValue).isNull();

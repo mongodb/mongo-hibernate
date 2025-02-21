@@ -49,6 +49,7 @@ class MongoStatement implements StatementAdapter {
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
 
+    private @Nullable ResultSet resultSet;
     private boolean closed;
 
     MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
@@ -75,7 +76,8 @@ class MongoStatement implements StatementAdapter {
             var cursor = collection.aggregate(clientSession, pipeline).cursor();
             var fieldNames = getFieldNamesFromProjectDocument(
                     pipeline.get(pipeline.size() - 1).asDocument().getDocument("$project"));
-            return new MongoResultSet(cursor, fieldNames);
+            resultSet = new MongoResultSet(cursor, fieldNames);
+            return resultSet;
         } catch (RuntimeException e) {
             throw new SQLException("Failed to execute query: " + e.getMessage(), e);
         }
@@ -119,9 +121,12 @@ class MongoStatement implements StatementAdapter {
     }
 
     @Override
-    public void close() {
+    public void close() throws SQLException {
         if (!closed) {
             closed = true;
+            if (resultSet != null) {
+                resultSet.close();
+            }
         }
     }
 
