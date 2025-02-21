@@ -30,6 +30,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.List;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.jspecify.annotations.Nullable;
 
@@ -45,6 +48,7 @@ class MongoStatement implements StatementAdapter {
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
 
+    private @Nullable ResultSet resultSet;
     private boolean closed;
 
     MongoStatement(MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection) {
@@ -56,7 +60,46 @@ class MongoStatement implements StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        var command = parse(mql);
+        return executeQueryCommand(command);
+    }
+
+    ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
+        startTransactionIfNeeded();
+        try {
+            var collectionName = command.getString("aggregate").getValue();
+            var collection = mongoClient.getDatabase(DATABASE).getCollection(collectionName, BsonDocument.class);
+            var pipelineArray = command.getArray("pipeline");
+
+            var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
+            pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
+
+            var cursor = collection.aggregate(clientSession, pipeline).cursor();
+            var fieldNames = getFieldNamesFromProjectDocument(
+                    pipeline.get(pipeline.size() - 1).getDocument("$project"));
+            resultSet = new MongoResultSet(cursor, fieldNames);
+            return resultSet;
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to execute query: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Gets included field names from {@code $project} document
+     *
+     * @param projectDocument the {@code $project} document
+     * @return ordered field names included in {@code aggregate} command response
+     */
+    private List<String> getFieldNamesFromProjectDocument(BsonDocument projectDocument) {
+        var fieldNames = new ArrayList<String>(projectDocument.size());
+        projectDocument.forEach((key, value) -> {
+            boolean skip = (value.isNumber() && value.asNumber().intValue() == 0)
+                    || (value.isBoolean() && value.asBoolean().equals(BsonBoolean.FALSE));
+            if (!skip) {
+                fieldNames.add(key);
+            }
+        });
+        return fieldNames;
     }
 
     @Override
@@ -74,14 +117,17 @@ class MongoStatement implements StatementAdapter {
                     .runCommand(clientSession, command)
                     .getInteger("n");
         } catch (Exception e) {
-            throw new SQLException("Failed to execute update command", e);
+            throw new SQLException("Failed to execute update command: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void close() {
+    public void close() throws SQLException {
         if (!closed) {
             closed = true;
+            if (resultSet != null) {
+                resultSet.close();
+            }
         }
     }
 

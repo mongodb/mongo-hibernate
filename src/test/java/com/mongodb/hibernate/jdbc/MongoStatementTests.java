@@ -21,13 +21,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
@@ -35,7 +40,6 @@ import java.sql.Statement;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,8 +66,7 @@ class MongoStatementTests {
     private MongoStatement mongoStatement;
 
     @Test
-    @DisplayName("No-op when 'close()' is called on a closed MongoStatement")
-    void testNoopWhenCloseStatementClosed() {
+    void testNoopWhenCloseStatementClosed() throws SQLException {
         // given
         mongoStatement.close();
         assertTrue(mongoStatement.isClosed());
@@ -72,11 +75,43 @@ class MongoStatementTests {
         assertDoesNotThrow(() -> mongoStatement.close());
     }
 
+    @Test
+    void testResultSetClosedWhenStatementClosed(
+            @Mock MongoDatabase mongoDatabase,
+            @Mock MongoCollection<BsonDocument> mongoCollection,
+            @Mock AggregateIterable<BsonDocument> aggregateIterable,
+            @Mock MongoCursor<BsonDocument> mongoCursor)
+            throws SQLException {
+
+        // given
+        doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
+        doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+        doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
+        doReturn(mongoCursor).when(aggregateIterable).cursor();
+
+        var query =
+                """
+                {
+                    aggregate: "books",
+                    pipeline: [
+                        { $match: { _id: { $eq: 1 } } },
+                        { $project: { _id: 0, title: 1, publishYear: 1 }
+                        }
+                    ]
+                }""";
+
+        // when
+        var resultSet = mongoStatement.executeQuery(query);
+        mongoStatement.close();
+
+        // then
+        assertTrue(resultSet.isClosed());
+    }
+
     @Nested
     class ExecuteUpdateTests {
 
         @Test
-        @DisplayName("SQLException is thrown when 'mql' is invalid")
         void testSQLExceptionThrownWhenCalledWithInvalidMql() {
             // given
             String invalidMql =
@@ -89,7 +124,6 @@ class MongoStatementTests {
         }
 
         @Test
-        @DisplayName("SQLException is thrown when database access error occurs")
         void testSQLExceptionThrownWhenDBAccessFailed(@Mock MongoDatabase mongoDatabase) {
             // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
@@ -118,7 +152,7 @@ class MongoStatementTests {
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoStatement")
         @MethodSource("getMongoStatementMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, StatementMethodInvocation methodInvocation) {
+        void testCheckClosed(String label, StatementMethodInvocation methodInvocation) throws SQLException {
             // given
             mongoStatement.close();
 

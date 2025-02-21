@@ -18,6 +18,11 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static java.sql.ResultSet.CONCUR_READ_ONLY;
+import static java.sql.ResultSet.CONCUR_UPDATABLE;
+import static java.sql.ResultSet.TYPE_FORWARD_ONLY;
+import static java.sql.ResultSet.TYPE_SCROLL_INSENSITIVE;
+import static java.sql.ResultSet.TYPE_SCROLL_SENSITIVE;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,7 +42,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -46,6 +50,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -111,7 +116,7 @@ class MongoConnectionTests {
 
             // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
-            assertEquals("Connection has been closed", exception.getMessage());
+            assertEquals("MongoConnection has been closed", exception.getMessage());
         }
 
         private static Stream<Arguments> getMongoConnectionMethodInvocationsImpactedByClosing() {
@@ -146,7 +151,7 @@ class MongoConnectionTests {
                             Map.entry(
                                     "prepareStatement(String,int,int)",
                                     conn -> conn.prepareStatement(
-                                            exampleQueryMql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)),
+                                            exampleQueryMql, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY)),
                             Map.entry(
                                     "createArrayOf(String,Object[])",
                                     conn -> conn.createArrayOf("myArrayType", new String[] {"value1", "value2"})),
@@ -367,6 +372,38 @@ class MongoConnectionTests {
                             .equals(arg.toBsonDocument().getFirstKey())));
             // when && then
             assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
+        }
+    }
+
+    @Nested
+    class ResultSetSupportTests {
+
+        private static final String EXAMPLE_MQL = "{}";
+
+        @ParameterizedTest(name = "ResultSet type: {0}")
+        @ValueSource(ints = {TYPE_FORWARD_ONLY, TYPE_SCROLL_SENSITIVE, TYPE_SCROLL_INSENSITIVE})
+        void testType(int resultSetType) {
+            Executable executable = () -> mongoConnection
+                    .prepareStatement(EXAMPLE_MQL, resultSetType, CONCUR_READ_ONLY)
+                    .close();
+            if (resultSetType == TYPE_FORWARD_ONLY) {
+                assertDoesNotThrow(executable);
+            } else {
+                assertThrows(SQLException.class, executable);
+            }
+        }
+
+        @ParameterizedTest(name = "ResultSet concurrency: {0}")
+        @ValueSource(ints = {CONCUR_READ_ONLY, CONCUR_UPDATABLE})
+        void testConcurrency(int resultSetConcurrency) {
+            Executable executable = () -> mongoConnection
+                    .prepareStatement(EXAMPLE_MQL, TYPE_FORWARD_ONLY, resultSetConcurrency)
+                    .close();
+            if (resultSetConcurrency == CONCUR_READ_ONLY) {
+                assertDoesNotThrow(executable);
+            } else {
+                assertThrows(SQLException.class, executable);
+            }
         }
     }
 }
