@@ -31,8 +31,6 @@ import org.hibernate.sql.ast.SqlAstTranslatorFactory;
  * document DB and speaks <i>MQL</i> (MongoDB Query Language), but it is still possible to integrate with Hibernate by
  * creating a JDBC adaptor on top of <a href="https://www.mongodb.com/docs/drivers/java/sync/current/">MongoDB Java
  * Driver</a>.
- *
- * @see MongoDialectSettings
  */
 public final class MongoDialect extends Dialect {
     private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);

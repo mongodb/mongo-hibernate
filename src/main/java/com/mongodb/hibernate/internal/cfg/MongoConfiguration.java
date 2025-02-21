@@ -14,21 +14,17 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.cfg;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.hibernate.cfg.MongoConfigurator;
+import java.util.function.Consumer;
 
-import org.jspecify.annotations.Nullable;
-
-/** Util class for checking, for example, argument values. */
-public final class MongoChecks {
-    private MongoChecks() {}
-
-    public static <T> T notNull(String name, @Nullable T value) {
-        assertNotNull(name);
-        if (value == null) {
-            throw new NullPointerException(name + " must not be null");
-        }
-        return value;
-    }
-}
+/**
+ * The configuration of the MongoDB extension of Hibernate ORM.
+ *
+ * @param mongoClientSettings {@link MongoConfigurator#applyToMongoClientSettings(Consumer)}.
+ * @param databaseName {@link MongoConfigurator#databaseName(String)}.
+ * @see MongoConfigurationBuilder#build()
+ */
+public record MongoConfiguration(MongoClientSettings mongoClientSettings, String databaseName) {}

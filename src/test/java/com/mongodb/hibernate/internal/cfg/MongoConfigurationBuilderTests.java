@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.dialect;
+package com.mongodb.hibernate.internal.cfg;
 
-import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -29,47 +28,43 @@ import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-class MongoDialectSettingsTests {
+class MongoConfigurationBuilderTests {
     @Test
     void requiresPropertiesThatHaveNoDefaults() {
-        NullPointerException e = assertThrows(NullPointerException.class, () -> MongoDialectSettings.builder(emptyMap())
-                .build());
+        var e = assertThrows(NullPointerException.class, () -> new MongoConfigurationBuilder().build());
         assertEquals("databaseName must not be null", e.getMessage());
     }
 
     @Test
     void defaults() {
-        MongoDialectSettings config = MongoDialectSettings.builder(emptyMap())
-                .databaseName("testDbName")
-                .build();
-        assertEquals(MongoClientSettings.builder().build(), config.getMongoClientSettings());
+        var config = new MongoConfigurationBuilder().databaseName("testDbName").build();
+        assertEquals(MongoClientSettings.builder().build(), config.mongoClientSettings());
     }
 
     @Test
-    void builderOverridesDefaults() {
-        MongoDialectSettings config = MongoDialectSettings.builder(emptyMap())
+    void overridesDefaults() {
+        var config = new MongoConfigurationBuilder()
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
                         new ConnectionString("mongodb://host?replicaSet=testReplicaSetName")))
                 .databaseName("testDbName")
                 .build();
         assertEquals(
                 "testReplicaSetName",
-                config.getMongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
-        assertEquals("testDbName", config.getDatabaseName());
+                config.mongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
+        assertEquals("testDbName", config.databaseName());
     }
 
     @Test
-    void builderOverrides() {
-        MongoDialectSettings config = MongoDialectSettings.builder(
-                        Map.of(JAKARTA_JDBC_URL, "mongodb://host/testDbName"))
+    void overrides() {
+        var config = new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, "mongodb://host/testDbName"))
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
                         new ConnectionString("mongodb://host?replicaSet=testReplicaSetName")))
                 .databaseName("testDbName2")
                 .build();
         assertEquals(
                 "testReplicaSetName",
-                config.getMongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
-        assertEquals("testDbName2", config.getDatabaseName());
+                config.mongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
+        assertEquals("testDbName2", config.databaseName());
     }
 
     @Nested
@@ -87,25 +82,25 @@ class MongoDialectSettingsTests {
 
         private static void assertJakartaJdbcUrl(
                 String expectedRequiredReplicaSetName, String expectedDatabaseName, Object propertyValue) {
-            MongoDialectSettings config = MongoDialectSettings.builder(Map.of(JAKARTA_JDBC_URL, propertyValue))
-                    .build();
-            assertEquals(
-                    expectedRequiredReplicaSetName,
-                    config.getMongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
-            assertEquals(expectedDatabaseName, config.getDatabaseName());
+            var config = new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, propertyValue)).build();
+            assertAll(
+                    () -> assertEquals(
+                            expectedRequiredReplicaSetName,
+                            config.mongoClientSettings().getClusterSettings().getRequiredReplicaSetName()),
+                    () -> assertEquals(expectedDatabaseName, config.databaseName()));
         }
 
         private static void assertFailedToParse(String propertyName, Object propertyValue) {
-            RuntimeException e = assertThrows(
-                    RuntimeException.class, () -> MongoDialectSettings.builder(Map.of(propertyName, propertyValue))
-                            .build());
+            var e = assertThrows(
+                    RuntimeException.class,
+                    () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
             assertThat(e.getMessage()).matches("Failed to get .* from configuration property .*");
         }
 
         private static void assertUnsupportedType(String propertyName, Object propertyValue) {
-            RuntimeException e = assertThrows(
-                    RuntimeException.class, () -> MongoDialectSettings.builder(Map.of(propertyName, propertyValue))
-                            .build());
+            var e = assertThrows(
+                    RuntimeException.class,
+                    () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
             assertThat(e.getMessage()).matches("Type .* must be one of .*");
         }
     }

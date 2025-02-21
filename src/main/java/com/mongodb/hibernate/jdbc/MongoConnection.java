@@ -23,8 +23,8 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.BuildConfig;
-import com.mongodb.hibernate.dialect.MongoDialectSettings;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -51,10 +51,10 @@ final class MongoConnection implements ConnectionAdapter {
 
     private boolean autoCommit;
 
-    MongoConnection(MongoDialectSettings config, MongoClient mongoClient, ClientSession clientSession) {
+    MongoConnection(MongoConfiguration config, MongoClient mongoClient, ClientSession clientSession) {
         this.mongoClient = mongoClient;
         this.clientSession = clientSession;
-        mongoDatabase = mongoClient.getDatabase(config.getDatabaseName());
+        mongoDatabase = mongoClient.getDatabase(config.databaseName());
         autoCommit = true;
     }
 

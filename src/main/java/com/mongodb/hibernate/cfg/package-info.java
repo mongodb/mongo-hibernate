@@ -14,21 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+/** Program elements related to configuring the MongoDB extension of Hibernate ORM. */
+@NullMarked
+package com.mongodb.hibernate.cfg;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-
-import org.jspecify.annotations.Nullable;
-
-/** Util class for checking, for example, argument values. */
-public final class MongoChecks {
-    private MongoChecks() {}
-
-    public static <T> T notNull(String name, @Nullable T value) {
-        assertNotNull(name);
-        if (value == null) {
-            throw new NullPointerException(name + " must not be null");
-        }
-        return value;
-    }
-}
+import org.jspecify.annotations.NullMarked;

@@ -18,11 +18,9 @@ package com.mongodb.hibernate;
 
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
-import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
@@ -38,10 +36,9 @@ class SessionFactoryTests {
 
     @Test
     void testInvalidConnectionString() {
-        var exception = assertThrows(ServiceException.class, () -> buildSessionFactory(
+        assertThrows(ServiceException.class, () -> buildSessionFactory(
                         Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test"))
                 .close());
-        assertInstanceOf(HibernateException.class, exception.getCause());
     }
 
     @Test

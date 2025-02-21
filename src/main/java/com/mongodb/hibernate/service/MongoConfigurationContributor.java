@@ -16,23 +16,24 @@
 
 package com.mongodb.hibernate.service;
 
-import com.mongodb.hibernate.dialect.MongoDialectSettings;
+import com.mongodb.hibernate.cfg.MongoConfigurator;
 import java.util.Map;
 import org.hibernate.service.Service;
+import org.hibernate.service.spi.Configurable;
 
 /**
- * A Hibernate {@link Service} an application may use for programmatically configuring {@link MongoDialectSettings}.
+ * A {@link Service} an application may use for programmatically configuring the MongoDB extension of Hibernate ORM.
  *
  * <p>An example usage is as follows:
  *
  * <pre>{@code
- * var dialectConfigurator = (dialectSettingsBuilder) -> {
+ * var mongoConfigContributor = configurator -> {
  *     // configure the dialect to your heart's content
  *     ...
  * };
  *
  * var standardServiceRegistryBuilder =
- *         new StandardServiceRegistryBuilder().addService(MongoDialectConfigurator.class, dialectConfigurator);
+ *         new StandardServiceRegistryBuilder().addService(MongoConfigurationContributor.class, mongoConfigContributor);
  * var metadataBuilder = new MetadataSources(standardServiceRegistryBuilder.build()).getMetadataBuilder();
  *
  * // add metadata (e.g. annotated Entity classes)
@@ -45,13 +46,13 @@ import org.hibernate.service.Service;
  * }</pre>
  */
 @FunctionalInterface
-public interface MongoDialectConfigurator extends Service {
+public interface MongoConfigurationContributor extends Service {
 
     /**
-     * Configures {@link MongoDialectSettings} via {@code dialectSettingsBuilder}.
+     * Configures the MongoDB extension of Hibernate ORM.
      *
-     * @param dialectSettingsBuilder The {@linkplain MongoDialectSettings#builder(Map) pre-configured}
-     *     {@link MongoDialectSettings.Builder}.
+     * @param configurator The {@link MongoConfigurator} pre-configured with {@linkplain Configurable#configure(Map)
+     *     configuration properties}.
      */
-    void configure(MongoDialectSettings.Builder dialectSettingsBuilder);
+    void configure(MongoConfigurator configurator);
 }
