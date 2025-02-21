@@ -67,21 +67,24 @@ class MongoResultSetTests {
     }
 
     @Nested
-    class CloseTests {
-
-        @BeforeEach
-        void setUp() throws SQLException {
-            mongoResultSet.close();
-        }
+    class ClosedTests {
 
         @Test
-        void testIsIdempotent() {
+        void testIsIdempotent() throws SQLException {
+            // given
+            mongoResultSet.close();
+
+            // when && then
             assertDoesNotThrow(() -> mongoResultSet.close());
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoResultSet")
         @MethodSource("getMongoResultSetMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, ResultSetMethodInvocation methodInvocation) {
+        void testCheckClosed(String label, ResultSetMethodInvocation methodInvocation) throws SQLException {
+            // given
+            mongoResultSet.close();
+
+            // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoResultSet));
             assertEquals("MongoResultSet has been closed", exception.getMessage());
         }
