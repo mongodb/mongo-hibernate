@@ -106,8 +106,8 @@ public final class MongoConnectionProvider
     }
 
     @Override
-    public void configure(Map<String, Object> configValues) {
-        var jdbcUrl = configValues.get(JAKARTA_JDBC_URL);
+    public void configure(Map<String, Object> configurationValues) {
+        var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
 
         if (mongoClientCustomizer == null && jdbcUrl == null) {
             throw new HibernateException(format(

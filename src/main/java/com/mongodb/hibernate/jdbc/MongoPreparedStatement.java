@@ -16,11 +16,19 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.model.DeleteManyModel;
+import com.mongodb.client.model.DeleteOneModel;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.UpdateManyModel;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -31,10 +39,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.function.Consumer;
@@ -49,6 +59,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonType;
+import org.bson.BsonUndefined;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 
@@ -60,6 +71,10 @@ import org.bson.types.Decimal128;
  */
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
+    private static final BsonUndefined PARAMETER_PLACEHOLDER = new BsonUndefined();
+
+    private final List<BsonDocument> commandBatch;
+
     private final BsonDocument command;
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
@@ -68,8 +83,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoClient, clientSession, mongoConnection);
-        this.command = MongoStatement.parse(mql);
-        this.parameterValueSetters = new ArrayList<>();
+        commandBatch = new ArrayList<>();
+        command = MongoStatement.parse(mql);
+        parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -222,12 +238,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void addBatch() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
@@ -260,6 +270,99 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+    }
+
+    @Override
+    public void addBatch() throws SQLException {
+        checkClosed();
+        commandBatch.add(command.clone());
+        parameterValueSetters.forEach(setter -> setter.accept(PARAMETER_PLACEHOLDER));
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        commandBatch.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        startTransactionIfNeeded();
+        try {
+            if (commandBatch.isEmpty()) {
+                return new int[0];
+            }
+
+            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
+
+            // Hibernate will group PreparedStatement by both table and mutation type
+            var commandName = assertNotNull(commandBatch.get(0).getFirstKey());
+            var collectionName =
+                    assertNotNull(commandBatch.get(0).getString(commandName).getValue());
+
+            for (var command : commandBatch) {
+
+                assertTrue(commandName.equals(command.getFirstKey()));
+                assertTrue(collectionName.equals(command.getString(commandName).getValue()));
+
+                List<WriteModel<BsonDocument>> subWriteModels;
+
+                switch (commandName) {
+                    case "insert":
+                        var documents = command.getArray("documents");
+                        subWriteModels = new ArrayList<>(documents.size());
+                        for (var document : documents) {
+                            subWriteModels.add(new InsertOneModel<>((BsonDocument) document));
+                        }
+                        break;
+                    case "update":
+                        var updates = command.getArray("updates").getValues();
+                        subWriteModels = new ArrayList<>(updates.size());
+                        for (var update : updates) {
+                            var updateDocument = (BsonDocument) update;
+                            WriteModel<BsonDocument> updateModel =
+                                    !updateDocument.getBoolean("multi").getValue()
+                                            ? new UpdateOneModel<>(
+                                                    updateDocument.getDocument("q"), updateDocument.getDocument("u"))
+                                            : new UpdateManyModel<>(
+                                                    updateDocument.getDocument("q"), updateDocument.getDocument("u"));
+                            subWriteModels.add(updateModel);
+                        }
+                        break;
+                    case "delete":
+                        var deletes = command.getArray("deletes");
+                        subWriteModels = new ArrayList<>(deletes.size());
+                        for (var delete : deletes) {
+                            var deleteDocument = (BsonDocument) delete;
+                            subWriteModels.add(
+                                    deleteDocument.getNumber("limit").intValue() == 1
+                                            ? new DeleteOneModel<>(deleteDocument.getDocument("q"))
+                                            : new DeleteManyModel<>(deleteDocument.getDocument("q")));
+                        }
+                        break;
+                    default:
+                        throw new FeatureNotSupportedException();
+                }
+                writeModels.addAll(subWriteModels);
+            }
+            getMongoDatabase()
+                    .getCollection(collectionName, BsonDocument.class)
+                    .bulkWrite(getClientSession(), writeModels);
+
+            var rowCounts = new int[commandBatch.size()];
+
+            // MongoDB bulk write API returns row counts grouped by mutation types, not by each command in the batch,
+            // so returns 'SUCCESS_NO_INFO' to work around
+            Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
+
+            return rowCounts;
+
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to run bulk operation: " + e.getMessage(), e);
+        } finally {
+            clearBatch();
+        }
     }
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
