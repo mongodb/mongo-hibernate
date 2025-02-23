@@ -177,10 +177,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
+    @SuppressWarnings("overloads")
     <R extends AstNode> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> statement.accept(this));
     }
 
+    @SuppressWarnings("overloads")
     <R extends AstNode> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }
