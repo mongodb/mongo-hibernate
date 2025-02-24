@@ -27,7 +27,7 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Test;
 
-class SessionFactoryTests {
+class SessionFactoryIntegrationTests {
 
     @Test
     void testSuccess() {
