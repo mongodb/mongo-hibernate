@@ -40,8 +40,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {BasicInsertionTests.Book.class, BasicInsertionTests.BookWithEmbeddedField.class})
-class BasicInsertionTests {
+@DomainModel(
+        annotatedClasses = {
+            BasicInsertionIntegrationTests.Book.class,
+            BasicInsertionIntegrationTests.BookWithEmbeddedField.class
+        })
+class BasicInsertionIntegrationTests {
 
     @BeforeEach
     void setUp() {

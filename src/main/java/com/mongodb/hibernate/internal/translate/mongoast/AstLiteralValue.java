@@ -28,7 +28,7 @@ public record AstLiteralValue(BsonValue literalValue) implements AstValue {
             EncoderContext.builder().build();
 
     @Override
-    public void render(final BsonWriter writer) {
+    public void render(BsonWriter writer) {
         BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
     }
 }
