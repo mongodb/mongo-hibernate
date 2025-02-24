@@ -36,8 +36,13 @@ import org.hibernate.service.spi.ServiceContributor;
  * };
  * var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder()
  *         .addService(MongoConfigurationContributor.class, mongoConfigContributor);
- * try (var sessionFactory = new MetadataSources(standardServiceRegistryBuilder.build())
- *         .getMetadataBuilder().build()
+ * var metadataBuilder = new MetadataSources(standardServiceRegistryBuilder.build())
+ *         .getMetadataBuilder();
+ *
+ * // add metadata (e.g. annotated Entity classes)
+ * ...
+ *
+ * try (var sessionFactory = metadataBuilder.build()
  *         .getSessionFactoryBuilder().build()) {
  *     // use the session factory
  *     ...
