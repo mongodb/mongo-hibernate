@@ -18,31 +18,30 @@ package com.mongodb.hibernate.service;
 
 import com.mongodb.hibernate.cfg.MongoConfigurator;
 import java.util.Map;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.Service;
 import org.hibernate.service.spi.Configurable;
+import org.hibernate.service.spi.ServiceContributor;
 
 /**
  * A {@link Service} an application may use for programmatically configuring the MongoDB extension of Hibernate ORM.
  *
- * <p>An example usage is as follows:
+ * <p>This {@link Service} may be contributed either via a {@link ServiceContributor}, which allows access to
+ * {@link StandardServiceRegistryBuilder}, or via a {@link StandardServiceRegistryBuilder} directly, as shown below:
  *
  * <pre>{@code
- * var mongoConfigContributor = configurator -> {
- *     // configure the dialect to your heart's content
+ * MongoConfigurationContributor mongoConfigContributor = configurator -> {
+ *     // configure the extension to your heart's content
  *     ...
  * };
- *
- * var standardServiceRegistryBuilder =
- *         new StandardServiceRegistryBuilder().addService(MongoConfigurationContributor.class, mongoConfigContributor);
- * var metadataBuilder = new MetadataSources(standardServiceRegistryBuilder.build()).getMetadataBuilder();
- *
- * // add metadata (e.g. annotated Entity classes)
- * ...
- *
- * var sessionFactory = metadataBuilder().build().getSessionFactoryBuilder().build();
- *
- * // start using sessionFactory as normal
- * ...
+ * var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder()
+ *         .addService(MongoConfigurationContributor.class, mongoConfigContributor);
+ * try (var sessionFactory = new MetadataSources(standardServiceRegistryBuilder.build())
+ *         .getMetadataBuilder().build()
+ *         .getSessionFactoryBuilder().build()) {
+ *     // use the session factory
+ *     ...
+ * }
  * }</pre>
  */
 @FunctionalInterface
@@ -54,5 +53,5 @@ public interface MongoConfigurationContributor extends Service {
      * @param configurator The {@link MongoConfigurator} pre-configured with {@linkplain Configurable#configure(Map)
      *     configuration properties}.
      */
-    void contribute(MongoConfigurator configurator);
+    void configure(MongoConfigurator configurator);
 }
