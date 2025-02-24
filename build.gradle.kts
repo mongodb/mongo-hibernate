@@ -147,7 +147,7 @@ class MultilineFormatter : Serializable {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
+    options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     if (name == "compileJava") {
         options.errorprone {
             disableWarningsInGeneratedCode.set(true)
