@@ -27,6 +27,7 @@ import java.sql.Date;
 import java.sql.NClob;
 import java.sql.Ref;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.RowId;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -45,11 +46,85 @@ import org.jspecify.annotations.Nullable;
  * @see MongoResultSet
  */
 interface ResultSetAdapter extends ResultSet {
+    @Override
+    default boolean next() throws SQLException {
+        throw new SQLFeatureNotSupportedException("next not implemented");
+    }
+
+    @Override
+    default void close() throws SQLException {
+        throw new SQLFeatureNotSupportedException("close not implemented");
+    }
+
+    @Override
+    default boolean wasNull() throws SQLException {
+        throw new SQLFeatureNotSupportedException("wasNull not implemented");
+    }
+
+    @Override
+    default @Nullable String getString(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getString not implemented");
+    }
+
+    @Override
+    default boolean getBoolean(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getBoolean not implemented");
+    }
+
+    @Override
+    default byte getByte(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getByte not implemented");
+    }
+
+    @Override
+    default short getShort(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getShort not implemented");
+    }
+
+    @Override
+    default int getInt(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getInt not implemented");
+    }
+
+    @Override
+    default long getLong(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getLong not implemented");
+    }
+
+    @Override
+    default float getFloat(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getFloat not implemented");
+    }
+
+    @Override
+    default double getDouble(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getDouble not implemented");
+    }
 
     @Override
     @SuppressWarnings("deprecation")
     default @Nullable BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
         throw new SQLFeatureNotSupportedException("getBigDecimal not implemented");
+    }
+
+    @Override
+    default byte @Nullable [] getBytes(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getBytes not implemented");
+    }
+
+    @Override
+    default @Nullable Date getDate(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getDate not implemented");
+    }
+
+    @Override
+    default @Nullable Time getTime(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getTime not implemented");
+    }
+
+    @Override
+    default @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getTimestamp not implemented");
     }
 
     @Override
@@ -166,6 +241,11 @@ interface ResultSetAdapter extends ResultSet {
     }
 
     @Override
+    default ResultSetMetaData getMetaData() throws SQLException {
+        throw new SQLFeatureNotSupportedException("getMetaData not implemented");
+    }
+
+    @Override
     default Object getObject(int columnIndex) throws SQLException {
         throw new SQLFeatureNotSupportedException("getObject not implemented");
     }
@@ -176,6 +256,11 @@ interface ResultSetAdapter extends ResultSet {
     }
 
     @Override
+    default int findColumn(String columnLabel) throws SQLException {
+        throw new SQLFeatureNotSupportedException("findColumn not implemented");
+    }
+
+    @Override
     default Reader getCharacterStream(int columnIndex) throws SQLException {
         throw new SQLFeatureNotSupportedException("getCharacterStream not implemented");
     }
@@ -183,6 +268,11 @@ interface ResultSetAdapter extends ResultSet {
     @Override
     default Reader getCharacterStream(String columnLabel) throws SQLException {
         throw new SQLFeatureNotSupportedException("getCharacterStream not implemented");
+    }
+
+    @Override
+    default @Nullable BigDecimal getBigDecimal(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getBigDecimal not implemented");
     }
 
     @Override
@@ -546,6 +636,11 @@ interface ResultSetAdapter extends ResultSet {
     }
 
     @Override
+    default @Nullable Array getArray(int columnIndex) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getArray not implemented");
+    }
+
+    @Override
     default Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {
         throw new SQLFeatureNotSupportedException("getObject not implemented");
     }
@@ -581,8 +676,18 @@ interface ResultSetAdapter extends ResultSet {
     }
 
     @Override
+    default @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getTime not implemented");
+    }
+
+    @Override
     default @Nullable Time getTime(String columnLabel, Calendar cal) throws SQLException {
         throw new SQLFeatureNotSupportedException("getTime not implemented");
+    }
+
+    @Override
+    default @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getTimestamp not implemented");
     }
 
     @Override
@@ -663,6 +768,11 @@ interface ResultSetAdapter extends ResultSet {
     @Override
     default int getHoldability() throws SQLException {
         throw new SQLFeatureNotSupportedException("getHoldability not implemented");
+    }
+
+    @Override
+    default boolean isClosed() throws SQLException {
+        throw new SQLFeatureNotSupportedException("isClosed not implemented");
     }
 
     @Override
@@ -876,6 +986,11 @@ interface ResultSetAdapter extends ResultSet {
     }
 
     @Override
+    default <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getObject not implemented");
+    }
+
+    @Override
     default <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
         throw new SQLFeatureNotSupportedException("getObject not implemented");
     }
@@ -883,5 +998,10 @@ interface ResultSetAdapter extends ResultSet {
     @Override
     default <T> T unwrap(Class<T> iface) throws SQLException {
         throw new SQLFeatureNotSupportedException("unwrap not implemented");
+    }
+
+    @Override
+    default boolean isWrapperFor(Class<?> iface) throws SQLException {
+        throw new SQLFeatureNotSupportedException("isWrapperFor not implemented");
     }
 }
