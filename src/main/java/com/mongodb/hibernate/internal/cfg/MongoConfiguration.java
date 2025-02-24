@@ -14,21 +14,17 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.cfg;
 
-import org.bson.BsonValue;
-import org.bson.BsonWriter;
-import org.bson.codecs.BsonValueCodec;
-import org.bson.codecs.EncoderContext;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.hibernate.cfg.MongoConfigurator;
+import java.util.function.Consumer;
 
-public record AstLiteralValue(BsonValue literalValue) implements AstValue {
-
-    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
-    private static final EncoderContext DEFAULT_CONTEXT =
-            EncoderContext.builder().build();
-
-    @Override
-    public void render(BsonWriter writer) {
-        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
-    }
-}
+/**
+ * The configuration of the MongoDB extension of Hibernate ORM.
+ *
+ * @param mongoClientSettings {@link MongoConfigurator#applyToMongoClientSettings(Consumer)}.
+ * @param databaseName {@link MongoConfigurator#databaseName(String)}.
+ * @see MongoConfigurationBuilder#build()
+ */
+public record MongoConfiguration(MongoClientSettings mongoClientSettings, String databaseName) {}

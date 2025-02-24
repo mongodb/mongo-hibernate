@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,12 +37,14 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,7 +53,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -63,8 +65,15 @@ class MongoConnectionTests {
     @Mock
     private MongoClient mongoClient;
 
-    @InjectMocks
     private MongoConnection mongoConnection;
+
+    @BeforeEach
+    void setUp() {
+        mongoConnection = new MongoConnection(
+                new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, "mongodb://host/db")).build(),
+                mongoClient,
+                clientSession);
+    }
 
     @Nested
     class CloseTests {

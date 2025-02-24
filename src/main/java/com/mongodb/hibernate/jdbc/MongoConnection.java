@@ -21,8 +21,10 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -42,19 +44,17 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoConnection implements ConnectionAdapter {
 
-    // TODO-HIBERNATE-38 temporary hard-coded database prior to the db config tech design finalizing
-    public static final String DATABASE = "mongo-hibernate-test";
-
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
-
+    private final MongoDatabase mongoDatabase;
     private boolean closed;
 
     private boolean autoCommit;
 
-    MongoConnection(MongoClient mongoClient, ClientSession clientSession) {
+    MongoConnection(MongoConfiguration config, MongoClient mongoClient, ClientSession clientSession) {
         this.mongoClient = mongoClient;
         this.clientSession = clientSession;
+        mongoDatabase = mongoClient.getDatabase(config.databaseName());
         autoCommit = true;
     }
 
@@ -139,13 +139,13 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
-        return new MongoStatement(mongoClient, clientSession, this);
+        return new MongoStatement(mongoDatabase, clientSession, this);
     }
 
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        return new MongoPreparedStatement(mongoClient, clientSession, this, mql);
+        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
     }
 
     @Override
