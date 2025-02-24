@@ -132,9 +132,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
-        assertNotNull(
-                assertNotNull(sessionFactory.getServiceRegistry().getService(StandardServiceRegistryScopedState.class))
-                        .getConfiguration());
+        assertNotNull(sessionFactory
+                .getServiceRegistry()
+                .requireService(StandardServiceRegistryScopedState.class)
+                .getConfiguration());
     }
 
     @Override

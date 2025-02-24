@@ -81,7 +81,7 @@ public final class StandardServiceRegistryScopedState implements Service {
             }
             var mongoConfigurationBuilder = new MongoConfigurationBuilder(configurationValues);
             if (mongoConfigurationContributor != null) {
-                mongoConfigurationContributor.configure(mongoConfigurationBuilder);
+                mongoConfigurationContributor.contribute(mongoConfigurationBuilder);
             }
             return mongoConfigurationBuilder.build();
         }

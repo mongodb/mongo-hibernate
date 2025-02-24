@@ -54,5 +54,5 @@ public interface MongoConfigurationContributor extends Service {
      * @param configurator The {@link MongoConfigurator} pre-configured with {@linkplain Configurable#configure(Map)
      *     configuration properties}.
      */
-    void configure(MongoConfigurator configurator);
+    void contribute(MongoConfigurator configurator);
 }

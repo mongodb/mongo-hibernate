@@ -50,6 +50,7 @@ class JakartaPersistenceBootstrappingIntegrationTests {
     }
 
     @AfterAll
+    @SuppressWarnings("try")
     static void afterAll() {
         try (var closed1 = entityManagerFactory;
                 var closed2 = mongoClient) {}
