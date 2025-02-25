@@ -1,15 +1,18 @@
-# A MongoDB Dialect for the Hibernate ORM
+# MongoDB extension of Hibernate ORM
 
-This project aims to provide a library to seamlessly integrate MongoDB with Hibernate ORM. Hibernate _ORM_ is a powerful **O**bject-**r**elational **m**apping tool. Due to the SQL and JDBC standards, Hibernate ORM could centralize each SQL vendor's idiosyncrasies in the so-called _Hibernate Dialect_. This project will include a document database member in the Hibernate's Dialect family.
+This product enables applications to use databases managed by the [MongoDB](https://www.mongodb.com/) DBMS
+via [Hibernate ORM](https://hibernate.org/orm/).
 
 ## Overview
 
-MongoDB speaks _MQL_ (**M**ongoDB **Q**uery **L**anguage in JSON format) instead of SQL. This project creates a MongoDB Hibernate Dialect by:
+MongoDB speaks MQL (**M**ongoDB **Q**uery **L**anguage) instead of SQL. This product works by:
 
-- Creating a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/)
-- Translating Hibernate's internal SQL AST into MQL
+- Creating a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/),
+  which has to be plugged into Hibernate ORM via a custom [`ConnectionProvider`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html).
+- Translating Hibernate's internal SQL AST into MQL by means of a custom [`Dialect`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/dialect/Dialect.html),
+  which has to be plugged into Hibernate ORM.
 
-<img src="mongodb_dialect.png" alt="MongoDB Dialect" />
+<img src="mongodb_dialect.png" alt="MongoDB extension" />
 
 ## Development
 
@@ -17,7 +20,7 @@ Java 17 is the JDK version for development.
 
 Initially Hibernate ORM v6.6 is the dependency version.
 
-MongoDB v6 is the minimal version this dialect supports.
+MongoDB v6.0 is the minimal version this product supports.
 
 > [Standalone instance](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) is not supported. It is recommended to [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
 

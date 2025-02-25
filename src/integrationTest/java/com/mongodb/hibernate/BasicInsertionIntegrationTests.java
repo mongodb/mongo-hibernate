@@ -17,12 +17,12 @@
 package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
+import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonDocument;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -46,9 +45,11 @@ import org.junit.jupiter.api.Test;
             BasicInsertionIntegrationTests.BookWithEmbeddedField.class
         })
 class BasicInsertionIntegrationTests {
+    private static MongoConfiguration config;
 
     @BeforeEach
-    void setUp() {
+    void setUp(SessionFactoryScope scope) {
+        config = new MongoConfigurationBuilder(scope.getSessionFactory().getProperties()).build();
         onMongoCollection(MongoCollection::drop);
     }
 
@@ -119,12 +120,8 @@ class BasicInsertionIntegrationTests {
     }
 
     private void onMongoCollection(Consumer<MongoCollection<BsonDocument>> collectionConsumer) {
-        var connectionString = new ConnectionString(new Configuration().getProperty(JAKARTA_JDBC_URL));
-        try (var mongoClient = MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(connectionString)
-                .build())) {
-            var collection =
-                    mongoClient.getDatabase(connectionString.getDatabase()).getCollection("books", BsonDocument.class);
+        try (var mongoClient = MongoClients.create(config.mongoClientSettings())) {
+            var collection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
             collectionConsumer.accept(collection);
         }
     }
@@ -136,7 +133,7 @@ class BasicInsertionIntegrationTests {
     }
 
     private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).asList().singleElement().isEqualTo(expectedDoc);
+        assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
     @Entity(name = "Book")
