@@ -18,10 +18,12 @@ import com.diffplug.spotless.FormatterFunc
 import com.diffplug.spotless.FormatterStep
 import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 version = "1.0.0-SNAPSHOT"
 
 plugins {
+    idea
     `java-library`
     alias(libs.plugins.spotless)
     alias(libs.plugins.errorprone)
@@ -32,10 +34,8 @@ repositories { mavenCentral() }
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
-tasks.named<Test>("test") { useJUnitPlatform() }
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Integration Tests
+// Integration Test
 
 sourceSets {
     create("integrationTest") {
@@ -44,29 +44,37 @@ sourceSets {
     }
 }
 
-val integrationTestImplementation by configurations.getting { extendsFrom(configurations.implementation.get()) }
-val integrationTestRuntimeOnly: Configuration by configurations.getting
+val integrationTestSourceSet: SourceSet = sourceSets["integrationTest"]
 
-configurations["integrationTestRuntimeOnly"].extendsFrom(configurations.runtimeOnly.get())
+val integrationTestImplementation: Configuration by
+    configurations.getting { extendsFrom(configurations.implementation.get()) }
+val integrationTestRuntimeOnly: Configuration by
+    configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
 
-val integrationTest =
+val integrationTestTask: Task =
     task<Test>("integrationTest") {
-        description = "Runs integration tests requiring external MongoDB deployment"
-        group = "verification"
-
-        testClassesDirs = sourceSets["integrationTest"].output.classesDirs
-        classpath = sourceSets["integrationTest"].runtimeClasspath
-        shouldRunAfter("test")
-
-        useJUnitPlatform()
-
-        testLogging { events("passed") }
+        group = LifecycleBasePlugin.VERIFICATION_GROUP
+        testClassesDirs = integrationTestSourceSet.output.classesDirs
+        classpath = integrationTestSourceSet.runtimeClasspath
     }
 
-tasks.check { dependsOn(integrationTest) }
+tasks.check { dependsOn(integrationTestTask) }
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+    testLogging { events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED) }
+}
+
+// https://youtrack.jetbrains.com/issue/IDEA-234382/Gradle-integration-tests-are-not-marked-as-test-sources-resources
+idea {
+    module {
+        testSources.from(integrationTestSourceSet.allSource.srcDirs)
+        testResources.from(integrationTestSourceSet.resources.srcDirs)
+    }
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Static Analysis Tasks
+// Static Analysis
 
 spotless {
     java {
@@ -139,7 +147,7 @@ class MultilineFormatter : Serializable {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
+    options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     if (name == "compileJava") {
         options.errorprone {
             disableWarningsInGeneratedCode.set(true)
@@ -165,20 +173,25 @@ buildConfig {
 
 dependencies {
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.assertj)
     testImplementation(libs.logback.classic)
     testImplementation(libs.mockito.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 
     integrationTestImplementation(libs.junit.jupiter)
+    integrationTestImplementation(libs.assertj)
     integrationTestImplementation(libs.logback.classic)
+
+    @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
+
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
-    errorprone(libs.nullaway)
     api(libs.jspecify)
 
+    errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
     implementation(libs.hibernate.core)

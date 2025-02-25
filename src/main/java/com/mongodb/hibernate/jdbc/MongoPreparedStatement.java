@@ -22,7 +22,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
@@ -80,9 +80,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
     MongoPreparedStatement(
-            MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql)
+            MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
-        super(mongoClient, clientSession, mongoConnection);
+        super(mongoDatabase, clientSession, mongoConnection);
         commandBatch = new ArrayList<>();
         command = MongoStatement.parse(mql);
         parameterValueSetters = new ArrayList<>();

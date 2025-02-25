@@ -24,19 +24,17 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
@@ -77,7 +75,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class MongoPreparedStatementTests {
 
     @Mock
-    private MongoClient mongoClient;
+    private MongoDatabase mongoDatabase;
 
     @Mock
     private ClientSession clientSession;
@@ -86,7 +84,7 @@ class MongoPreparedStatementTests {
     private MongoConnection mongoConnection;
 
     private MongoPreparedStatement createMongoPreparedStatement(String mql) throws SQLSyntaxErrorException {
-        return new MongoPreparedStatement(mongoClient, clientSession, mongoConnection, mql);
+        return new MongoPreparedStatement(mongoDatabase, clientSession, mongoConnection, mql);
     }
 
     private static final String EXAMPLE_MQL =
@@ -110,9 +108,6 @@ class MongoPreparedStatementTests {
     @Nested
     class ParameterValueSettingTests {
 
-        @Mock
-        private MongoDatabase mongoDatabase;
-
         @Captor
         private ArgumentCaptor<BsonDocument> commandCaptor;
 
@@ -120,7 +115,6 @@ class MongoPreparedStatementTests {
         @DisplayName("Happy path when all parameters are provided values")
         void testSuccess() throws SQLException {
             // given
-            doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
             doReturn(Document.parse("{ok: 1.0, n: 1}"))
                     .when(mongoDatabase)
                     .runCommand(eq(clientSession), any(BsonDocument.class));
@@ -168,7 +162,6 @@ class MongoPreparedStatementTests {
                 assertEquals(
                         format("Parameter index invalid: %d; should be within [1, %d]", 0, 5),
                         sqlException.getMessage());
-                verify(mongoClient, never()).getDatabase(anyString());
             }
         }
     }

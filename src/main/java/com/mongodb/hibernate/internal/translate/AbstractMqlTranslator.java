@@ -16,15 +16,18 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -129,6 +132,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
+        assertNotNull(sessionFactory
+                .getServiceRegistry()
+                .requireService(StandardServiceRegistryScopedState.class)
+                .getConfiguration());
     }
 
     @Override
@@ -166,15 +173,22 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     static String renderMongoAstNode(AstNode rootAstNode) {
-        var writer = new StringWriter();
-        rootAstNode.render(new JsonWriter(writer, JSON_WRITER_SETTINGS));
-        return writer.toString();
+        try (var stringWriter = new StringWriter();
+                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
+            rootAstNode.render(jsonWriter);
+            jsonWriter.flush();
+            return stringWriter.toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
+    @SuppressWarnings("overloads")
     <R extends AstNode> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> statement.accept(this));
     }
 
+    @SuppressWarnings("overloads")
     <R extends AstNode> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }

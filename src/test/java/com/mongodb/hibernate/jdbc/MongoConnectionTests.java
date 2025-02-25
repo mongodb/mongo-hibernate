@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -67,7 +69,10 @@ class MongoConnectionTests {
 
     @BeforeEach
     void setUp() {
-        mongoConnection = new MongoConnection(mongoClient, clientSession);
+        mongoConnection = new MongoConnection(
+                new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, "mongodb://host/db")).build(),
+                mongoClient,
+                clientSession);
     }
 
     @Nested
