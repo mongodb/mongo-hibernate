@@ -24,17 +24,17 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
@@ -248,9 +248,6 @@ class MongoPreparedStatementTests {
     class BatchTests {
 
         @Mock
-        private MongoDatabase mongoDatabase;
-
-        @Mock
         private MongoCollection<BsonDocument> mongoCollection;
 
         @Mock
@@ -275,8 +272,7 @@ class MongoPreparedStatementTests {
         void testSuccess() throws SQLException {
 
             // given
-            doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
-            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(eq("books"), eq(BsonDocument.class));
             doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
 
             // when
@@ -362,7 +358,6 @@ class MongoPreparedStatementTests {
         void testBulkWriteModels(String mql, List<? extends WriteModel<BsonDocument>> expectedWriteModels)
                 throws SQLException {
             // given
-            doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
             doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
             doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
 
