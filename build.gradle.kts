@@ -92,12 +92,11 @@ spotless {
 
         targetExclude("${layout.buildDirectory.get().asFile.name}/generated/**/*.java")
 
-        val formatter = MultilineFormatter()
         addStep(
             FormatterStep.create(
                 "multilineFormatter",
-                object : Serializable {},
-                { _: Any? -> FormatterFunc { input: String -> formatter.format(input) } }))
+                MultilineFormatter(),
+                { formatter -> FormatterFunc { input -> formatter.format(input) } }))
     }
 
     kotlinGradle {
@@ -148,14 +147,14 @@ class MultilineFormatter : Serializable {
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
-    if (name == "compileJava") {
-        options.errorprone {
-            disableWarningsInGeneratedCode.set(true)
-            option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
-            error("NullAway")
-        }
-    } else {
-        options.errorprone.isEnabled.set(false)
+    when (this) {
+        tasks.compileJava.get() ->
+            options.errorprone {
+                disableWarningsInGeneratedCode = true
+                option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+                error("NullAway")
+            }
+        else -> options.errorprone.isEnabled = false
     }
 }
 
