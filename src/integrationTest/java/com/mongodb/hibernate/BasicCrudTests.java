@@ -17,6 +17,7 @@
 package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
@@ -175,7 +176,7 @@ class BasicCrudTests implements SessionFactoryScopeAware {
     }
 
     private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).asList().singleElement().isEqualTo(expectedDoc);
+        assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
     @Entity(name = "Book")
