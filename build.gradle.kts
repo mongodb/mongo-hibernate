@@ -177,6 +177,7 @@ dependencies {
     testImplementation(libs.mockito.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 
+    integrationTestImplementation(libs.junit.jupiter)
     integrationTestImplementation(libs.assertj)
     integrationTestImplementation(libs.logback.classic)
 
@@ -184,6 +185,8 @@ dependencies {
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
+
+    integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     api(libs.jspecify)
 

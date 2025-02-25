@@ -2,8 +2,7 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-junit-jupiter = "5.12.0"
-junit-platform-launcher = "1.12.0"
+junit-jupiter = "5.11.4"
 assertj = "3.27.3"
 spotless = "7.0.2"
 palantir = "2.55.0"
@@ -21,7 +20,7 @@ buildconfig = "5.5.1"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform-launcher" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
