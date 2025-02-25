@@ -14,21 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+/** The SPI for integrating pluggable {@linkplain org.hibernate.service.Service services}. */
+@NullMarked
+package com.mongodb.hibernate.service.spi;
 
-import org.bson.BsonValue;
-import org.bson.BsonWriter;
-import org.bson.codecs.BsonValueCodec;
-import org.bson.codecs.EncoderContext;
-
-public record AstLiteralValue(BsonValue literalValue) implements AstValue {
-
-    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
-    private static final EncoderContext DEFAULT_CONTEXT =
-            EncoderContext.builder().build();
-
-    @Override
-    public void render(BsonWriter writer) {
-        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
-    }
-}
+import org.jspecify.annotations.NullMarked;

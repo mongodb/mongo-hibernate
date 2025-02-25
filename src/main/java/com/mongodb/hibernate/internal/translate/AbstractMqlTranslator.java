@@ -23,6 +23,7 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
@@ -137,6 +138,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
+        assertNotNull(sessionFactory
+                .getServiceRegistry()
+                .requireService(StandardServiceRegistryScopedState.class)
+                .getConfiguration());
     }
 
     @Override
@@ -184,10 +189,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
+    @SuppressWarnings("overloads")
     <R extends AstNode> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> statement.accept(this));
     }
 
+    @SuppressWarnings("overloads")
     <R extends AstNode> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }

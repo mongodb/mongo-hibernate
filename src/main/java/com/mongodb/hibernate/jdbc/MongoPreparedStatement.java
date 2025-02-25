@@ -20,7 +20,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -65,9 +65,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
     MongoPreparedStatement(
-            MongoClient mongoClient, ClientSession clientSession, MongoConnection mongoConnection, String mql)
+            MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
-        super(mongoClient, clientSession, mongoConnection);
+        super(mongoDatabase, clientSession, mongoConnection);
         this.command = MongoStatement.parse(mql);
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);

@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal;
 
-import org.bson.BsonValue;
-import org.bson.BsonWriter;
-import org.bson.codecs.BsonValueCodec;
-import org.bson.codecs.EncoderContext;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 
-public record AstLiteralValue(BsonValue literalValue) implements AstValue {
+import org.jspecify.annotations.Nullable;
 
-    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
-    private static final EncoderContext DEFAULT_CONTEXT =
-            EncoderContext.builder().build();
+/** Util class for checking, for example, argument values. */
+public final class MongoChecks {
+    private MongoChecks() {}
 
-    @Override
-    public void render(BsonWriter writer) {
-        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
+    public static <T> T notNull(String name, @Nullable T value) {
+        assertNotNull(name);
+        if (value == null) {
+            throw new NullPointerException(name + " must not be null");
+        }
+        return value;
     }
 }
