@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.mongodb.client.AggregateIterable;
@@ -75,7 +76,6 @@ class MongoStatementTests {
 
     @Test
     void testResultSetClosedWhenStatementClosed(
-            @Mock MongoDatabase mongoDatabase,
             @Mock MongoCollection<BsonDocument> mongoCollection,
             @Mock AggregateIterable<BsonDocument> aggregateIterable,
             @Mock MongoCursor<BsonDocument> mongoCursor)
@@ -121,7 +121,7 @@ class MongoStatementTests {
         }
 
         @Test
-        void testSQLExceptionThrownWhenDBAccessFailed(@Mock MongoDatabase mongoDatabase) {
+        void testSQLExceptionThrownWhenDBAccessFailed() {
             // given
             var dbAccessException = new RuntimeException();
             doThrow(dbAccessException).when(mongoDatabase).runCommand(same(clientSession), any(BsonDocument.class));

@@ -66,7 +66,7 @@ class MongoStatement implements StatementAdapter {
         startTransactionIfNeeded();
         try {
             var collectionName = command.getString("aggregate").getValue();
-            var collection = mongoClient.getDatabase(DATABASE).getCollection(collectionName, BsonDocument.class);
+            var collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
             var pipelineArray = command.getArray("pipeline");
 
             var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
