@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.mongodb.event.ClusterClosedEvent;
 import com.mongodb.event.ClusterListener;
+import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;

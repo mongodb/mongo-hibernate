@@ -19,7 +19,7 @@ package com.mongodb.hibernate.cfg;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.hibernate.internal.Sealed;
-import com.mongodb.hibernate.service.MongoConfigurationContributor;
+import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.hibernate.cfg.AvailableSettings;

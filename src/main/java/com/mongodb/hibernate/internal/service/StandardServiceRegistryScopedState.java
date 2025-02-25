@@ -23,7 +23,7 @@ import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
-import com.mongodb.hibernate.service.MongoConfigurationContributor;
+import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.io.Serial;
 import java.util.Map;
 import org.hibernate.HibernateException;
