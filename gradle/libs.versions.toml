@@ -2,17 +2,18 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
-junit-jupiter = "5.11.4"
+junit-jupiter = "5.12.0"
+junit-platform-launcher = "1.12.0"
 assertj = "3.27.3"
 spotless = "7.0.2"
-palantir = "2.50.0"
+palantir = "2.55.0"
 ktfmt = "0.54"
 errorprone = "4.1.0"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.3"
 jspecify = "1.0.0"
-hibernate-orm = "6.6.5.Final"
-mongo-java-driver-sync = "5.3.0"
+hibernate-orm = "6.6.9.Final"
+mongo-java-driver-sync = "5.3.1"
 slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
 mockito = "5.15.2"
@@ -20,7 +21,7 @@ buildconfig = "5.5.1"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform-launcher" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
