@@ -147,7 +147,7 @@ class MultilineFormatter : Serializable {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Werror"))
+    options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     if (name == "compileJava") {
         options.errorprone {
             disableWarningsInGeneratedCode.set(true)
@@ -173,11 +173,13 @@ buildConfig {
 
 dependencies {
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.assertj)
     testImplementation(libs.logback.classic)
     testImplementation(libs.mockito.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 
     integrationTestImplementation(libs.junit.jupiter)
+    integrationTestImplementation(libs.assertj)
     integrationTestImplementation(libs.logback.classic)
 
     @Suppress("UnstableApiUsage")

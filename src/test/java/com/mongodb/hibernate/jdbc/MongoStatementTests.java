@@ -25,12 +25,10 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -54,7 +52,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class MongoStatementTests {
 
     @Mock
-    private MongoClient mongoClient;
+    private MongoDatabase mongoDatabase;
 
     @Mock
     private ClientSession clientSession;
@@ -84,7 +82,6 @@ class MongoStatementTests {
             throws SQLException {
 
         // given
-        doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
         doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
         doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
         doReturn(mongoCursor).when(aggregateIterable).cursor();
@@ -126,7 +123,6 @@ class MongoStatementTests {
         @Test
         void testSQLExceptionThrownWhenDBAccessFailed(@Mock MongoDatabase mongoDatabase) {
             // given
-            doReturn(mongoDatabase).when(mongoClient).getDatabase(anyString());
             var dbAccessException = new RuntimeException();
             doThrow(dbAccessException).when(mongoDatabase).runCommand(same(clientSession), any(BsonDocument.class));
             String mql =
