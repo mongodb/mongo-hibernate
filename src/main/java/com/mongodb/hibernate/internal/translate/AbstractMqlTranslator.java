@@ -207,8 +207,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var tableName = tableInsert.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsert.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsert.getValueBindings()) {
-            var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
+            var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
             astElements.add(new AstElement(columnExpression, astValue));
         }
         astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(tableName, new AstDocument(astElements)));
@@ -242,9 +242,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var keyBinding = tableDelete.getKeyBindings().get(0);
 
         var tableName = tableDelete.getMutatingTable().getTableName();
-        var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         var astFilterFieldPath =
                 new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
+        var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         var keyFilter = new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, astValue));
         astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, keyFilter));
     }
