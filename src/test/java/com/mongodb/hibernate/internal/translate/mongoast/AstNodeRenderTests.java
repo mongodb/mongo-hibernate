@@ -35,12 +35,15 @@ import org.junit.jupiter.api.Test;
 class AstNodeRenderTests {
 
     private void assertJsonRendered(AstNode node, String expectedJson) {
-        var stringWriter = new StringWriter();
-        var jsonWriter = new JsonWriter(stringWriter);
-        node.render(jsonWriter);
-        jsonWriter.flush();
-        var realJson = stringWriter.toString();
-        assertEquals(expectedJson, realJson);
+        try (var stringWriter = new StringWriter();
+             var jsonWriter = new JsonWriter(stringWriter)) {
+            node.render(jsonWriter);
+            jsonWriter.flush();
+            var actualJson = stringWriter.toString();
+            assertEquals(expectedJson, actualJson);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Nested
