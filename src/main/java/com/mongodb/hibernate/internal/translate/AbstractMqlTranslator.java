@@ -242,10 +242,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var keyBinding = tableDelete.getKeyBindings().get(0);
 
         var tableName = tableDelete.getMutatingTable().getTableName();
-        var astFilterField =
-                new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
         var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
-        var keyFilter = new AstFieldOperationFilter(astFilterField, new AstComparisonFilterOperation(EQ, astValue));
+        var astFilterFieldPath =
+                new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
+        var keyFilter = new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, astValue));
         astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, keyFilter));
     }
 
