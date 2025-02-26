@@ -102,8 +102,7 @@ class MongoPreparedStatementTests {
                        ]
                    }
                ]
-            }
-            """;
+            }""";
 
     @Nested
     class ParameterValueSettingTests {
@@ -147,8 +146,7 @@ class MongoPreparedStatementTests {
                                     ]
                                 }
                             ]
-                        }
-                        """);
+                        }""");
                 assertEquals(expectedDoc, command);
             }
         }
@@ -188,8 +186,7 @@ class MongoPreparedStatementTests {
                                ]
                            }
                        ]
-                    }
-                    """;
+                    }""";
 
             var preparedStatement = createMongoPreparedStatement(mql);
             preparedStatement.close();
