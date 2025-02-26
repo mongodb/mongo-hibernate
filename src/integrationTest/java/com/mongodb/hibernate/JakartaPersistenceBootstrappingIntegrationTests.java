@@ -28,14 +28,19 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Id;
 import jakarta.persistence.Persistence;
 import jakarta.persistence.Table;
-import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JakartaPersistenceBootstrappingIntegrationTests {
-    private static EntityManagerFactory entityManagerFactory;
+
     private static MongoConfiguration config;
+
+    @AutoClose
+    private static EntityManagerFactory entityManagerFactory;
+
+    @AutoClose
     private static MongoClient mongoClient;
 
     @BeforeAll
@@ -48,13 +53,6 @@ class JakartaPersistenceBootstrappingIntegrationTests {
     @BeforeEach
     void beforeEach() {
         mongoClient.getDatabase(config.databaseName()).drop();
-    }
-
-    @AfterAll
-    @SuppressWarnings("try")
-    static void afterAll() {
-        try (var closed1 = entityManagerFactory;
-                var closed2 = mongoClient) {}
     }
 
     @Test
