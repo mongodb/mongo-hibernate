@@ -236,7 +236,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
 
         if (tableDeleteStandard.getNumberOfKeyBindings() > 1) {
-            throw new FeatureNotSupportedException("MongoDB doesn't support id spanning multiple columns");
+            throw new FeatureNotSupportedException("MongoDB doesn't support '_id' spanning multiple columns");
         }
         assertTrue(tableDeleteStandard.getNumberOfKeyBindings() == 1);
         var keyBinding = tableDeleteStandard.getKeyBindings().get(0);
