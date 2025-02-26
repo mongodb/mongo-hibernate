@@ -136,7 +136,7 @@ class MongoResultSetTests {
         return Stream.concat(invocationsImpactedByColumnIndex, additionalArguments);
     }
 
-    static Stream<Arguments> doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(int columnIndex) {
+    static Stream<Arguments> getGetterInvocations(int columnIndex) {
         return Map.<String, ResultSetMethodInvocation>ofEntries(
                         Map.entry("getString(int)", rs -> rs.getString(columnIndex)),
                         Map.entry("getBoolean(int)", rs -> rs.getBoolean(columnIndex)),
