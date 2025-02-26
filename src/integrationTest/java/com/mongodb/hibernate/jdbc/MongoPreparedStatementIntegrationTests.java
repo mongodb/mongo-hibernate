@@ -22,11 +22,13 @@ import com.mongodb.client.model.Sorts;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -37,6 +39,35 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoPreparedStatementIntegrationTests {
+
+    private static final String INSERT_MQL =
+            """
+            {
+                insert: "books",
+                documents: [
+                    {
+                        _id: 1,
+                        title: "War and Peace",
+                        author: "Leo Tolstoy",
+                        outOfStock: false,
+                        tags: [ "classic", "tolstoy" ]
+                    },
+                    {
+                        _id: 2,
+                        title: "Anna Karenina",
+                        author: "Leo Tolstoy",
+                        outOfStock: false,
+                        tags: [ "classic", "tolstoy" ]
+                    },
+                    {
+                        _id: 3,
+                        title: "Crime and Punishment",
+                        author: "Fyodor Dostoevsky",
+                        outOfStock: false,
+                        tags: [ "classic", "dostoevsky", "literature" ]
+                    }
+                ]
+            }""";
 
     private static SessionFactory sessionFactory;
 
@@ -55,12 +86,14 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @BeforeEach
-    void beforeEach() {
+    void setUp() {
         session = sessionFactory.openSession();
+        clearData();
+        prepareData();
     }
 
     @AfterEach
-    void afterEach() {
+    void tearDown() {
         if (session != null) {
             session.close();
         }
@@ -69,55 +102,9 @@ class MongoPreparedStatementIntegrationTests {
     @Nested
     class ExecuteUpdateTests {
 
-        @BeforeEach
-        void beforeEach() {
-            session.doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
-            });
-        }
-
-        private static final String INSERT_MQL =
-                """
-                {
-                    insert: "books",
-                    documents: [
-                        {
-                            _id: 1,
-                            title: "War and Peace",
-                            author: "Leo Tolstoy",
-                            outOfStock: false,
-                            tags: [ "classic", "tolstoy" ]
-                        },
-                        {
-                            _id: 2,
-                            title: "Anna Karenina",
-                            author: "Leo Tolstoy",
-                            outOfStock: false,
-                            tags: [ "classic", "tolstoy" ]
-                        },
-                        {
-                            _id: 3,
-                            title: "Crime and Punishment",
-                            author: "Fyodor Dostoevsky",
-                            outOfStock: false,
-                            tags: [ "classic", "dostoevsky", "literature" ]
-                        }
-                    ]
-                }""";
-
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
-            // given
-            prepareData();
 
             // when && then
             var expectedDocs = List.of(
@@ -179,14 +166,6 @@ class MongoPreparedStatementIntegrationTests {
             assertExecuteUpdate(pstmtProvider, autoCommit, 2, expectedDocs);
         }
 
-        private void prepareData() {
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                var statement = connection.createStatement();
-                statement.executeUpdate(INSERT_MQL);
-            });
-        }
-
         private void assertExecuteUpdate(
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
                 boolean autoCommit,
@@ -211,5 +190,429 @@ class MongoPreparedStatementIntegrationTests {
                 }
             });
         }
+    }
+
+    @Nested
+    class BatchTests {
+        private static final int BATCH_SIZE = 2;
+
+        private static SessionFactory batchableSessionFactory;
+
+        private Session batchableSession;
+
+        @BeforeAll
+        static void beforeAll() {
+            batchableSessionFactory = new Configuration()
+                    .setProperty(AvailableSettings.STATEMENT_BATCH_SIZE, BATCH_SIZE)
+                    .buildSessionFactory();
+        }
+
+        @AfterAll
+        static void afterAll() {
+            if (batchableSessionFactory != null) {
+                batchableSessionFactory.close();
+            }
+        }
+
+        @BeforeEach
+        void setUp() {
+            batchableSession = batchableSessionFactory.openSession();
+        }
+
+        @AfterEach
+        void tearDown() {
+            if (batchableSession != null) {
+                batchableSession.close();
+            }
+        }
+
+        @Nested
+        class InsertTests {
+
+            private static final String MQL =
+                    """
+                    {
+                        insert: "books",
+                        documents: [
+                            {
+                                _id: { $undefined: true },
+                                title: { $undefined: true }
+                            }
+                        ]
+                    }""";
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            void test(boolean autoCommit) {
+                clearData();
+                batchableSession.doWork(connection -> {
+                    connection.setAutoCommit(autoCommit);
+                    try (var pstmt = connection.prepareStatement(MQL)) {
+                        try {
+                            pstmt.setInt(1, 1);
+                            pstmt.setString(2, "War and Peace");
+                            pstmt.addBatch();
+
+                            pstmt.setInt(1, 2);
+                            pstmt.setString(2, "Anna Karenina");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                            pstmt.setInt(1, 3);
+                            pstmt.setString(2, "Crime and Punishment");
+                            pstmt.addBatch();
+
+                            pstmt.setInt(1, 4);
+                            pstmt.setString(2, "Notes from Underground");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                            pstmt.setInt(1, 5);
+                            pstmt.setString(2, "Fathers and Sons");
+
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+                        } finally {
+                            if (!autoCommit) {
+                                connection.commit();
+                            }
+                            pstmt.clearBatch();
+                        }
+
+                        var expectedDocuments = List.of(
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 1,
+                                            title: "War and Peace"
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 2,
+                                            title: "Anna Karenina"
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 3,
+                                            title: "Crime and Punishment"
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 4,
+                                            title: "Notes from Underground"
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 5,
+                                            title: "Fathers and Sons"
+                                        }"""));
+
+                        var realDocuments = ((MongoPreparedStatement) pstmt)
+                                .getMongoDatabase()
+                                .getCollection("books", BsonDocument.class)
+                                .find()
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(expectedDocuments, realDocuments);
+                    }
+                });
+            }
+        }
+
+        @Nested
+        class UpdateTests {
+            private static final String UPDATE_ONE_MQL =
+                    """
+                    {
+                        update: "books",
+                        updates: [
+                            {
+                                q: { _id: { $eq: { $undefined: true } } },
+                                u: { $set: { title: { $undefined: true } } },
+                                multi: false
+                            }
+                        ]
+                    }""";
+
+            private static final String UPDATE_MANY_MQL =
+                    """
+                    {
+                        update: "books",
+                        updates: [
+                            {
+                                q: { author: { $eq: { $undefined: true } } },
+                                u: { $push: { tags: { $undefined: true } } },
+                                multi: true
+                            }
+                        ]
+                    }""";
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            void testUpdateOne(boolean autoCommit) {
+                batchableSession.doWork(connection -> {
+                    connection.setAutoCommit(autoCommit);
+                    try (var pstmt = connection.prepareStatement(UPDATE_ONE_MQL)) {
+                        try {
+                            pstmt.setInt(1, 1);
+                            pstmt.setString(2, "Insurrection");
+                            pstmt.addBatch();
+
+                            pstmt.setInt(1, 2);
+                            pstmt.setString(2, "Hadji Murat");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                            pstmt.setInt(1, 3);
+                            pstmt.setString(2, "The Brothers Karamazov");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                        } finally {
+                            if (!autoCommit) {
+                                connection.commit();
+                            }
+                            pstmt.clearBatch();
+                        }
+
+                        var expectedDocuments = List.of(
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 1,
+                                            title: "Insurrection",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy" ]
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 2,
+                                            title: "Hadji Murat",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy" ]
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 3,
+                                           title: "The Brothers Karamazov",
+                                           author: "Fyodor Dostoevsky",
+                                           outOfStock: false,
+                                           tags: [ "classic", "dostoevsky", "literature" ]
+                                        }"""));
+
+                        var realDocuments = ((MongoPreparedStatement) pstmt)
+                                .getMongoDatabase()
+                                .getCollection("books", BsonDocument.class)
+                                .find()
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(expectedDocuments, realDocuments);
+                    }
+                });
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            void testUpdateMany(boolean autoCommit) {
+                batchableSession.doWork(connection -> {
+                    connection.setAutoCommit(autoCommit);
+                    try (var pstmt = connection.prepareStatement(UPDATE_MANY_MQL)) {
+                        try {
+                            pstmt.setString(1, "Leo Tolstoy");
+                            pstmt.setString(2, "russian");
+                            pstmt.addBatch();
+
+                            pstmt.setString(1, "Fyodor Dostoevsky");
+                            pstmt.setString(2, "russian");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                            pstmt.setString(1, "Leo Tolstoy");
+                            pstmt.setString(2, "literature");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                        } finally {
+                            if (!autoCommit) {
+                                connection.commit();
+                            }
+                            pstmt.clearBatch();
+                        }
+
+                        var expectedDocuments = List.of(
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 1,
+                                            title: "War and Peace",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy", "russian", "literature" ]
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 2,
+                                            title: "Anna Karenina",
+                                            author: "Leo Tolstoy",
+                                            outOfStock: false,
+                                            tags: [ "classic", "tolstoy", "russian", "literature" ]
+                                        }"""),
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            _id: 3,
+                                           title: "Crime and Punishment",
+                                           author: "Fyodor Dostoevsky",
+                                           outOfStock: false,
+                                           tags: [ "classic", "dostoevsky", "literature", "russian" ]
+                                        }"""));
+
+                        var realDocuments = ((MongoPreparedStatement) pstmt)
+                                .getMongoDatabase()
+                                .getCollection("books", BsonDocument.class)
+                                .find()
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(expectedDocuments, realDocuments);
+                    }
+                });
+            }
+        }
+
+        @Nested
+        class DeleteTests {
+            private static final String DELETE_ONE_MQL =
+                    """
+                    {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: { _id: { $eq: { $undefined: true } } },
+                                limit: 1
+                            }
+                        ]
+                    }""";
+
+            private static final String DELETE_MANY_MQL =
+                    """
+                    {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: { author: { $eq: { $undefined: true } } },
+                                limit: 0
+                            }
+                        ]
+                    }""";
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            void testDeleteOne(boolean autoCommit) {
+                batchableSession.doWork(connection -> {
+                    connection.setAutoCommit(autoCommit);
+                    try (var pstmt = connection.prepareStatement(DELETE_ONE_MQL)) {
+                        try {
+                            pstmt.setInt(1, 1);
+                            pstmt.addBatch();
+
+                            pstmt.setInt(1, 2);
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                            pstmt.setInt(1, 3);
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                        } finally {
+                            if (!autoCommit) {
+                                connection.commit();
+                            }
+                            pstmt.clearBatch();
+                        }
+
+                        var realDocuments = ((MongoPreparedStatement) pstmt)
+                                .getMongoDatabase()
+                                .getCollection("books", BsonDocument.class)
+                                .find()
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(Collections.emptyList(), realDocuments);
+                    }
+                });
+            }
+
+            @ParameterizedTest
+            @ValueSource(booleans = {true, false})
+            void testDeleteMany(boolean autoCommit) {
+                batchableSession.doWork(connection -> {
+                    connection.setAutoCommit(autoCommit);
+                    try (var pstmt = connection.prepareStatement(DELETE_MANY_MQL)) {
+                        try {
+                            pstmt.setString(1, "Leo Tolstoy");
+                            pstmt.addBatch();
+
+                            pstmt.setString(1, "Fyodor Dostoevsky");
+                            pstmt.addBatch();
+
+                            pstmt.executeBatch();
+
+                        } finally {
+                            if (!autoCommit) {
+                                connection.commit();
+                            }
+                            pstmt.clearBatch();
+                        }
+
+                        var realDocuments = ((MongoPreparedStatement) pstmt)
+                                .getMongoDatabase()
+                                .getCollection("books", BsonDocument.class)
+                                .find()
+                                .sort(Sorts.ascending("_id"))
+                                .into(new ArrayList<>());
+                        assertEquals(Collections.emptyList(), realDocuments);
+                    }
+                });
+            }
+        }
+    }
+
+    private void prepareData() {
+        session.doWork(connection -> {
+            connection.setAutoCommit(true);
+            var statement = connection.createStatement();
+            statement.executeUpdate(INSERT_MQL);
+        });
+    }
+
+    private void clearData() {
+        session.doWork(conn -> {
+            conn.createStatement()
+                    .executeUpdate(
+                            """
+                            {
+                                delete: "books",
+                                deletes: [
+                                    { q: {}, limit: 0 }
+                                ]
+                            }""");
+        });
     }
 }
