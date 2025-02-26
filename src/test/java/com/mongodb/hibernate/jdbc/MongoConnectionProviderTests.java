@@ -29,7 +29,7 @@ import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import java.sql.SQLException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,18 +42,12 @@ class MongoConnectionProviderTests {
     @Mock(mockMaker = MockMakers.PROXY)
     private ServiceRegistryImplementor serviceRegistry;
 
+    @AutoClose("stop")
     private MongoConnectionProvider connectionProvider;
 
     @BeforeEach
     void beforeEach() {
         connectionProvider = createMongoConnectionProvider();
-    }
-
-    @AfterEach
-    void afterEach() {
-        if (connectionProvider != null) {
-            connectionProvider.stop();
-        }
     }
 
     @Test

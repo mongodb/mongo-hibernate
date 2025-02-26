@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -230,16 +230,12 @@ class MongoPreparedStatementTests {
     @Nested
     class ParameterIndexCheckingTests {
 
+        @AutoClose
         private MongoPreparedStatement preparedStatement;
 
         @BeforeEach
         void beforeEach() throws SQLSyntaxErrorException {
             preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
-        }
-
-        @AfterEach
-        void afterEach() {
-            preparedStatement.close();
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too low")
