@@ -25,7 +25,7 @@ public record AstComparisonFilterOperation(AstComparisonFilterOperator operator,
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeName(operator.operatorName());
+            writer.writeName(operator.getOperatorName());
             value.render(writer);
         }
         writer.writeEndDocument();
