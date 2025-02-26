@@ -24,7 +24,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
-
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
