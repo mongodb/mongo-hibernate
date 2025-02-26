@@ -24,6 +24,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
+
+import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
 import org.bson.BsonInt32;
@@ -36,7 +38,7 @@ class AstNodeRenderTests {
 
     private void assertJsonRendered(AstNode node, String expectedJson) {
         try (var stringWriter = new StringWriter();
-             var jsonWriter = new JsonWriter(stringWriter)) {
+                var jsonWriter = new JsonWriter(stringWriter)) {
             node.render(jsonWriter);
             jsonWriter.flush();
             var actualJson = stringWriter.toString();
