@@ -23,6 +23,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 version = "1.0.0-SNAPSHOT"
 
 plugins {
+    eclipse
     idea
     `java-library`
     alias(libs.plugins.spotless)
@@ -171,21 +172,18 @@ buildConfig {
 // Dependencies
 
 dependencies {
-    testImplementation(libs.junit.jupiter)
-    testImplementation(libs.assertj)
-    testImplementation(libs.logback.classic)
+    listOf(libs.junit.jupiter, libs.assertj, libs.logback.classic).forEach {
+        testImplementation(it)
+        integrationTestImplementation(it)
+    }
+
     testImplementation(libs.mockito.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
-
-    integrationTestImplementation(libs.junit.jupiter)
-    integrationTestImplementation(libs.assertj)
-    integrationTestImplementation(libs.logback.classic)
 
     @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
-
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     api(libs.jspecify)
