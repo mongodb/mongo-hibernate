@@ -23,6 +23,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 version = "1.0.0-SNAPSHOT"
 
 plugins {
+    eclipse
     idea
     `java-library`
     alias(libs.plugins.spotless)
@@ -92,12 +93,11 @@ spotless {
 
         targetExclude("${layout.buildDirectory.get().asFile.name}/generated/**/*.java")
 
-        val formatter = MultilineFormatter()
         addStep(
             FormatterStep.create(
                 "multilineFormatter",
-                object : Serializable {},
-                { _: Any? -> FormatterFunc { input: String -> formatter.format(input) } }))
+                MultilineFormatter(),
+                { formatter -> FormatterFunc { input -> formatter.format(input) } }))
     }
 
     kotlinGradle {
@@ -148,14 +148,14 @@ class MultilineFormatter : Serializable {
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
-    if (name == "compileJava") {
-        options.errorprone {
-            disableWarningsInGeneratedCode.set(true)
-            option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
-            error("NullAway")
-        }
-    } else {
-        options.errorprone.isEnabled.set(false)
+    when (this) {
+        tasks.compileJava.get() ->
+            options.errorprone {
+                disableWarningsInGeneratedCode = true
+                option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
+                error("NullAway")
+            }
+        else -> options.errorprone.isEnabled = false
     }
 }
 
@@ -172,21 +172,18 @@ buildConfig {
 // Dependencies
 
 dependencies {
-    testImplementation(libs.junit.jupiter)
-    testImplementation(libs.assertj)
-    testImplementation(libs.logback.classic)
+    listOf(libs.junit.jupiter, libs.assertj, libs.logback.classic).forEach {
+        testImplementation(it)
+        integrationTestImplementation(it)
+    }
+
     testImplementation(libs.mockito.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
-
-    integrationTestImplementation(libs.junit.jupiter)
-    integrationTestImplementation(libs.assertj)
-    integrationTestImplementation(libs.logback.classic)
 
     @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
-
     integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     api(libs.jspecify)
