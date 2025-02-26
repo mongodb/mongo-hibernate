@@ -18,13 +18,12 @@ package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
-import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -32,13 +31,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 import org.bson.BsonDocument;
-import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,17 +44,33 @@ import org.junit.jupiter.api.Test;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
 class BasicCrudTests implements SessionFactoryScopeAware {
+    private static MongoClient mongoClient;
 
     private SessionFactoryScope sessionFactoryScope;
-
-    @BeforeEach
-    void setUp() {
-        onMongoCollection(MongoCollection::drop);
-    }
+    private MongoCollection<BsonDocument> collection;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        var config = new MongoConfigurationBuilder(
+                        sessionFactoryScope.getSessionFactory().getProperties())
+                .build();
+        if (mongoClient == null) {
+            mongoClient = MongoClients.create(config.mongoClientSettings());
+        }
+        collection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
+        collection.drop();
+    }
+
+    @AfterAll
+    void afterAll() {
+        if (mongoClient != null) {
+            mongoClient.close();
+        }
     }
 
     @Nested
@@ -157,21 +171,9 @@ class BasicCrudTests implements SessionFactoryScopeAware {
         }
     }
 
-    private void onMongoCollection(Consumer<MongoCollection<BsonDocument>> collectionConsumer) {
-        var connectionString = new ConnectionString(new Configuration().getProperty(JAKARTA_JDBC_URL));
-        try (var mongoClient = MongoClients.create(MongoClientSettings.builder()
-                .applyConnectionString(connectionString)
-                .build())) {
-            var collection =
-                    mongoClient.getDatabase(connectionString.getDatabase()).getCollection("books", BsonDocument.class);
-            collectionConsumer.accept(collection);
-        }
-    }
-
     private List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
-        onMongoCollection(
-                collection -> collection.find().sort(Sorts.ascending("_id")).into(documents));
+        collection.find().sort(Sorts.ascending("_id")).into(documents);
         return documents;
     }
 
