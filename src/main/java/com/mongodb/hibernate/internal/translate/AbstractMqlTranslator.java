@@ -203,10 +203,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     // Table Mutation: insertion
 
     @Override
-    public void visitStandardTableInsert(TableInsertStandard tableInsertStandard) {
-        var tableName = tableInsertStandard.getTableName();
-        var astElements = new ArrayList<AstElement>(tableInsertStandard.getNumberOfValueBindings());
-        for (var columnValueBinding : tableInsertStandard.getValueBindings()) {
+    public void visitStandardTableInsert(TableInsertStandard tableInsert) {
+        var tableName = tableInsert.getTableName();
+        var astElements = new ArrayList<AstElement>(tableInsert.getNumberOfValueBindings());
+        for (var columnValueBinding : tableInsert.getValueBindings()) {
             var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
             astElements.add(new AstElement(columnExpression, astValue));
@@ -226,22 +226,22 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     // Table Mutation: deletion
 
     @Override
-    public void visitStandardTableDelete(TableDeleteStandard tableDeleteStandard) {
-        if (tableDeleteStandard.getWhereFragment() != null) {
+    public void visitStandardTableDelete(TableDeleteStandard tableDelete) {
+        if (tableDelete.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
 
-        if (tableDeleteStandard.getNumberOfOptimisticLockBindings() > 0) {
+        if (tableDelete.getNumberOfOptimisticLockBindings() > 0) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
         }
 
-        if (tableDeleteStandard.getNumberOfKeyBindings() > 1) {
+        if (tableDelete.getNumberOfKeyBindings() > 1) {
             throw new FeatureNotSupportedException("MongoDB doesn't support '_id' spanning multiple columns");
         }
-        assertTrue(tableDeleteStandard.getNumberOfKeyBindings() == 1);
-        var keyBinding = tableDeleteStandard.getKeyBindings().get(0);
+        assertTrue(tableDelete.getNumberOfKeyBindings() == 1);
+        var keyBinding = tableDelete.getKeyBindings().get(0);
 
-        var tableName = tableDeleteStandard.getMutatingTable().getTableName();
+        var tableName = tableDelete.getMutatingTable().getTableName();
         var astFilterField =
                 new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
         var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
