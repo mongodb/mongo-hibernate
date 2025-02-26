@@ -55,12 +55,12 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
         session = sessionFactory.openSession();
     }
 
     @AfterEach
-    void tearDown() {
+    void afterEach() {
         if (session != null) {
             session.close();
         }
@@ -70,7 +70,7 @@ class MongoPreparedStatementIntegrationTests {
     class ExecuteUpdateTests {
 
         @BeforeEach
-        void setUp() {
+        void beforeEach() {
             session.doWork(conn -> {
                 conn.createStatement()
                         .executeUpdate(

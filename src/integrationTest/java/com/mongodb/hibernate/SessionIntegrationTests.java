@@ -46,12 +46,12 @@ class SessionIntegrationTests {
     }
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
         session = sessionFactory.openSession();
     }
 
     @AfterEach
-    void tearDown() {
+    void afterEach() {
         if (session != null) {
             session.close();
         }
