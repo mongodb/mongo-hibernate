@@ -71,20 +71,16 @@ class MongoResultSetTests {
 
         @Test
         void testIsIdempotent() throws SQLException {
-            // given
             mongoResultSet.close();
 
-            // when && then
             assertDoesNotThrow(() -> mongoResultSet.close());
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoResultSet")
         @MethodSource("getMongoResultSetMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, ResultSetMethodInvocation methodInvocation) throws SQLException {
-            // given
             mongoResultSet.close();
 
-            // when && then
             var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoResultSet));
             assertEquals("MongoResultSet has been closed", exception.getMessage());
         }
@@ -169,17 +165,14 @@ class MongoResultSetTests {
     @Test
     void testGetValues() throws SQLException {
 
-        // given
-        var string = "Hello World";
-        var bigDecimal = new BigDecimal(12345678);
         var entries = List.of(
                 Map.entry("f1", new BsonNull()),
                 Map.entry("f2", new BsonBoolean(true)),
                 Map.entry("f3", new BsonDouble(3.1415)),
                 Map.entry("f4", new BsonInt32(120)),
                 Map.entry("f5", new BsonInt64(12345678)),
-                Map.entry("f6", new BsonString(string)),
-                Map.entry("f7", new BsonDecimal128(new Decimal128(bigDecimal))));
+                Map.entry("f6", new BsonString("Hello World")),
+                Map.entry("f7", new BsonDecimal128(new Decimal128(new BigDecimal(12345678)))));
 
         var bsonDocument = new BsonDocument();
         entries.forEach(entry -> bsonDocument.put(entry.getKey(), entry.getValue()));
@@ -187,11 +180,9 @@ class MongoResultSetTests {
         doReturn(true).when(mongoCursor).hasNext();
         doReturn(bsonDocument).when(mongoCursor).next();
 
-        // when
         mongoResultSet = new MongoResultSet(
                 mongoCursor, entries.stream().map(Map.Entry::getKey).toList());
 
-        // then
         assertTrue(mongoResultSet.next());
 
         assertAll(
@@ -255,9 +246,9 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(5)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(5))),
 
-                // f6: new BsonString(string)
+                // f6: new BsonString("Hello World")
                 () -> assertAll(
-                        () -> assertEquals(string, mongoResultSet.getString(6)),
+                        () -> assertEquals("Hello World", mongoResultSet.getString(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(6)),
@@ -267,7 +258,7 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(6)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(6))),
 
-                // f7: new new BsonDecimal128(bigDecimal))
+                // f7: new new BsonDecimal128(new BigDecimal(12345678)))
                 () -> assertAll(
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(7)),
@@ -277,6 +268,6 @@ class MongoResultSetTests {
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(7)),
                         () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(7)),
-                        () -> assertEquals(bigDecimal, mongoResultSet.getBigDecimal(7))));
+                        () -> assertEquals(new BigDecimal(12345678), mongoResultSet.getBigDecimal(7))));
     }
 }
