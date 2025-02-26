@@ -30,6 +30,7 @@ import jakarta.persistence.Persistence;
 import jakarta.persistence.Table;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JakartaPersistenceBootstrappingIntegrationTests {
@@ -44,8 +45,8 @@ class JakartaPersistenceBootstrappingIntegrationTests {
         mongoClient = MongoClients.create(config.mongoClientSettings());
     }
 
-    @BeforeAll
-    static void beforeEach() {
+    @BeforeEach
+    void beforeEach() {
         mongoClient.getDatabase(config.databaseName()).drop();
     }
 

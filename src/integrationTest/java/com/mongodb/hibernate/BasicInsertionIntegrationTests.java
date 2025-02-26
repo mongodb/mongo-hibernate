@@ -48,7 +48,7 @@ class BasicInsertionIntegrationTests {
     private static MongoConfiguration config;
 
     @BeforeEach
-    void setUp(SessionFactoryScope scope) {
+    void beforeEach(SessionFactoryScope scope) {
         config = new MongoConfigurationBuilder(scope.getSessionFactory().getProperties()).build();
         onMongoCollection(MongoCollection::drop);
     }

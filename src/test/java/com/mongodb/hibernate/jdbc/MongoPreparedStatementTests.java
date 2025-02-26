@@ -483,12 +483,12 @@ class MongoPreparedStatementTests {
         private MongoPreparedStatement preparedStatement;
 
         @BeforeEach
-        void setUp() throws SQLSyntaxErrorException {
+        void beforeEach() throws SQLSyntaxErrorException {
             preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
         }
 
         @AfterEach
-        void tearDown() {
+        void afterEach() {
             preparedStatement.close();
         }
 

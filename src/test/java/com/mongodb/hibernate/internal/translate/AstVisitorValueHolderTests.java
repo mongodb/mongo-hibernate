@@ -37,7 +37,7 @@ class AstVisitorValueHolderTests {
     private AstVisitorValueHolder astVisitorValueHolder;
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
         astVisitorValueHolder = new AstVisitorValueHolder();
     }
 

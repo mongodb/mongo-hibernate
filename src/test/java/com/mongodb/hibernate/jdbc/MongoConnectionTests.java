@@ -68,7 +68,7 @@ class MongoConnectionTests {
     private MongoConnection mongoConnection;
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
         mongoConnection = new MongoConnection(
                 new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, "mongodb://host/db")).build(),
                 mongoClient,
