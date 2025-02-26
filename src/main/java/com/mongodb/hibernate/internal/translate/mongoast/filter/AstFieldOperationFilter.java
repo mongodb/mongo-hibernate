@@ -18,12 +18,13 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import org.bson.BsonWriter;
 
-public record AstFieldOperationFilter(AstFilterField field, AstFilterOperation filterOperation) implements AstFilter {
+public record AstFieldOperationFilter(AstFilterFieldPath fieldPath, AstFilterOperation filterOperation)
+        implements AstFilter {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            field.render(writer);
+            fieldPath.render(writer);
             filterOperation.render(writer);
         }
         writer.writeEndDocument();

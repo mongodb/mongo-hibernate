@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.bson.BsonWriter;
 
-public record AstFilterField(String path) implements AstNode {
+public record AstFilterFieldPath(String path) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
         writer.writeName(path);

@@ -32,7 +32,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterField;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -242,7 +242,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var keyBinding = tableDeleteStandard.getKeyBindings().get(0);
 
         var tableName = tableDeleteStandard.getMutatingTable().getTableName();
-        var astFilterField = new AstFilterField(keyBinding.getColumnReference().getColumnExpression());
+        var astFilterField =
+                new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
         var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         var keyFilter = new AstFieldOperationFilter(astFilterField, new AstComparisonFilterOperation(EQ, astValue));
         astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, keyFilter));

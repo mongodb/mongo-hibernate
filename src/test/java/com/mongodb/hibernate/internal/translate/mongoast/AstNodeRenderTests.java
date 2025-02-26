@@ -23,7 +23,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertComman
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterField;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.io.StringWriter;
 import java.util.List;
 import org.bson.BsonInt32;
@@ -62,15 +62,15 @@ class AstNodeRenderTests {
         @Test
         void testAstFieldOperationFilterRender() {
             // given
-            var astFilterField = new AstFilterField("$field");
+            var astFilterFieldPath = new AstFilterFieldPath("$fieldPath");
             var astComparisonFilterOperation = new AstComparisonFilterOperation(
                     AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt32(1)));
-            var astFieldOperationFilter = new AstFieldOperationFilter(astFilterField, astComparisonFilterOperation);
+            var astFieldOperationFilter = new AstFieldOperationFilter(astFilterFieldPath, astComparisonFilterOperation);
 
             // when && then
             var expectedJson =
                     """
-                    {"$field": {"$eq": 1}}\
+                    {"$fieldPath": {"$eq": 1}}\
                     """;
             assertJsonRendered(astFieldOperationFilter, expectedJson);
         }
@@ -102,7 +102,7 @@ class AstNodeRenderTests {
             // given
             var collection = "books";
             var filter = new AstFieldOperationFilter(
-                    new AstFilterField("$isbn"),
+                    new AstFilterFieldPath("$isbn"),
                     new AstComparisonFilterOperation(
                             AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonString("978-3-16-148410-0"))));
 

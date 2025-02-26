@@ -184,7 +184,7 @@ final class MongoConnection implements ConnectionAdapter {
             var versionArray = commandResult.getList("versionArray", Integer.class);
             if (versionArray.size() < 2) {
                 throw new SQLException(
-                        format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
+                        format("Unexpected versionArray [%s] fieldPath length (should be 2 or more)", versionArray));
             }
             return new MongoDatabaseMetaData(
                     this, versionText, versionArray.get(0), versionArray.get(1), assertNotNull(BuildConfig.VERSION));
