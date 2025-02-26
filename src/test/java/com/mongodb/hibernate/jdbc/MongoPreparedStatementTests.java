@@ -237,7 +237,7 @@ class MongoPreparedStatementTests {
         }
 
         @AfterEach
-        void afterEach() {
+        void afterEach() throws SQLException {
             preparedStatement.close();
         }
 

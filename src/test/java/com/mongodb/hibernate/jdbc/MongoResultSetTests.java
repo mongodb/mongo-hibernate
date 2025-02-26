@@ -86,7 +86,7 @@ class MongoResultSetTests {
         }
 
         private static Stream<Arguments> getMongoResultSetMethodInvocationsImpactedByClosing() {
-            return doGetMongoResultSetMethodInvocationsImpactedByClosing();
+            return getClosedPreconditionInvocations();
         }
     }
 
@@ -110,16 +110,16 @@ class MongoResultSetTests {
         }
 
         private static Stream<Arguments> getMongoResultSetMethodInvocationsWithColumnIndexUnderflow() {
-            return doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(0);
+            return getGetterInvocations(0);
         }
 
         private static Stream<Arguments> getMongoResultSetMethodInvocationsWithColumnIndexOverflow() {
-            return doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(FIELDS.size() + 1);
+            return getGetterInvocations(FIELDS.size() + 1);
         }
     }
 
-    static Stream<Arguments> doGetMongoResultSetMethodInvocationsImpactedByClosing() {
-        var invocationsImpactedByColumnIndex = doGetMongoResultSetMethodInvocationsImpactedByColumnIndex(1);
+    static Stream<Arguments> getClosedPreconditionInvocations() {
+        var invocationsImpactedByColumnIndex = getGetterInvocations(1);
         var additionalArguments = Map.<String, ResultSetMethodInvocation>ofEntries(
                         Map.entry("next()", ResultSet::next),
                         Map.entry("wasNull()", ResultSet::wasNull),
