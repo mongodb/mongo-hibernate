@@ -171,20 +171,20 @@ buildConfig {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Dependencies
 
-listOf(libs.junit.jupiter, libs.assertj, libs.logback.classic).forEach {
-    dependencies {
+dependencies {
+    listOf(libs.junit.jupiter, libs.assertj, libs.logback.classic).forEach {
         testImplementation(it)
         integrationTestImplementation(it)
     }
-}
 
-dependencies {
     testImplementation(libs.mockito.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
+    integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     api(libs.jspecify)
 
