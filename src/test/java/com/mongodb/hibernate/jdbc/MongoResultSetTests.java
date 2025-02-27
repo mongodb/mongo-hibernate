@@ -88,7 +88,7 @@ class MongoResultSetTests {
         }
 
         private static Stream<Arguments> getMongoResultSetMethodInvocationsImpactedByClosing() {
-            return getClosedPreconditionInvocations();
+            return getOpenPreconditionInvocations();
         }
     }
 
@@ -120,7 +120,7 @@ class MongoResultSetTests {
         }
     }
 
-    static Stream<Arguments> getClosedPreconditionInvocations() {
+    static Stream<Arguments> getOpenPreconditionInvocations() {
         var invocationsImpactedByColumnIndex = getGetterInvocations(1);
         var additionalArguments = Map.<String, ResultSetMethodInvocation>ofEntries(
                         Map.entry("next()", ResultSet::next),
