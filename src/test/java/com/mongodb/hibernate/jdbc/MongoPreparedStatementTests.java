@@ -99,12 +99,11 @@ class MongoPreparedStatementTests {
         @Test
         @DisplayName("Happy path when all parameters are provided values")
         void testSuccess() throws SQLException {
-            // given
+
             doReturn(Document.parse("{ok: 1.0, n: 1}"))
                     .when(mongoDatabase)
                     .runCommand(eq(clientSession), any(BsonDocument.class));
 
-            // when && then
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
 
                 preparedStatement.setString(1, "War and Peace");
@@ -158,7 +157,7 @@ class MongoPreparedStatementTests {
         @MethodSource("getMongoPreparedStatementMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation)
                 throws SQLSyntaxErrorException {
-            // given
+
             var mql =
                     """
                     {
@@ -179,7 +178,6 @@ class MongoPreparedStatementTests {
             var preparedStatement = createMongoPreparedStatement(mql);
             preparedStatement.close();
 
-            // when && then
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
             assertEquals("MongoPreparedStatement has been closed", sqlException.getMessage());
         }
