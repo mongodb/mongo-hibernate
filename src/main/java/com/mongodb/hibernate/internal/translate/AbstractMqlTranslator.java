@@ -209,10 +209,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         for (var columnValueBinding : tableInsert.getValueBindings()) {
             var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
 
-            if (columnValueBinding.getValueExpression() == null) {
+            var valueExpression = columnValueBinding.getValueExpression();
+            if (valueExpression == null) {
                 throw new FeatureNotSupportedException();
             }
-            var astValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
+            var astValue = acceptAndYield(valueExpression, FIELD_VALUE);
 
             astElements.add(new AstElement(columnExpression, astValue));
         }
