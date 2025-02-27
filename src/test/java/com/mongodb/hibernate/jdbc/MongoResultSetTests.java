@@ -41,6 +41,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonType;
+import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -162,19 +163,20 @@ class MongoResultSetTests {
         void runOn(ResultSet rs) throws SQLException;
     }
 
-    @ParameterizedTest(name = "columnIndex: {0}, bsonType: {1}")
+    @ParameterizedTest(name = "columnIndex: {0}, bsonValue: {1}")
     @MethodSource("getArgumentsStreamForGetValuesTest")
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void testGetValues(int columnIndex, BsonType bsonType, Map<Class<?>, Object> validMapping) throws SQLException {
+    void testGetValues(int columnIndex, BsonValue bsonValue, Map<Class<?>, Object> validMapping) throws SQLException {
 
         var mapEntries = List.of(
                 Map.entry("f1", new BsonNull()),
                 Map.entry("f2", new BsonBoolean(true)),
-                Map.entry("f3", new BsonDouble(3.1415)),
-                Map.entry("f4", new BsonInt32(120)),
-                Map.entry("f5", new BsonInt64(12345678)),
-                Map.entry("f6", new BsonString("Hello World")),
-                Map.entry("f7", new BsonDecimal128(new Decimal128(new BigDecimal(12345678)))));
+                Map.entry("f3", new BsonBoolean(false)),
+                Map.entry("f4", new BsonDouble(3.1415)),
+                Map.entry("f5", new BsonInt32(120)),
+                Map.entry("f6", new BsonInt64(12345678)),
+                Map.entry("f7", new BsonString("Hello World")),
+                Map.entry("f8", new BsonDecimal128(new Decimal128(new BigDecimal(12345678)))));
 
         var bsonDocument = new BsonDocument();
         bsonDocument.putAll(
@@ -249,7 +251,7 @@ class MongoResultSetTests {
         if (expectedStringValue != null) {
             assertEquals(expectedStringValue, mongoResultSet.getString(columnIndex));
         } else {
-            if (bsonType == BsonType.NULL) {
+            if (bsonValue.getBsonType() == BsonType.NULL) {
                 assertNull(mongoResultSet.getString(columnIndex));
             } else {
                 assertThrows(SQLException.class, () -> mongoResultSet.getString(columnIndex));
@@ -261,7 +263,7 @@ class MongoResultSetTests {
         if (expectedBigDecimalValue != null) {
             assertEquals(expectedBigDecimalValue, mongoResultSet.getBigDecimal(columnIndex));
         } else {
-            if (bsonType == BsonType.NULL) {
+            if (bsonValue.getBsonType() == BsonType.NULL) {
                 assertNull(mongoResultSet.getBigDecimal(columnIndex));
             } else {
                 assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(columnIndex));
@@ -273,7 +275,7 @@ class MongoResultSetTests {
         return Arrays.stream(new Arguments[] {
             Arguments.of(
                     1,
-                    BsonType.NULL,
+                    new BsonNull(),
                     Map.of(
                             Boolean.class,
                             false,
@@ -289,18 +291,20 @@ class MongoResultSetTests {
                             0F,
                             Double.class,
                             0D)),
-            Arguments.of(2, BsonType.BOOLEAN, Map.of(Boolean.class, true)),
-            Arguments.of(3, BsonType.DOUBLE, Map.of(Float.class, 3.1415F, Double.class, 3.1415)),
+            Arguments.of(2, new BsonBoolean(true), Map.of(Boolean.class, true)),
+            Arguments.of(3, new BsonBoolean(false), Map.of(Boolean.class, false)),
+            Arguments.of(4, new BsonDouble(3.1415), Map.of(Float.class, 3.1415F, Double.class, 3.1415)),
             Arguments.of(
-                    4,
-                    BsonType.INT32,
+                    5,
+                    new BsonInt32(120),
                     Map.of(
                             Byte.class, (byte) 120,
                             Short.class, (short) 120,
                             Integer.class, 120)),
-            Arguments.of(5, BsonType.INT64, Map.of(Long.class, 12345678L)),
-            Arguments.of(6, BsonType.STRING, Map.of(String.class, "Hello World")),
-            Arguments.of(7, BsonType.DECIMAL128, Map.of(BigDecimal.class, new BigDecimal(12345678)))
+            Arguments.of(6, new BsonInt64(12345678L), Map.of(Long.class, 12345678L)),
+            Arguments.of(7, new BsonString("Hello World"), Map.of(String.class, "Hello World")),
+            Arguments.of(
+                    8, new BsonDecimal128(new Decimal128(12345678)), Map.of(BigDecimal.class, new BigDecimal(12345678)))
         });
     }
 }
