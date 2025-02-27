@@ -63,7 +63,7 @@ class MongoResultSetTests {
     private MongoResultSet mongoResultSet;
 
     @BeforeEach
-    void setUp() {
+    void beforeEach() {
         mongoResultSet = new MongoResultSet(mongoCursor, FIELDS);
     }
 
