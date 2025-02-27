@@ -16,14 +16,14 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AbstractAstNodeTests;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
-class AstFieldOperationFilterTests extends AbstractAstNodeTests {
+class AstFieldOperationFilterTests {
 
     @Test
     void testRendering() {
@@ -36,6 +36,6 @@ class AstFieldOperationFilterTests extends AbstractAstNodeTests {
         var expectedJson = """
                            {"$fieldPath": {"$eq": 1}}\
                            """;
-        assertJsonRendered(astFieldOperationFilter, expectedJson);
+        assertRender(astFieldOperationFilter, expectedJson);
     }
 }

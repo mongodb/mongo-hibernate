@@ -22,9 +22,9 @@ import java.io.IOException;
 import java.io.StringWriter;
 import org.bson.json.JsonWriter;
 
-public abstract class AbstractAstNodeTests {
+public abstract class AstNodeAssertions {
 
-    protected void assertJsonRendered(AstNode node, String expectedJson) {
+    public static void assertRender(AstNode node, String expectedJson) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter)) {
             node.render(jsonWriter);

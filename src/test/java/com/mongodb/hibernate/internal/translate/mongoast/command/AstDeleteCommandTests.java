@@ -16,9 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AbstractAstNodeTests;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
@@ -26,7 +26,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPa
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
 
-class AstDeleteCommandTests extends AbstractAstNodeTests {
+class AstDeleteCommandTests {
 
     @Test
     void testRendering() {
@@ -43,6 +43,6 @@ class AstDeleteCommandTests extends AbstractAstNodeTests {
                 """
                 {"delete": "books", "deletes": [{"q": {"$isbn": {"$eq": "978-3-16-148410-0"}}, "limit": 0}]}\
                 """;
-        assertJsonRendered(deleteCommand, expectedJson);
+        assertRender(deleteCommand, expectedJson);
     }
 }

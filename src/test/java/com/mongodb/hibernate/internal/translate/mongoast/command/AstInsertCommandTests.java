@@ -16,7 +16,8 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AbstractAstNodeTests;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
@@ -26,7 +27,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
 
-class AstInsertCommandTests extends AbstractAstNodeTests {
+class AstInsertCommandTests {
 
     @Test
     void testRendering() {
@@ -43,6 +44,6 @@ class AstInsertCommandTests extends AbstractAstNodeTests {
                 """
                 {"insert": "books", "documents": [{"$title": "War and Peace", "$year": 1867, "_id": {"$undefined": true}}]}\
                 """;
-        assertJsonRendered(insertCommand, expectedJson);
+        assertRender(insertCommand, expectedJson);
     }
 }
