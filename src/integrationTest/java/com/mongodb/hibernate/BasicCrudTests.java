@@ -37,6 +37,7 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,8 @@ import org.junit.jupiter.api.Test;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
 class BasicCrudTests implements SessionFactoryScopeAware {
+
+    @AutoClose
     private static MongoClient mongoClient;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -64,13 +67,6 @@ class BasicCrudTests implements SessionFactoryScopeAware {
         }
         collection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
         collection.drop();
-    }
-
-    @AfterAll
-    void afterAll() {
-        if (mongoClient != null) {
-            mongoClient.close();
-        }
     }
 
     @Nested
