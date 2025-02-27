@@ -30,7 +30,7 @@ class AstDeleteCommandTests {
 
     @Test
     void testRendering() {
-        // given
+
         var collection = "books";
         var filter = new AstFieldOperationFilter(
                 new AstFilterFieldPath("isbn"),
@@ -38,9 +38,11 @@ class AstDeleteCommandTests {
 
         var deleteCommand = new AstDeleteCommand(collection, filter);
 
-        // when && then
         var expectedJson =
-                "{\"delete\": \"books\", \"deletes\": [{\"q\": {\"isbn\": {\"$eq\": \"978-3-16-148410-0\"}}, \"limit\": 0}]}";
+                """
+                {"delete": "books", "deletes": [{"q": {"isbn": {"$eq": "978-3-16-148410-0"}}, "limit": 0}]}\
+                """;
+
         assertRender(expectedJson, deleteCommand);
     }
 }

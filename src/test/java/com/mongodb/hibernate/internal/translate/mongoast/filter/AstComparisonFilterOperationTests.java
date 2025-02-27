@@ -27,11 +27,12 @@ class AstComparisonFilterOperationTests {
 
     @Test
     void testRendering() {
-        // given
+
         var astComparisonFilterOperation = new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
 
-        // when && then
-        var expectedJson = "{\"$eq\": 1}";
+        var expectedJson = """
+                           {"$eq": 1}\
+                           """;
         assertRender(expectedJson, astComparisonFilterOperation);
     }
 }

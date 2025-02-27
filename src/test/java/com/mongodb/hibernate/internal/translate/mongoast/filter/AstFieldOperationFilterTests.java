@@ -27,13 +27,14 @@ class AstFieldOperationFilterTests {
 
     @Test
     void testRendering() {
-        // given
+
         var astFilterFieldPath = new AstFilterFieldPath("fieldName");
         var astComparisonFilterOperation = new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
         var astFieldOperationFilter = new AstFieldOperationFilter(astFilterFieldPath, astComparisonFilterOperation);
 
-        // when && then
-        var expectedJson = "{\"fieldName\": {\"$eq\": 1}}";
+        var expectedJson = """
+                           {"fieldName": {"$eq": 1}}\
+                           """;
         assertRender(expectedJson, astFieldOperationFilter);
     }
 }

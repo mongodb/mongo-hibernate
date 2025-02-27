@@ -31,7 +31,7 @@ class AstInsertCommandTests {
 
     @Test
     void testRendering() {
-        // given
+
         var collection = "books";
         var elements = List.of(
                 new AstElement("title", new AstLiteralValue(new BsonString("War and Peace"))),
@@ -39,9 +39,10 @@ class AstInsertCommandTests {
                 new AstElement("_id", AstParameterMarker.INSTANCE));
         var insertCommand = new AstInsertCommand(collection, new AstDocument(elements));
 
-        // when && then
         var expectedJson =
-                "{\"insert\": \"books\", \"documents\": [{\"title\": \"War and Peace\", \"year\": 1867, \"_id\": {\"$undefined\": true}}]}";
+                """
+                {"insert": "books", "documents": [{"title": "War and Peace", "year": 1867, "_id": {"$undefined": true}}]}\
+                """;
         assertRender(expectedJson, insertCommand);
     }
 }

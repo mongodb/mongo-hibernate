@@ -37,6 +37,7 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.AutoClose;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,25 +47,28 @@ import org.junit.jupiter.api.Test;
 class BasicCrudTests implements SessionFactoryScopeAware {
 
     @AutoClose
-    private static MongoClient mongoClient;
+    private MongoClient mongoClient;
+
+    private MongoCollection<BsonDocument> collection;
 
     private SessionFactoryScope sessionFactoryScope;
-    private MongoCollection<BsonDocument> collection;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
     }
 
-    @BeforeEach
-    void beforeEach() {
+    @BeforeAll
+    void beforeAll() {
         var config = new MongoConfigurationBuilder(
                         sessionFactoryScope.getSessionFactory().getProperties())
                 .build();
-        if (mongoClient == null) {
-            mongoClient = MongoClients.create(config.mongoClientSettings());
-        }
+        mongoClient = MongoClients.create(config.mongoClientSettings());
         collection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
+    }
+
+    @BeforeEach
+    void beforeEach() {
         collection.drop();
     }
 
