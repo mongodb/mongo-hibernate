@@ -34,6 +34,6 @@ class AstComparisonFilterOperationTests {
         var expectedJson = """
                            {"$eq": 1}\
                            """;
-        assertRender(astComparisonFilterOperation, expectedJson);
+        assertRender(expectedJson, astComparisonFilterOperation);
     }
 }

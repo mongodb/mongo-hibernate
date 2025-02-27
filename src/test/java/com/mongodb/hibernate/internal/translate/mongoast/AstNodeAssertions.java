@@ -24,7 +24,7 @@ import org.bson.json.JsonWriter;
 
 public abstract class AstNodeAssertions {
 
-    public static void assertRender(AstNode node, String expectedJson) {
+    public static void assertRender(String expectedJson, AstNode node) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter)) {
             node.render(jsonWriter);

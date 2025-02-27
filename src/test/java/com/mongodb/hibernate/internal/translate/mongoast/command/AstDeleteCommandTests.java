@@ -33,16 +33,14 @@ class AstDeleteCommandTests {
         // given
         var collection = "books";
         var filter = new AstFieldOperationFilter(
-                new AstFilterFieldPath("$isbn"),
+                new AstFilterFieldPath("isbn"),
                 new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("978-3-16-148410-0"))));
 
         var deleteCommand = new AstDeleteCommand(collection, filter);
 
         // when && then
         var expectedJson =
-                """
-                {"delete": "books", "deletes": [{"q": {"$isbn": {"$eq": "978-3-16-148410-0"}}, "limit": 0}]}\
-                """;
-        assertRender(deleteCommand, expectedJson);
+                "{\"delete\": \"books\", \"deletes\": [{\"q\": {\"isbn\": {\"$eq\": \"978-3-16-148410-0\"}}, \"limit\": 0}]}";
+        assertRender(expectedJson, deleteCommand);
     }
 }

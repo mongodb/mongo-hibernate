@@ -34,16 +34,13 @@ class AstInsertCommandTests {
         // given
         var collection = "books";
         var elements = List.of(
-                new AstElement("$title", new AstLiteralValue(new BsonString("War and Peace"))),
-                new AstElement("$year", new AstLiteralValue(new BsonInt32(1867))),
+                new AstElement("title", new AstLiteralValue(new BsonString("War and Peace"))),
+                new AstElement("year", new AstLiteralValue(new BsonInt32(1867))),
                 new AstElement("_id", AstParameterMarker.INSTANCE));
         var insertCommand = new AstInsertCommand(collection, new AstDocument(elements));
 
         // when && then
-        var expectedJson =
-                """
-                {"insert": "books", "documents": [{"$title": "War and Peace", "$year": 1867, "_id": {"$undefined": true}}]}\
-                """;
-        assertRender(insertCommand, expectedJson);
+        var expectedJson = "{\"insert\": \"books\", \"documents\": [{\"title\": \"War and Peace\", \"year\": 1867, \"_id\": {\"$undefined\": true}}]}";
+        assertRender(expectedJson, insertCommand);
     }
 }

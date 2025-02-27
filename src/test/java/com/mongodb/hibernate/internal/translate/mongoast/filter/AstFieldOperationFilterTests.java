@@ -28,14 +28,14 @@ class AstFieldOperationFilterTests {
     @Test
     void testRendering() {
         // given
-        var astFilterFieldPath = new AstFilterFieldPath("$fieldPath");
+        var astFilterFieldPath = new AstFilterFieldPath("fieldName");
         var astComparisonFilterOperation = new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
         var astFieldOperationFilter = new AstFieldOperationFilter(astFilterFieldPath, astComparisonFilterOperation);
 
         // when && then
         var expectedJson = """
-                           {"$fieldPath": {"$eq": 1}}\
+                           {"fieldName": {"$eq": 1}}\
                            """;
-        assertRender(astFieldOperationFilter, expectedJson);
+        assertRender(expectedJson, astFieldOperationFilter);
     }
 }
