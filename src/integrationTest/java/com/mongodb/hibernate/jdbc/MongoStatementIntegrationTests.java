@@ -128,10 +128,9 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var updateMql =
                     """
                     {
@@ -177,10 +176,9 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testDelete(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var deleteMql =
                     """
                     {
