@@ -33,9 +33,7 @@ class AstFieldOperationFilterTests {
         var astFieldOperationFilter = new AstFieldOperationFilter(astFilterFieldPath, astComparisonFilterOperation);
 
         // when && then
-        var expectedJson = """
-                           {"fieldName": {"$eq": 1}}\
-                           """;
+        var expectedJson = "{\"fieldName\": {\"$eq\": 1}}";
         assertRender(expectedJson, astFieldOperationFilter);
     }
 }

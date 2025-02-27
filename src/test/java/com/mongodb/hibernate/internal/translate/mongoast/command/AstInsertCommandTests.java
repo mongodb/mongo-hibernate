@@ -40,7 +40,8 @@ class AstInsertCommandTests {
         var insertCommand = new AstInsertCommand(collection, new AstDocument(elements));
 
         // when && then
-        var expectedJson = "{\"insert\": \"books\", \"documents\": [{\"title\": \"War and Peace\", \"year\": 1867, \"_id\": {\"$undefined\": true}}]}";
+        var expectedJson =
+                "{\"insert\": \"books\", \"documents\": [{\"title\": \"War and Peace\", \"year\": 1867, \"_id\": {\"$undefined\": true}}]}";
         assertRender(expectedJson, insertCommand);
     }
 }
