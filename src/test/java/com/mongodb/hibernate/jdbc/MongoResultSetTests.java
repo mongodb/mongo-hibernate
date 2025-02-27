@@ -16,10 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,6 +27,7 @@ import com.mongodb.client.MongoCursor;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +40,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonString;
+import org.bson.BsonType;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -162,10 +162,12 @@ class MongoResultSetTests {
         void runOn(ResultSet rs) throws SQLException;
     }
 
-    @Test
-    void testGetValues() throws SQLException {
+    @ParameterizedTest(name = "columnIndex: {0}, bsonType: {1}")
+    @MethodSource("getArgumentsStreamForGetValuesTest")
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void testGetValues(int columnIndex, BsonType bsonType, Map<Class<?>, Object> validMapping) throws SQLException {
 
-        var entries = List.of(
+        var mapEntries = List.of(
                 Map.entry("f1", new BsonNull()),
                 Map.entry("f2", new BsonBoolean(true)),
                 Map.entry("f3", new BsonDouble(3.1415)),
@@ -175,99 +177,130 @@ class MongoResultSetTests {
                 Map.entry("f7", new BsonDecimal128(new Decimal128(new BigDecimal(12345678)))));
 
         var bsonDocument = new BsonDocument();
-        entries.forEach(entry -> bsonDocument.put(entry.getKey(), entry.getValue()));
+        bsonDocument.putAll(
+                Map.ofEntries(mapEntries.toArray(new Map.Entry[0]))); // use map to randomize the field order
 
         doReturn(true).when(mongoCursor).hasNext();
         doReturn(bsonDocument).when(mongoCursor).next();
 
-        mongoResultSet = new MongoResultSet(
-                mongoCursor, entries.stream().map(Map.Entry::getKey).toList());
+        var fields = mapEntries.stream().map(Map.Entry::getKey).toList();
+        mongoResultSet = new MongoResultSet(mongoCursor, fields);
 
         assertTrue(mongoResultSet.next());
 
-        assertAll(
-                // f1: new BsonNull()
-                () -> assertAll(
-                        () -> assertNull(mongoResultSet.getString(1)),
-                        () -> assertFalse(mongoResultSet.getBoolean(1)),
-                        () -> assertEquals((byte) 0, mongoResultSet.getByte(1)),
-                        () -> assertEquals((short) 0, mongoResultSet.getShort(1)),
-                        () -> assertEquals(0, mongoResultSet.getInt(1)),
-                        () -> assertEquals(0L, mongoResultSet.getLong(1)),
-                        () -> assertEquals(0f, mongoResultSet.getFloat(1)),
-                        () -> assertEquals(0d, mongoResultSet.getDouble(1)),
-                        () -> assertNull(mongoResultSet.getBigDecimal(1))),
+        // Boolean type
+        var expectedBooleanValue = validMapping.get(Boolean.class);
+        if (expectedBooleanValue != null) {
+            assertEquals(expectedBooleanValue, mongoResultSet.getBoolean(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(columnIndex));
+        }
 
-                // f2: new new BsonBoolean(true)
-                () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(2)),
-                        () -> assertTrue(mongoResultSet.getBoolean(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getInt(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(2)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(2))),
+        // Byte type
+        var expectedByteValue = validMapping.get(Byte.class);
+        if (expectedByteValue != null) {
+            assertEquals(expectedByteValue, mongoResultSet.getByte(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getByte(columnIndex));
+        }
 
-                // f3: new BsonDouble(3.1415)
-                () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getInt(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(3)),
-                        () -> assertEquals(3.1415f, mongoResultSet.getFloat(3)),
-                        () -> assertEquals(3.1415d, mongoResultSet.getDouble(3)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(3))),
+        // Short type
+        var expectedShortValue = validMapping.get(Short.class);
+        if (expectedShortValue != null) {
+            assertEquals(expectedShortValue, mongoResultSet.getShort(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getShort(columnIndex));
+        }
 
-                // f4: new BsonInt32(2015)
-                () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(4)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(4)),
-                        () -> assertEquals((byte) 120, mongoResultSet.getByte(4)),
-                        () -> assertEquals((short) 120, mongoResultSet.getShort(4)),
-                        () -> assertEquals(120, mongoResultSet.getInt(4)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(4)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(4)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(4)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(4))),
+        // Integer type
+        var expectedIntegerValue = validMapping.get(Integer.class);
+        if (expectedIntegerValue != null) {
+            assertEquals(expectedIntegerValue, mongoResultSet.getInt(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getInt(columnIndex));
+        }
 
-                // f5: new BsonInt64(12345678)
-                () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getInt(5)),
-                        () -> assertEquals(12345678L, mongoResultSet.getLong(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(5)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(5))),
+        // Long type
+        var expectedLongValue = validMapping.get(Long.class);
+        if (expectedLongValue != null) {
+            assertEquals(expectedLongValue, mongoResultSet.getLong(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getLong(columnIndex));
+        }
 
-                // f6: new BsonString("Hello World")
-                () -> assertAll(
-                        () -> assertEquals("Hello World", mongoResultSet.getString(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getInt(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(6)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(6))),
+        // Float type
+        var expectedFloatValue = validMapping.get(Float.class);
+        if (expectedFloatValue != null) {
+            assertEquals(expectedFloatValue, mongoResultSet.getFloat(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getFloat(columnIndex));
+        }
 
-                // f7: new new BsonDecimal128(new BigDecimal(12345678)))
-                () -> assertAll(
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getString(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getBoolean(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getByte(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getShort(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getInt(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getLong(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getFloat(7)),
-                        () -> assertThrows(SQLException.class, () -> mongoResultSet.getDouble(7)),
-                        () -> assertEquals(new BigDecimal(12345678), mongoResultSet.getBigDecimal(7))));
+        // Double type
+        var expectedDoubleValue = validMapping.get(Double.class);
+        if (expectedDoubleValue != null) {
+            assertEquals(expectedDoubleValue, mongoResultSet.getDouble(columnIndex));
+        } else {
+            assertThrows(SQLException.class, () -> mongoResultSet.getDouble(columnIndex));
+        }
+
+        // String type
+        var expectedStringValue = validMapping.get(String.class);
+        if (expectedStringValue != null) {
+            assertEquals(expectedStringValue, mongoResultSet.getString(columnIndex));
+        } else {
+            if (bsonType == BsonType.NULL) {
+                assertNull(mongoResultSet.getString(columnIndex));
+            } else {
+                assertThrows(SQLException.class, () -> mongoResultSet.getString(columnIndex));
+            }
+        }
+
+        // BigDecimal type
+        var expectedBigDecimalValue = validMapping.get(BigDecimal.class);
+        if (expectedBigDecimalValue != null) {
+            assertEquals(expectedBigDecimalValue, mongoResultSet.getBigDecimal(columnIndex));
+        } else {
+            if (bsonType == BsonType.NULL) {
+                assertNull(mongoResultSet.getBigDecimal(columnIndex));
+            } else {
+                assertThrows(SQLException.class, () -> mongoResultSet.getBigDecimal(columnIndex));
+            }
+        }
+    }
+
+    private static Stream<Arguments> getArgumentsStreamForGetValuesTest() {
+        return Arrays.stream(new Arguments[] {
+            Arguments.of(
+                    1,
+                    BsonType.NULL,
+                    Map.of(
+                            Boolean.class,
+                            false,
+                            Byte.class,
+                            (byte) 0,
+                            Short.class,
+                            (short) 0,
+                            Integer.class,
+                            0,
+                            Long.class,
+                            0L,
+                            Float.class,
+                            0F,
+                            Double.class,
+                            0D)),
+            Arguments.of(2, BsonType.BOOLEAN, Map.of(Boolean.class, true)),
+            Arguments.of(3, BsonType.DOUBLE, Map.of(Float.class, 3.1415F, Double.class, 3.1415)),
+            Arguments.of(
+                    4,
+                    BsonType.INT32,
+                    Map.of(
+                            Byte.class, (byte) 120,
+                            Short.class, (short) 120,
+                            Integer.class, 120)),
+            Arguments.of(5, BsonType.INT64, Map.of(Long.class, 12345678L)),
+            Arguments.of(6, BsonType.STRING, Map.of(String.class, "Hello World")),
+            Arguments.of(7, BsonType.DECIMAL128, Map.of(BigDecimal.class, new BigDecimal(12345678)))
+        });
     }
 }
