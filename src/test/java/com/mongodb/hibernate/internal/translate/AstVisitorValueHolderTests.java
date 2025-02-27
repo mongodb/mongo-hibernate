@@ -43,20 +43,18 @@ class AstVisitorValueHolderTests {
 
     @Test
     void testSimpleUsage() {
-        // given
+
         var value = new AstLiteralValue(new BsonString("field_value"));
         Runnable valueYielder = () -> astVisitorValueHolder.yield(FIELD_VALUE, value);
 
-        // when
         var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueYielder);
 
-        // then
         assertSame(value, valueGotten);
     }
 
     @Test
     void testRecursiveUsage() {
-        // given
+
         Runnable tableInserter = () -> {
             Runnable fieldValueYielder = () -> {
                 astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
@@ -67,30 +65,28 @@ class AstVisitorValueHolderTests {
                     COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
         };
 
-        // when && then
         astVisitorValueHolder.execute(COLLECTION_MUTATION, tableInserter);
     }
 
     @Test
     @DisplayName("Exception is thrown when holder is not empty when setting value")
     void testHolderNotEmptyWhenSetting() {
-        // given
+
         Runnable valueYielder = () -> {
             astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
             astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
         };
-        // when && then
+
         assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, valueYielder));
     }
 
     @Test
     @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of real data")
     void testHolderExpectingDifferentDescriptor() {
-        // given
+
         Runnable valueYielder =
                 () -> astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
 
-        // when && then
         assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueYielder));
     }
 

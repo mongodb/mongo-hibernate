@@ -320,10 +320,9 @@ class MongoPreparedStatementIntegrationTests {
         @ParameterizedTest(name = "autoCommit: {0}")
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
