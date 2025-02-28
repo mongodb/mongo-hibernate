@@ -37,9 +37,9 @@ import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
 
 /**
- * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
+ * MongoDB extension's JDBC {@linkplain java.sql.Connection connection} implementation class.
  *
- * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
+ * <p>It only focuses on API methods Mongo extension will support. All the other methods are implemented by throwing
  * exceptions in its parent {@linkplain ConnectionAdapter adapter interface}.
  */
 final class MongoConnection implements ConnectionAdapter {

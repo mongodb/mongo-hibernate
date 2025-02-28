@@ -32,9 +32,9 @@ import org.bson.BsonDocument;
 import org.jspecify.annotations.Nullable;
 
 /**
- * MongoDB Dialect's JDBC {@link java.sql.Statement} implementation class.
+ * MongoDB extension's JDBC {@link java.sql.Statement} implementation class.
  *
- * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
+ * <p>It only focuses on API methods Mongo extension will support. All the other methods are implemented by throwing
  * exceptions in its parent {@link StatementAdapter adapter interface}.
  */
 class MongoStatement implements StatementAdapter {

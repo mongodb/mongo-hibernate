@@ -24,7 +24,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.BuildConfig;
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import java.io.IOException;
@@ -42,7 +41,7 @@ import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@linkplain MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider} SPI implementation.
+ * Mongo extension's customized JDBC {@link ConnectionProvider} SPI implementation.
  *
  * <p>All the work done via a {@link Connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from this
  * {@linkplain ConnectionProvider} is done within the same {@link ClientSession}.
