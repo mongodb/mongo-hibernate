@@ -73,9 +73,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private static final BsonUndefined PARAMETER_PLACEHOLDER = new BsonUndefined();
 
-    private final List<BsonDocument> commandBatch;
-
     private final BsonDocument command;
+    private final List<BsonDocument> commandBatch;
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
@@ -83,8 +82,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        commandBatch = new ArrayList<>();
         command = MongoStatement.parse(mql);
+        commandBatch = new ArrayList<>();
         parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -227,14 +226,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
@@ -269,7 +268,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
@@ -289,11 +288,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public int[] executeBatch() throws SQLException {
         checkClosed();
         startTransactionIfNeeded();
-        try {
-            if (commandBatch.isEmpty()) {
-                return new int[0];
-            }
 
+        if (commandBatch.isEmpty()) {
+            return new int[0];
+        }
+
+        try {
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
 
             // Hibernate will group PreparedStatement by both table and mutation type
@@ -306,19 +306,15 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 assertTrue(commandName.equals(command.getFirstKey()));
                 assertTrue(collectionName.equals(command.getString(commandName).getValue()));
 
-                List<WriteModel<BsonDocument>> subWriteModels;
-
                 switch (commandName) {
                     case "insert":
                         var documents = command.getArray("documents");
-                        subWriteModels = new ArrayList<>(documents.size());
                         for (var document : documents) {
-                            subWriteModels.add(new InsertOneModel<>((BsonDocument) document));
+                            writeModels.add(new InsertOneModel<>((BsonDocument) document));
                         }
                         break;
                     case "update":
                         var updates = command.getArray("updates").getValues();
-                        subWriteModels = new ArrayList<>(updates.size());
                         for (var update : updates) {
                             var updateDocument = (BsonDocument) update;
                             WriteModel<BsonDocument> updateModel =
@@ -327,15 +323,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                                                     updateDocument.getDocument("q"), updateDocument.getDocument("u"))
                                             : new UpdateManyModel<>(
                                                     updateDocument.getDocument("q"), updateDocument.getDocument("u"));
-                            subWriteModels.add(updateModel);
+                            writeModels.add(updateModel);
                         }
                         break;
                     case "delete":
                         var deletes = command.getArray("deletes");
-                        subWriteModels = new ArrayList<>(deletes.size());
                         for (var delete : deletes) {
                             var deleteDocument = (BsonDocument) delete;
-                            subWriteModels.add(
+                            writeModels.add(
                                     deleteDocument.getNumber("limit").intValue() == 1
                                             ? new DeleteOneModel<>(deleteDocument.getDocument("q"))
                                             : new DeleteManyModel<>(deleteDocument.getDocument("q")));
@@ -344,11 +339,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                     default:
                         throw new FeatureNotSupportedException();
                 }
-                writeModels.addAll(subWriteModels);
             }
             getMongoDatabase()
                     .getCollection(collectionName, BsonDocument.class)
                     .bulkWrite(getClientSession(), writeModels);
+
+            // TODO-HIBERNATE-43 log bulk write result in debug level
 
             var rowCounts = new int[commandBatch.size()];
 
@@ -359,7 +355,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             return rowCounts;
 
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to run bulk operation: " + e.getMessage(), e);
+            throw new SQLException("Failed to execute batch: " + e.getMessage(), e);
         } finally {
             clearBatch();
         }
