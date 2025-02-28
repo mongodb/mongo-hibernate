@@ -39,7 +39,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoPreparedStatementIntegrationTests {
 
-    private static final String INSERT_MQL =
+    private static final String INIT_INSERT_MQL =
             """
             {
                 insert: "books",
@@ -87,87 +87,11 @@ class MongoPreparedStatementIntegrationTests {
     @Nested
     class ExecuteUpdateTests {
 
-        @BeforeEach
-        void beforeEach() {
-            session.doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
-            });
-        }
-
-        private static final String INSERT_MQL =
-                """
-                {
-                    insert: "books",
-                    documents: [
-                        {
-                            _id: 1,
-                            title: "War and Peace",
-                            author: "Leo Tolstoy",
-                            outOfStock: false,
-                            tags: [ "classic", "tolstoy" ]
-                        },
-                        {
-                            _id: 2,
-                            title: "Anna Karenina",
-                            author: "Leo Tolstoy",
-                            outOfStock: false,
-                            tags: [ "classic", "tolstoy" ]
-                        },
-                        {
-                            _id: 3,
-                            title: "Crime and Punishment",
-                            author: "Fyodor Dostoevsky",
-                            outOfStock: false,
-                            tags: [ "classic", "dostoevsky", "literature" ]
-                        }
-                    ]
-                }""";
-
-    private static SessionFactory sessionFactory;
-
-    private Session session;
-
-    @BeforeAll
-    static void beforeAll() {
-        sessionFactory = new Configuration().buildSessionFactory();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        if (sessionFactory != null) {
-            sessionFactory.close();
-        }
-    }
-
-    @BeforeEach
-    void setUp() {
-        session = sessionFactory.openSession();
-        clearData();
-        prepareData();
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (session != null) {
-            session.close();
-        }
-    }
-
-    @Nested
-    class ExecuteUpdateTests {
-
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
 
+            clearData();
             prepareData();
 
             var expectedDocs = List.of(
@@ -259,8 +183,10 @@ class MongoPreparedStatementIntegrationTests {
     class BatchTests {
         private static final int BATCH_SIZE = 2;
 
+        @AutoClose
         private static SessionFactory batchableSessionFactory;
 
+        @AutoClose
         private Session batchableSession;
 
         @BeforeAll
@@ -270,23 +196,9 @@ class MongoPreparedStatementIntegrationTests {
                     .buildSessionFactory();
         }
 
-        @AfterAll
-        static void afterAll() {
-            if (batchableSessionFactory != null) {
-                batchableSessionFactory.close();
-            }
-        }
-
         @BeforeEach
-        void setUp() {
+        void beforeEach() {
             batchableSession = batchableSessionFactory.openSession();
-        }
-
-        @AfterEach
-        void tearDown() {
-            if (batchableSession != null) {
-                batchableSession.close();
-            }
         }
 
         @Nested
@@ -304,10 +216,14 @@ class MongoPreparedStatementIntegrationTests {
                         ]
                     }""";
 
+            @BeforeEach
+            void beforeEach() {
+                clearData();
+            }
+
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             void test(boolean autoCommit) {
-                clearData();
                 batchableSession.doWork(connection -> {
                     connection.setAutoCommit(autoCommit);
                     try (var pstmt = connection.prepareStatement(MQL)) {
@@ -416,6 +332,12 @@ class MongoPreparedStatementIntegrationTests {
                             }
                         ]
                     }""";
+
+            @BeforeEach
+            void beforeEach() {
+                clearData();
+                prepareData();
+            }
 
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
@@ -584,6 +506,12 @@ class MongoPreparedStatementIntegrationTests {
                         ]
                     }""";
 
+            @BeforeEach
+            void beforeEach() {
+                clearData();
+                prepareData();
+            }
+
             @ParameterizedTest
             @ValueSource(booleans = {true, false})
             void testDeleteOne(boolean autoCommit) {
@@ -661,7 +589,7 @@ class MongoPreparedStatementIntegrationTests {
         session.doWork(connection -> {
             connection.setAutoCommit(true);
             var statement = connection.createStatement();
-            statement.executeUpdate(INSERT_MQL);
+            statement.executeUpdate(INIT_INSERT_MQL);
         });
     }
 
