@@ -17,9 +17,9 @@
 package com.mongodb.hibernate.jdbc;
 
 import static java.lang.String.format;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -179,7 +179,7 @@ class MongoPreparedStatementTests {
             preparedStatement.close();
 
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertEquals("MongoPreparedStatement has been closed", sqlException.getMessage());
+            assertThat(sqlException.getMessage()).matches("MongoPreparedStatement has been closed");
         }
 
         private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsImpactedByClosing() {
@@ -240,14 +240,16 @@ class MongoPreparedStatementTests {
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow")
         void testParameterIndexUnderflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
+            assertThat(sqlException.getMessage())
+                    .matches("Parameter index invalid: \\d+; should be within \\[1, \\d+]");
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too high")
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow")
         void testParameterIndexOverflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
+            assertThat(sqlException.getMessage())
+                    .matches("Parameter index invalid: \\d+; should be within \\[1, \\d+]");
         }
 
         private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow() {

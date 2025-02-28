@@ -237,7 +237,7 @@ final class MongoConnection implements ConnectionAdapter {
 
     private void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("Connection has been closed");
+            throw new SQLException("MongoConnection has been closed");
         }
     }
 }
