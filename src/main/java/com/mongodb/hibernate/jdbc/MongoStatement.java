@@ -16,13 +16,11 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -199,11 +197,6 @@ class MongoStatement implements StatementAdapter {
         if (closed) {
             throw new SQLException(format("%s has been closed", getClass().getSimpleName()));
         }
-    }
-
-    @VisibleForTesting(otherwise = PRIVATE)
-    MongoDatabase getMongoDatabase() {
-        return mongoDatabase;
     }
 
     static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
