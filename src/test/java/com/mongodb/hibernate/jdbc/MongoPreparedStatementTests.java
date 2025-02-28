@@ -139,7 +139,7 @@ class MongoPreparedStatementTests {
 
         @Test
         @DisplayName("SQLException is thrown when parameter index is invalid")
-        void testParameterIndexInvalid() throws SQLSyntaxErrorException {
+        void testParameterIndexInvalid() throws SQLException {
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
                 var sqlException =
                         assertThrows(SQLException.class, () -> preparedStatement.setString(0, "War and Peace"));
@@ -155,8 +155,7 @@ class MongoPreparedStatementTests {
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoPreparedStatement")
         @MethodSource("getMongoPreparedStatementMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation)
-                throws SQLSyntaxErrorException {
+        void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation) throws SQLException {
 
             var mql =
                     """

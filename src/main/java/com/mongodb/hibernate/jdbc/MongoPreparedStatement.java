@@ -76,7 +76,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public ResultSet executeQuery() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException();
+        return executeQueryCommand(command);
     }
 
     @Override
