@@ -16,20 +16,36 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
 
 import com.mongodb.client.MongoCursor;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.bson.BsonBoolean;
+import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonNull;
+import org.bson.BsonString;
+import org.bson.BsonValue;
+import org.bson.types.Decimal128;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
@@ -66,6 +82,126 @@ class MongoResultSetTests {
     void testCheckClosed() throws SQLException {
         mongoResultSet.close();
         checkMethodsWithOpenPrecondition(this::assertThrowsClosedException);
+    }
+
+    @Nested
+    class GettersTests {
+
+        private void createResultSetWith(BsonValue value) throws SQLException {
+            var bsonDocument = new BsonDocument().append("field", value);
+
+            doReturn(true).when(mongoCursor).hasNext();
+            doReturn(bsonDocument).when(mongoCursor).next();
+            mongoResultSet = new MongoResultSet(mongoCursor, singletonList("field"));
+            assertTrue(mongoResultSet.next());
+        }
+
+        @Test
+        void testGettersForNull() throws SQLException {
+            createResultSetWith(new BsonNull());
+            assertAll(
+                    () -> assertNull(mongoResultSet.getString(1)),
+                    () -> assertFalse(mongoResultSet.getBoolean(1)),
+                    () -> assertEquals((byte) 0, mongoResultSet.getByte(1)),
+                    () -> assertEquals((short) 0, mongoResultSet.getShort(1)),
+                    () -> assertEquals(0, mongoResultSet.getInt(1)),
+                    () -> assertEquals(0L, mongoResultSet.getLong(1)),
+                    () -> assertEquals(0F, mongoResultSet.getFloat(1)),
+                    () -> assertEquals(0D, mongoResultSet.getDouble(1)),
+                    () -> assertNull(mongoResultSet.getBigDecimal(1)));
+        }
+
+        @Test
+        void testGettersForBoolean() throws SQLException {
+            createResultSetWith(new BsonBoolean(true));
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
+                    () -> assertTrue(mongoResultSet.getBoolean(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
+        }
+
+        @Test
+        void testGettersForDouble() throws SQLException {
+            createResultSetWith(new BsonDouble(3.1415));
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertEquals(3.1415F, mongoResultSet.getFloat(1)),
+                    () -> assertEquals(3.1415, mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
+        }
+
+        @Test
+        void testGettersForInt() throws SQLException {
+            createResultSetWith(new BsonInt32(120));
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    () -> assertEquals((byte) 120, mongoResultSet.getByte(1)),
+                    () -> assertEquals((short) 120, mongoResultSet.getShort(1)),
+                    () -> assertEquals(120, mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
+        }
+
+        @Test
+        void testGettersForLong() throws SQLException {
+            createResultSetWith(new BsonInt64(12345678));
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertEquals(12345678L, mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
+        }
+
+        @Test
+        void testGettersForString() throws SQLException {
+            createResultSetWith(new BsonString("Hello World"));
+            assertAll(
+                    () -> assertEquals("Hello World", mongoResultSet.getString(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
+        }
+
+        @Test
+        void testGettersForBigDecimal() throws SQLException {
+            var bigDecimalValue = new BigDecimal("10692467440017.111");
+            var value = new BsonDecimal128(new Decimal128(bigDecimalValue));
+            createResultSetWith(value);
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertEquals(bigDecimalValue, mongoResultSet.getBigDecimal(1)));
+        }
     }
 
     private void checkMethodsWithOpenPrecondition(Consumer<Executable> asserter) {
@@ -109,5 +245,12 @@ class MongoResultSetTests {
     private void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertEquals("MongoResultSet has been closed", exception.getMessage());
+    }
+
+    private void assertThrowsTypeMismatchException(Executable executable) {
+        var exception = assertThrows(SQLException.class, executable);
+        assertThat(exception.getMessage())
+                .matches(
+                        "Failed to get value from column \\[index: \\d+]: Value expected to be of type \\S+ is of unexpected type \\S+");
     }
 }

@@ -291,7 +291,8 @@ final class MongoResultSet implements ResultSetAdapter {
             }
             return function.apply(lastReadColumnValue);
         } catch (RuntimeException e) {
-            throw new SQLException(format("Failed to get value from column [%d]: %s", columnIndex, e.getMessage()), e);
+            throw new SQLException(
+                    format("Failed to get value from column [index: %d]: %s", columnIndex, e.getMessage()), e);
         }
     }
 
