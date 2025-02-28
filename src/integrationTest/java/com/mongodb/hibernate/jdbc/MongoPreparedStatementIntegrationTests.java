@@ -200,9 +200,9 @@ class MongoPreparedStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var realDocuments =
+                    var actualDocuments =
                             mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
-                    assertEquals(expectedDocuments, realDocuments);
+                    assertEquals(expectedDocuments, actualDocuments);
                 }
             });
         }
