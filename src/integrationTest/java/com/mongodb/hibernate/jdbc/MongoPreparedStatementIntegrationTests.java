@@ -30,8 +30,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +67,69 @@ class MongoPreparedStatementIntegrationTests {
                     }
                 ]
             }""";
+
+    @AutoClose
+    private static SessionFactory sessionFactory;
+
+    @AutoClose
+    private Session session;
+
+    @BeforeAll
+    static void beforeAll() {
+        sessionFactory = new Configuration().buildSessionFactory();
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        session = sessionFactory.openSession();
+    }
+
+    @Nested
+    class ExecuteUpdateTests {
+
+        @BeforeEach
+        void beforeEach() {
+            session.doWork(conn -> {
+                conn.createStatement()
+                        .executeUpdate(
+                                """
+                                {
+                                    delete: "books",
+                                    deletes: [
+                                        { q: {}, limit: 0 }
+                                    ]
+                                }""");
+            });
+        }
+
+        private static final String INSERT_MQL =
+                """
+                {
+                    insert: "books",
+                    documents: [
+                        {
+                            _id: 1,
+                            title: "War and Peace",
+                            author: "Leo Tolstoy",
+                            outOfStock: false,
+                            tags: [ "classic", "tolstoy" ]
+                        },
+                        {
+                            _id: 2,
+                            title: "Anna Karenina",
+                            author: "Leo Tolstoy",
+                            outOfStock: false,
+                            tags: [ "classic", "tolstoy" ]
+                        },
+                        {
+                            _id: 3,
+                            title: "Crime and Punishment",
+                            author: "Fyodor Dostoevsky",
+                            outOfStock: false,
+                            tags: [ "classic", "dostoevsky", "literature" ]
+                        }
+                    ]
+                }""";
 
     private static SessionFactory sessionFactory;
 
@@ -106,7 +168,8 @@ class MongoPreparedStatementIntegrationTests {
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
 
-            // when && then
+            prepareData();
+
             var expectedDocs = List.of(
                     BsonDocument.parse(
                             """

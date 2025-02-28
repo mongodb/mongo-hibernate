@@ -25,8 +25,7 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -35,8 +34,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoStatementIntegrationTests {
 
+    @AutoClose
     private static SessionFactory sessionFactory;
 
+    @AutoClose
     private Session session;
 
     @BeforeAll
@@ -44,23 +45,9 @@ class MongoStatementIntegrationTests {
         sessionFactory = new Configuration().buildSessionFactory();
     }
 
-    @AfterAll
-    static void afterAll() {
-        if (sessionFactory != null) {
-            sessionFactory.close();
-        }
-    }
-
     @BeforeEach
     void beforeEach() {
         session = sessionFactory.openSession();
-    }
-
-    @AfterEach
-    void afterEach() {
-        if (session != null) {
-            session.close();
-        }
     }
 
     @Nested
@@ -141,10 +128,9 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var updateMql =
                     """
                     {
@@ -190,10 +176,9 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testDelete(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var deleteMql =
                     """
                     {
