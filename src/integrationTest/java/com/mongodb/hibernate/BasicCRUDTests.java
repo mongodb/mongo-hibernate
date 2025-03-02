@@ -32,6 +32,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -41,10 +42,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-@SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
-class BasicCrudTests implements SessionFactoryScopeAware {
+@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
+@DomainModel(annotatedClasses = {BasicCRUDTests.Book.class, BasicCRUDTests.BookWithEmbeddedField.class})
+class BasicCRUDTests implements SessionFactoryScopeAware {
 
     @AutoClose
     private MongoClient mongoClient;
@@ -143,7 +146,6 @@ class BasicCrudTests implements SessionFactoryScopeAware {
 
     @Nested
     class DeleteTests {
-
         @Test
         void testSimpleDeletion() {
 
@@ -167,6 +169,46 @@ class BasicCrudTests implements SessionFactoryScopeAware {
 
             // then
             assertThat(getCollectionDocuments()).isEmpty();
+        }
+    }
+
+    @Nested
+    class UpdateTests {
+
+        @ParameterizedTest(name = "merge: {0}")
+        @ValueSource(booleans = {true, false})
+        void testSimpleUpdate(boolean merge) {
+            var statementInspector = sessionFactoryScope.getStatementInspector(SQLStatementInspector.class);
+            statementInspector.clear();
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new Book();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1867;
+                session.persist(book);
+                session.flush();
+
+                book.title = "Insurrection";
+                book.publishYear = 1899;
+                if (merge) {
+                    session.merge(book);
+                }
+            });
+
+            assertCollectionContainsOnly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Insurrection"}\
+                            """));
+            assertThat(statementInspector.getSqlQueries())
+                    .containsExactly(
+                            """
+                            {"insert": "books", "documents": [{"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}, "_id": {"$undefined": true}}]}\
+                            """,
+                            """
+                            {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$undefined": true}}}, "u": {"$set": {"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}}}, "multi": true}]}\
+                            """);
         }
     }
 
