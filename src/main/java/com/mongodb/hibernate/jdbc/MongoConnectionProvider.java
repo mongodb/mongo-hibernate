@@ -36,8 +36,7 @@ import java.sql.SQLException;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownUnwrapTypeException;
-import org.hibernate.service.spi.ServiceRegistryAwareService;
-import org.hibernate.service.spi.ServiceRegistryImplementor;
+import org.hibernate.service.spi.InjectService;
 import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
@@ -53,7 +52,7 @@ import org.jspecify.annotations.Nullable;
  * configuration property, and {@linkplain MongoConnectionProvider#getConnection() provides} {@link Connection}s with
  * {@linkplain Connection#getAutoCommit() auto-commit} enabled.
  */
-public final class MongoConnectionProvider implements ConnectionProvider, Stoppable, ServiceRegistryAwareService {
+public final class MongoConnectionProvider implements ConnectionProvider, Stoppable {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -101,10 +100,9 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
     }
 
-    @Override
-    public void injectServices(ServiceRegistryImplementor serviceRegistry) {
-        var standardServiceRegistryScopedState =
-                serviceRegistry.requireService(StandardServiceRegistryScopedState.class);
+    @InjectService
+    public void injectStandardServiceRegistryScopedState(
+            StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
         this.standardServiceRegistryScopedState = standardServiceRegistryScopedState;
         var mongoClientSettings =
                 standardServiceRegistryScopedState.getConfiguration().mongoClientSettings();
