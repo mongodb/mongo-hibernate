@@ -32,6 +32,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -42,9 +43,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
-class BasicCrudTests implements SessionFactoryScopeAware {
+@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
+@DomainModel(annotatedClasses = {BasicCRUDTests.Book.class, BasicCRUDTests.BookWithEmbeddedField.class})
+class BasicCRUDTests implements SessionFactoryScopeAware {
 
     @AutoClose
     private MongoClient mongoClient;
@@ -141,33 +142,61 @@ class BasicCrudTests implements SessionFactoryScopeAware {
         }
     }
 
-    @Nested
-    class DeleteTests {
+    @Test
+    void testSimpleDeletion() {
 
-        @Test
-        void testSimpleDeletion() {
+        // given
+        var id = 1;
+        sessionFactoryScope.inTransaction(session -> {
+            var book = new Book();
+            book.id = id;
+            book.title = "War and Peace";
+            book.author = "Leo Tolstoy";
+            book.publishYear = 1867;
+            session.persist(book);
+        });
+        assertThat(getCollectionDocuments()).hasSize(1);
 
-            // given
-            var id = 1;
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = id;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            assertThat(getCollectionDocuments()).hasSize(1);
+        // when
+        sessionFactoryScope.inTransaction(session -> {
+            var book = session.getReference(Book.class, id);
+            session.remove(book);
+        });
 
-            // when
-            sessionFactoryScope.inTransaction(session -> {
-                var book = session.getReference(Book.class, id);
-                session.remove(book);
-            });
+        // then
+        assertThat(getCollectionDocuments()).isEmpty();
+    }
 
-            // then
-            assertThat(getCollectionDocuments()).isEmpty();
-        }
+    @Test
+    void testSimpleUpdating() {
+        var statementInspector = sessionFactoryScope.getStatementInspector(SQLStatementInspector.class);
+        statementInspector.clear();
+        sessionFactoryScope.inTransaction(session -> {
+            var book = new Book();
+            book.id = 1;
+            book.title = "War and Peace";
+            book.author = "Leo Tolstoy";
+            book.publishYear = 1867;
+            session.persist(book);
+            session.flush();
+
+            book.title = "Insurrection";
+            book.publishYear = 1899;
+        });
+
+        assertCollectionContainsOnly(
+                BsonDocument.parse(
+                        """
+                        {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Insurrection"}\
+                        """));
+        assertThat(statementInspector.getSqlQueries())
+                .containsExactly(
+                        """
+                        {"insert": "books", "documents": [{"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}, "_id": {"$undefined": true}}]}\
+                        """,
+                        """
+                        {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$undefined": true}}}, "u": {"$set": {"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}}}, "multi": true}]}\
+                        """);
     }
 
     private List<BsonDocument> getCollectionDocuments() {

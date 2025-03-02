@@ -16,16 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstDocument(List<AstElement> elements) implements AstValue {
+public record AstFieldUpdate(String name, AstValue value) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeStartDocument();
-        {
-            elements.forEach(element -> element.render(writer));
-        }
-        writer.writeEndDocument();
+        writer.writeName(name);
+        value.render(writer);
     }
 }
