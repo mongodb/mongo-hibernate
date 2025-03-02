@@ -12,8 +12,6 @@ MongoDB speaks MQL (**M**ongoDB **Q**uery **L**anguage) instead of SQL. This pro
 - Translating Hibernate's internal SQL AST into MQL by means of a custom [`Dialect`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/dialect/Dialect.html),
   which has to be plugged into Hibernate ORM.
 
-<img src="mongodb_extension.png" alt="MongoDB extension" />
-
 ## Development
 
 Java 17 is the JDK version for development.
