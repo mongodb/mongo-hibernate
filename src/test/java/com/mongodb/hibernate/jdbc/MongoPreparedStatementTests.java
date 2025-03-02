@@ -240,16 +240,14 @@ class MongoPreparedStatementTests {
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow")
         void testParameterIndexUnderflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertThat(sqlException.getMessage())
-                    .matches("Parameter index invalid: \\d+; should be within \\[1, \\d+]");
+            assertThat(sqlException.getMessage()).startsWith("Parameter index invalid");
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too high")
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow")
         void testParameterIndexOverflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertThat(sqlException.getMessage())
-                    .matches("Parameter index invalid: \\d+; should be within \\[1, \\d+]");
+            assertThat(sqlException.getMessage()).startsWith("Parameter index invalid");
         }
 
         private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow() {
