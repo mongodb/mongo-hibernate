@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -114,8 +115,8 @@ class MongoConnectionTests {
 
             mongoConnection.close();
 
-            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
-            assertEquals("Connection has been closed", exception.getMessage());
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
+            assertThat(sqlException.getMessage()).matches("MongoConnection has been closed");
         }
 
         private static Stream<Arguments> getMongoConnectionMethodInvocationsImpactedByClosing() {
