@@ -165,24 +165,6 @@ class MongoStatement implements StatementAdapter {
     }
 
     @Override
-    public void addBatch(String mql) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
-    public void clearBatch() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
-    public int[] executeBatch() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
     public Connection getConnection() throws SQLException {
         checkClosed();
         return mongoConnection;
