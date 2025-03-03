@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.model.Sorts;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class MongoStatementIntegrationTests {
 
@@ -41,10 +44,28 @@ class MongoStatementIntegrationTests {
         boolean autoCommit() {
             return true;
         }
+
+        void testInTransaction(Connection connection, Executable executable) {
+            try {
+                executable.execute();
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     boolean autoCommit() {
         return false;
+    }
+
+    void testInTransaction(Connection connection, Executable executable) throws SQLException {
+        try {
+            executable.execute();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        } finally {
+            connection.commit();
+        }
     }
 
     @AutoClose
@@ -61,38 +82,27 @@ class MongoStatementIntegrationTests {
     @BeforeEach
     void beforeEach() {
         session = sessionFactory.openSession();
+        deleteCollection();
     }
 
     @Test
     void testExecuteQuery() {
 
-        session.doWork(conn -> {
-            try (var stmt = conn.createStatement()) {
-                stmt.executeUpdate(
-                        """
-                        {
-                            delete: "books",
-                            deletes: [
-                                { q: {}, limit: 0 }
-                            ]
-                        }""");
-                stmt.executeUpdate(
-                        """
-                        {
-                            insert: "books",
-                            documents: [
-                                { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy" },
-                                { _id: 2, publishYear: 1878, author: "Leo Tolstoy", title: "Anna Karenina" },
-                                { _id: 3, publishYear: 1866, title: "Crime and Punishment", author: "Fyodor Dostoevsky" }
-                            ]
-                        }""");
-            }
-        });
+        insertTestData(
+                """
+                {
+                    insert: "books",
+                    documents: [
+                        { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy" },
+                        { _id: 2, publishYear: 1878, author: "Leo Tolstoy", title: "Anna Karenina" },
+                        { _id: 3, publishYear: 1866, title: "Crime and Punishment", author: "Fyodor Dostoevsky" }
+                    ]
+                }""");
 
         session.doWork(conn -> {
             conn.setAutoCommit(autoCommit());
             try (var stmt = conn.createStatement()) {
-                try {
+                testInTransaction(conn, () -> {
                     var rs = stmt.executeQuery(
                             """
                             {
@@ -103,7 +113,6 @@ class MongoStatementIntegrationTests {
                                 ]
                             }""");
 
-                    // assert metadata
                     var metadata = rs.getMetaData();
                     assertAll(
                             () -> assertEquals(3, metadata.getColumnCount()),
@@ -112,7 +121,6 @@ class MongoStatementIntegrationTests {
                             () -> assertEquals("title", metadata.getColumnLabel(3)));
                     assertEquals(3, metadata.getColumnCount());
 
-                    // assert columns
                     assertTrue(rs.next());
                     assertAll(
                             () -> assertEquals("Leo Tolstoy", rs.getString(1)),
@@ -126,33 +134,13 @@ class MongoStatementIntegrationTests {
                             () -> assertEquals("Anna Karenina", rs.getString(3)));
 
                     assertFalse(rs.next());
-                } finally {
-                    if (!autoCommit()) {
-                        conn.commit();
-                    }
-                }
+                });
             }
         });
     }
 
     @Nested
     class ExecuteUpdateTests {
-
-        @BeforeEach
-        void beforeEach() {
-            session.doWork(conn -> {
-                try (var stmt = conn.createStatement()) {
-                    stmt.executeUpdate(
-                            """
-                            {
-                                delete: "books",
-                                deletes: [
-                                    { q: {}, limit: 0 }
-                                ]
-                            }""");
-                }
-            });
-        }
 
         private static final String INSERT_MQL =
                 """
@@ -207,13 +195,13 @@ class MongoStatementIntegrationTests {
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false
                             }"""));
-            assertExecuteUpdate(INSERT_MQL, autoCommit(), 3, expectedDocs);
+            assertExecuteUpdate(INSERT_MQL, 3, expectedDocs);
         }
 
         @Test
         void testUpdate() {
 
-            prepareData();
+            insertTestData(INSERT_MQL);
 
             var updateMql =
                     """
@@ -254,13 +242,13 @@ class MongoStatementIntegrationTests {
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false
                             }"""));
-            assertExecuteUpdate(updateMql, autoCommit(), 2, expectedDocs);
+            assertExecuteUpdate(updateMql, 2, expectedDocs);
         }
 
         @Test
         void testDelete() {
 
-            prepareData();
+            insertTestData(INSERT_MQL);
 
             var deleteMql =
                     """
@@ -290,38 +278,52 @@ class MongoStatementIntegrationTests {
                                  author: "Fyodor Dostoevsky",
                                  outOfStock: false
                             }"""));
-            assertExecuteUpdate(deleteMql, autoCommit(), 1, expectedDocs);
-        }
-
-        private void prepareData() {
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                try (var statement = connection.createStatement()) {
-                    statement.executeUpdate(INSERT_MQL);
-                }
-            });
+            assertExecuteUpdate(deleteMql, 1, expectedDocs);
         }
 
         private void assertExecuteUpdate(
-                String mql, boolean autoCommit, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
+                String mql, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
-                connection.setAutoCommit(autoCommit);
+                connection.setAutoCommit(autoCommit());
                 try (var stmt = (MongoStatement) connection.createStatement()) {
-                    try {
-                        assertEquals(expectedRowCount, stmt.executeUpdate(mql));
-                    } finally {
-                        if (!autoCommit) {
-                            connection.commit();
-                        }
-                    }
-                    var realDocuments = stmt.getMongoDatabase()
+                    testInTransaction(connection, () -> assertEquals(expectedRowCount, stmt.executeUpdate(mql)));
+                    var actualDocuments = stmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
                             .sort(Sorts.ascending("_id"))
                             .into(new ArrayList<>());
-                    assertEquals(expectedDocuments, realDocuments);
+                    assertEquals(expectedDocuments, actualDocuments);
                 }
             });
         }
+    }
+
+    private void deleteCollection() {
+        session.doWork(conn -> {
+            conn.setAutoCommit(false);
+            try (var stmt = conn.createStatement()) {
+                stmt.executeUpdate(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
+            } finally {
+                conn.commit();
+            }
+        });
+    }
+
+    private void insertTestData(String insertMql) {
+        session.doWork(connection -> {
+            connection.setAutoCommit(false);
+            try (var statement = connection.createStatement()) {
+                statement.executeUpdate(insertMql);
+            } finally {
+                connection.commit();
+            }
+        });
     }
 }

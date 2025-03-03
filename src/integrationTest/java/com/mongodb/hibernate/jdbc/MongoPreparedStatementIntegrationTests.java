@@ -39,6 +39,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class MongoPreparedStatementIntegrationTests {
 
@@ -47,10 +48,28 @@ class MongoPreparedStatementIntegrationTests {
         boolean autoCommit() {
             return true;
         }
+
+        void testInTransaction(Connection connection, Executable executable) {
+            try {
+                executable.execute();
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     boolean autoCommit() {
         return false;
+    }
+
+    void testInTransaction(Connection connection, Executable executable) throws SQLException {
+        try {
+            executable.execute();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        } finally {
+            connection.commit();
+        }
     }
 
     @AutoClose
@@ -67,33 +86,22 @@ class MongoPreparedStatementIntegrationTests {
     @BeforeEach
     void beforeEach() {
         session = sessionFactory.openSession();
+        deleteCollection();
     }
 
     @Test
     void testExecuteQuery() {
 
-        session.doWork(conn -> {
-            try (var stmt = conn.createStatement()) {
-                stmt.executeUpdate(
-                        """
-                        {
-                            delete: "books",
-                            deletes: [
-                                { q: {}, limit: 0 }
-                            ]
-                        }""");
-                stmt.executeUpdate(
-                        """
-                        {
-                             insert: "books",
-                             documents: [
-                                { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy", comment: "reference only" },
-                                { _id: 2, publishYear: 1878, title: "Anna Karenina", author: "Leo Tolstoy",  vintage: true},
-                                { _id: 3, publishYear: 1866, author: "Fyodor Dostoevsky", title: "Crime and Punishment", vintage: false },
-                            ]
-                        }""");
-            }
-        });
+        insertTestData(
+                """
+                {
+                     insert: "books",
+                     documents: [
+                        { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy", comment: "reference only" },
+                        { _id: 2, publishYear: 1878, title: "Anna Karenina", author: "Leo Tolstoy",  vintage: true},
+                        { _id: 3, publishYear: 1866, author: "Fyodor Dostoevsky", title: "Crime and Punishment", vintage: false },
+                    ]
+                }""");
 
         session.doWork(conn -> {
             conn.setAutoCommit(autoCommit());
@@ -108,12 +116,12 @@ class MongoPreparedStatementIntegrationTests {
                     }""")) {
 
                 pstmt.setString(1, "Leo Tolstoy");
-                try {
+
+                testInTransaction(conn, () -> {
                     var rs = pstmt.executeQuery();
 
                     var metadata = rs.getMetaData();
 
-                    // assert metadata
                     assertAll(
                             () -> assertEquals(5, metadata.getColumnCount()),
                             () -> assertEquals("author", metadata.getColumnLabel(1)),
@@ -123,8 +131,6 @@ class MongoPreparedStatementIntegrationTests {
                             () -> assertEquals("title", metadata.getColumnLabel(5)));
 
                     assertEquals(5, metadata.getColumnCount());
-
-                    // assert columns
 
                     assertTrue(rs.next());
                     assertAll(
@@ -141,11 +147,7 @@ class MongoPreparedStatementIntegrationTests {
                             () -> assertNull(rs.getString(4)),
                             () -> assertEquals("Anna Karenina", rs.getString(5)));
                     assertFalse(rs.next());
-                } finally {
-                    if (!autoCommit()) {
-                        conn.commit();
-                    }
-                }
+                });
             }
         });
     }
@@ -167,17 +169,6 @@ class MongoPreparedStatementIntegrationTests {
         BigDecimal bigDecimalValue = new BigDecimal(random.nextInt());
 
         session.doWork(conn -> {
-            conn.setAutoCommit(true);
-            try (var stmt = conn.createStatement()) {
-                stmt.executeUpdate(
-                        """
-                        {
-                            delete: "books",
-                            deletes: [
-                                { q: {}, limit: 0 }
-                            ]
-                        }""");
-            }
             conn.setAutoCommit(autoCommit());
             try (var pstmt = conn.prepareStatement(
                     """
@@ -202,13 +193,8 @@ class MongoPreparedStatementIntegrationTests {
                 pstmt.setLong(4, longValue);
                 pstmt.setString(5, stringValue);
                 pstmt.setBigDecimal(6, bigDecimalValue);
-                try {
-                    pstmt.executeUpdate();
-                } finally {
-                    if (!autoCommit()) {
-                        conn.commit();
-                    }
-                }
+
+                testInTransaction(conn, pstmt::executeUpdate);
             }
         });
 
@@ -235,7 +221,7 @@ class MongoPreparedStatementIntegrationTests {
                     }""")) {
 
                 pstmt.setInt(1, 1);
-                try {
+                testInTransaction(conn, () -> {
                     var rs = pstmt.executeQuery();
 
                     assertTrue(rs.next());
@@ -247,34 +233,13 @@ class MongoPreparedStatementIntegrationTests {
                             () -> assertEquals(stringValue, rs.getString(5)),
                             () -> assertEquals(bigDecimalValue, rs.getBigDecimal(6)));
                     assertFalse(rs.next());
-
-                } finally {
-                    if (!autoCommit()) {
-                        conn.commit();
-                    }
-                }
+                });
             }
         });
     }
 
     @Nested
     class ExecuteUpdateTests {
-
-        @BeforeEach
-        void beforeEach() {
-            session.doWork(conn -> {
-                try (var stmt = conn.createStatement()) {
-                    stmt.executeUpdate(
-                            """
-                            {
-                                delete: "books",
-                                deletes: [
-                                    { q: {}, limit: 0 }
-                                ]
-                            }""");
-                }
-            });
-        }
 
         private static final String INSERT_MQL =
                 """
@@ -308,7 +273,7 @@ class MongoPreparedStatementIntegrationTests {
         @Test
         void testUpdate() {
 
-            prepareData();
+            insertTestData(INSERT_MQL);
 
             var expectedDocs = List.of(
                     BsonDocument.parse(
@@ -366,41 +331,54 @@ class MongoPreparedStatementIntegrationTests {
                     throw new RuntimeException(e);
                 }
             };
-            assertExecuteUpdate(pstmtProvider, autoCommit(), 2, expectedDocs);
-        }
-
-        private void prepareData() {
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                try (var statement = connection.createStatement()) {
-                    statement.executeUpdate(INSERT_MQL);
-                }
-            });
+            assertExecuteUpdate(pstmtProvider, 2, expectedDocs);
         }
 
         private void assertExecuteUpdate(
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
-                boolean autoCommit,
                 int expectedUpdatedRowCount,
                 List<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
-                connection.setAutoCommit(autoCommit);
+                connection.setAutoCommit(autoCommit());
                 try (var pstmt = pstmtProvider.apply(connection)) {
-                    try {
-                        assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate());
-                    } finally {
-                        if (!autoCommit) {
-                            connection.commit();
-                        }
-                    }
-                    var realDocuments = pstmt.getMongoDatabase()
+                    testInTransaction(connection, () -> assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate()));
+                    var actualDocuments = pstmt.getMongoDatabase()
                             .getCollection("books", BsonDocument.class)
                             .find()
                             .sort(Sorts.ascending("_id"))
                             .into(new ArrayList<>());
-                    assertEquals(expectedDocuments, realDocuments);
+                    assertEquals(expectedDocuments, actualDocuments);
                 }
             });
         }
+    }
+
+    private void deleteCollection() {
+        session.doWork(conn -> {
+            conn.setAutoCommit(false);
+            try (var stmt = conn.createStatement()) {
+                stmt.executeUpdate(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
+            } finally {
+                conn.commit();
+            }
+        });
+    }
+
+    private void insertTestData(String insertMql) {
+        session.doWork(connection -> {
+            connection.setAutoCommit(false);
+            try (var statement = connection.createStatement()) {
+                statement.executeUpdate(insertMql);
+            } finally {
+                connection.commit();
+            }
+        });
     }
 }
