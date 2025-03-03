@@ -72,7 +72,6 @@ class MongoPreparedStatementIntegrationTests {
     @Test
     void testExecuteQuery() {
 
-        // given
         session.doWork(conn -> {
             try (var stmt = conn.createStatement()) {
                 stmt.executeUpdate(
@@ -96,7 +95,6 @@ class MongoPreparedStatementIntegrationTests {
             }
         });
 
-        // when
         session.doWork(conn -> {
             conn.setAutoCommit(autoCommit());
             try (var pstmt = conn.prepareStatement(
@@ -112,7 +110,7 @@ class MongoPreparedStatementIntegrationTests {
                 pstmt.setString(1, "Leo Tolstoy");
                 try {
                     var rs = pstmt.executeQuery();
-                    // then
+
                     var metadata = rs.getMetaData();
 
                     // assert metadata
@@ -153,16 +151,12 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @Test
-    void testPreparedStatementAndResultSetRoundTrip() throws SQLException {
+    void testPreparedStatementAndResultSetRoundTrip() {
 
-        // given
         var random = new Random();
 
         boolean booleanValue = random.nextBoolean();
-        float floatValue = random.nextFloat();
         double doubleValue = random.nextDouble();
-        byte byteValue = (byte) random.nextInt(Byte.MAX_VALUE + 1);
-        short shortValue = (short) random.nextInt(Short.MAX_VALUE + 1);
         int intValue = random.nextInt();
         long longValue = random.nextLong();
 
@@ -193,10 +187,7 @@ class MongoPreparedStatementIntegrationTests {
                             {
                                 _id: 1,
                                 booleanField: { $undefined: true },
-                                floatField: { $undefined: true },
                                 doubleField: { $undefined: true },
-                                byteField: { $undefined: true },
-                                shortField: { $undefined: true },
                                 intField: { $undefined: true },
                                 longField: { $undefined: true },
                                 stringField: { $undefined: true },
@@ -206,14 +197,11 @@ class MongoPreparedStatementIntegrationTests {
                     }""")) {
 
                 pstmt.setBoolean(1, booleanValue);
-                pstmt.setFloat(2, floatValue);
-                pstmt.setDouble(3, doubleValue);
-                pstmt.setByte(4, byteValue);
-                pstmt.setShort(5, shortValue);
-                pstmt.setInt(6, intValue);
-                pstmt.setLong(7, longValue);
-                pstmt.setString(8, stringValue);
-                pstmt.setBigDecimal(9, bigDecimalValue);
+                pstmt.setDouble(2, doubleValue);
+                pstmt.setInt(3, intValue);
+                pstmt.setLong(4, longValue);
+                pstmt.setString(5, stringValue);
+                pstmt.setBigDecimal(6, bigDecimalValue);
                 try {
                     pstmt.executeUpdate();
                 } finally {
@@ -224,7 +212,6 @@ class MongoPreparedStatementIntegrationTests {
             }
         });
 
-        // when
         session.doWork(conn -> {
             conn.setAutoCommit(autoCommit());
             try (var pstmt = conn.prepareStatement(
@@ -237,10 +224,7 @@ class MongoPreparedStatementIntegrationTests {
                                 {
                                     _id: 0,
                                     booleanField: 1,
-                                    floatField: 1,
                                     doubleField: 1,
-                                    byteField: 1,
-                                    shortField: 1,
                                     intField: 1,
                                     longField: 1,
                                     stringField: 1,
@@ -254,18 +238,14 @@ class MongoPreparedStatementIntegrationTests {
                 try {
                     var rs = pstmt.executeQuery();
 
-                    // then
                     assertTrue(rs.next());
                     assertAll(
                             () -> assertEquals(booleanValue, rs.getBoolean(1)),
-                            () -> assertEquals(floatValue, rs.getFloat(2)),
-                            () -> assertEquals(doubleValue, rs.getDouble(3)),
-                            () -> assertEquals(byteValue, rs.getByte(4)),
-                            () -> assertEquals(shortValue, rs.getShort(5)),
-                            () -> assertEquals(intValue, rs.getInt(6)),
-                            () -> assertEquals(longValue, rs.getLong(7)),
-                            () -> assertEquals(stringValue, rs.getString(8)),
-                            () -> assertEquals(bigDecimalValue, rs.getBigDecimal(9)));
+                            () -> assertEquals(doubleValue, rs.getDouble(2)),
+                            () -> assertEquals(intValue, rs.getInt(3)),
+                            () -> assertEquals(longValue, rs.getLong(4)),
+                            () -> assertEquals(stringValue, rs.getString(5)),
+                            () -> assertEquals(bigDecimalValue, rs.getBigDecimal(6)));
                     assertFalse(rs.next());
 
                 } finally {

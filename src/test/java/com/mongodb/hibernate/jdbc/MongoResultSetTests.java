@@ -102,11 +102,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertNull(mongoResultSet.getString(1)),
                     () -> assertFalse(mongoResultSet.getBoolean(1)),
-                    () -> assertEquals((byte) 0, mongoResultSet.getByte(1)),
-                    () -> assertEquals((short) 0, mongoResultSet.getShort(1)),
                     () -> assertEquals(0, mongoResultSet.getInt(1)),
                     () -> assertEquals(0L, mongoResultSet.getLong(1)),
-                    () -> assertEquals(0F, mongoResultSet.getFloat(1)),
                     () -> assertEquals(0D, mongoResultSet.getDouble(1)),
                     () -> assertNull(mongoResultSet.getBigDecimal(1)));
         }
@@ -117,11 +114,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertTrue(mongoResultSet.getBoolean(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
         }
@@ -132,11 +126,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertEquals(3.1415F, mongoResultSet.getFloat(1)),
                     () -> assertEquals(3.1415, mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
         }
@@ -147,11 +138,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
-                    () -> assertEquals((byte) 120, mongoResultSet.getByte(1)),
-                    () -> assertEquals((short) 120, mongoResultSet.getShort(1)),
                     () -> assertEquals(120, mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
         }
@@ -162,11 +150,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertEquals(12345678L, mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
         }
@@ -177,11 +162,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertEquals("Hello World", mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
         }
@@ -194,11 +176,8 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getByte(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getShort(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getFloat(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
                     () -> assertEquals(bigDecimalValue, mongoResultSet.getBigDecimal(1)));
         }
@@ -218,11 +197,8 @@ class MongoResultSetTests {
         assertAll(
                 () -> asserter.accept(() -> mongoResultSet.getString(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getBoolean(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getByte(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getShort(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getInt(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getLong(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getFloat(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getDouble(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getBytes(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getDate(columnIndex)),

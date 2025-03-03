@@ -137,22 +137,6 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
-    public byte getByte(int columnIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asInt32().intValue(), 0)
-                .byteValue();
-    }
-
-    @Override
-    public short getShort(int columnIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asInt32().intValue(), 0)
-                .shortValue();
-    }
-
-    @Override
     public int getInt(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
@@ -164,14 +148,6 @@ final class MongoResultSet implements ResultSetAdapter {
         checkClosed();
         checkColumnIndex(columnIndex);
         return getValue(columnIndex, bsonValue -> bsonValue.asInt64().longValue(), 0L);
-    }
-
-    @Override
-    public float getFloat(int columnIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asDouble().getValue(), 0)
-                .floatValue();
     }
 
     @Override

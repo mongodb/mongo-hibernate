@@ -117,20 +117,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setByte(int parameterIndex, byte x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        setInt(parameterIndex, x);
-    }
-
-    @Override
-    public void setShort(int parameterIndex, short x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        setInt(parameterIndex, x);
-    }
-
-    @Override
     public void setInt(int parameterIndex, int x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
@@ -142,13 +128,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, new BsonInt64(x));
-    }
-
-    @Override
-    public void setFloat(int parameterIndex, float x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        setDouble(parameterIndex, x);
     }
 
     @Override

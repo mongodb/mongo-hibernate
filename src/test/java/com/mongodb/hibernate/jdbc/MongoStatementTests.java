@@ -80,7 +80,6 @@ class MongoStatementTests {
             @Mock MongoCursor<BsonDocument> mongoCursor)
             throws SQLException {
 
-        // given
         doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
         doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
         doReturn(mongoCursor).when(aggregateIterable).cursor();
@@ -96,11 +95,9 @@ class MongoStatementTests {
                     ]
                 }""";
 
-        // when
         var resultSet = mongoStatement.executeQuery(query);
         mongoStatement.close();
 
-        // then
         assertTrue(resultSet.isClosed());
     }
 

@@ -189,11 +189,8 @@ class MongoPreparedStatementTests {
                             Map.entry("executeUpdate()", MongoPreparedStatement::executeUpdate),
                             Map.entry("setNull(int,int)", pstmt -> pstmt.setNull(1, Types.INTEGER)),
                             Map.entry("setBoolean(int,boolean)", pstmt -> pstmt.setBoolean(1, true)),
-                            Map.entry("setByte(int,byte)", pstmt -> pstmt.setByte(1, (byte) 10)),
-                            Map.entry("setShort(int,short)", pstmt -> pstmt.setShort(1, (short) 10)),
                             Map.entry("setInt(int,int)", pstmt -> pstmt.setInt(1, 1)),
                             Map.entry("setLong(int,long)", pstmt -> pstmt.setLong(1, 1L)),
-                            Map.entry("setFloat(int,float)", pstmt -> pstmt.setFloat(1, 1.0F)),
                             Map.entry("setDouble(int,double)", pstmt -> pstmt.setDouble(1, 1.0)),
                             Map.entry(
                                     "setBigDecimal(int,BigDecimal)",
@@ -264,11 +261,8 @@ class MongoPreparedStatementTests {
             return Map.<String, PreparedStatementMethodInvocation>ofEntries(
                             Map.entry("setNull(int,int)", pstmt -> pstmt.setNull(parameterIndex, Types.INTEGER)),
                             Map.entry("setBoolean(int,boolean)", pstmt -> pstmt.setBoolean(parameterIndex, true)),
-                            Map.entry("setByte(int,byte)", pstmt -> pstmt.setByte(parameterIndex, (byte) 10)),
-                            Map.entry("setShort(int,short)", pstmt -> pstmt.setShort(parameterIndex, (short) 10)),
                             Map.entry("setInt(int,int)", pstmt -> pstmt.setInt(parameterIndex, 1)),
                             Map.entry("setLong(int,long)", pstmt -> pstmt.setLong(parameterIndex, 1L)),
-                            Map.entry("setFloat(int,float)", pstmt -> pstmt.setFloat(parameterIndex, 1.0F)),
                             Map.entry("setDouble(int,double)", pstmt -> pstmt.setDouble(parameterIndex, 1.0)),
                             Map.entry(
                                     "setBigDecimal(int,BigDecimal)",
