@@ -38,10 +38,20 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
 
 class MongoPreparedStatementIntegrationTests {
+
+    static class MongoPreparedStatementIntegrationWithAutoCommitTests extends MongoPreparedStatementIntegrationTests {
+        @Override
+        boolean autoCommit() {
+            return true;
+        }
+    }
+
+    boolean autoCommit() {
+        return false;
+    }
 
     @AutoClose
     private static SessionFactory sessionFactory;
@@ -59,9 +69,8 @@ class MongoPreparedStatementIntegrationTests {
         session = sessionFactory.openSession();
     }
 
-    @ParameterizedTest(name = "autoCommit: {0}")
-    @ValueSource(booleans = {true, false})
-    void testExecuteQuery(boolean autoCommit) throws SQLException {
+    @Test
+    void testExecuteQuery() {
 
         // given
         session.doWork(conn -> {
@@ -89,7 +98,7 @@ class MongoPreparedStatementIntegrationTests {
 
         // when
         session.doWork(conn -> {
-            conn.setAutoCommit(autoCommit);
+            conn.setAutoCommit(autoCommit());
             try (var pstmt = conn.prepareStatement(
                     """
                     {
@@ -135,7 +144,7 @@ class MongoPreparedStatementIntegrationTests {
                             () -> assertEquals("Anna Karenina", rs.getString(5)));
                     assertFalse(rs.next());
                 } finally {
-                    if (!autoCommit) {
+                    if (!autoCommit()) {
                         conn.commit();
                     }
                 }
@@ -143,9 +152,8 @@ class MongoPreparedStatementIntegrationTests {
         });
     }
 
-    @ParameterizedTest(name = "autoCommit: {0}")
-    @ValueSource(booleans = {true, false})
-    void testPreparedStatementAndResultSetRoundTrip(boolean autoCommit) throws SQLException {
+    @Test
+    void testPreparedStatementAndResultSetRoundTrip() throws SQLException {
 
         // given
         var random = new Random();
@@ -176,7 +184,7 @@ class MongoPreparedStatementIntegrationTests {
                             ]
                         }""");
             }
-            conn.setAutoCommit(autoCommit);
+            conn.setAutoCommit(autoCommit());
             try (var pstmt = conn.prepareStatement(
                     """
                     {
@@ -209,7 +217,7 @@ class MongoPreparedStatementIntegrationTests {
                 try {
                     pstmt.executeUpdate();
                 } finally {
-                    if (!autoCommit) {
+                    if (!autoCommit()) {
                         conn.commit();
                     }
                 }
@@ -218,7 +226,7 @@ class MongoPreparedStatementIntegrationTests {
 
         // when
         session.doWork(conn -> {
-            conn.setAutoCommit(autoCommit);
+            conn.setAutoCommit(autoCommit());
             try (var pstmt = conn.prepareStatement(
                     """
                     {
@@ -261,7 +269,7 @@ class MongoPreparedStatementIntegrationTests {
                     assertFalse(rs.next());
 
                 } finally {
-                    if (!autoCommit) {
+                    if (!autoCommit()) {
                         conn.commit();
                     }
                 }
@@ -317,9 +325,8 @@ class MongoPreparedStatementIntegrationTests {
                     ]
                 }""";
 
-        @ParameterizedTest(name = "autoCommit: {0}")
-        @ValueSource(booleans = {true, false})
-        void testUpdate(boolean autoCommit) {
+        @Test
+        void testUpdate() {
 
             prepareData();
 
@@ -379,7 +386,7 @@ class MongoPreparedStatementIntegrationTests {
                     throw new RuntimeException(e);
                 }
             };
-            assertExecuteUpdate(pstmtProvider, autoCommit, 2, expectedDocs);
+            assertExecuteUpdate(pstmtProvider, autoCommit(), 2, expectedDocs);
         }
 
         private void prepareData() {

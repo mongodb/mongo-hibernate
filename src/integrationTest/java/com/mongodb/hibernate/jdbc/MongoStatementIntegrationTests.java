@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.model.Sorts;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
@@ -33,10 +32,20 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
 
 class MongoStatementIntegrationTests {
+
+    static class MongoStatementIntegrationWithAutoCommitTests extends MongoStatementIntegrationTests {
+        @Override
+        boolean autoCommit() {
+            return true;
+        }
+    }
+
+    boolean autoCommit() {
+        return false;
+    }
 
     @AutoClose
     private static SessionFactory sessionFactory;
@@ -54,9 +63,8 @@ class MongoStatementIntegrationTests {
         session = sessionFactory.openSession();
     }
 
-    @ParameterizedTest(name = "autoCommit: {0}")
-    @ValueSource(booleans = {true, false})
-    void testExecuteQuery(boolean autoCommit) throws SQLException {
+    @Test
+    void testExecuteQuery() {
 
         session.doWork(conn -> {
             try (var stmt = conn.createStatement()) {
@@ -82,7 +90,7 @@ class MongoStatementIntegrationTests {
         });
 
         session.doWork(conn -> {
-            conn.setAutoCommit(autoCommit);
+            conn.setAutoCommit(autoCommit());
             try (var stmt = conn.createStatement()) {
                 try {
                     var rs = stmt.executeQuery(
@@ -119,7 +127,7 @@ class MongoStatementIntegrationTests {
 
                     assertFalse(rs.next());
                 } finally {
-                    if (!autoCommit) {
+                    if (!autoCommit()) {
                         conn.commit();
                     }
                 }
@@ -172,9 +180,8 @@ class MongoStatementIntegrationTests {
                     ]
                 }""";
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testInsert(boolean autoCommit) {
+        @Test
+        void testInsert() {
             var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
@@ -200,12 +207,11 @@ class MongoStatementIntegrationTests {
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false
                             }"""));
-            assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
+            assertExecuteUpdate(INSERT_MQL, autoCommit(), 3, expectedDocs);
         }
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testUpdate(boolean autoCommit) {
+        @Test
+        void testUpdate() {
 
             prepareData();
 
@@ -248,12 +254,11 @@ class MongoStatementIntegrationTests {
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false
                             }"""));
-            assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
+            assertExecuteUpdate(updateMql, autoCommit(), 2, expectedDocs);
         }
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testDelete(boolean autoCommit) {
+        @Test
+        void testDelete() {
 
             prepareData();
 
@@ -285,7 +290,7 @@ class MongoStatementIntegrationTests {
                                  author: "Fyodor Dostoevsky",
                                  outOfStock: false
                             }"""));
-            assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
+            assertExecuteUpdate(deleteMql, autoCommit(), 1, expectedDocs);
         }
 
         private void prepareData() {
