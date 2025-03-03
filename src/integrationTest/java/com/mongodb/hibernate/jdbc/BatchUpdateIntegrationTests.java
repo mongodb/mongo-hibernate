@@ -263,7 +263,7 @@ class BatchUpdateIntegrationTests implements SessionFactoryScopeAware {
                         command4 -> assertThat(command4.getFirstKey()).isEqualTo("commitTransaction"));
     }
 
-    // TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19
+    // TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35
     // add batch update test case
 
     @Entity(name = "Movie")
