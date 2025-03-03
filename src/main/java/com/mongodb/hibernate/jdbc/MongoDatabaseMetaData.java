@@ -26,10 +26,10 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 
 /**
- * MongoDB extension's JDBC {@link java.sql.DatabaseMetaData} implementation class.
+ * MongoDB extension's {@link java.sql.DatabaseMetaData} implementation class.
  *
- * <p>It only focuses on API methods MongoDB extension will support. All the other methods are implemented by throwing
- * exceptions in its parent {@link DatabaseMetaDataAdapter adapter interface}.
+ * <p>It only focuses on API methods MongoDB extension of Hibernate ORM supports. All the other methods are implemented
+ * by throwing exceptions in its parent {@link DatabaseMetaDataAdapter adapter interface}.
  */
 final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
