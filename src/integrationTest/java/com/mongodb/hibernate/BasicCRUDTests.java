@@ -42,8 +42,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 @SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
 @DomainModel(annotatedClasses = {BasicCRUDTests.Book.class, BasicCRUDTests.BookWithEmbeddedField.class})
@@ -175,9 +173,8 @@ class BasicCRUDTests implements SessionFactoryScopeAware {
     @Nested
     class UpdateTests {
 
-        @ParameterizedTest(name = "merge: {0}")
-        @ValueSource(booleans = {true, false})
-        void testSimpleUpdate(boolean merge) {
+        @Test
+        void testSimpleUpdate() {
             var statementInspector = sessionFactoryScope.getStatementInspector(SQLStatementInspector.class);
             statementInspector.clear();
             sessionFactoryScope.inTransaction(session -> {
@@ -191,9 +188,7 @@ class BasicCRUDTests implements SessionFactoryScopeAware {
 
                 book.title = "Insurrection";
                 book.publishYear = 1899;
-                if (merge) {
-                    session.merge(book);
-                }
+                session.merge(book);
             });
 
             assertCollectionContainsOnly(

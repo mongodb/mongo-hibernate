@@ -254,22 +254,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (tableUpdate.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
-        doVisitTableUpdate(tableUpdate);
-    }
-
-    @Override
-    public void visitOptionalTableUpdate(OptionalTableUpdate tableUpdate) {
-        doVisitTableUpdate(tableUpdate);
-    }
-
-    private void doVisitTableUpdate(RestrictedTableMutation<?> tableUpdate) {
         var keyFilter = getKeyFilter(tableUpdate);
-        var updates = new ArrayList<AstFieldUpdate>();
-        tableUpdate.forEachValueBinding((position, valueBinding) -> {
+        var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
+        for (var valueBinding : tableUpdate.getValueBindings()) {
             var columnExpression = valueBinding.getColumnReference().getColumnExpression();
             var astValue = acceptAndYield(valueBinding.getValueExpression(), FIELD_VALUE);
             updates.add(new AstFieldUpdate(columnExpression, astValue));
-        });
+        }
         astVisitorValueHolder.yield(
                 COLLECTION_MUTATION,
                 new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates));
@@ -640,6 +631,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitCustomTableDelete(TableDeleteCustomSql tableDeleteCustomSql) {
+        throw new FeatureNotSupportedException();
+    }
+
+    @Override
+    public void visitOptionalTableUpdate(OptionalTableUpdate optionalTableUpdate) {
         throw new FeatureNotSupportedException();
     }
 
