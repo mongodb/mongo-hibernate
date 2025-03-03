@@ -44,8 +44,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
-@DomainModel(annotatedClasses = {BasicCRUDTests.Book.class, BasicCRUDTests.BookWithEmbeddedField.class})
-class BasicCRUDTests implements SessionFactoryScopeAware {
+@DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
+class BasicCrudTests implements SessionFactoryScopeAware {
 
     @AutoClose
     private MongoClient mongoClient;
