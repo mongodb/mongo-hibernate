@@ -38,11 +38,6 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 import org.jspecify.annotations.Nullable;
 
-/**
- * A {@link java.sql.Connection} adapter interface that throws exceptions for all its API methods.
- *
- * @see MongoConnection
- */
 interface ConnectionAdapter extends Connection {
 
     @Override

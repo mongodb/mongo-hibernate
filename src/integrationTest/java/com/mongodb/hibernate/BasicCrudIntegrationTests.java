@@ -43,8 +43,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
-class BasicCrudTests implements SessionFactoryScopeAware {
+@DomainModel(
+        annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookWithEmbeddedField.class
+        })
+class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     @AutoClose
     private MongoClient mongoClient;
@@ -147,7 +149,6 @@ class BasicCrudTests implements SessionFactoryScopeAware {
         @Test
         void testSimpleDeletion() {
 
-            // given
             var id = 1;
             sessionFactoryScope.inTransaction(session -> {
                 var book = new Book();
@@ -159,13 +160,11 @@ class BasicCrudTests implements SessionFactoryScopeAware {
             });
             assertThat(getCollectionDocuments()).hasSize(1);
 
-            // when
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
                 session.remove(book);
             });
 
-            // then
             assertThat(getCollectionDocuments()).isEmpty();
         }
     }

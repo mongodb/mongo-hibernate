@@ -20,7 +20,7 @@ import org.bson.BsonWriter;
 
 public final class AstParameterMarker implements AstValue {
 
-    public static AstParameterMarker INSTANCE = new AstParameterMarker();
+    public static final AstParameterMarker INSTANCE = new AstParameterMarker();
 
     private AstParameterMarker() {}
 
