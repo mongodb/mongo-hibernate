@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.bson.BsonWriter;
 
-public final class AstPlaceholder implements AstValue {
-
-    public static AstPlaceholder INSTANCE = new AstPlaceholder();
-
-    private AstPlaceholder() {}
-
+public record AstFilterFieldPath(String path) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeUndefined();
+        writer.writeName(path);
     }
 }

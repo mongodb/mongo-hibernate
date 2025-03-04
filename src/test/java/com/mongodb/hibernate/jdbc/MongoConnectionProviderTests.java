@@ -18,8 +18,6 @@ package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -28,19 +26,14 @@ import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import java.sql.SQLException;
-import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.MockMakers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class MongoConnectionProviderTests {
-    @Mock(mockMaker = MockMakers.PROXY)
-    private ServiceRegistryImplementor serviceRegistry;
 
     @AutoClose("stop")
     private MongoConnectionProvider connectionProvider;
@@ -73,11 +66,8 @@ class MongoConnectionProviderTests {
                         .build(),
                 "db");
         var standardServiceRegistryScopedState = new StandardServiceRegistryScopedState(mongoConfiguration);
-        doReturn(standardServiceRegistryScopedState)
-                .when(serviceRegistry)
-                .requireService(eq(StandardServiceRegistryScopedState.class));
         var result = new MongoConnectionProvider();
-        result.injectServices(serviceRegistry);
+        result.injectStandardServiceRegistryScopedState(standardServiceRegistryScopedState);
         return result;
     }
 }

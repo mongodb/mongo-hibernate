@@ -21,7 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -72,11 +76,19 @@ class MongoStatementIntegrationTests {
     private static SessionFactory sessionFactory;
 
     @AutoClose
+    private static MongoClient mongoClient;
+
+    private static MongoCollection<BsonDocument> mongoCollection;
+
+    @AutoClose
     private Session session;
 
     @BeforeAll
     static void beforeAll() {
         sessionFactory = new Configuration().buildSessionFactory();
+        var config = new MongoConfigurationBuilder(sessionFactory.getProperties()).build();
+        mongoClient = MongoClients.create(config.mongoClientSettings());
+        mongoCollection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
     }
 
     @BeforeEach
@@ -287,8 +299,7 @@ class MongoStatementIntegrationTests {
                 connection.setAutoCommit(autoCommit());
                 try (var stmt = (MongoStatement) connection.createStatement()) {
                     testInTransaction(connection, () -> assertEquals(expectedRowCount, stmt.executeUpdate(mql)));
-                    var actualDocuments = stmt.getMongoDatabase()
-                            .getCollection("books", BsonDocument.class)
+                    var actualDocuments = mongoCollection
                             .find()
                             .sort(Sorts.ascending("_id"))
                             .into(new ArrayList<>());

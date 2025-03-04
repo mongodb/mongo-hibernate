@@ -24,11 +24,6 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import org.jspecify.annotations.Nullable;
 
-/**
- * A {@link java.sql.Statement} adapter interface that throws exceptions for all its API methods.
- *
- * @see MongoStatement
- */
 interface StatementAdapter extends Statement {
     @Override
     default ResultSet executeQuery(String sql) throws SQLException {

@@ -25,12 +25,6 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 
-/**
- * MongoDB Dialect's JDBC {@link java.sql.DatabaseMetaData} implementation class.
- *
- * <p>It only focuses on API methods MongoDB Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent {@link DatabaseMetaDataAdapter adapter interface}.
- */
 final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";

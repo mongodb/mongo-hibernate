@@ -1,4 +1,4 @@
-# MongoDB extension of Hibernate ORM
+# MongoDB Extension of Hibernate ORM
 
 This product enables applications to use databases managed by the [MongoDB](https://www.mongodb.com/) DBMS
 via [Hibernate ORM](https://hibernate.org/orm/).
@@ -11,8 +11,6 @@ MongoDB speaks MQL (**M**ongoDB **Q**uery **L**anguage) instead of SQL. This pro
   which has to be plugged into Hibernate ORM via a custom [`ConnectionProvider`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html).
 - Translating Hibernate's internal SQL AST into MQL by means of a custom [`Dialect`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/dialect/Dialect.html),
   which has to be plugged into Hibernate ORM.
-
-<img src="mongodb_extension.png" alt="MongoDB extension" />
 
 ## Development
 

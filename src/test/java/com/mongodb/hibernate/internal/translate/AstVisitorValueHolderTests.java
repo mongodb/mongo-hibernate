@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
-import com.mongodb.hibernate.internal.translate.mongoast.AstPlaceholder;
+import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import java.util.List;
 import org.bson.BsonString;
@@ -57,7 +57,7 @@ class AstVisitorValueHolderTests {
 
         Runnable tableInserter = () -> {
             Runnable fieldValueYielder = () -> {
-                astVisitorValueHolder.yield(FIELD_VALUE, AstPlaceholder.INSTANCE);
+                astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
             };
             var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
@@ -81,7 +81,7 @@ class AstVisitorValueHolderTests {
     }
 
     @Test
-    @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of real data")
+    @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of actual data")
     void testHolderExpectingDifferentDescriptor() {
 
         Runnable valueYielder =
