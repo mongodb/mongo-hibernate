@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,15 +37,11 @@ import com.mongodb.client.MongoDatabase;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
-import java.util.Map;
-import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -133,69 +130,58 @@ class MongoStatementTests {
         }
     }
 
-    @Nested
-    class ClosedTests {
+    @Test
+    void testCheckClosed() throws SQLException {
+        mongoStatement.close();
+        checkMethodsWithOpenPrecondition();
+    }
 
-        interface StatementMethodInvocation {
-            void runOn(MongoStatement stmt) throws SQLException;
-        }
-
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoStatement")
-        @MethodSource("getMongoStatementMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, StatementMethodInvocation methodInvocation) throws SQLException {
-
-            mongoStatement.close();
-
-            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
-            assertEquals("MongoStatement has been closed", exception.getMessage());
-        }
-
-        private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {
-            var exampleQueryMql =
-                    """
+    private void checkMethodsWithOpenPrecondition() {
+        var exampleQueryMql =
+                """
+                {
+                  find: "restaurants",
+                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                  projection: { name: 1, rating: 1, address: 1 },
+                  sort: { name: 1 },
+                  limit: 5
+                }""";
+        var exampleUpdateMql =
+                """
+                {
+                  update: "members",
+                  updates: [
                     {
-                      find: "restaurants",
-                      filter: { rating: { $gte: 9 }, cuisine: "italian" },
-                      projection: { name: 1, rating: 1, address: 1 },
-                      sort: { name: 1 },
-                      limit: 5
-                    }""";
-            var exampleUpdateMql =
-                    """
-                    {
-                      update: "members",
-                      updates: [
-                        {
-                          q: {},
-                          u: { $inc: { points: 1 } },
-                          multi: true
-                        }
-                      ]
-                    }""";
-            return Map.<String, StatementMethodInvocation>ofEntries(
-                            Map.entry("executeQuery(String)", stmt -> stmt.executeQuery(exampleQueryMql)),
-                            Map.entry("executeUpdate(String)", stmt -> stmt.executeUpdate(exampleUpdateMql)),
-                            Map.entry("getMaxRows()", MongoStatement::getMaxRows),
-                            Map.entry("setMaxRows(int)", stmt -> stmt.setMaxRows(10)),
-                            Map.entry("getQueryTimeout()", MongoStatement::getQueryTimeout),
-                            Map.entry("setQueryTimeout(int)", stmt -> stmt.setQueryTimeout(1)),
-                            Map.entry("cancel()", MongoStatement::cancel),
-                            Map.entry("getWarnings()", MongoStatement::getWarnings),
-                            Map.entry("clearWarnings()", MongoStatement::clearWarnings),
-                            Map.entry("execute(String)", stmt -> stmt.execute(exampleQueryMql)),
-                            Map.entry("getResultSet()", MongoStatement::getResultSet),
-                            Map.entry("getMoreResultSet()", MongoStatement::getMoreResults),
-                            Map.entry("getUpdateCount()", MongoStatement::getUpdateCount),
-                            Map.entry("setFetchSize(int)", stmt -> stmt.setFetchSize(1)),
-                            Map.entry("getFetchSize()", MongoStatement::getFetchSize),
-                            Map.entry("addBatch(String)", stmt -> stmt.addBatch(exampleUpdateMql)),
-                            Map.entry("clearBatch()", MongoStatement::clearBatch),
-                            Map.entry("executeBatch()", MongoStatement::executeBatch),
-                            Map.entry("getConnection()", MongoStatement::getConnection),
-                            Map.entry("isWrapperFor(Class)", stmt -> stmt.isWrapperFor(Statement.class)))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
-        }
+                      q: {},
+                      u: { $inc: { points: 1 } },
+                      multi: true
+                    }
+                  ]
+                }""";
+        assertAll(
+                () -> assertThrowsClosedException(() -> mongoStatement.executeQuery(exampleQueryMql)),
+                () -> assertThrowsClosedException(() -> mongoStatement.executeUpdate(exampleUpdateMql)),
+                () -> assertThrowsClosedException(mongoStatement::getMaxRows),
+                () -> assertThrowsClosedException(() -> mongoStatement.setMaxRows(10)),
+                () -> assertThrowsClosedException(mongoStatement::getQueryTimeout),
+                () -> assertThrowsClosedException(() -> mongoStatement.setQueryTimeout(1)),
+                () -> assertThrowsClosedException(mongoStatement::cancel),
+                () -> assertThrowsClosedException(mongoStatement::getWarnings),
+                () -> assertThrowsClosedException(mongoStatement::clearWarnings),
+                () -> assertThrowsClosedException(mongoStatement::getResultSet),
+                () -> assertThrowsClosedException(mongoStatement::getMoreResults),
+                () -> assertThrowsClosedException(mongoStatement::getUpdateCount),
+                () -> assertThrowsClosedException(() -> mongoStatement.setFetchSize(1)),
+                () -> assertThrowsClosedException(mongoStatement::getFetchSize),
+                () -> assertThrowsClosedException(() -> mongoStatement.addBatch(exampleUpdateMql)),
+                () -> assertThrowsClosedException(mongoStatement::clearBatch),
+                () -> assertThrowsClosedException(mongoStatement::executeBatch),
+                () -> assertThrowsClosedException(mongoStatement::getConnection),
+                () -> assertThrowsClosedException(() -> mongoStatement.isWrapperFor(Statement.class)));
+    }
+
+    private void assertThrowsClosedException(Executable executable) {
+        var exception = assertThrows(SQLException.class, executable);
+        assertEquals("MongoStatement has been closed", exception.getMessage());
     }
 }

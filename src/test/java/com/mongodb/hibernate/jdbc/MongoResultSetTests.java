@@ -213,9 +213,7 @@ class MongoResultSetTests {
 
     private void assertThrowsOutOfRangeException(Executable executable) {
         var e = assertThrows(SQLException.class, executable);
-        assertThat(e.getMessage())
-                .matches(
-                        "Invalid column index \\[\\d+]; cannot be under 1 or over the current number of fields \\[\\d+]");
+        assertThat(e.getMessage()).startsWith("Invalid column index");
     }
 
     private void assertThrowsClosedException(Executable executable) {

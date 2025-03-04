@@ -46,7 +46,6 @@ import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,8 +54,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -106,72 +103,57 @@ class MongoConnectionTests {
         }
     }
 
-    @Nested
-    class ClosedTests {
+    @Test
+    void testCheckClosed() throws SQLException {
+        mongoConnection.close();
+        checkMethodsWithOpenPrecondition();
+    }
 
-        interface ConnectionMethodInvocation {
-            void runOn(MongoConnection conn) throws SQLException;
-        }
-
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoConnection")
-        @MethodSource("getMongoConnectionMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, ConnectionMethodInvocation methodInvocation) throws SQLException {
-
-            mongoConnection.close();
-
-            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
-            assertEquals("MongoConnection has been closed", exception.getMessage());
-        }
-
-        private static Stream<Arguments> getMongoConnectionMethodInvocationsImpactedByClosing() {
-            var exampleQueryMql =
-                    """
+    private void checkMethodsWithOpenPrecondition() {
+        var exampleQueryMql =
+                """
+                {
+                  find: "restaurants",
+                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                  projection: { name: 1, rating: 1, address: 1 },
+                  sort: { name: 1 },
+                  limit: 5
+                }""";
+        var exampleUpdateMql =
+                """
+                {
+                  update: "members",
+                  updates: [
                     {
-                      find: "restaurants",
-                      filter: { rating: { $gte: 9 }, cuisine: "italian" },
-                      projection: { name: 1, rating: 1, address: 1 },
-                      sort: { name: 1 },
-                      limit: 5
-                    }""";
-            var exampleUpdateMql =
-                    """
-                    {
-                      update: "members",
-                      updates: [
-                        {
-                          q: {},
-                          u: { $inc: { points: 1 } },
-                          multi: true
-                        }
-                      ]
-                    }""";
-            return Map.<String, ConnectionMethodInvocation>ofEntries(
-                            Map.entry("setAutoCommit(boolean)", conn -> conn.setAutoCommit(false)),
-                            Map.entry("getAutoCommit()", MongoConnection::getAutoCommit),
-                            Map.entry("commit()", MongoConnection::commit),
-                            Map.entry("rollback()", MongoConnection::rollback),
-                            Map.entry("createStatement()", MongoConnection::createStatement),
-                            Map.entry("prepareStatement(String)", conn -> conn.prepareStatement(exampleUpdateMql)),
-                            Map.entry(
-                                    "prepareStatement(String,int,int)",
-                                    conn -> conn.prepareStatement(
-                                            exampleQueryMql, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY)),
-                            Map.entry(
-                                    "createArrayOf(String,Object[])",
-                                    conn -> conn.createArrayOf("myArrayType", new String[] {"value1", "value2"})),
-                            Map.entry(
-                                    "createStruct(String,Object[])",
-                                    conn -> conn.createStruct("myStructType", new Object[] {1, "Toronto"})),
-                            Map.entry("getMetaData()", MongoConnection::getMetaData),
-                            Map.entry("getCatalog()", MongoConnection::getCatalog),
-                            Map.entry("getSchema()", MongoConnection::getSchema),
-                            Map.entry("getWarnings()", MongoConnection::getWarnings),
-                            Map.entry("clearWarnings()", MongoConnection::clearWarnings),
-                            Map.entry("isWrapperFor()", conn -> conn.isWrapperFor(Connection.class)))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
-        }
+                      q: {},
+                      u: { $inc: { points: 1 } },
+                      multi: true
+                    }
+                  ]
+                }""";
+        assertAll(
+                () -> assertThrowsClosedException(() -> mongoConnection.setAutoCommit(false)),
+                () -> assertThrowsClosedException(mongoConnection::getAutoCommit),
+                () -> assertThrowsClosedException(mongoConnection::rollback),
+                () -> assertThrowsClosedException(mongoConnection::createStatement),
+                () -> assertThrowsClosedException(() -> mongoConnection.prepareStatement(exampleQueryMql)),
+                () -> assertThrowsClosedException(
+                        () -> mongoConnection.prepareStatement(exampleQueryMql, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY)),
+                () -> assertThrowsClosedException(
+                        () -> mongoConnection.createArrayOf("myArrayType", new String[] {"value1", "value2"})),
+                () -> assertThrowsClosedException(
+                        () -> mongoConnection.createStruct("myStructType", new Object[] {1, "Toronto"})),
+                () -> assertThrowsClosedException(mongoConnection::getMetaData),
+                () -> assertThrowsClosedException(mongoConnection::getCatalog),
+                () -> assertThrowsClosedException(mongoConnection::getSchema),
+                () -> assertThrowsClosedException(mongoConnection::getWarnings),
+                () -> assertThrowsClosedException(mongoConnection::clearWarnings),
+                () -> assertThrowsClosedException(() -> mongoConnection.isWrapperFor(Connection.class)));
+    }
+
+    private void assertThrowsClosedException(Executable executable) {
+        var exception = assertThrows(SQLException.class, executable);
+        assertEquals("MongoConnection has been closed", exception.getMessage());
     }
 
     @Nested
