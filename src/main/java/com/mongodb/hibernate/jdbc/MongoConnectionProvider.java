@@ -24,7 +24,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.BuildConfig;
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import java.io.IOException;
@@ -36,13 +35,12 @@ import java.sql.SQLException;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.hibernate.service.UnknownUnwrapTypeException;
-import org.hibernate.service.spi.ServiceRegistryAwareService;
-import org.hibernate.service.spi.ServiceRegistryImplementor;
+import org.hibernate.service.spi.InjectService;
 import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@linkplain MongoDialect MongoDB dialect}'s customized JDBC {@link ConnectionProvider} SPI implementation.
+ * A {@link ConnectionProvider} for the MongoDB extension of Hibernate ORM.
  *
  * <p>All the work done via a {@link Connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from this
  * {@linkplain ConnectionProvider} is done within the same {@link ClientSession}.
@@ -53,7 +51,7 @@ import org.jspecify.annotations.Nullable;
  * configuration property, and {@linkplain MongoConnectionProvider#getConnection() provides} {@link Connection}s with
  * {@linkplain Connection#getAutoCommit() auto-commit} enabled.
  */
-public final class MongoConnectionProvider implements ConnectionProvider, Stoppable, ServiceRegistryAwareService {
+public final class MongoConnectionProvider implements ConnectionProvider, Stoppable {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -101,10 +99,9 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
     }
 
-    @Override
-    public void injectServices(ServiceRegistryImplementor serviceRegistry) {
-        var standardServiceRegistryScopedState =
-                serviceRegistry.requireService(StandardServiceRegistryScopedState.class);
+    @InjectService
+    public void injectStandardServiceRegistryScopedState(
+            StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
         this.standardServiceRegistryScopedState = standardServiceRegistryScopedState;
         var mongoClientSettings =
                 standardServiceRegistryScopedState.getConfiguration().mongoClientSettings();
