@@ -23,6 +23,7 @@ import static java.sql.ResultSet.CONCUR_UPDATABLE;
 import static java.sql.ResultSet.TYPE_FORWARD_ONLY;
 import static java.sql.ResultSet.TYPE_SCROLL_INSENSITIVE;
 import static java.sql.ResultSet.TYPE_SCROLL_SENSITIVE;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -153,7 +154,7 @@ class MongoConnectionTests {
 
     private void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
-        assertEquals("MongoConnection has been closed", exception.getMessage());
+        assertThat(exception.getMessage()).isEqualTo("MongoConnection has been closed");
     }
 
     @Nested

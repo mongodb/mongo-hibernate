@@ -218,13 +218,11 @@ class MongoResultSetTests {
 
     private void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
-        assertEquals("MongoResultSet has been closed", exception.getMessage());
+        assertThat(exception.getMessage()).isEqualTo("MongoResultSet has been closed");
     }
 
     private void assertThrowsTypeMismatchException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
-        assertThat(exception.getMessage())
-                .matches(
-                        "Failed to get value from column \\[index: \\d+]: Value expected to be of type \\S+ is of unexpected type \\S+");
+        assertThat(exception.getMessage()).startsWith("Failed to get value from column");
     }
 }

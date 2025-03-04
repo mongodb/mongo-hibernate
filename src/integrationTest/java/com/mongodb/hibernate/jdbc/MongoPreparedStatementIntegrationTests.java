@@ -354,7 +354,8 @@ class MongoPreparedStatementIntegrationTests {
                 connection.setAutoCommit(autoCommit());
                 try (var pstmt = pstmtProvider.apply(connection)) {
                     testInTransaction(connection, () -> assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate()));
-                    var actualDocuments = mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
+                    var actualDocuments =
+                            mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
                     assertEquals(expectedDocuments, actualDocuments);
                 }
             });

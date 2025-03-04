@@ -215,6 +215,6 @@ class MongoPreparedStatementTests {
 
     private void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
-        assertEquals("MongoPreparedStatement has been closed", exception.getMessage());
+        assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
     }
 }
