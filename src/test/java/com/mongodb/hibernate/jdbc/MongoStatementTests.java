@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
@@ -38,11 +39,14 @@ import com.mongodb.client.MongoDatabase;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -88,8 +92,7 @@ class MongoStatementTests {
                     aggregate: "books",
                     pipeline: [
                         { $match: { _id: { $eq: 1 } } },
-                        { $project: { _id: 0, title: 1, publishYear: 1 }
-                        }
+                        { $project: { _id: 0, title: 1, publishYear: 1 } }
                     ]
                 }""";
 
@@ -137,11 +140,57 @@ class MongoStatementTests {
         checkMethodsWithOpenPrecondition();
     }
 
-    @Test
-    void testSQLExceptionThrownWhenSetMaxRowsWithNegativeArgument() {
-        var exception = assertThrows(SQLException.class, () -> mongoStatement.setMaxRows(-10));
-        assertThat(exception.getMessage())
-                .startsWith("Maximum number of rows must be a value greater than or equal to 0");
+    @Nested
+    class setMaxRowsTests {
+
+        @Test
+        void testSQLExceptionThrownWhenSetMaxRowsWithNegativeArgument() {
+            var exception = assertThrows(SQLException.class, () -> mongoStatement.setMaxRows(-10));
+            assertThat(exception.getMessage())
+                    .startsWith("Maximum number of rows must be a value greater than or equal to 0");
+        }
+
+        @Test
+        void testAggregateLimitStageAdded(
+                @Mock MongoCollection<BsonDocument> mongoCollection,
+                @Mock AggregateIterable<BsonDocument> aggregateIterable,
+                @Mock MongoCursor<BsonDocument> mongoCursor,
+                @Captor ArgumentCaptor<List<BsonDocument>> pipelineCaptor)
+                throws SQLException {
+
+            doReturn(mongoCollection).when(mongoDatabase).getCollection("books", BsonDocument.class);
+            doReturn(aggregateIterable).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            doReturn(mongoCursor).when(aggregateIterable).cursor();
+
+            var aggregateMql =
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { author: { $eq: "Leo Tolstoy" } } },
+                            { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }
+                        ]
+                    }
+                    """;
+            mongoStatement.setMaxRows(100);
+            mongoStatement.executeQuery(aggregateMql);
+
+            verify(mongoCollection).aggregate(eq(clientSession), pipelineCaptor.capture());
+            assertThat(pipelineCaptor.getValue())
+                    .containsExactly(
+                            BsonDocument.parse(
+                                    """
+                                    { $match: { author: { $eq: "Leo Tolstoy" } } }\
+                                    """),
+                            BsonDocument.parse(
+                                    """
+                                    { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }\
+                                    """),
+                            BsonDocument.parse(
+                                    """
+                                    { $limit: 100 }\
+                                    """));
+        }
     }
 
     private void checkMethodsWithOpenPrecondition() {

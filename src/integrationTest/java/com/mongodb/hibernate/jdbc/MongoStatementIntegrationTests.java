@@ -107,7 +107,9 @@ class MongoStatementIntegrationTests {
                     documents: [
                         { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy" },
                         { _id: 2, publishYear: 1878, author: "Leo Tolstoy", title: "Anna Karenina" },
-                        { _id: 3, publishYear: 1866, title: "Crime and Punishment", author: "Fyodor Dostoevsky" }
+                        { _id: 3, publishYear: 1866, title: "Crime and Punishment", author: "Fyodor Dostoevsky" },
+                        { _id: 4, publishYear: 1912, author: "Leo Tolstoy", title: "Hadji Murat" },
+                        { _id: 5, publishYear: 1899, author: "Leo Tolstoy", title: "Resurrection" }
                     ]
                 }""");
 
@@ -115,6 +117,7 @@ class MongoStatementIntegrationTests {
             conn.setAutoCommit(autoCommit());
             try (var stmt = conn.createStatement()) {
                 testInTransaction(conn, () -> {
+                    stmt.setMaxRows(2);
                     var rs = stmt.executeQuery(
                             """
                             {

@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
@@ -60,14 +61,21 @@ class MongoStatement implements StatementAdapter {
         try {
             var collectionName = command.getString("aggregate").getValue();
             var collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
+
             var pipelineArray = command.getArray("pipeline");
+            var projectStage =
+                    pipelineArray.get(pipelineArray.size() - 1).asDocument().getDocument("$project");
+
+            if (maxRows > 0) {
+                pipelineArray.add(new BsonDocument("$limit", new BsonInt32(maxRows)));
+            }
 
             var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
             pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
 
             var cursor = collection.aggregate(clientSession, pipeline).cursor();
-            var fieldNames = getFieldNamesFromProjectDocument(
-                    pipeline.get(pipeline.size() - 1).getDocument("$project"));
+
+            var fieldNames = getFieldNamesFromProjectDocument(projectStage);
             resultSet = new MongoResultSet(cursor, fieldNames);
             return resultSet;
         } catch (RuntimeException e) {
