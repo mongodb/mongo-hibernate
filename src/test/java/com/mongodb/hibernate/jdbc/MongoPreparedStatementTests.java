@@ -204,7 +204,6 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(mongoPreparedStatement::executeQuery),
                 () -> asserter.accept(mongoPreparedStatement::executeUpdate),
                 () -> asserter.accept(mongoPreparedStatement::addBatch),
-                () -> asserter.accept(mongoPreparedStatement::getQueryTimeout),
                 () -> asserter.accept(() -> mongoPreparedStatement.setQueryTimeout(20_000)),
                 () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)));
     }

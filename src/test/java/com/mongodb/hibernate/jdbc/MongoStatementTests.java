@@ -161,7 +161,6 @@ class MongoStatementTests {
         assertAll(
                 () -> assertThrowsClosedException(() -> mongoStatement.executeQuery(exampleQueryMql)),
                 () -> assertThrowsClosedException(() -> mongoStatement.executeUpdate(exampleUpdateMql)),
-                () -> assertThrowsClosedException(mongoStatement::getMaxRows),
                 () -> assertThrowsClosedException(mongoStatement::cancel),
                 () -> assertThrowsClosedException(mongoStatement::getWarnings),
                 () -> assertThrowsClosedException(mongoStatement::clearWarnings),

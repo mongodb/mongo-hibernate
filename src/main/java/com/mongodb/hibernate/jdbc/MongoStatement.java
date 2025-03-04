@@ -127,12 +127,6 @@ class MongoStatement implements StatementAdapter {
     }
 
     @Override
-    public int getMaxRows() throws SQLException {
-        checkClosed();
-        return 0;
-    }
-
-    @Override
     public void cancel() throws SQLException {
         checkClosed();
         throw new FeatureNotSupportedException();
