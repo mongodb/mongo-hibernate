@@ -137,6 +137,13 @@ class MongoStatementTests {
         checkMethodsWithOpenPrecondition();
     }
 
+    @Test
+    void testSQLExceptionThrownWhenSetMaxRowsWithNegativeArgument() {
+        var exception = assertThrows(SQLException.class, () -> mongoStatement.setMaxRows(-10));
+        assertThat(exception.getMessage())
+                .startsWith("Maximum number of rows must be a value greater than or equal to 0");
+    }
+
     private void checkMethodsWithOpenPrecondition() {
         var exampleQueryMql =
                 """
@@ -166,6 +173,8 @@ class MongoStatementTests {
                 () -> assertThrowsClosedException(mongoStatement::getWarnings),
                 () -> assertThrowsClosedException(mongoStatement::clearWarnings),
                 () -> assertThrowsClosedException(mongoStatement::getResultSet),
+                () -> assertThrowsClosedException(mongoStatement::getMaxRows),
+                () -> assertThrowsClosedException(() -> mongoStatement.setMaxRows(100)),
                 () -> assertThrowsClosedException(mongoStatement::getMoreResults),
                 () -> assertThrowsClosedException(mongoStatement::getUpdateCount),
                 () -> assertThrowsClosedException(() -> mongoStatement.addBatch(exampleUpdateMql)),

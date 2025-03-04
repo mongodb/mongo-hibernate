@@ -40,6 +40,7 @@ class MongoStatement implements StatementAdapter {
 
     private @Nullable ResultSet resultSet;
     private boolean closed;
+    private int maxRows;
 
     MongoStatement(MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection) {
         this.mongoDatabase = mongoDatabase;
@@ -130,18 +131,30 @@ class MongoStatement implements StatementAdapter {
         return null;
     }
 
-    /** Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}. */
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();
     }
 
-    // ----------------------- Multiple Results --------------------------
-
     @Override
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+    }
+
+    @Override
+    public int getMaxRows() throws SQLException {
+        checkClosed();
+        return maxRows;
+    }
+
+    @Override
+    public void setMaxRows(int maxRows) throws SQLException {
+        checkClosed();
+        if (maxRows < 0) {
+            throw new SQLException("Maximum number of rows must be a value greater than or equal to 0");
+        }
+        this.maxRows = maxRows;
     }
 
     @Override
