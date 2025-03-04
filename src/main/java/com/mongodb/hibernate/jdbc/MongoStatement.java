@@ -129,25 +129,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public int getMaxRows() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public void setMaxRows(int max) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public int getQueryTimeout() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public void setQueryTimeout(int seconds) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        return 0;
     }
 
     @Override
@@ -192,18 +174,6 @@ class MongoStatement implements StatementAdapter {
     public int getUpdateCount() throws SQLException {
         checkClosed();
         throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
-    }
-
-    @Override
-    public void setFetchSize(int rows) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public int getFetchSize() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override

@@ -198,13 +198,15 @@ class MongoPreparedStatementTests {
     }
 
     private void checkMethodsWithOpenPrecondition(
-            MongoPreparedStatement mongoPreparedStatement, Consumer<Executable> asserter)
-            throws SQLSyntaxErrorException {
+            MongoPreparedStatement mongoPreparedStatement, Consumer<Executable> asserter) {
         checkSetterMethods(mongoPreparedStatement, 1, asserter);
         assertAll(
                 () -> asserter.accept(mongoPreparedStatement::executeQuery),
                 () -> asserter.accept(mongoPreparedStatement::executeUpdate),
-                () -> asserter.accept(mongoPreparedStatement::addBatch));
+                () -> asserter.accept(mongoPreparedStatement::addBatch),
+                () -> asserter.accept(mongoPreparedStatement::getQueryTimeout),
+                () -> asserter.accept(() -> mongoPreparedStatement.setQueryTimeout(20_000)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)));
     }
 
     private void assertThrowsOutOfRangeException(Executable executable) {

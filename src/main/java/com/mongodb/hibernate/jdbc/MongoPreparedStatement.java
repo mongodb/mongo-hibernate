@@ -16,12 +16,23 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static java.lang.String.format;
-
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import org.bson.BsonArray;
+import org.bson.BsonBinary;
+import org.bson.BsonBoolean;
+import org.bson.BsonDecimal128;
+import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonNull;
+import org.bson.BsonString;
+import org.bson.BsonType;
+import org.bson.BsonValue;
+import org.bson.types.Decimal128;
+
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -38,19 +49,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.function.Consumer;
-import org.bson.BsonArray;
-import org.bson.BsonBinary;
-import org.bson.BsonBoolean;
-import org.bson.BsonDecimal128;
-import org.bson.BsonDocument;
-import org.bson.BsonDouble;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
-import org.bson.BsonNull;
-import org.bson.BsonString;
-import org.bson.BsonType;
-import org.bson.BsonValue;
-import org.bson.types.Decimal128;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static java.lang.String.format;
 
 /**
  * MongoDB Dialect's JDBC {@link java.sql.PreparedStatement} implementation class.
@@ -239,6 +240,41 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+    }
+
+    @Override
+    public int getQueryTimeout() throws SQLException {
+        checkClosed();
+        if (!"aggregate".equals(command.getFirstKey())) {
+            throw new FeatureNotSupportedException("Unsupported command: " + command.getFirstKey());
+        }
+        return command.getInt32("maxTimeMS", new BsonInt32(0)).getValue() * 1000;
+    }
+
+    @Override
+    public void setQueryTimeout(int seconds) throws SQLException {
+        checkClosed();
+        if (!"aggregate".equals(command.getFirstKey())) {
+            throw new FeatureNotSupportedException("Unsupported command: " + command.getFirstKey());
+        }
+        command.put("maxTimeMS", new BsonInt32(seconds * 1000));
+    }
+
+    @Override
+    public void setFetchSize(int rows) throws SQLException {
+        checkClosed();
+        if (rows < 0) {
+            throw new SQLException("invalid rows: " + rows);
+        }
+        if (!"aggregate".equals(command.getFirstKey())) {
+            throw new FeatureNotSupportedException("Unsupported command: " + command.getFirstKey());
+        }
+
+        var cursor = command.getDocument("cursor", new BsonDocument());
+        cursor.put("batchSize", new BsonInt32(rows));
+        if (!command.containsKey("cursor")) {
+            command.put("cursor", cursor);
+        }
     }
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
