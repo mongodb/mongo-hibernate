@@ -52,12 +52,6 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 
-/**
- * MongoDB extension's {@link java.sql.PreparedStatement} implementation class.
- *
- * <p>It only focuses on API methods MongoDB extension of Hibernate ORM supports. All the other methods are implemented
- * by throwing exceptions in its parent {@link PreparedStatementAdapter adapter interface}.
- */
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
