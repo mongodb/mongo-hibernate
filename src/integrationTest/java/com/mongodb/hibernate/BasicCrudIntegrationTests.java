@@ -186,7 +186,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 session.persist(book);
                 session.flush();
 
-                book.title = "Insurrection";
+                book.title = "Resurrection";
                 book.publishYear = 1899;
                 session.merge(book);
             });
@@ -194,7 +194,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             assertCollectionContainsOnly(
                     BsonDocument.parse(
                             """
-                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Insurrection"}\
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
                             """));
             assertThat(statementInspector.getSqlQueries())
                     .containsExactly(
