@@ -20,8 +20,10 @@ import static org.hibernate.cfg.JdbcSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -32,6 +34,9 @@ import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.AutoClose;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,11 +47,32 @@ import org.junit.jupiter.api.Test;
             MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithoutNameProperty.class,
             MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithNamePropertyIdentical.class
         })
-class MongoIdFieldNameIntegrationTests {
+class MongoIdFieldNameIntegrationTests implements SessionFactoryScopeAware {
+
+    @AutoClose
+    private MongoClient mongoClient;
+
+    private MongoCollection<BsonDocument> collection;
+
+    private SessionFactoryScope sessionFactoryScope;
+
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @BeforeAll
+    void beforeAll() {
+        var config = new MongoConfigurationBuilder(
+                        sessionFactoryScope.getSessionFactory().getProperties())
+                .build();
+        mongoClient = MongoClients.create(config.mongoClientSettings());
+        collection = mongoClient.getDatabase(config.databaseName()).getCollection("movies", BsonDocument.class);
+    }
 
     @BeforeEach
-    void setUp() {
-        onMongoCollection("movies", MongoCollection::drop);
+    void beforeEach() {
+        collection.drop();
     }
 
     @Test
