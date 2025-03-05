@@ -23,11 +23,6 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 
-/**
- * A {@link java.sql.DatabaseMetaData} adapter interface that throws exceptions for all its API methods.
- *
- * @see MongoDatabaseMetaData
- */
 interface DatabaseMetaDataAdapter extends DatabaseMetaData {
 
     @Override

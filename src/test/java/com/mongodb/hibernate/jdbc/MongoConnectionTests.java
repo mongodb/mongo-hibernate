@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
 import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -79,28 +80,24 @@ class MongoConnectionTests {
     class CloseTests {
         @Test
         void testNoopWhenCloseAgain() throws SQLException {
-            // given
+
             mongoConnection.close();
             assertTrue(mongoConnection.isClosed());
 
             verify(clientSession).close();
 
-            // when
             mongoConnection.close();
 
-            // then
             verifyNoMoreInteractions(clientSession);
         }
 
         @Test
         void testClosedWhenSessionClosingThrowsException() {
-            // given
+
             doThrow(new RuntimeException()).when(clientSession).close();
 
-            // when
             assertThrows(SQLException.class, () -> mongoConnection.close());
 
-            // then
             assertTrue(mongoConnection.isClosed());
         }
     }
@@ -115,12 +112,11 @@ class MongoConnectionTests {
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoConnection")
         @MethodSource("getMongoConnectionMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, ConnectionMethodInvocation methodInvocation) throws SQLException {
-            // given
+
             mongoConnection.close();
 
-            // when && then
-            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
-            assertEquals("Connection has been closed", exception.getMessage());
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoConnection));
+            assertThat(sqlException.getMessage()).matches("MongoConnection has been closed");
         }
 
         private static Stream<Arguments> getMongoConnectionMethodInvocationsImpactedByClosing() {
@@ -183,7 +179,7 @@ class MongoConnectionTests {
             @ParameterizedTest(name = "No-op when autoCommit state ({0}) not changed")
             @ValueSource(booleans = {true, false})
             void testNoOpWhenAutoCommitNotChanged(boolean autoCommit) throws Exception {
-                // given
+
                 if (!autoCommit) {
                     mongoConnection.setAutoCommit(false);
                     verify(clientSession).hasActiveTransaction();
@@ -191,10 +187,8 @@ class MongoConnectionTests {
                     assertTrue(mongoConnection.getAutoCommit());
                 }
 
-                // when
                 mongoConnection.setAutoCommit(autoCommit);
 
-                // then
                 verifyNoMoreInteractions(clientSession);
             }
 
@@ -207,14 +201,13 @@ class MongoConnectionTests {
                 @ValueSource(booleans = {true, false})
                 void testTryingToCommitExistingTransactionWhenAutoCommitChangedToTrue(boolean successful)
                         throws SQLException {
-                    // given
+
                     mongoConnection.setAutoCommit(false);
                     doReturn(true).when(clientSession).hasActiveTransaction();
                     if (!successful) {
                         doThrow(RuntimeException.class).when(clientSession).commitTransaction();
                     }
 
-                    // when && then
                     if (successful) {
                         mongoConnection.setAutoCommit(true);
                     } else {
@@ -226,14 +219,12 @@ class MongoConnectionTests {
                 @Test
                 @DisplayName("No-op when no active transaction exists and autoCommit state changed (false -> true)")
                 void testNoopWhenNoExistingTransactionAndAutoCommitChangedToTrue() throws SQLException {
-                    // given
+
                     mongoConnection.setAutoCommit(false);
                     doReturn(false).when(clientSession).hasActiveTransaction();
 
-                    // when
                     mongoConnection.setAutoCommit(true);
 
-                    // then
                     verify(clientSession, atLeast(1)).hasActiveTransaction();
                     verifyNoMoreInteractions(clientSession);
                 }
@@ -241,12 +232,9 @@ class MongoConnectionTests {
                 @Test
                 @DisplayName("No transaction is started when autoCommit state changed (true -> false)")
                 void testNoTransactionStartedWhenAutoCommitChangedToFalse() throws SQLException {
-                    // given
 
-                    // when
                     mongoConnection.setAutoCommit(false);
 
-                    // then
                     verify(clientSession, never()).startTransaction();
                 }
             }
@@ -258,11 +246,10 @@ class MongoConnectionTests {
             @Test
             @DisplayName("No-op when no active transaction exists during transaction commit")
             void testNoopWhenNoTransactionExistsAndCommit() throws SQLException {
-                // given
+
                 doReturn(false).when(clientSession).hasActiveTransaction();
                 mongoConnection.setAutoCommit(false);
 
-                // when && then
                 assertDoesNotThrow(() -> mongoConnection.commit());
                 verifyNoMoreInteractions(clientSession);
             }
@@ -270,22 +257,20 @@ class MongoConnectionTests {
             @Test
             @DisplayName("SQLException is thrown when autoCommit state is true during transaction commit")
             void testSQLExceptionThrownWhenAutoCommitIsTrue() throws SQLException {
-                // given
+
                 assertTrue(mongoConnection.getAutoCommit());
 
-                // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.commit());
             }
 
             @Test
             @DisplayName("SQLException is thrown when transaction commit failed")
             void testSQLExceptionThrownWhenTransactionCommitFailed() throws SQLException {
-                // given
+
                 mongoConnection.setAutoCommit(false);
                 doReturn(true).when(clientSession).hasActiveTransaction();
                 doThrow(RuntimeException.class).when(clientSession).commitTransaction();
 
-                // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.commit());
             }
         }
@@ -296,11 +281,10 @@ class MongoConnectionTests {
             @Test
             @DisplayName("No-op when no active transaction exists during transaction rollback")
             void testNoopWhenNoTransactionExistsAndRollback() throws SQLException {
-                // given
+
                 doReturn(false).when(clientSession).hasActiveTransaction();
                 mongoConnection.setAutoCommit(false);
 
-                // when && then
                 assertDoesNotThrow(() -> mongoConnection.rollback());
                 verifyNoMoreInteractions(clientSession);
             }
@@ -308,22 +292,20 @@ class MongoConnectionTests {
             @Test
             @DisplayName("SQLException is thrown when autoCommit state is true during transaction rollback")
             void testSQLExceptionThrownWhenAutoCommitIsTrue() throws SQLException {
-                // given
+
                 assertTrue(mongoConnection.getAutoCommit());
 
-                // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.rollback());
             }
 
             @Test
             @DisplayName("SQLException is thrown when transaction rollback failed")
             void testSQLExceptionThrownWhenTransactionRollbackFailed() throws SQLException {
-                // given
+
                 mongoConnection.setAutoCommit(false);
                 doReturn(true).when(clientSession).hasActiveTransaction();
                 doThrow(RuntimeException.class).when(clientSession).abortTransaction();
 
-                // when && then
                 assertThrows(SQLException.class, () -> mongoConnection.rollback());
             }
         }
@@ -338,7 +320,7 @@ class MongoConnectionTests {
         @Test
         @DisplayName("Happy path for MongoDatabaseMetaData fetching")
         void testSuccess() {
-            // given
+
             doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
             var commandResultJson =
                     """
@@ -353,10 +335,8 @@ class MongoConnectionTests {
                     .runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
                             .equals(arg.toBsonDocument().getFirstKey())));
 
-            // when
             var metaData = assertDoesNotThrow(() -> mongoConnection.getMetaData());
 
-            // then
             assertAll(
                     () -> assertEquals(MONGO_DATABASE_PRODUCT_NAME, metaData.getDatabaseProductName()),
                     () -> assertEquals(MONGO_JDBC_DRIVER_NAME, metaData.getDriverName()),
@@ -368,13 +348,11 @@ class MongoConnectionTests {
         @Test
         @DisplayName("SQLException is thrown when MongoConnection#getMetaData() failed while interacting with db")
         void testSQLExceptionThrownWhenMetaDataFetchingFailed() {
-            // given
             doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
             doThrow(new RuntimeException())
                     .when(mongoDatabase)
                     .runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
                             .equals(arg.toBsonDocument().getFirstKey())));
-            // when && then
             assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
         }
     }

@@ -18,15 +18,18 @@ package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -35,32 +38,28 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class MongoStatementIntegrationTests {
 
+    @AutoClose
     private static SessionFactory sessionFactory;
 
+    @AutoClose
+    private static MongoClient mongoClient;
+
+    private static MongoCollection<BsonDocument> mongoCollection;
+
+    @AutoClose
     private Session session;
 
     @BeforeAll
     static void beforeAll() {
         sessionFactory = new Configuration().buildSessionFactory();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        if (sessionFactory != null) {
-            sessionFactory.close();
-        }
+        var config = new MongoConfigurationBuilder(sessionFactory.getProperties()).build();
+        mongoClient = MongoClients.create(config.mongoClientSettings());
+        mongoCollection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
     }
 
     @BeforeEach
     void beforeEach() {
         session = sessionFactory.openSession();
-    }
-
-    @AfterEach
-    void afterEach() {
-        if (session != null) {
-            session.close();
-        }
     }
 
     @Nested
@@ -141,10 +140,9 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testUpdate(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var updateMql =
                     """
                     {
@@ -190,10 +188,9 @@ class MongoStatementIntegrationTests {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testDelete(boolean autoCommit) {
-            // given
+
             prepareData();
 
-            // when && then
             var deleteMql =
                     """
                     {
@@ -245,12 +242,9 @@ class MongoStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var realDocuments = stmt.getMongoDatabase()
-                            .getCollection("books", BsonDocument.class)
-                            .find()
-                            .sort(Sorts.ascending("_id"))
-                            .into(new ArrayList<>());
-                    assertEquals(expectedDocuments, realDocuments);
+                    var actualDocuments =
+                            mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
+                    assertEquals(expectedDocuments, actualDocuments);
                 }
             });
         }

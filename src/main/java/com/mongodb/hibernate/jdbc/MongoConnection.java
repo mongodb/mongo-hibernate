@@ -36,12 +36,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
 
-/**
- * MongoDB Dialect's JDBC {@linkplain java.sql.Connection connection} implementation class.
- *
- * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent {@linkplain ConnectionAdapter adapter interface}.
- */
 final class MongoConnection implements ConnectionAdapter {
 
     private final MongoClient mongoClient;
@@ -237,7 +231,7 @@ final class MongoConnection implements ConnectionAdapter {
 
     private void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("Connection has been closed");
+            throw new SQLException(format("%s has been closed", getClass().getSimpleName()));
         }
     }
 }

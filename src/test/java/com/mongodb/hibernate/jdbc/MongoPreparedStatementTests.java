@@ -17,9 +17,9 @@
 package com.mongodb.hibernate.jdbc;
 
 import static java.lang.String.format;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -99,12 +99,11 @@ class MongoPreparedStatementTests {
         @Test
         @DisplayName("Happy path when all parameters are provided values")
         void testSuccess() throws SQLException {
-            // given
+
             doReturn(Document.parse("{ok: 1.0, n: 1}"))
                     .when(mongoDatabase)
                     .runCommand(eq(clientSession), any(BsonDocument.class));
 
-            // when && then
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
 
                 preparedStatement.setString(1, "War and Peace");
@@ -158,7 +157,7 @@ class MongoPreparedStatementTests {
         @MethodSource("getMongoPreparedStatementMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation)
                 throws SQLSyntaxErrorException {
-            // given
+
             var mql =
                     """
                     {
@@ -179,9 +178,8 @@ class MongoPreparedStatementTests {
             var preparedStatement = createMongoPreparedStatement(mql);
             preparedStatement.close();
 
-            // when && then
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertEquals("MongoPreparedStatement has been closed", sqlException.getMessage());
+            assertThat(sqlException.getMessage()).matches("MongoPreparedStatement has been closed");
         }
 
         private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsImpactedByClosing() {
@@ -230,6 +228,7 @@ class MongoPreparedStatementTests {
     @Nested
     class ParameterIndexCheckingTests {
 
+        @AutoClose
         private MongoPreparedStatement preparedStatement;
 
         @BeforeEach
@@ -237,23 +236,18 @@ class MongoPreparedStatementTests {
             preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
         }
 
-        @AfterEach
-        void afterEach() {
-            preparedStatement.close();
-        }
-
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too low")
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow")
         void testParameterIndexUnderflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
+            assertThat(sqlException.getMessage()).startsWith("Parameter index invalid");
         }
 
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too high")
         @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow")
         void testParameterIndexOverflow(String label, PreparedStatementMethodInvocation methodInvocation) {
             var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertTrue(sqlException.getMessage().startsWith("Parameter index invalid"));
+            assertThat(sqlException.getMessage()).startsWith("Parameter index invalid");
         }
 
         private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow() {

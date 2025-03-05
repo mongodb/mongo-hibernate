@@ -39,11 +39,6 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import org.jspecify.annotations.Nullable;
 
-/**
- * A {@link java.sql.PreparedStatement} adapter interface that throws exceptions for all its API methods.
- *
- * @see MongoPreparedStatement
- */
 interface PreparedStatementAdapter extends StatementAdapter, PreparedStatement {
     @Override
     default ResultSet executeQuery() throws SQLException {

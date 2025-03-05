@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -61,11 +62,10 @@ class MongoStatementTests {
     @Test
     @DisplayName("No-op when 'close()' is called on a closed MongoStatement")
     void testNoopWhenCloseStatementClosed() {
-        // given
+
         mongoStatement.close();
         assertTrue(mongoStatement.isClosed());
 
-        // when && then
         assertDoesNotThrow(() -> mongoStatement.close());
     }
 
@@ -75,20 +75,19 @@ class MongoStatementTests {
         @Test
         @DisplayName("SQLException is thrown when 'mql' is invalid")
         void testSQLExceptionThrownWhenCalledWithInvalidMql() {
-            // given
+
             String invalidMql =
                     """
                     { insert: "books"'", documents: [ { title: "War and Peace" } ]
                     """;
 
-            // when && then
             assertThrows(SQLSyntaxErrorException.class, () -> mongoStatement.executeUpdate(invalidMql));
         }
 
         @Test
         @DisplayName("SQLException is thrown when database access error occurs")
         void testSQLExceptionThrownWhenDBAccessFailed() {
-            // given
+
             var dbAccessException = new RuntimeException();
             doThrow(dbAccessException).when(mongoDatabase).runCommand(same(clientSession), any(BsonDocument.class));
             String mql =
@@ -99,7 +98,6 @@ class MongoStatementTests {
                     }
                     """;
 
-            // when && then
             var sqlException = assertThrows(SQLException.class, () -> mongoStatement.executeUpdate(mql));
             assertEquals(dbAccessException, sqlException.getCause());
         }
@@ -115,12 +113,10 @@ class MongoStatementTests {
         @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoStatement")
         @MethodSource("getMongoStatementMethodInvocationsImpactedByClosing")
         void testCheckClosed(String label, StatementMethodInvocation methodInvocation) {
-            // given
             mongoStatement.close();
 
-            // when && then
-            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
-            assertEquals("MongoStatement has been closed", exception.getMessage());
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
+            assertThat(sqlException.getMessage()).matches("MongoStatement has been closed");
         }
 
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {
