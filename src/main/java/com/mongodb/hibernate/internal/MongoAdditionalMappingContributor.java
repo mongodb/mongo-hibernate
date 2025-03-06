@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.service;
+package com.mongodb.hibernate.internal;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;

@@ -1,1 +1,1 @@
-com.mongodb.hibernate.internal.service.MongoAdditionalMappingContributor
+com.mongodb.hibernate.internal.MongoAdditionalMappingContributor

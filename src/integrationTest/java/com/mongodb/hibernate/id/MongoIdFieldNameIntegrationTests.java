@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.id;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
