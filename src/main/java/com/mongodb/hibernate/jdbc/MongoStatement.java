@@ -81,7 +81,7 @@ class MongoStatement implements StatementAdapter {
             var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
             pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
 
-            var fieldNames = getFieldNamesFromProjectDocument(projectStage);
+            var fieldNames = getFieldNamesFromProjectStage(projectStage);
 
             var cursor = collection.aggregate(clientSession, pipeline).cursor();
             return resultSet = new MongoResultSet(cursor, fieldNames);
@@ -90,15 +90,9 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    /**
-     * Gets included field names from {@code $project} document
-     *
-     * @param projectDocument the {@code $project} document
-     * @return ordered field names included in {@code aggregate} command response
-     */
-    private List<String> getFieldNamesFromProjectDocument(BsonDocument projectDocument) {
-        var fieldNames = new ArrayList<String>(projectDocument.size());
-        projectDocument.forEach((key, value) -> {
+    private List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
+        var fieldNames = new ArrayList<String>(projectStage.size());
+        projectStage.forEach((key, value) -> {
             boolean skip = (value.isNumber() && value.asNumber().intValue() == 0)
                     || (value.isBoolean() && value.asBoolean().equals(BsonBoolean.FALSE));
             if (!skip) {
