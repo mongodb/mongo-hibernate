@@ -52,8 +52,15 @@ class MongoStatement implements StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         var command = parse(mql);
         return executeQueryCommand(command);
+    }
+
+    void closeLastOpenResultSet() throws SQLException {
+        if (resultSet != null && !resultSet.isClosed()) {
+            resultSet.close();
+        }
     }
 
     ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
