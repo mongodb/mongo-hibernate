@@ -67,7 +67,7 @@ class MongoStatement implements StatementAdapter {
                     pipelineArray.get(pipelineArray.size() - 1).asDocument().getDocument("$project");
 
             if (maxRows > 0) {
-                pipelineArray.add(new BsonDocument("$limit", new BsonInt32(maxRows)));
+                pipelineArray.add(Aggregates.limit(maxRows).toBsonDocument());
             }
 
             var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
