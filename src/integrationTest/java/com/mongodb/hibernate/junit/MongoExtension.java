@@ -35,8 +35,10 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
 
     @Override
     public void beforeAll(ExtensionContext context) {
-        sessionFactory = new Configuration().buildSessionFactory();
-        var mongoConfig = new MongoConfigurationBuilder(sessionFactory.getProperties()).build();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> hibernateProperties =
+                (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
+        var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
         mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
         mongoDatabase = mongoClient.getDatabase(mongoConfig.databaseName());
 
