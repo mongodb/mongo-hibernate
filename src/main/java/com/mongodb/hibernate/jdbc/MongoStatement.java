@@ -80,11 +80,10 @@ class MongoStatement implements StatementAdapter {
             var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
             pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
 
-            var cursor = collection.aggregate(clientSession, pipeline).cursor();
-
             var fieldNames = getFieldNamesFromProjectDocument(projectStage);
-            resultSet = new MongoResultSet(cursor, fieldNames);
-            return resultSet;
+
+            var cursor = collection.aggregate(clientSession, pipeline).cursor();
+            return resultSet = new MongoResultSet(cursor, fieldNames);
         } catch (RuntimeException e) {
             throw new SQLException("Failed to execute query: " + e.getMessage(), e);
         }
