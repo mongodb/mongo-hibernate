@@ -200,12 +200,37 @@ class MongoPreparedStatementTests {
     private void checkMethodsWithOpenPrecondition(
             MongoPreparedStatement mongoPreparedStatement, Consumer<Executable> asserter) {
         checkSetterMethods(mongoPreparedStatement, 1, asserter);
+        var exampleQueryMql =
+                """
+                {
+                  find: "restaurants",
+                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
+                  projection: { name: 1, rating: 1, address: 1 },
+                  sort: { name: 1 },
+                  limit: 5
+                }""";
+        var exampleUpdateMql =
+                """
+                {
+                  update: "members",
+                  updates: [
+                    {
+                      q: {},
+                      u: { $inc: { points: 1 } },
+                      multi: true
+                    }
+                  ]
+                }""";
         assertAll(
                 () -> asserter.accept(mongoPreparedStatement::executeQuery),
                 () -> asserter.accept(mongoPreparedStatement::executeUpdate),
                 () -> asserter.accept(mongoPreparedStatement::addBatch),
                 () -> asserter.accept(() -> mongoPreparedStatement.setQueryTimeout(20_000)),
-                () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)));
+                () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)),
+                () -> asserter.accept(() -> mongoPreparedStatement.execute(exampleUpdateMql)),
+                () -> asserter.accept(() -> mongoPreparedStatement.executeQuery(exampleQueryMql)),
+                () -> asserter.accept(() -> mongoPreparedStatement.executeUpdate(exampleUpdateMql)),
+                () -> asserter.accept(() -> mongoPreparedStatement.addBatch(exampleUpdateMql)));
     }
 
     private void assertThrowsOutOfRangeException(Executable executable) {

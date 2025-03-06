@@ -260,6 +260,30 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
     }
 
+    @Override
+    public ResultSet executeQuery(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public int executeUpdate(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public boolean execute(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public void addBatch(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
