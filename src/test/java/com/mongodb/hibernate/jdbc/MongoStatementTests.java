@@ -41,13 +41,13 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -63,8 +63,12 @@ class MongoStatementTests {
     @Mock
     private MongoConnection mongoConnection;
 
-    @InjectMocks
     private MongoStatement mongoStatement;
+
+    @BeforeEach
+    void beforeEach() {
+        mongoStatement = new MongoStatement(mongoDatabase, clientSession, mongoConnection);
+    }
 
     @Test
     void testNoopWhenCloseStatementClosed() throws SQLException {
