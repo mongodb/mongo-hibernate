@@ -22,25 +22,51 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
 import org.hibernate.cfg.Configuration;
-import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.TestInstanceFactoryContext;
+import org.junit.jupiter.api.extension.TestInstancePreConstructCallback;
+import org.junit.jupiter.api.extension.TestInstancePreDestroyCallback;
 
-public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
+public final class MongoExtension
+        implements TestInstancePreConstructCallback,
+                TestInstancePreDestroyCallback,
+                BeforeAllCallback,
+                BeforeEachCallback {
+
+    private ExtensionContext rootContext;
 
     private MongoClient mongoClient;
     private MongoDatabase mongoDatabase;
 
     @Override
-    public void beforeAll(ExtensionContext context) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> hibernateProperties =
-                (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
-        var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
-        mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
-        mongoDatabase = mongoClient.getDatabase(mongoConfig.databaseName());
+    public void preConstructTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext context) {
+        if (factoryContext.getOuterInstance().isEmpty()) {
+            rootContext = context;
 
+            @SuppressWarnings("unchecked")
+            Map<String, Object> hibernateProperties =
+                    (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
+
+            var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
+            mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
+            mongoDatabase = mongoClient.getDatabase(mongoConfig.databaseName());
+        }
+    }
+
+    @Override
+    public void preDestroyTestInstance(ExtensionContext context) {
+        if (context == rootContext) {
+            mongoDatabase = null;
+            if (mongoClient != null) {
+                mongoClient.close();
+            }
+        }
+    }
+
+    @Override
+    public void beforeAll(ExtensionContext context) {
         if (context.getTestInstance().orElse(null) instanceof MongoDatabaseAware mongoDatabaseAware) {
             mongoDatabaseAware.injectMongoDatabase(mongoDatabase);
         }
@@ -50,13 +76,6 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
     public void beforeEach(ExtensionContext context) {
         if (mongoDatabase != null) {
             mongoDatabase.drop();
-        }
-    }
-
-    @Override
-    public void afterAll(ExtensionContext context) {
-        if (mongoClient != null) {
-            mongoClient.close();
         }
     }
 }
