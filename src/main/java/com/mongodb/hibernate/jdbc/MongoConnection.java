@@ -141,7 +141,7 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
+        return prepareStatement(mql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
     }
 
     @Override
@@ -156,7 +156,7 @@ final class MongoConnection implements ConnectionAdapter {
             throw new SQLFeatureNotSupportedException(
                     "Unsupported result set concurrency (only CONCUR_READ_ONLY is supported): " + resultSetConcurrency);
         }
-        return prepareStatement(mql);
+        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
