@@ -28,7 +28,7 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.PersistentClass;
 
-public class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
+public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     private static final String ID_FIELD = "_id";
 
     @Override
