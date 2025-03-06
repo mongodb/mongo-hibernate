@@ -49,7 +49,9 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        mongoDatabase.drop();
+        if (mongoDatabase != null) {
+            mongoDatabase.drop();
+        }
     }
 
     @Override
