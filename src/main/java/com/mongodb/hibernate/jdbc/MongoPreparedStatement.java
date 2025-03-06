@@ -58,6 +58,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
+    private final boolean[] parameterValueSetterUsed;
+
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
@@ -65,18 +67,29 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         this.command = MongoStatement.parse(mql);
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
+        parameterValueSetterUsed = new boolean[parameterValueSetters.size()];
     }
 
     @Override
     public ResultSet executeQuery() throws SQLException {
         checkClosed();
+        checkAllParametersSet();
         return executeQueryCommand(command);
     }
 
     @Override
     public int executeUpdate() throws SQLException {
         checkClosed();
+        checkAllParametersSet();
         return executeUpdateCommand(command);
+    }
+
+    private void checkAllParametersSet() throws SQLException {
+        for (var i = 0; i < parameterValueSetterUsed.length; i++) {
+            if (!parameterValueSetterUsed[i]) {
+                throw new SQLException(format("Parameter not set with index: %d", i + 1));
+            }
+        }
     }
 
     @Override
@@ -250,6 +263,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
+        parameterValueSetterUsed[parameterIndex - 1] = true;
     }
 
     private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameterValueSetters) {
