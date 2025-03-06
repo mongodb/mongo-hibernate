@@ -56,7 +56,8 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
 
     @Override
     public void afterAll(ExtensionContext context) {
-        mongoClient.close();
-        sessionFactory.close();
+        if (mongoClient != null) {
+            mongoClient.close();
+        }
     }
 }
