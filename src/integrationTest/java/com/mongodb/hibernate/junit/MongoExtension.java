@@ -20,7 +20,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
-import org.hibernate.SessionFactory;
+import java.util.Map;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -29,7 +29,6 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
 
-    private SessionFactory sessionFactory;
     private MongoClient mongoClient;
     private MongoDatabase mongoDatabase;
 
