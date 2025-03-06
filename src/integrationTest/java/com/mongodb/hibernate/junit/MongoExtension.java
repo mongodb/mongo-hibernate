@@ -42,10 +42,8 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
         mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
         mongoDatabase = mongoClient.getDatabase(mongoConfig.databaseName());
 
-        var testClass = context.getRequiredTestClass();
-
-        if (MongoDatabaseAware.class.isAssignableFrom(testClass)) {
-            ((MongoDatabaseAware) context.getRequiredTestInstance()).injectMongoDatabase(mongoDatabase);
+        if (context.getTestInstance().orElse(null) instanceof MongoDatabaseAware mongoDatabaseAware) {
+            mongoDatabaseAware.injectMongoDatabase(mongoDatabase);
         }
     }
 
