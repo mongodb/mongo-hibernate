@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
@@ -41,7 +40,6 @@ class MongoStatement implements StatementAdapter {
 
     private @Nullable ResultSet resultSet;
     private boolean closed;
-    private int maxRows;
 
     MongoStatement(MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection) {
         this.mongoDatabase = mongoDatabase;
@@ -73,10 +71,6 @@ class MongoStatement implements StatementAdapter {
             var pipelineArray = command.getArray("pipeline");
             var projectStage =
                     pipelineArray.get(pipelineArray.size() - 1).asDocument().getDocument("$project");
-
-            if (maxRows > 0) {
-                pipelineArray.add(Aggregates.limit(maxRows).toBsonDocument());
-            }
 
             var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
             pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
@@ -149,21 +143,6 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
-    }
-
-    @Override
-    public int getMaxRows() throws SQLException {
-        checkClosed();
-        return maxRows;
-    }
-
-    @Override
-    public void setMaxRows(int maxRows) throws SQLException {
-        checkClosed();
-        if (maxRows < 0) {
-            throw new SQLException("Maximum number of rows must be a value greater than or equal to 0");
-        }
-        this.maxRows = maxRows;
     }
 
     @Override
