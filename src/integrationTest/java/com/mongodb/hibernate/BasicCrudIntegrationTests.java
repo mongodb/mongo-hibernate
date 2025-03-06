@@ -183,7 +183,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @Table(name = "books")
     static class Book {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;
@@ -197,7 +196,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;

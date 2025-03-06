@@ -16,8 +16,9 @@
 
 package com.mongodb.hibernate.internal.service;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.boot.ResourceStreamLocator;
@@ -25,11 +26,16 @@ import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
-import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.PersistentClass;
 
-public class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
-    private static final String ID_FIELD = "_id";
+public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
+
+    public MongoAdditionalMappingContributor() {}
+
+    @Override
+    public String getContributorName() {
+        return getClass().getSimpleName();
+    }
 
     @Override
     public void contribute(
@@ -42,11 +48,12 @@ public class MongoAdditionalMappingContributor implements AdditionalMappingContr
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {
         var identifier = persistentClass.getIdentifier();
-        if (!(identifier instanceof BasicValue)) {
-            throw new FeatureNotSupportedException("MongoDB doesn't support '_id' field spanning multiple columns");
+        if (identifier.getColumns().size() > 1) {
+            throw new FeatureNotSupportedException(
+                    format("MongoDB doesn't support '%s' field spanning multiple columns", ID_FIELD_NAME));
         }
         assertTrue(identifier.getColumns().size() == 1);
-        var idColumn = assertNotNull(identifier.getColumns().get(0));
-        idColumn.setName(ID_FIELD);
+        var idColumn = identifier.getColumns().get(0);
+        idColumn.setName(ID_FIELD_NAME);
     }
 }
