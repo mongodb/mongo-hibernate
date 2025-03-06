@@ -64,8 +64,9 @@ class MongoStatement implements StatementAdapter {
     }
 
     ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
-        startTransactionIfNeeded();
         try {
+            startTransactionIfNeeded();
+
             var collectionName = command.getString("aggregate").getValue();
             var collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
 
@@ -115,10 +116,10 @@ class MongoStatement implements StatementAdapter {
     }
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
-        startTransactionIfNeeded();
         try {
+            startTransactionIfNeeded();
             return mongoDatabase.runCommand(clientSession, command).getInteger("n");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new SQLException("Failed to execute update command: " + e.getMessage(), e);
         }
     }
