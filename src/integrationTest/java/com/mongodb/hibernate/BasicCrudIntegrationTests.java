@@ -188,7 +188,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
                 book.title = "Resurrection";
                 book.publishYear = 1899;
-                session.merge(book);
             });
 
             assertCollectionContainsOnly(
