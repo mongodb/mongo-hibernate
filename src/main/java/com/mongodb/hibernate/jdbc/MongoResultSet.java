@@ -94,7 +94,8 @@ final class MongoResultSet implements ResultSetAdapter {
             try {
                 mongoCursor.close();
             } catch (RuntimeException e) {
-                throw new SQLException("Failed to close MongoCursor: " + e.getMessage(), e);
+                throw new SQLException(
+                        format("Failed to close %s", mongoCursor.getClass().getSimpleName()), e);
             }
         }
     }
