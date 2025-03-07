@@ -19,11 +19,10 @@ package com.mongodb.hibernate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -37,11 +36,9 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.AutoClose;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
@@ -50,32 +47,17 @@ import org.junit.jupiter.api.Test;
             BasicCrudIntegrationTests.BookWithEmbeddedField.class,
             BasicCrudIntegrationTests.BookDynamicUpdated.class
         })
+@ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    @AutoClose
-    private MongoClient mongoClient;
-
-    private MongoCollection<BsonDocument> collection;
+    @InjectMongoCollection("books")
+    private static MongoCollection<BsonDocument> collection;
 
     private SessionFactoryScope sessionFactoryScope;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
-    }
-
-    @BeforeAll
-    void beforeAll() {
-        var config = new MongoConfigurationBuilder(
-                        sessionFactoryScope.getSessionFactory().getProperties())
-                .build();
-        mongoClient = MongoClients.create(config.mongoClientSettings());
-        collection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        collection.drop();
     }
 
     @Nested
