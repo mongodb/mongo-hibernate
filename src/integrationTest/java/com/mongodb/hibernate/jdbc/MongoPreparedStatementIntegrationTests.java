@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -182,7 +183,8 @@ class MongoPreparedStatementIntegrationTests {
                                 intField: { $undefined: true },
                                 longField: { $undefined: true },
                                 stringField: { $undefined: true },
-                                bigDecimalField: { $undefined: true }
+                                bigDecimalField: { $undefined: true },
+                                bytesField: { $undefined: true }
                             }
                         ]
                     }""")) {
@@ -193,6 +195,7 @@ class MongoPreparedStatementIntegrationTests {
                 pstmt.setLong(4, longValue);
                 pstmt.setString(5, stringValue);
                 pstmt.setBigDecimal(6, bigDecimalValue);
+                pstmt.setBytes(7, bytes);
 
                 testInTransaction(conn, pstmt::executeUpdate);
             }
@@ -214,7 +217,8 @@ class MongoPreparedStatementIntegrationTests {
                                     intField: 1,
                                     longField: 1,
                                     stringField: 1,
-                                    bigDecimalField: 1
+                                    bigDecimalField: 1,
+                                    bytesField: 1
                                 }
                             }
                         ]
@@ -231,7 +235,8 @@ class MongoPreparedStatementIntegrationTests {
                             () -> assertEquals(intValue, rs.getInt(3)),
                             () -> assertEquals(longValue, rs.getLong(4)),
                             () -> assertEquals(stringValue, rs.getString(5)),
-                            () -> assertEquals(bigDecimalValue, rs.getBigDecimal(6)));
+                            () -> assertEquals(bigDecimalValue, rs.getBigDecimal(6)),
+                            () -> assertArrayEquals(bytes, rs.getBytes(7)));
                     assertFalse(rs.next());
                 });
             }

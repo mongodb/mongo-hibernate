@@ -33,6 +33,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
@@ -181,6 +182,21 @@ class MongoResultSetTests {
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
                     () -> assertEquals(bigDecimalValue, mongoResultSet.getBigDecimal(1)));
         }
+
+        @Test
+        void testGettersForBinary() throws SQLException {
+            var bytes = UUID.randomUUID().toString().getBytes();
+            var value = new BsonBinary(bytes);
+            createResultSetWith(value);
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)),
+                    () -> assertEquals(bytes, mongoResultSet.getBytes(1)));
+        }
     }
 
     private void checkMethodsWithOpenPrecondition(Consumer<Executable> asserter) {
@@ -208,6 +224,7 @@ class MongoResultSetTests {
                 () -> asserter.accept(() -> mongoResultSet.getTimestamp(columnIndex, Calendar.getInstance())),
                 () -> asserter.accept(() -> mongoResultSet.getBigDecimal(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getArray(columnIndex)),
+                () -> asserter.accept(() -> mongoResultSet.getBinaryStream(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getObject(columnIndex, UUID.class)));
     }
 

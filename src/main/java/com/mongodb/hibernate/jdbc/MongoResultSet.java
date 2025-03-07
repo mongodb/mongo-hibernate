@@ -37,6 +37,7 @@ import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -151,7 +152,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public byte @Nullable [] getBytes(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException();
+        return getValue(columnIndex, bsonValue -> bsonValue.asBinary().getData());
     }
 
     @Override
@@ -202,6 +203,13 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Array getArray(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
+        throw new FeatureNotSupportedException();
+    }
+
+    @Override
+    public @Nullable InputStream getBinaryStream(int parameterIndex) throws SQLException {
+        checkClosed();
+        checkColumnIndex(parameterIndex);
         throw new FeatureNotSupportedException();
     }
 
