@@ -239,7 +239,7 @@ final class MongoResultSet implements ResultSetAdapter {
 
     private void checkClosed() throws SQLException {
         if (closed) {
-            throw new SQLException("MongoResultSet has been closed");
+            throw new SQLException(format("%s has been closed", getClass().getSimpleName()));
         }
     }
 
