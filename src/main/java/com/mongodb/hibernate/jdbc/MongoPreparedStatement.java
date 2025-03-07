@@ -198,14 +198,14 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override

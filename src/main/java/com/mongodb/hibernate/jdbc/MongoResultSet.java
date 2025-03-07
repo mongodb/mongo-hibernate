@@ -61,18 +61,6 @@ import org.jspecify.annotations.Nullable;
  */
 final class MongoResultSet implements ResultSetAdapter {
 
-    private class MongoResultSetMetadata implements ResultSetMetaDataAdapter {
-        @Override
-        public int getColumnCount() {
-            return fieldNames.size();
-        }
-
-        @Override
-        public String getColumnLabel(final int column) {
-            return fieldNames.get(column - 1);
-        }
-    }
-
     private final MongoCursor<BsonDocument> mongoCursor;
 
     private final List<String> fieldNames;
@@ -226,7 +214,7 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
-        return new MongoResultSetMetadata();
+        throw new FeatureNotSupportedException("To be implemented in scope of 'select native query' tickets");
     }
 
     @Override

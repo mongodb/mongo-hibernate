@@ -125,14 +125,6 @@ class MongoStatementIntegrationTests {
                                 ]
                             }""");
 
-                    var metadata = rs.getMetaData();
-                    assertAll(
-                            () -> assertEquals(3, metadata.getColumnCount()),
-                            () -> assertEquals("author", metadata.getColumnLabel(1)),
-                            () -> assertEquals("publishYear", metadata.getColumnLabel(2)),
-                            () -> assertEquals("title", metadata.getColumnLabel(3)));
-                    assertEquals(3, metadata.getColumnCount());
-
                     assertTrue(rs.next());
                     assertAll(
                             () -> assertEquals("Leo Tolstoy", rs.getString(1)),

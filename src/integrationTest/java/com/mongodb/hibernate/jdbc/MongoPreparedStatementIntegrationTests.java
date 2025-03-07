@@ -132,18 +132,6 @@ class MongoPreparedStatementIntegrationTests {
                 testInTransaction(conn, () -> {
                     var rs = pstmt.executeQuery();
 
-                    var metadata = rs.getMetaData();
-
-                    assertAll(
-                            () -> assertEquals(5, metadata.getColumnCount()),
-                            () -> assertEquals("author", metadata.getColumnLabel(1)),
-                            () -> assertEquals("vintage", metadata.getColumnLabel(2)),
-                            () -> assertEquals("publishYear", metadata.getColumnLabel(3)),
-                            () -> assertEquals("comment", metadata.getColumnLabel(4)),
-                            () -> assertEquals("title", metadata.getColumnLabel(5)));
-
-                    assertEquals(5, metadata.getColumnCount());
-
                     assertTrue(rs.next());
                     assertAll(
                             () -> assertEquals("Leo Tolstoy", rs.getString(1)),
