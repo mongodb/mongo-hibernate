@@ -180,7 +180,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
-    @Entity(name = "Book")
+    @Entity
     @Table(name = "books")
     static class Book {
         @Id
@@ -193,7 +193,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         int publishYear;
     }
 
-    @Entity(name = "BookWithEmbeddedField")
+    @Entity
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id
