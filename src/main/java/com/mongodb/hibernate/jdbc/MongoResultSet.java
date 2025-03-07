@@ -244,13 +244,13 @@ final class MongoResultSet implements ResultSetAdapter {
         return Objects.requireNonNullElse(getValue(columnIndex, function), defaultValue);
     }
 
-    private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> function) throws SQLException {
+    private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter) throws SQLException {
         try {
             lastReadColumnValue = assertNotNull(currentDocument).get(getKey(columnIndex), BsonNull.VALUE);
             if (lastReadColumnValue.isNull()) {
                 return null;
             }
-            return function.apply(lastReadColumnValue);
+            return toJavaConverter.apply(lastReadColumnValue);
         } catch (RuntimeException e) {
             throw new SQLException(
                     format("Failed to get value from column [index: %d]: %s", columnIndex, e.getMessage()), e);
