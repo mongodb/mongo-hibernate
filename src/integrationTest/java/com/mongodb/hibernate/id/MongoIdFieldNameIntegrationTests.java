@@ -37,7 +37,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
+@SessionFactory(exportSchema = false)
 @DomainModel(
         annotatedClasses = {
             MongoIdFieldNameIntegrationTests.EntityWithoutIdColumnAnnotation.class,
