@@ -46,7 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    @InjectMongoCollection(name = "books")
+    @InjectMongoCollection("books")
     private static MongoCollection<BsonDocument> collection;
 
     private SessionFactoryScope sessionFactoryScope;

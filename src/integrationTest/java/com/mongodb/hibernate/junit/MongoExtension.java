@@ -21,12 +21,9 @@ import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
-import java.lang.reflect.Field;
 import java.util.Map;
-import java.util.function.Predicate;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -73,14 +70,10 @@ public final class MongoExtension
 
     @Override
     public void beforeAll(ExtensionContext context) {
-        if (context.getTestInstance().orElse(null) instanceof MongoDatabaseAware mongoDatabaseAware) {
-            mongoDatabaseAware.injectMongoDatabase(mongoDatabase);
-        }
-
         findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class, field -> true)
                 .forEach(field -> {
                     var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
-                    String collectionName = annotation.name();
+                    String collectionName = annotation.value();
                     var mongoCollection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
                     try {
                         field.setAccessible(true);
