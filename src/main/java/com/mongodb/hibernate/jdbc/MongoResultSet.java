@@ -68,7 +68,7 @@ final class MongoResultSet implements ResultSetAdapter {
 
     private @Nullable BsonDocument currentDocument;
 
-    private @Nullable BsonValue lastReadColumnValue;
+    private boolean lastReadColumnValueWasNull;
 
     private boolean closed;
 
@@ -109,7 +109,7 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public boolean wasNull() throws SQLException {
         checkClosed();
-        return assertNotNull(lastReadColumnValue).isNull();
+        return lastReadColumnValueWasNull;
     }
 
     @Override
@@ -217,7 +217,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException();
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
@@ -254,11 +254,12 @@ final class MongoResultSet implements ResultSetAdapter {
 
     private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter) throws SQLException {
         try {
-            lastReadColumnValue = assertNotNull(currentDocument).get(getKey(columnIndex), BsonNull.VALUE);
-            if (lastReadColumnValue.isNull()) {
+            var bsonValue = assertNotNull(currentDocument).get(getKey(columnIndex), BsonNull.VALUE);
+            lastReadColumnValueWasNull = bsonValue.isNull();
+            if (bsonValue.isNull()) {
                 return null;
             }
-            return toJavaConverter.apply(lastReadColumnValue);
+            return toJavaConverter.apply(bsonValue);
         } catch (RuntimeException e) {
             throw new SQLException(
                     format("Failed to get value from column [index: %d]: %s", columnIndex, e.getMessage()), e);
