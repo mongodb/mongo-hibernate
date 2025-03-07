@@ -235,7 +235,7 @@ class MongoPreparedStatementTests {
 
     private void assertThrowsOutOfRangeException(Executable executable) {
         var e = assertThrows(SQLException.class, executable);
-        assertThat(e.getMessage()).startsWith("Parameter index invalid");
+        assertThat(e.getMessage()).startsWith("Invalid parameter index");
     }
 
     private void assertThrowsClosedException(Executable executable) {

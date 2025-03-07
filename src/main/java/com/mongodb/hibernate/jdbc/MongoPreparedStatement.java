@@ -329,12 +329,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private void checkParameterIndex(int parameterIndex) throws SQLException {
-        if (parameterValueSetters.isEmpty()) {
-            throw new SQLException("No parameter exists");
-        }
         if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
             throw new SQLException(format(
-                    "Parameter index invalid: %d; should be within [1, %d]",
+                    "Invalid parameter index [%d]; cannot be under 1 or over the current number of parameters [%d]",
                     parameterIndex, parameterValueSetters.size()));
         }
     }
