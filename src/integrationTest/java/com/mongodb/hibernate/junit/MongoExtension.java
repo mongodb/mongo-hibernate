@@ -57,7 +57,7 @@ public final class MongoExtension
 
     @Override
     public void preDestroyTestInstance(ExtensionContext context) {
-        if (context == rootContext) {
+        if (context.equals(rootContext)) {
             mongoDatabase = null;
             if (mongoClient != null) {
                 mongoClient.close();
