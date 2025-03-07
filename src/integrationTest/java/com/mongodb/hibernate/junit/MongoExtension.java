@@ -77,8 +77,7 @@ public final class MongoExtension
             mongoDatabaseAware.injectMongoDatabase(mongoDatabase);
         }
 
-        Predicate<Field> predicate = field -> MongoCollection.class.isAssignableFrom(field.getType());
-        findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class, predicate)
+        findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class, field -> true)
                 .forEach(field -> {
                     var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
                     String collectionName = annotation.name();
