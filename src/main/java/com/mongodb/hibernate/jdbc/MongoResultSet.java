@@ -37,7 +37,6 @@ import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -54,12 +53,6 @@ import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
 
-/**
- * MongoDB Dialect's JDBC {@link java.sql.ResultSet} implementation class.
- *
- * <p>It only focuses on API methods Mongo Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent {@link ResultSetAdapter adapter interface}.
- */
 final class MongoResultSet implements ResultSetAdapter {
 
     private final MongoCursor<BsonDocument> mongoCursor;
@@ -207,13 +200,6 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
-    public @Nullable InputStream getBinaryStream(int parameterIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(parameterIndex);
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
@@ -223,13 +209,13 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of 'select native query' tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of native query tickets");
     }
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of 'select native query' tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of native query tickets");
     }
 
     @Override
@@ -248,8 +234,9 @@ final class MongoResultSet implements ResultSetAdapter {
         }
     }
 
-    private <T> T getValue(int columnIndex, Function<BsonValue, T> function, T defaultValue) throws SQLException {
-        return Objects.requireNonNullElse(getValue(columnIndex, function), defaultValue);
+    private <T> T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter, T defaultValue)
+            throws SQLException {
+        return Objects.requireNonNullElse(getValue(columnIndex, toJavaConverter), defaultValue);
     }
 
     private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter) throws SQLException {
@@ -261,8 +248,7 @@ final class MongoResultSet implements ResultSetAdapter {
             }
             return toJavaConverter.apply(bsonValue);
         } catch (RuntimeException e) {
-            throw new SQLException(
-                    format("Failed to get value from column [index: %d]: %s", columnIndex, e.getMessage()), e);
+            throw new SQLException(format("Failed to get value from column [index: %d]", columnIndex), e);
         }
     }
 

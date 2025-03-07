@@ -54,9 +54,6 @@ final class MongoConnection implements ConnectionAdapter {
         autoCommit = true;
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // transaction
-
     @Override
     public void setAutoCommit(boolean autoCommit) throws SQLException {
         checkClosed();
@@ -109,9 +106,6 @@ final class MongoConnection implements ConnectionAdapter {
         }
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // close() and isClosed()
-
     @Override
     public void close() throws SQLException {
         if (!closed) {
@@ -128,9 +122,6 @@ final class MongoConnection implements ConnectionAdapter {
     public boolean isClosed() {
         return closed;
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Statement and PreparedStatement
 
     @Override
     public Statement createStatement() throws SQLException {
@@ -159,9 +150,6 @@ final class MongoConnection implements ConnectionAdapter {
         return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // SQL99 data types
-
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
@@ -173,9 +161,6 @@ final class MongoConnection implements ConnectionAdapter {
         checkClosed();
         throw new FeatureNotSupportedException();
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Database meta data
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
@@ -213,21 +198,12 @@ final class MongoConnection implements ConnectionAdapter {
         return null;
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // dummy implementations
-
-    /**
-     * Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}.
-     *
-     * <p>Currently no need arises to record warning in this connection class.
-     */
     @Override
     public @Nullable SQLWarning getWarnings() throws SQLException {
         checkClosed();
         return null;
     }
 
-    /** Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}. */
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();

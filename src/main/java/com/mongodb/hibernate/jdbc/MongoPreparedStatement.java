@@ -22,7 +22,6 @@ import static java.lang.String.format;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -188,13 +187,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
@@ -246,7 +238,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override

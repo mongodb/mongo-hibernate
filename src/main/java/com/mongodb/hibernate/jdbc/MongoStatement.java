@@ -80,7 +80,7 @@ class MongoStatement implements StatementAdapter {
             var cursor = collection.aggregate(clientSession, pipeline).cursor();
             return resultSet = new MongoResultSet(cursor, fieldNames);
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to execute query: " + e.getMessage(), e);
+            throw new SQLException("Failed to execute query", e);
         }
     }
 
@@ -108,7 +108,7 @@ class MongoStatement implements StatementAdapter {
             startTransactionIfNeeded();
             return mongoDatabase.runCommand(clientSession, command).getInteger("n");
         } catch (RuntimeException e) {
-            throw new SQLException("Failed to execute update command: " + e.getMessage(), e);
+            throw new SQLException("Failed to execute update command", e);
         }
     }
 

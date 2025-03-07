@@ -224,7 +224,6 @@ class MongoResultSetTests {
                 () -> asserter.accept(() -> mongoResultSet.getTimestamp(columnIndex, Calendar.getInstance())),
                 () -> asserter.accept(() -> mongoResultSet.getBigDecimal(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getArray(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getBinaryStream(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getObject(columnIndex, UUID.class)));
     }
 

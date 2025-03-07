@@ -27,7 +27,6 @@ import static org.mockito.Mockito.verify;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -185,8 +184,6 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now), calendar)),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
-                () -> asserter.accept(() -> mongoPreparedStatement.setBinaryStream(
-                        parameterIndex, new ByteArrayInputStream("".getBytes()), 0)),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
                 () -> asserter.accept(() -> mongoPreparedStatement.setArray(parameterIndex, Mockito.mock(Array.class))),
