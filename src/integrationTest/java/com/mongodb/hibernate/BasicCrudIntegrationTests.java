@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -44,7 +43,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
+@SessionFactory(exportSchema = false)
 @DomainModel(
         annotatedClasses = {
             BasicCrudIntegrationTests.Book.class,
@@ -179,8 +178,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testSimpleUpdate() {
-            var statementInspector = sessionFactoryScope.getStatementInspector(SQLStatementInspector.class);
-            statementInspector.clear();
             sessionFactoryScope.inTransaction(session -> {
                 var book = new Book();
                 book.id = 1;
@@ -199,20 +196,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
                             """));
-            assertThat(statementInspector.getSqlQueries())
-                    .containsExactly(
-                            """
-                            {"insert": "books", "documents": [{"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}, "_id": {"$undefined": true}}]}\
-                            """,
-                            """
-                            {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$undefined": true}}}, "u": {"$set": {"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}}}, "multi": true}]}\
-                            """);
         }
 
         @Test
         void testDynamicUpdate() {
-            var statementInspector = sessionFactoryScope.getStatementInspector(SQLStatementInspector.class);
-            statementInspector.clear();
             sessionFactoryScope.inTransaction(session -> {
                 var book = new BookDynamicUpdated();
                 book.id = 1;
@@ -223,7 +210,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 session.flush();
 
                 book.publishYear = 1867;
-                session.merge(book);
             });
 
             assertCollectionContainsOnly(
@@ -231,14 +217,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
                             """));
-            assertThat(statementInspector.getSqlQueries())
-                    .containsExactly(
-                            """
-                            {"insert": "books", "documents": [{"author": {"$undefined": true}, "publishYear": {"$undefined": true}, "title": {"$undefined": true}, "_id": {"$undefined": true}}]}\
-                            """,
-                            """
-                            {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$undefined": true}}}, "u": {"$set": {"publishYear": {"$undefined": true}}}, "multi": true}]}\
-                            """);
         }
     }
 

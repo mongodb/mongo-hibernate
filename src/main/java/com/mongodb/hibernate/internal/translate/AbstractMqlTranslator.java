@@ -208,6 +208,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitStandardTableInsert(TableInsertStandard tableInsert) {
+        if (tableInsert.getReturningColumns() != null
+                && !tableInsert.getReturningColumns().isEmpty()) {
+            throw new FeatureNotSupportedException();
+        }
         var tableName = tableInsert.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsert.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsert.getValueBindings()) {
@@ -251,6 +255,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitStandardTableUpdate(TableUpdateStandard tableUpdate) {
+        if (tableUpdate.getReturningColumns() != null
+                && !tableUpdate.getReturningColumns().isEmpty()) {
+            throw new FeatureNotSupportedException();
+        }
         if (tableUpdate.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
