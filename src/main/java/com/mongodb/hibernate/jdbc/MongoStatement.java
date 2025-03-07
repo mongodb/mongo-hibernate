@@ -84,7 +84,7 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    private List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
+    private static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
         var fieldNames = new ArrayList<String>(projectStage.size());
         projectStage.forEach((key, value) -> {
             boolean skip = (value.isNumber() && value.asNumber().intValue() == 0)

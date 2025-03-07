@@ -20,12 +20,12 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 
-/**
- * A {@link java.sql.ResultSetMetaData} adapter interface that throws exceptions for all its API methods.
- *
- * @see MongoResultSet#getMetaData()
- */
 interface ResultSetMetaDataAdapter extends ResultSetMetaData {
+    @Override
+    default int getColumnCount() throws SQLException {
+        throw new SQLFeatureNotSupportedException("getColumnCount not implemented");
+    }
+
     @Override
     default boolean isAutoIncrement(int column) throws SQLException {
         throw new SQLFeatureNotSupportedException("isAutoIncrement not implemented");
@@ -59,6 +59,11 @@ interface ResultSetMetaDataAdapter extends ResultSetMetaData {
     @Override
     default int getColumnDisplaySize(int column) throws SQLException {
         throw new SQLFeatureNotSupportedException("getColumnDisplaySize not implemented");
+    }
+
+    @Override
+    default String getColumnLabel(int column) throws SQLException {
+        throw new SQLFeatureNotSupportedException("getColumnLabel not implemented");
     }
 
     @Override

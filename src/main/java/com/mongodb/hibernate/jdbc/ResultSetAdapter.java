@@ -40,11 +40,6 @@ import java.util.Calendar;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-/**
- * A {@link java.sql.ResultSet} adapter interface that throws exceptions for all its API methods.
- *
- * @see MongoResultSet
- */
 interface ResultSetAdapter extends ResultSet {
     @Override
     default boolean next() throws SQLException {
