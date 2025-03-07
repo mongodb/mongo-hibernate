@@ -20,9 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.junit.MongoDatabaseAware;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -45,20 +44,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookWithEmbeddedField.class
         })
 @ExtendWith(MongoExtension.class)
-class BasicCrudIntegrationTests implements SessionFactoryScopeAware, MongoDatabaseAware {
+class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    private MongoCollection<BsonDocument> collection;
+    @InjectMongoCollection(name = "books")
+    private static MongoCollection<BsonDocument> collection;
 
     private SessionFactoryScope sessionFactoryScope;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
-    }
-
-    @Override
-    public void injectMongoDatabase(MongoDatabase mongoDatabase) {
-        collection = mongoDatabase.getCollection("books", BsonDocument.class);
     }
 
     @Nested

@@ -16,11 +16,18 @@
 
 package com.mongodb.hibernate.junit;
 
+import static org.junit.platform.commons.support.AnnotationSupport.findAnnotatedFields;
+import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.function.Predicate;
+import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -35,7 +42,7 @@ public final class MongoExtension
                 BeforeAllCallback,
                 BeforeEachCallback {
 
-    private ExtensionContext rootContext;
+    private ExtensionContext outermostContext;
 
     private MongoClient mongoClient;
     private MongoDatabase mongoDatabase;
@@ -43,7 +50,7 @@ public final class MongoExtension
     @Override
     public void preConstructTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext context) {
         if (factoryContext.getOuterInstance().isEmpty()) {
-            rootContext = context;
+            outermostContext = context;
 
             @SuppressWarnings("unchecked")
             Map<String, Object> hibernateProperties =
@@ -57,8 +64,7 @@ public final class MongoExtension
 
     @Override
     public void preDestroyTestInstance(ExtensionContext context) {
-        if (context.equals(rootContext)) {
-            mongoDatabase = null;
+        if (context.equals(outermostContext)) {
             if (mongoClient != null) {
                 mongoClient.close();
             }
@@ -70,6 +76,20 @@ public final class MongoExtension
         if (context.getTestInstance().orElse(null) instanceof MongoDatabaseAware mongoDatabaseAware) {
             mongoDatabaseAware.injectMongoDatabase(mongoDatabase);
         }
+
+        Predicate<Field> predicate = field -> MongoCollection.class.isAssignableFrom(field.getType());
+        findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class, predicate)
+                .forEach(field -> {
+                    var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
+                    String collectionName = annotation.name();
+                    var mongoCollection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
+                    try {
+                        field.setAccessible(true);
+                        field.set(isStatic(field) ? null : context.getRequiredTestInstance(), mongoCollection);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
+                    }
+                });
     }
 
     @Override
