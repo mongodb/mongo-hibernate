@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.extension;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
@@ -47,12 +48,13 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {
         var identifier = persistentClass.getIdentifier();
-        if (identifier.getColumns().size() > 1) {
+        var idColumns = identifier.getColumns();
+        if (idColumns.size() > 1) {
             throw new FeatureNotSupportedException(
                     format("MongoDB doesn't support '%s' field spanning multiple columns", ID_FIELD_NAME));
         }
-        assertTrue(identifier.getColumns().size() == 1);
-        var idColumn = identifier.getColumns().get(0);
+        assertTrue(idColumns.size() == 1);
+        var idColumn = idColumns.get(0);
         idColumn.setName(ID_FIELD_NAME);
     }
 }

@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
@@ -171,7 +172,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     private List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending("_id")).into(documents);
+        collection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
         return documents;
     }
 

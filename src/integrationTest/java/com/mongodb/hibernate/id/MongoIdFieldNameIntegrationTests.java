@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.id;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -24,6 +26,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -34,7 +37,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-@SessionFactory(exportSchema = false)
+@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
 @DomainModel(
         annotatedClasses = {
             MongoIdFieldNameIntegrationTests.EntityWithoutIdColumnAnnotation.class,
@@ -76,6 +79,7 @@ class MongoIdFieldNameIntegrationTests implements SessionFactoryScopeAware {
             movie.id = 1;
             session.persist(movie);
         });
+        assertCollectionContainsOnly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Test
@@ -85,6 +89,7 @@ class MongoIdFieldNameIntegrationTests implements SessionFactoryScopeAware {
             movie.id = 1;
             session.persist(movie);
         });
+        assertCollectionContainsOnly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Test
@@ -94,6 +99,13 @@ class MongoIdFieldNameIntegrationTests implements SessionFactoryScopeAware {
             movie.id = 1;
             session.persist(movie);
         });
+        assertCollectionContainsOnly(BsonDocument.parse("{_id: 1}"));
+    }
+
+    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
+        var documents = new ArrayList<BsonDocument>(1);
+        collection.find().into(documents);
+        assertThat(documents).containsOnly(expectedDoc);
     }
 
     @Entity
