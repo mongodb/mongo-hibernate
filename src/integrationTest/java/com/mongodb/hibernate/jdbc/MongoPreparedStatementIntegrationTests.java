@@ -16,17 +16,24 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
@@ -36,10 +43,39 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class MongoPreparedStatementIntegrationTests {
+
+    static class MongoPreparedStatementIntegrationWithAutoCommitTests extends MongoPreparedStatementIntegrationTests {
+        @Override
+        boolean autoCommit() {
+            return true;
+        }
+
+        void testInTransaction(Connection connection, Executable executable) {
+            try {
+                executable.execute();
+            } catch (Throwable e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    boolean autoCommit() {
+        return false;
+    }
+
+    void testInTransaction(Connection connection, Executable executable) throws SQLException {
+        try {
+            executable.execute();
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        } finally {
+            connection.commit();
+        }
+    }
 
     @AutoClose
     private static SessionFactory sessionFactory;
@@ -63,25 +99,152 @@ class MongoPreparedStatementIntegrationTests {
     @BeforeEach
     void beforeEach() {
         session = sessionFactory.openSession();
+        deleteCollection();
+    }
+
+    @Test
+    void testExecuteQuery() {
+
+        insertTestData(
+                """
+                {
+                     insert: "books",
+                     documents: [
+                        { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy", comment: "reference only" },
+                        { _id: 2, publishYear: 1878, title: "Anna Karenina", author: "Leo Tolstoy",  vintage: true},
+                        { _id: 3, publishYear: 1866, author: "Fyodor Dostoevsky", title: "Crime and Punishment", vintage: false },
+                    ]
+                }""");
+
+        session.doWork(conn -> {
+            conn.setAutoCommit(autoCommit());
+            try (var pstmt = conn.prepareStatement(
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { author: { $eq: { $undefined: true } } } },
+                            { $project: { author: 1, _id: 0, vintage: 1, publishYear: 1, comment: 1, title: 1 } }
+                        ]
+                    }""")) {
+
+                pstmt.setString(1, "Leo Tolstoy");
+
+                testInTransaction(conn, () -> {
+                    var rs = pstmt.executeQuery();
+
+                    assertTrue(rs.next());
+                    assertAll(
+                            () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                            () -> assertFalse(rs.getBoolean(2)),
+                            () -> assertEquals(1867, rs.getInt(3)),
+                            () -> assertEquals("reference only", rs.getString(4)),
+                            () -> assertEquals("War and Peace", rs.getString(5)));
+                    assertTrue(rs.next());
+                    assertAll(
+                            () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                            () -> assertTrue(rs.getBoolean(2)),
+                            () -> assertEquals(1878, rs.getInt(3)),
+                            () -> assertNull(rs.getString(4)),
+                            () -> assertEquals("Anna Karenina", rs.getString(5)));
+                    assertFalse(rs.next());
+                });
+            }
+        });
+    }
+
+    @Test
+    void testPreparedStatementAndResultSetRoundTrip() {
+
+        var random = new Random();
+
+        boolean booleanValue = random.nextBoolean();
+        double doubleValue = random.nextDouble();
+        int intValue = random.nextInt();
+        long longValue = random.nextLong();
+
+        byte[] bytes = new byte[64];
+        random.nextBytes(bytes);
+        String stringValue = new String(bytes);
+
+        BigDecimal bigDecimalValue = new BigDecimal(random.nextInt());
+
+        session.doWork(conn -> {
+            conn.setAutoCommit(autoCommit());
+            try (var pstmt = conn.prepareStatement(
+                    """
+                    {
+                        insert: "books",
+                        documents: [
+                            {
+                                _id: 1,
+                                booleanField: { $undefined: true },
+                                doubleField: { $undefined: true },
+                                intField: { $undefined: true },
+                                longField: { $undefined: true },
+                                stringField: { $undefined: true },
+                                bigDecimalField: { $undefined: true },
+                                bytesField: { $undefined: true }
+                            }
+                        ]
+                    }""")) {
+
+                pstmt.setBoolean(1, booleanValue);
+                pstmt.setDouble(2, doubleValue);
+                pstmt.setInt(3, intValue);
+                pstmt.setLong(4, longValue);
+                pstmt.setString(5, stringValue);
+                pstmt.setBigDecimal(6, bigDecimalValue);
+                pstmt.setBytes(7, bytes);
+
+                testInTransaction(conn, pstmt::executeUpdate);
+            }
+        });
+
+        session.doWork(conn -> {
+            conn.setAutoCommit(autoCommit());
+            try (var pstmt = conn.prepareStatement(
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { _id: { $eq: { $undefined: true } } } },
+                            { $project:
+                                {
+                                    _id: 0,
+                                    booleanField: 1,
+                                    doubleField: 1,
+                                    intField: 1,
+                                    longField: 1,
+                                    stringField: 1,
+                                    bigDecimalField: 1,
+                                    bytesField: 1
+                                }
+                            }
+                        ]
+                    }""")) {
+
+                pstmt.setInt(1, 1);
+                testInTransaction(conn, () -> {
+                    var rs = pstmt.executeQuery();
+
+                    assertTrue(rs.next());
+                    assertAll(
+                            () -> assertEquals(booleanValue, rs.getBoolean(1)),
+                            () -> assertEquals(doubleValue, rs.getDouble(2)),
+                            () -> assertEquals(intValue, rs.getInt(3)),
+                            () -> assertEquals(longValue, rs.getLong(4)),
+                            () -> assertEquals(stringValue, rs.getString(5)),
+                            () -> assertEquals(bigDecimalValue, rs.getBigDecimal(6)),
+                            () -> assertArrayEquals(bytes, rs.getBytes(7)));
+                    assertFalse(rs.next());
+                });
+            }
+        });
     }
 
     @Nested
     class ExecuteUpdateTests {
-
-        @BeforeEach
-        void beforeEach() {
-            session.doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
-            });
-        }
 
         private static final String INSERT_MQL =
                 """
@@ -112,11 +275,10 @@ class MongoPreparedStatementIntegrationTests {
                     ]
                 }""";
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testUpdate(boolean autoCommit) {
+        @Test
+        void testUpdate() {
 
-            prepareData();
+            insertTestData(INSERT_MQL);
 
             var expectedDocs = List.of(
                     BsonDocument.parse(
@@ -174,37 +336,51 @@ class MongoPreparedStatementIntegrationTests {
                     throw new RuntimeException(e);
                 }
             };
-            assertExecuteUpdate(pstmtProvider, autoCommit, 2, expectedDocs);
-        }
-
-        private void prepareData() {
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                var statement = connection.createStatement();
-                statement.executeUpdate(INSERT_MQL);
-            });
+            assertExecuteUpdate(pstmtProvider, 2, expectedDocs);
         }
 
         private void assertExecuteUpdate(
                 Function<Connection, MongoPreparedStatement> pstmtProvider,
-                boolean autoCommit,
                 int expectedUpdatedRowCount,
                 List<? extends BsonDocument> expectedDocuments) {
             session.doWork(connection -> {
-                connection.setAutoCommit(autoCommit);
+                connection.setAutoCommit(autoCommit());
                 try (var pstmt = pstmtProvider.apply(connection)) {
-                    try {
-                        assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate());
-                    } finally {
-                        if (!autoCommit) {
-                            connection.commit();
-                        }
-                    }
+                    testInTransaction(connection, () -> assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate()));
                     var actualDocuments =
                             mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
                     assertEquals(expectedDocuments, actualDocuments);
                 }
             });
         }
+    }
+
+    private void deleteCollection() {
+        session.doWork(conn -> {
+            conn.setAutoCommit(false);
+            try (var stmt = conn.createStatement()) {
+                stmt.executeUpdate(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [
+                                { q: {}, limit: 0 }
+                            ]
+                        }""");
+            } finally {
+                conn.commit();
+            }
+        });
+    }
+
+    private void insertTestData(String insertMql) {
+        session.doWork(connection -> {
+            connection.setAutoCommit(false);
+            try (var statement = connection.createStatement()) {
+                statement.executeUpdate(insertMql);
+            } finally {
+                connection.commit();
+            }
+        });
     }
 }

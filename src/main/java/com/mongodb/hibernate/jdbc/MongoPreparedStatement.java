@@ -22,7 +22,6 @@ import static java.lang.String.format;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -58,6 +57,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private final List<Consumer<BsonValue>> parameterValueSetters;
 
+    private final boolean[] parameterValueSetterUsed;
+
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
@@ -65,18 +66,30 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         this.command = MongoStatement.parse(mql);
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
+        parameterValueSetterUsed = new boolean[parameterValueSetters.size()];
     }
 
     @Override
     public ResultSet executeQuery() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException();
+        closeLastOpenResultSet();
+        checkAllParametersSet();
+        return executeQueryCommand(command);
     }
 
     @Override
     public int executeUpdate() throws SQLException {
         checkClosed();
+        checkAllParametersSet();
         return executeUpdateCommand(command);
+    }
+
+    private void checkAllParametersSet() throws SQLException {
+        for (var i = 0; i < parameterValueSetterUsed.length; i++) {
+            if (!parameterValueSetterUsed[i]) {
+                throw new SQLException(format("Parameter not set with index: %d", i + 1));
+            }
+        }
     }
 
     @Override
@@ -111,20 +124,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setByte(int parameterIndex, byte x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        setInt(parameterIndex, x);
-    }
-
-    @Override
-    public void setShort(int parameterIndex, short x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        setInt(parameterIndex, x);
-    }
-
-    @Override
     public void setInt(int parameterIndex, int x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
@@ -136,13 +135,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, new BsonInt64(x));
-    }
-
-    @Override
-    public void setFloat(int parameterIndex, float x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        setDouble(parameterIndex, x);
     }
 
     @Override
@@ -195,24 +187,17 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
@@ -253,12 +238,49 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new FeatureNotSupportedException("To be implemented during Array / Struct tickets");
+        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+    }
+
+    @Override
+    public void setQueryTimeout(int seconds) throws SQLException {
+        checkClosed();
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-55 https://jira.mongodb.org/browse/HIBERNATE-55");
+    }
+
+    @Override
+    public void setFetchSize(int rows) throws SQLException {
+        checkClosed();
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
+    }
+
+    @Override
+    public ResultSet executeQuery(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public int executeUpdate(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public boolean execute(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public void addBatch(String mql) throws SQLException {
+        checkClosed();
+        throw new SQLFeatureNotSupportedException();
     }
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
+        parameterValueSetterUsed[parameterIndex - 1] = true;
     }
 
     private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameterValueSetters) {
@@ -299,12 +321,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private void checkParameterIndex(int parameterIndex) throws SQLException {
-        if (parameterValueSetters.isEmpty()) {
-            throw new SQLException("No parameter exists");
-        }
         if (parameterIndex < 1 || parameterIndex > parameterValueSetters.size()) {
             throw new SQLException(format(
-                    "Parameter index invalid: %d; should be within [1, %d]",
+                    "Invalid parameter index [%d]; cannot be under 1 or over the current number of parameters [%d]",
                     parameterIndex, parameterValueSetters.size()));
         }
     }

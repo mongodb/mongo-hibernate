@@ -18,9 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 
-import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -29,9 +27,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
-
-    @VisibleForTesting(otherwise = PRIVATE)
-    record VersionNumPair(int majorVersion, int minVersion) {}
 
     private final Connection connection;
 

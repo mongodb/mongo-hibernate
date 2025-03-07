@@ -28,7 +28,9 @@ import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.sql.Struct;
@@ -51,9 +53,6 @@ final class MongoConnection implements ConnectionAdapter {
         mongoDatabase = mongoClient.getDatabase(config.databaseName());
         autoCommit = true;
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // transaction
 
     @Override
     public void setAutoCommit(boolean autoCommit) throws SQLException {
@@ -107,9 +106,6 @@ final class MongoConnection implements ConnectionAdapter {
         }
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // close() and isClosed()
-
     @Override
     public void close() throws SQLException {
         if (!closed) {
@@ -127,9 +123,6 @@ final class MongoConnection implements ConnectionAdapter {
         return closed;
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Statement and PreparedStatement
-
     @Override
     public Statement createStatement() throws SQLException {
         checkClosed();
@@ -139,18 +132,23 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public PreparedStatement prepareStatement(String mql) throws SQLException {
         checkClosed();
-        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
+        return prepareStatement(mql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
     }
 
     @Override
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        if (resultSetType != ResultSet.TYPE_FORWARD_ONLY) {
+            throw new SQLFeatureNotSupportedException(
+                    "Unsupported result set type (only TYPE_FORWARD_ONLY is supported): " + resultSetType);
+        }
+        if (resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
+            throw new SQLFeatureNotSupportedException(
+                    "Unsupported result set concurrency (only CONCUR_READ_ONLY is supported): " + resultSetConcurrency);
+        }
+        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // SQL99 data types
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
@@ -163,9 +161,6 @@ final class MongoConnection implements ConnectionAdapter {
         checkClosed();
         throw new FeatureNotSupportedException();
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Database meta data
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
@@ -203,21 +198,12 @@ final class MongoConnection implements ConnectionAdapter {
         return null;
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // dummy implementations
-
-    /**
-     * Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}.
-     *
-     * <p>Currently no need arises to record warning in this connection class.
-     */
     @Override
     public @Nullable SQLWarning getWarnings() throws SQLException {
         checkClosed();
         return null;
     }
 
-    /** Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}. */
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();

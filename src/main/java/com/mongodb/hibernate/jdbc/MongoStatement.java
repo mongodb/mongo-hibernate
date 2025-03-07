@@ -26,6 +26,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.List;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.jspecify.annotations.Nullable;
 
@@ -35,6 +38,7 @@ class MongoStatement implements StatementAdapter {
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
 
+    private @Nullable ResultSet resultSet;
     private boolean closed;
 
     MongoStatement(MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection) {
@@ -46,7 +50,50 @@ class MongoStatement implements StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        closeLastOpenResultSet();
+        var command = parse(mql);
+        return executeQueryCommand(command);
+    }
+
+    void closeLastOpenResultSet() throws SQLException {
+        if (resultSet != null && !resultSet.isClosed()) {
+            resultSet.close();
+        }
+    }
+
+    ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
+        try {
+            startTransactionIfNeeded();
+
+            var collectionName = command.getString("aggregate").getValue();
+            var collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
+
+            var pipelineArray = command.getArray("pipeline");
+            var projectStage =
+                    pipelineArray.get(pipelineArray.size() - 1).asDocument().getDocument("$project");
+
+            var pipeline = new ArrayList<BsonDocument>(pipelineArray.size());
+            pipelineArray.forEach(bsonValue -> pipeline.add(bsonValue.asDocument()));
+
+            var fieldNames = getFieldNamesFromProjectStage(projectStage);
+
+            var cursor = collection.aggregate(clientSession, pipeline).cursor();
+            return resultSet = new MongoResultSet(cursor, fieldNames);
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to execute query", e);
+        }
+    }
+
+    private static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
+        var fieldNames = new ArrayList<String>(projectStage.size());
+        projectStage.forEach((key, value) -> {
+            boolean skip = (value.isNumber() && value.asNumber().intValue() == 0)
+                    || (value.isBoolean() && value.asBoolean().equals(BsonBoolean.FALSE));
+            if (!skip) {
+                fieldNames.add(key);
+            }
+        });
+        return fieldNames;
     }
 
     @Override
@@ -57,43 +104,22 @@ class MongoStatement implements StatementAdapter {
     }
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
-        startTransactionIfNeeded();
         try {
+            startTransactionIfNeeded();
             return mongoDatabase.runCommand(clientSession, command).getInteger("n");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new SQLException("Failed to execute update command", e);
         }
     }
 
     @Override
-    public void close() {
+    public void close() throws SQLException {
         if (!closed) {
             closed = true;
+            if (resultSet != null) {
+                resultSet.close();
+            }
         }
-    }
-
-    @Override
-    public int getMaxRows() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public void setMaxRows(int max) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public int getQueryTimeout() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public void setQueryTimeout(int seconds) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
@@ -108,13 +134,10 @@ class MongoStatement implements StatementAdapter {
         return null;
     }
 
-    /** Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}. */
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();
     }
-
-    // ----------------------- Multiple Results --------------------------
 
     @Override
     public boolean execute(String mql) throws SQLException {
@@ -138,18 +161,6 @@ class MongoStatement implements StatementAdapter {
     public int getUpdateCount() throws SQLException {
         checkClosed();
         throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
-    }
-
-    @Override
-    public void setFetchSize(int rows) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public int getFetchSize() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
