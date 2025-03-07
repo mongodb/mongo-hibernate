@@ -220,11 +220,7 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         checkClosed();
-        var index = fieldNames.indexOf(columnLabel);
-        if (index < 0) {
-            throw new SQLException("Unknown column label: " + columnLabel);
-        }
-        return index + 1;
+        throw new FeatureNotSupportedException("To be implemented in scope of 'select native query' tickets");
     }
 
     @Override
