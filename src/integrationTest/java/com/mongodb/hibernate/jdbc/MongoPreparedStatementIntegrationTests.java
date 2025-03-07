@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mongodb.client.MongoClient;
@@ -200,8 +201,10 @@ class MongoPreparedStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var actualDocuments =
-                            mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
+                    var actualDocuments = mongoCollection
+                            .find()
+                            .sort(Sorts.ascending(ID_FIELD_NAME))
+                            .into(new ArrayList<>());
                     assertEquals(expectedDocuments, actualDocuments);
                 }
             });

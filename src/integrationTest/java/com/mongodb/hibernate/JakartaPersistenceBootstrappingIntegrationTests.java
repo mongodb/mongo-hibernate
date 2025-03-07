@@ -22,7 +22,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Id;
@@ -76,11 +75,10 @@ class JakartaPersistenceBootstrappingIntegrationTests {
         }
     }
 
-    @Entity(name = "Item")
+    @Entity
     @Table(name = "items")
     static class Item {
         @Id
-        @Column(name = "_id")
         int id;
     }
 }

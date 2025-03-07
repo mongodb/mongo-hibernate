@@ -24,7 +24,7 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.hibernate.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
-import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import java.sql.SQLException;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;

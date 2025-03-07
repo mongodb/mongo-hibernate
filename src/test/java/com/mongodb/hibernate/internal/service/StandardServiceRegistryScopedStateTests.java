@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
+import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;

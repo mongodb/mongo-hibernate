@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
@@ -153,7 +154,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     private List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending("_id")).into(documents);
+        collection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
         return documents;
     }
 
@@ -161,11 +162,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
-    @Entity(name = "Book")
+    @Entity
     @Table(name = "books")
     static class Book {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;
@@ -175,11 +175,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         int publishYear;
     }
 
-    @Entity(name = "BookWithEmbeddedField")
+    @Entity
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;
