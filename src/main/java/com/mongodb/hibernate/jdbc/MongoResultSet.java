@@ -80,7 +80,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public boolean next() throws SQLException {
         checkClosed();
         if (mongoCursor.hasNext()) {
-            currentDocument = mongoCursor.next().toBsonDocument();
+            currentDocument = mongoCursor.next();
             return true;
         } else {
             return false;
