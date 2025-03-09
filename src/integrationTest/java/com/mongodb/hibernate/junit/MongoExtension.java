@@ -70,18 +70,20 @@ public final class MongoExtension
 
     @Override
     public void beforeAll(ExtensionContext context) {
-        findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class, field -> true)
-                .forEach(field -> {
-                    var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
-                    String collectionName = annotation.value();
-                    var mongoCollection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
-                    try {
-                        field.setAccessible(true);
-                        field.set(isStatic(field) ? null : context.getRequiredTestInstance(), mongoCollection);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                });
+        if (mongoDatabase != null) {
+            findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class)
+                    .forEach(field -> {
+                        var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
+                        var collectionName = annotation.value();
+                        var mongoCollection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
+                        try {
+                            field.setAccessible(true);
+                            field.set(isStatic(field) ? null : context.getRequiredTestInstance(), mongoCollection);
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    });
+        }
     }
 
     @Override
