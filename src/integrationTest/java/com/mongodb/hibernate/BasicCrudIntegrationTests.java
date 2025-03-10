@@ -45,7 +45,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             BasicCrudIntegrationTests.Book.class,
             BasicCrudIntegrationTests.BookWithEmbeddedField.class,
-            BasicCrudIntegrationTests.BookDynamicUpdated.class
+            BasicCrudIntegrationTests.BookDynamicallyUpdated.class
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
@@ -183,7 +183,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testDynamicUpdate() {
             sessionFactoryScope.inTransaction(session -> {
-                var book = new BookDynamicUpdated();
+                var book = new BookDynamicallyUpdated();
                 book.id = 1;
                 book.title = "War and Peace";
                 book.author = "Leo Tolstoy";
@@ -229,7 +229,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @Entity
     @Table(name = "books")
     @DynamicUpdate
-    static class BookDynamicUpdated {
+    static class BookDynamicallyUpdated {
         @Id
         @Column(name = "_id")
         int id;

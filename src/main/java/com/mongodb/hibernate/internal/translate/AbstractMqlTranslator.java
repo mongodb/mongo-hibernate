@@ -120,8 +120,9 @@ import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
+import org.hibernate.sql.model.MutationOperation;
+import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
-import org.hibernate.sql.model.ast.RestrictedTableMutation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
 import org.hibernate.sql.model.internal.TableDeleteStandard;
@@ -255,8 +256,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitStandardTableUpdate(TableUpdateStandard tableUpdate) {
-        if (tableUpdate.getReturningColumns() != null
-                && !tableUpdate.getReturningColumns().isEmpty()) {
+        if (tableUpdate.getNumberOfReturningColumns() > 0) {
             throw new FeatureNotSupportedException();
         }
         if (tableUpdate.getWhereFragment() != null) {
@@ -274,7 +274,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates));
     }
 
-    private AstFilter getKeyFilter(RestrictedTableMutation<?> tableMutation) {
+    private AstFilter getKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
         if (tableMutation.getNumberOfOptimisticLockBindings() > 0) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
         }
