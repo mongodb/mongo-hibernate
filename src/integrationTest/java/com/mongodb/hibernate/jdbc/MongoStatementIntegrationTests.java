@@ -17,14 +17,13 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
-import java.util.ArrayList;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
@@ -34,17 +33,17 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@ExtendWith(MongoExtension.class)
 class MongoStatementIntegrationTests {
 
     @AutoClose
     private static SessionFactory sessionFactory;
 
-    @AutoClose
-    private static MongoClient mongoClient;
-
+    @InjectMongoCollection("books")
     private static MongoCollection<BsonDocument> mongoCollection;
 
     @AutoClose
@@ -53,9 +52,6 @@ class MongoStatementIntegrationTests {
     @BeforeAll
     static void beforeAll() {
         sessionFactory = new Configuration().buildSessionFactory();
-        var config = new MongoConfigurationBuilder(sessionFactory.getProperties()).build();
-        mongoClient = MongoClients.create(config.mongoClientSettings());
-        mongoCollection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
     }
 
     @BeforeEach
@@ -243,11 +239,8 @@ class MongoStatementIntegrationTests {
                             connection.commit();
                         }
                     }
-                    var actualDocuments = mongoCollection
-                            .find()
-                            .sort(Sorts.ascending(ID_FIELD_NAME))
-                            .into(new ArrayList<>());
-                    assertEquals(expectedDocuments, actualDocuments);
+                    assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
+                            .containsExactlyElementsOf(expectedDocuments);
                 }
             });
         }

@@ -19,6 +19,7 @@ package com.mongodb.hibernate;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -28,8 +29,6 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
-import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -202,10 +201,8 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-    private static List<BsonDocument> getCollectionDocuments() {
-        var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
-        return documents;
+    private static FindIterable<BsonDocument> getCollectionDocuments() {
+        return collection.find().sort(Sorts.ascending(ID_FIELD_NAME));
     }
 
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
