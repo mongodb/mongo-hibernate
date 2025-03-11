@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.junit;
 
+import static java.lang.String.format;
+import static org.junit.Assert.assertTrue;
 import static org.junit.platform.commons.support.AnnotationSupport.findAnnotatedFields;
 import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 
@@ -28,66 +30,47 @@ import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.TestInstanceFactoryContext;
-import org.junit.jupiter.api.extension.TestInstancePreConstructCallback;
-import org.junit.jupiter.api.extension.TestInstancePreDestroyCallback;
 
-public final class MongoExtension
-        implements TestInstancePreConstructCallback,
-                TestInstancePreDestroyCallback,
-                BeforeAllCallback,
-                BeforeEachCallback {
+/**
+ * Assumes that all tests that use this {@linkplain ExtendWith#value() extension} run <a
+ * href="https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution">sequentially</a>.
+ */
+public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback {
 
-    private ExtensionContext outermostContext;
-
-    private MongoClient mongoClient;
-    private MongoDatabase mongoDatabase;
+    private static final State STATE = State.create();
 
     @Override
-    public void preConstructTestInstance(TestInstanceFactoryContext factoryContext, ExtensionContext context) {
-        if (factoryContext.getOuterInstance().isEmpty()) {
-            outermostContext = context;
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> hibernateProperties =
-                    (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
-
-            var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
-            mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
-            mongoDatabase = mongoClient.getDatabase(mongoConfig.databaseName());
+    public void beforeAll(ExtensionContext context) throws Exception {
+        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class)) {
+            assertTrue(format("The field [%s] must be static", field), isStatic(field));
+            var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
+            var collectionName = annotation.value();
+            var mongoCollection = STATE.mongoDatabase().getCollection(collectionName, BsonDocument.class);
+            field.setAccessible(true);
+            field.set(null, mongoCollection);
         }
-    }
-
-    @Override
-    public void preDestroyTestInstance(ExtensionContext context) {
-        if (context.equals(outermostContext)) {
-            if (mongoClient != null) {
-                mongoClient.close();
-            }
-        }
-    }
-
-    @Override
-    public void beforeAll(ExtensionContext context) {
-        findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class, field -> true)
-                .forEach(field -> {
-                    var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
-                    String collectionName = annotation.value();
-                    var mongoCollection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
-                    try {
-                        field.setAccessible(true);
-                        field.set(isStatic(field) ? null : context.getRequiredTestInstance(), mongoCollection);
-                    } catch (Exception ex) {
-                        throw new RuntimeException(ex);
-                    }
-                });
     }
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        if (mongoDatabase != null) {
-            mongoDatabase.drop();
+        STATE.mongoDatabase().drop();
+    }
+
+    private record State(MongoClient mongoClient, MongoDatabase mongoDatabase) {
+        static State create() {
+            @SuppressWarnings("unchecked")
+            var hibernateProperties = (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
+            var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
+            var mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
+            var state = new State(mongoClient, mongoClient.getDatabase(mongoConfig.databaseName()));
+            Runtime.getRuntime().addShutdownHook(new Thread(state::close));
+            return state;
+        }
+
+        private void close() {
+            mongoClient.close();
         }
     }
 }
