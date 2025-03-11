@@ -18,7 +18,6 @@ package com.mongodb.hibernate;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
@@ -77,7 +76,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         author: "Leo Tolstoy",
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
 
         @Test
@@ -97,7 +96,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         author: null,
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
 
         @Test
@@ -122,7 +121,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         authorLastName: "Tolstoy",
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
     }
 
@@ -158,7 +157,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         return documents;
     }
 
-    private static void assertCollectionContainsOnly(BsonDocument expectedDoc) {
+    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
         assertThat(getCollectionDocuments()).containsExactly(expectedDoc);
     }
 
