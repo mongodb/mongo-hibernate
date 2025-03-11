@@ -17,7 +17,6 @@
 package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.util.Lists.newArrayList;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -54,7 +53,7 @@ class JakartaPersistenceBootstrappingIntegrationTests {
             item.id = 1;
             em.persist(item);
         });
-        assertThat(newArrayList(collection.find())).containsOnly(BsonDocument.parse("{_id: 1}"));
+        assertThat(collection.find()).containsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Entity
