@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.extension;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.lang.String.format;
@@ -48,6 +49,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {
         var identifier = persistentClass.getIdentifier();
+        assertFalse(identifier.hasFormula());
         var idColumns = identifier.getColumns();
         if (idColumns.size() > 1) {
             throw new FeatureNotSupportedException(
