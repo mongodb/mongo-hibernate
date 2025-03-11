@@ -209,8 +209,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitStandardTableInsert(TableInsertStandard tableInsert) {
-        if (tableInsert.getReturningColumns() != null
-                && !tableInsert.getReturningColumns().isEmpty()) {
+        if (tableInsert.getNumberOfReturningColumns() > 0) {
             throw new FeatureNotSupportedException();
         }
         var tableName = tableInsert.getTableName();

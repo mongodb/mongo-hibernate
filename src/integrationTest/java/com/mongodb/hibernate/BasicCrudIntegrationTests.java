@@ -202,13 +202,13 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-    private List<BsonDocument> getCollectionDocuments() {
+    private static List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
         collection.find().sort(Sorts.ascending("_id")).into(documents);
         return documents;
     }
 
-    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
+    private static void assertCollectionContainsOnly(BsonDocument expectedDoc) {
         assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
