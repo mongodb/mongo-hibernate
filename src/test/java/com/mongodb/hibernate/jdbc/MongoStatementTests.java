@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -114,8 +115,8 @@ class MongoStatementTests {
         void testCheckClosed(String label, StatementMethodInvocation methodInvocation) {
             mongoStatement.close();
 
-            var exception = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
-            assertEquals("MongoStatement has been closed", exception.getMessage());
+            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(mongoStatement));
+            assertThat(sqlException.getMessage()).matches("MongoStatement has been closed");
         }
 
         private static Stream<Arguments> getMongoStatementMethodInvocationsImpactedByClosing() {

@@ -81,7 +81,7 @@ class AstVisitorValueHolderTests {
     }
 
     @Test
-    @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of real data")
+    @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of actual data")
     void testHolderExpectingDifferentDescriptor() {
 
         Runnable valueYielder =

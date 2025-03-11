@@ -19,11 +19,10 @@ package com.mongodb.hibernate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -32,44 +31,33 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.AutoClose;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {BasicCrudTests.Book.class, BasicCrudTests.BookWithEmbeddedField.class})
-class BasicCrudTests implements SessionFactoryScopeAware {
+@DomainModel(
+        annotatedClasses = {
+            BasicCrudIntegrationTests.Book.class,
+            BasicCrudIntegrationTests.BookWithEmbeddedField.class,
+            BasicCrudIntegrationTests.BookDynamicallyUpdated.class
+        })
+@ExtendWith(MongoExtension.class)
+class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    @AutoClose
-    private MongoClient mongoClient;
-
-    private MongoCollection<BsonDocument> collection;
+    @InjectMongoCollection("books")
+    private static MongoCollection<BsonDocument> collection;
 
     private SessionFactoryScope sessionFactoryScope;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
-    }
-
-    @BeforeAll
-    void beforeAll() {
-        var config = new MongoConfigurationBuilder(
-                        sessionFactoryScope.getSessionFactory().getProperties())
-                .build();
-        mongoClient = MongoClients.create(config.mongoClientSettings());
-        collection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        collection.drop();
     }
 
     @Nested
@@ -147,7 +135,6 @@ class BasicCrudTests implements SessionFactoryScopeAware {
         @Test
         void testSimpleDeletion() {
 
-            // given
             var id = 1;
             sessionFactoryScope.inTransaction(session -> {
                 var book = new Book();
@@ -159,28 +146,73 @@ class BasicCrudTests implements SessionFactoryScopeAware {
             });
             assertThat(getCollectionDocuments()).hasSize(1);
 
-            // when
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
                 session.remove(book);
             });
 
-            // then
             assertThat(getCollectionDocuments()).isEmpty();
         }
     }
 
-    private List<BsonDocument> getCollectionDocuments() {
+    @Nested
+    class UpdateTests {
+
+        @Test
+        void testSimpleUpdate() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new Book();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1867;
+                session.persist(book);
+                session.flush();
+
+                book.title = "Resurrection";
+                book.publishYear = 1899;
+            });
+
+            assertCollectionContainsOnly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
+                            """));
+        }
+
+        @Test
+        void testDynamicUpdate() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new BookDynamicallyUpdated();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1899;
+                session.persist(book);
+                session.flush();
+
+                book.publishYear = 1867;
+            });
+
+            assertCollectionContainsOnly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
+                            """));
+        }
+    }
+
+    private static List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
         collection.find().sort(Sorts.ascending("_id")).into(documents);
         return documents;
     }
 
-    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
+    private static void assertCollectionContainsOnly(BsonDocument expectedDoc) {
         assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
-    @Entity(name = "Book")
+    @Entity
     @Table(name = "books")
     static class Book {
         @Id
@@ -194,7 +226,22 @@ class BasicCrudTests implements SessionFactoryScopeAware {
         int publishYear;
     }
 
-    @Entity(name = "BookWithEmbeddedField")
+    @Entity
+    @Table(name = "books")
+    @DynamicUpdate
+    static class BookDynamicallyUpdated {
+        @Id
+        @Column(name = "_id")
+        int id;
+
+        String title;
+
+        String author;
+
+        int publishYear;
+    }
+
+    @Entity
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id

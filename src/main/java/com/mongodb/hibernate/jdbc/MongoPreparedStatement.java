@@ -63,12 +63,6 @@ import org.bson.BsonUndefined;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 
-/**
- * MongoDB Dialect's JDBC {@link java.sql.PreparedStatement} implementation class.
- *
- * <p>It only focuses on API methods MongoDB Dialect will support. All the other methods are implemented by throwing
- * exceptions in its parent {@link PreparedStatementAdapter adapter interface}.
- */
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private static final BsonUndefined PARAMETER_PLACEHOLDER = new BsonUndefined();
