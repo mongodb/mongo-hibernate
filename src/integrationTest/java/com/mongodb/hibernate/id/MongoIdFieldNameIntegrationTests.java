@@ -18,7 +18,6 @@ package com.mongodb.hibernate.id;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.util.Lists.newArrayList;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -78,7 +77,7 @@ class MongoIdFieldNameIntegrationTests {
     }
 
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(newArrayList(collection.find())).containsExactly(expectedDoc);
+        assertThat(collection.find()).containsExactly(expectedDoc);
     }
 
     @Entity
