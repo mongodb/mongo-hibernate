@@ -173,7 +173,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1899;
             });
 
-            assertCollectionContainsOnly(
+            assertCollectionContainsExactly(
                     BsonDocument.parse(
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
@@ -194,7 +194,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
             });
 
-            assertCollectionContainsOnly(
+            assertCollectionContainsExactly(
                     BsonDocument.parse(
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\

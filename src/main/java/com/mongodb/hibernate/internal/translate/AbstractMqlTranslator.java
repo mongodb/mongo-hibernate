@@ -281,7 +281,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
 
         if (tableMutation.getNumberOfKeyBindings() > 1) {
-            throw new FeatureNotSupportedException(format("MongoDB doesn't support '%s' spanning multiple columns", ID_FIELD_NAME));
+            throw new FeatureNotSupportedException(
+                    format("MongoDB doesn't support '%s' spanning multiple columns", ID_FIELD_NAME));
         }
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
