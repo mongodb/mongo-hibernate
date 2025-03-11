@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.id;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.util.Lists.newArrayList;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -25,7 +27,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -44,7 +45,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class MongoIdFieldNameIntegrationTests {
 
     @InjectMongoCollection("movies")
-    private MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> collection;
 
     @Test
     void testEntityWithoutIdColumnAnnotation(SessionFactoryScope scope) {
@@ -53,7 +54,7 @@ class MongoIdFieldNameIntegrationTests {
             movie.id = 1;
             session.persist(movie);
         });
-        assertCollectionContainsOnly(BsonDocument.parse("{_id: 1}"));
+        assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Test
@@ -63,7 +64,7 @@ class MongoIdFieldNameIntegrationTests {
             movie.id = 1;
             session.persist(movie);
         });
-        assertCollectionContainsOnly(BsonDocument.parse("{_id: 1}"));
+        assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Test
@@ -73,13 +74,11 @@ class MongoIdFieldNameIntegrationTests {
             movie.id = 1;
             session.persist(movie);
         });
-        assertCollectionContainsOnly(BsonDocument.parse("{_id: 1}"));
+        assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
-    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
-        var documents = new ArrayList<BsonDocument>(1);
-        collection.find().into(documents);
-        assertThat(documents).containsOnly(expectedDoc);
+    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
+        assertThat(newArrayList(collection.find())).containsExactly(expectedDoc);
     }
 
     @Entity
