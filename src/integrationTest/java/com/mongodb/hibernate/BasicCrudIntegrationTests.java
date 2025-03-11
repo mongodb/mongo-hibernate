@@ -31,6 +31,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -41,7 +42,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
-        annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookWithEmbeddedField.class
+        annotatedClasses = {
+            BasicCrudIntegrationTests.Book.class,
+            BasicCrudIntegrationTests.BookWithEmbeddedField.class,
+            BasicCrudIntegrationTests.BookDynamicallyUpdated.class
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
@@ -151,17 +155,64 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-    private List<BsonDocument> getCollectionDocuments() {
+    @Nested
+    class UpdateTests {
+
+        @Test
+        void testSimpleUpdate() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new Book();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1867;
+                session.persist(book);
+                session.flush();
+
+                book.title = "Resurrection";
+                book.publishYear = 1899;
+            });
+
+            assertCollectionContainsOnly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
+                            """));
+        }
+
+        @Test
+        void testDynamicUpdate() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new BookDynamicallyUpdated();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1899;
+                session.persist(book);
+                session.flush();
+
+                book.publishYear = 1867;
+            });
+
+            assertCollectionContainsOnly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
+                            """));
+        }
+    }
+
+    private static List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
         collection.find().sort(Sorts.ascending("_id")).into(documents);
         return documents;
     }
 
-    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
+    private static void assertCollectionContainsOnly(BsonDocument expectedDoc) {
         assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
     }
 
-    @Entity(name = "Book")
+    @Entity
     @Table(name = "books")
     static class Book {
         @Id
@@ -175,7 +226,22 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         int publishYear;
     }
 
-    @Entity(name = "BookWithEmbeddedField")
+    @Entity
+    @Table(name = "books")
+    @DynamicUpdate
+    static class BookDynamicallyUpdated {
+        @Id
+        @Column(name = "_id")
+        int id;
+
+        String title;
+
+        String author;
+
+        int publishYear;
+    }
+
+    @Entity
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id

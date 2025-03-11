@@ -26,12 +26,15 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -117,6 +120,8 @@ import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
+import org.hibernate.sql.model.MutationOperation;
+import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
@@ -200,10 +205,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: insertion
+    // Table Mutation: insert
 
     @Override
     public void visitStandardTableInsert(TableInsertStandard tableInsert) {
+        if (tableInsert.getNumberOfReturningColumns() > 0) {
+            throw new FeatureNotSupportedException();
+        }
         var tableName = tableInsert.getTableName();
         var astElements = new ArrayList<AstElement>(tableInsert.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsert.getValueBindings()) {
@@ -229,30 +237,57 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: deletion
+    // Table Mutation: delete
 
     @Override
     public void visitStandardTableDelete(TableDeleteStandard tableDelete) {
         if (tableDelete.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
+        var keyFilter = getKeyFilter(tableDelete);
+        astVisitorValueHolder.yield(
+                COLLECTION_MUTATION,
+                new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter));
+    }
 
-        if (tableDelete.getNumberOfOptimisticLockBindings() > 0) {
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Table Mutation: update
+
+    @Override
+    public void visitStandardTableUpdate(TableUpdateStandard tableUpdate) {
+        if (tableUpdate.getNumberOfReturningColumns() > 0) {
+            throw new FeatureNotSupportedException();
+        }
+        if (tableUpdate.getWhereFragment() != null) {
+            throw new FeatureNotSupportedException();
+        }
+        var keyFilter = getKeyFilter(tableUpdate);
+        var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
+        for (var valueBinding : tableUpdate.getValueBindings()) {
+            var columnExpression = valueBinding.getColumnReference().getColumnExpression();
+            var astValue = acceptAndYield(valueBinding.getValueExpression(), FIELD_VALUE);
+            updates.add(new AstFieldUpdate(columnExpression, astValue));
+        }
+        astVisitorValueHolder.yield(
+                COLLECTION_MUTATION,
+                new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates));
+    }
+
+    private AstFilter getKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
+        if (tableMutation.getNumberOfOptimisticLockBindings() > 0) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
         }
 
-        if (tableDelete.getNumberOfKeyBindings() > 1) {
+        if (tableMutation.getNumberOfKeyBindings() > 1) {
             throw new FeatureNotSupportedException("MongoDB doesn't support '_id' spanning multiple columns");
         }
-        assertTrue(tableDelete.getNumberOfKeyBindings() == 1);
-        var keyBinding = tableDelete.getKeyBindings().get(0);
+        assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
+        var keyBinding = tableMutation.getKeyBindings().get(0);
 
-        var tableName = tableDelete.getMutatingTable().getTableName();
         var astFilterFieldPath =
                 new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
         var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
-        var keyFilter = new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, astValue));
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(tableName, keyFilter));
+        return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, astValue));
     }
 
     @Override
@@ -604,11 +639,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitCustomTableDelete(TableDeleteCustomSql tableDeleteCustomSql) {
         throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitStandardTableUpdate(TableUpdateStandard tableUpdateStandard) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19");
     }
 
     @Override
