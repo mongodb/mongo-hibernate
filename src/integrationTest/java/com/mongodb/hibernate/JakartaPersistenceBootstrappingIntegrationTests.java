@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -60,7 +59,6 @@ class JakartaPersistenceBootstrappingIntegrationTests {
     @Table(name = "items")
     static class Item {
         @Id
-        @Column(name = "_id")
         int id;
     }
 }

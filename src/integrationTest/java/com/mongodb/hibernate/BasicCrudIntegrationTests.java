@@ -16,8 +16,8 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
@@ -80,7 +80,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         author: "Leo Tolstoy",
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
 
         @Test
@@ -100,7 +100,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         author: null,
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
 
         @Test
@@ -125,7 +125,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         authorLastName: "Tolstoy",
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
     }
 
@@ -173,7 +173,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1899;
             });
 
-            assertCollectionContainsOnly(
+            assertCollectionContainsExactly(
                     BsonDocument.parse(
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
@@ -194,7 +194,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
             });
 
-            assertCollectionContainsOnly(
+            assertCollectionContainsExactly(
                     BsonDocument.parse(
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
@@ -204,19 +204,18 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     private static List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending("_id")).into(documents);
+        collection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
         return documents;
     }
 
-    private static void assertCollectionContainsOnly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
+    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
+        assertThat(getCollectionDocuments()).containsExactly(expectedDoc);
     }
 
     @Entity
     @Table(name = "books")
     static class Book {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;
@@ -231,7 +230,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @DynamicUpdate
     static class BookDynamicallyUpdated {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;
@@ -245,7 +243,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;

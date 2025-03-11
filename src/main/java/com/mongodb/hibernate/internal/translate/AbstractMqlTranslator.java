@@ -18,12 +18,14 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
+import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
@@ -279,7 +281,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
 
         if (tableMutation.getNumberOfKeyBindings() > 1) {
-            throw new FeatureNotSupportedException("MongoDB doesn't support '_id' spanning multiple columns");
+            throw new FeatureNotSupportedException(
+                    format("MongoDB doesn't support '%s' spanning multiple columns", ID_FIELD_NAME));
         }
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
