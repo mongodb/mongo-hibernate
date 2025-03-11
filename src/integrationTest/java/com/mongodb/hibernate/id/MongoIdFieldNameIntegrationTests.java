@@ -101,7 +101,7 @@ class MongoIdFieldNameIntegrationTests {
     @Table(name = "movies")
     static class EntityWithIdColumnAnnotationWithValidNameElement {
         @Id
-        @Column(name = "_id")
+        @Column(name = ID_FIELD_NAME)
         int id;
     }
 }
