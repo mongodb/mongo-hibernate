@@ -16,63 +16,43 @@
 
 package com.mongodb.hibernate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
-import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Id;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.Table;
-import org.junit.jupiter.api.AutoClose;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.bson.BsonDocument;
+import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
+import org.hibernate.testing.orm.junit.Jpa;
+import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@Jpa(
+        exportSchema = false,
+        integrationSettings =
+                @Setting(
+                        name = AvailableSettings.CONNECTION_PROVIDER,
+                        value = "com.mongodb.hibernate.jdbc.MongoConnectionProvider"),
+        annotatedClasses = JakartaPersistenceBootstrappingIntegrationTests.Item.class)
+@ExtendWith(MongoExtension.class)
 class JakartaPersistenceBootstrappingIntegrationTests {
 
-    private static MongoConfiguration config;
-
-    @AutoClose
-    private static EntityManagerFactory entityManagerFactory;
-
-    @AutoClose
-    private static MongoClient mongoClient;
-
-    @BeforeAll
-    static void beforeAll() {
-        entityManagerFactory = Persistence.createEntityManagerFactory("test-persistence-unit");
-        config = new MongoConfigurationBuilder(entityManagerFactory.getProperties()).build();
-        mongoClient = MongoClients.create(config.mongoClientSettings());
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        mongoClient.getDatabase(config.databaseName()).drop();
-    }
+    @InjectMongoCollection("items")
+    private static MongoCollection<BsonDocument> collection;
 
     @Test
-    void smoke() {
-        try (var entityManager = entityManagerFactory.createEntityManager()) {
-            var transaction = entityManager.getTransaction();
-            try {
-                transaction.begin();
-                var item = new Item();
-                item.id = 1;
-                entityManager.persist(item);
-            } finally {
-                transaction.commit();
-            }
-            assertEquals(
-                    1,
-                    mongoClient
-                            .getDatabase(config.databaseName())
-                            .getCollection("items")
-                            .countDocuments());
-        }
+    void smoke(EntityManagerFactoryScope scope) {
+        scope.inTransaction(em -> {
+            var item = new Item();
+            item.id = 1;
+            em.persist(item);
+        });
+        assertThat(collection.find()).containsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Entity

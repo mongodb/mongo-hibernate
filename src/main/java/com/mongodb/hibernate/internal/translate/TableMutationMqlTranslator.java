@@ -22,8 +22,6 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.model.ast.TableDelete;
-import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.jspecify.annotations.Nullable;
@@ -38,20 +36,10 @@ final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends 
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public O translate(@Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
         assertNull(jdbcParameterBindings);
         // QueryOptions class is not applicable to table mutation so a dummy value is always passed in
 
-        if (tableMutation instanceof TableInsert || tableMutation instanceof TableDelete) {
-            return translateTableMutation();
-        } else {
-            // TODO-HIBERNATE-19 https://jira.mongodb.org/browse/HIBERNATE-19
-            return (O) new NoopJdbcMutationOperation();
-        }
-    }
-
-    private O translateTableMutation() {
         var rootAstNode = acceptAndYield(tableMutation, COLLECTION_MUTATION);
         return tableMutation.createMutationOperation(renderMongoAstNode(rootAstNode), getParameterBinders());
     }
