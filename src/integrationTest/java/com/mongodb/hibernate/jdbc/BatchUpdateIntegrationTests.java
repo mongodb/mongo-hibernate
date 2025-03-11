@@ -61,8 +61,8 @@ import org.junit.jupiter.api.Test;
 class BatchUpdateIntegrationTests implements SessionFactoryScopeAware {
 
     private static class TestingCommandListener implements CommandListener {
-        List<BsonDocument> successfulCommands = new ArrayList<>();
-        List<CommandFailedEvent> failedCommandEvents = new ArrayList<>(0);
+        private final List<BsonDocument> successfulCommands = new ArrayList<>();
+        private final List<CommandFailedEvent> failedCommandEvents = new ArrayList<>(0);
 
         @Override
         public void commandStarted(CommandStartedEvent event) {
@@ -263,10 +263,76 @@ class BatchUpdateIntegrationTests implements SessionFactoryScopeAware {
                         command4 -> assertThat(command4.getFirstKey()).isEqualTo("commitTransaction"));
     }
 
-    // TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35
-    // add batch update test case
+    @Test
+    void batchUpdateTest() {
+        var movies = new ArrayList<Movie>();
+        for (var i = 1; i <= 8; i++) {
+            var movie = new Movie();
+            movie.id = i;
+            movie.title = "title_" + i;
+            movies.add(movie);
+        }
+        sessionFactoryScope.inTransaction(session -> {
+            movies.forEach(session::persist);
+            session.flush();
+            TESTING_COMMAND_LISTENER.clear();
+            movies.forEach(movie -> movie.title = movie.title + "_");
+        });
 
-    @Entity(name = "Movie")
+        assertThat(TESTING_COMMAND_LISTENER.getFailedCommandEvents()).isEmpty();
+        assertThat(TESTING_COMMAND_LISTENER.getSuccessfulCommands())
+                .satisfiesExactly(
+                        command1 -> {
+                            assertThat(command1.entrySet()).contains(Map.entry("update", new BsonString("movies")));
+                            assertThat(command1.getArray("updates").getValues())
+                                    .containsExactly(
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 1}}, u: {$set: {"title": "title_1_"}}, multi: true}
+                                                    """),
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 2}}, u: {$set: {"title": "title_2_"}}, multi: true}
+                                                    """),
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 3}}, u: {$set: {"title": "title_3_"}}, multi: true}
+                                                    """));
+                        },
+                        command2 -> {
+                            assertThat(command2.entrySet()).contains(Map.entry("update", new BsonString("movies")));
+                            assertThat(command2.getArray("updates").getValues())
+                                    .containsExactly(
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 4}}, u: {$set: {"title": "title_4_"}}, multi: true}
+                                                    """),
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 5}}, u: {$set: {"title": "title_5_"}}, multi: true}
+                                                    """),
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 6}}, u: {$set: {"title": "title_6_"}}, multi: true}
+                                                    """));
+                        },
+                        command3 -> {
+                            assertThat(command3.entrySet()).contains(Map.entry("update", new BsonString("movies")));
+                            assertThat(command3.getArray("updates").getValues())
+                                    .containsExactly(
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 7}}, u: {$set: {"title": "title_7_"}}, multi: true}
+                                                    """),
+                                            BsonDocument.parse(
+                                                    """
+                                                    {q: {_id: {$eq: 8}}, u: {$set: {"title": "title_8_"}}, multi: true}
+                                                    """));
+                        },
+                        command4 -> assertThat(command4.getFirstKey()).isEqualTo("commitTransaction"));
+    }
+
+    @Entity
     @Table(name = "movies")
     static class Movie {
         @Id

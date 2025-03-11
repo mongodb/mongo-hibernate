@@ -43,6 +43,10 @@ class MongoStatement implements StatementAdapter {
         this.clientSession = clientSession;
     }
 
+    MongoDatabase getMongoDatabase() {
+        return mongoDatabase;
+    }
+
     ClientSession getClientSession() {
         return clientSession;
     }
