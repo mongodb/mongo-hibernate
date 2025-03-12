@@ -47,7 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     @InjectMongoCollection("books")
-    private static MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -140,14 +140,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
                 session.persist(book);
             });
-            assertThat(collection.find()).hasSize(1);
+            assertThat(mongoCollection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
                 session.remove(book);
             });
 
-            assertThat(collection.find()).isEmpty();
+            assertThat(mongoCollection.find()).isEmpty();
         }
     }
 
@@ -199,7 +199,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(collection.find()).containsExactly(expectedDoc);
+        assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }
 
     @Entity
