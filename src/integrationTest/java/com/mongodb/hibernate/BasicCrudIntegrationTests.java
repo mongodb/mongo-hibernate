@@ -16,11 +16,9 @@
 
 package com.mongodb.hibernate;
 
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Column;
@@ -28,8 +26,6 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
-import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -51,7 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     @InjectMongoCollection("books")
-    private static MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -144,14 +140,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
                 session.persist(book);
             });
-            assertThat(getCollectionDocuments()).hasSize(1);
+            assertThat(mongoCollection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
                 session.remove(book);
             });
 
-            assertThat(getCollectionDocuments()).isEmpty();
+            assertThat(mongoCollection.find()).isEmpty();
         }
     }
 
@@ -202,14 +198,8 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-    private static List<BsonDocument> getCollectionDocuments() {
-        var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
-        return documents;
-    }
-
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).containsExactly(expectedDoc);
+        assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }
 
     @Entity

@@ -43,7 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class JakartaPersistenceBootstrappingIntegrationTests {
 
     @InjectMongoCollection("items")
-    private static MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     @Test
     void smoke(EntityManagerFactoryScope scope) {
@@ -52,7 +52,7 @@ class JakartaPersistenceBootstrappingIntegrationTests {
             item.id = 1;
             em.persist(item);
         });
-        assertThat(collection.find()).containsExactly(BsonDocument.parse("{_id: 1}"));
+        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
     @Entity

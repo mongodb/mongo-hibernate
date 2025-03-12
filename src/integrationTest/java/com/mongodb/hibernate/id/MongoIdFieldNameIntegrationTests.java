@@ -44,7 +44,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class MongoIdFieldNameIntegrationTests {
 
     @InjectMongoCollection("movies")
-    private static MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     @Test
     void testEntityWithoutIdColumnAnnotation(SessionFactoryScope scope) {
@@ -77,7 +77,7 @@ class MongoIdFieldNameIntegrationTests {
     }
 
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(collection.find()).containsExactly(expectedDoc);
+        assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }
 
     @Entity
