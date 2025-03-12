@@ -55,9 +55,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private final BsonDocument command;
 
-    private final List<Consumer<BsonValue>> parameterValueSetters;
-
-    private final boolean[] parameterValueSetterUsed;
+    private final List<ParameterValueSetter> parameterValueSetters;
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
@@ -66,7 +64,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         this.command = MongoStatement.parse(mql);
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
-        parameterValueSetterUsed = new boolean[parameterValueSetters.size()];
     }
 
     @Override
@@ -85,9 +82,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private void checkAllParametersSet() throws SQLException {
-        for (var i = 0; i < parameterValueSetterUsed.length; i++) {
-            if (!parameterValueSetterUsed[i]) {
-                throw new SQLException(format("Parameter not set with index: %d", i + 1));
+        for (var i = 0; i < parameterValueSetters.size(); i++) {
+            if (!parameterValueSetters.get(i).isUsed()) {
+                throw new SQLException(format("Parameter with index [%d] is not set", i + 1));
             }
         }
     }
@@ -280,32 +277,31 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private void setParameter(int parameterIndex, BsonValue parameterValue) {
         var parameterValueSetter = parameterValueSetters.get(parameterIndex - 1);
         parameterValueSetter.accept(parameterValue);
-        parameterValueSetterUsed[parameterIndex - 1] = true;
     }
 
-    private static void parseParameters(BsonDocument command, List<Consumer<BsonValue>> parameterValueSetters) {
+    private static void parseParameters(BsonDocument command, List<ParameterValueSetter> parameterValueSetters) {
         for (var entry : command.entrySet()) {
             if (isParameterMarker(entry.getValue())) {
-                parameterValueSetters.add(entry::setValue);
+                parameterValueSetters.add(new ParameterValueSetter(entry::setValue));
             } else if (entry.getValue().getBsonType().isContainer()) {
                 parseParameters(entry.getValue(), parameterValueSetters);
             }
         }
     }
 
-    private static void parseParameters(BsonArray array, List<Consumer<BsonValue>> parameterValueSetters) {
+    private static void parseParameters(BsonArray array, List<ParameterValueSetter> parameterValueSetters) {
         for (var i = 0; i < array.size(); i++) {
             var value = array.get(i);
             if (isParameterMarker(value)) {
                 var idx = i;
-                parameterValueSetters.add(v -> array.set(idx, v));
+                parameterValueSetters.add(new ParameterValueSetter(v -> array.set(idx, v)));
             } else if (value.getBsonType().isContainer()) {
                 parseParameters(value, parameterValueSetters);
             }
         }
     }
 
-    private static void parseParameters(BsonValue value, List<Consumer<BsonValue>> parameterValueSetters) {
+    private static void parseParameters(BsonValue value, List<ParameterValueSetter> parameterValueSetters) {
         if (value.isDocument()) {
             parseParameters(value.asDocument(), parameterValueSetters);
         } else if (value.isArray()) {
@@ -325,6 +321,25 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             throw new SQLException(format(
                     "Invalid parameter index [%d]; cannot be under 1 or over the current number of parameters [%d]",
                     parameterIndex, parameterValueSetters.size()));
+        }
+    }
+
+    private static final class ParameterValueSetter implements Consumer<BsonValue> {
+        private final Consumer<BsonValue> setter;
+        private boolean used;
+
+        ParameterValueSetter(Consumer<BsonValue> setter) {
+            this.setter = setter;
+        }
+
+        @Override
+        public void accept(BsonValue bsonValue) {
+            used = true;
+            setter.accept(bsonValue);
+        }
+
+        boolean isUsed() {
+            return used;
         }
     }
 }
