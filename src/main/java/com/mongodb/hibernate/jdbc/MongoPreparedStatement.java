@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
 import java.sql.JDBCType;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -252,26 +253,22 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        throw new SQLException(format("Must not be called on %s", PreparedStatement.class.getSimpleName()));
     }
 
     @Override
     public int executeUpdate(String mql) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        throw new SQLException(format("Must not be called on %s", PreparedStatement.class.getSimpleName()));
     }
 
     @Override
     public boolean execute(String mql) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        throw new SQLException(format("Must not be called on %s", PreparedStatement.class.getSimpleName()));
     }
 
     @Override
     public void addBatch(String mql) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        throw new SQLException(format("Must not be called on %s", PreparedStatement.class.getSimpleName()));
     }
 
     private void setParameter(int parameterIndex, BsonValue parameterValue) {

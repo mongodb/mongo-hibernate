@@ -223,11 +223,7 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(mongoPreparedStatement::executeUpdate),
                 () -> asserter.accept(mongoPreparedStatement::addBatch),
                 () -> asserter.accept(() -> mongoPreparedStatement.setQueryTimeout(20_000)),
-                () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)),
-                () -> asserter.accept(() -> mongoPreparedStatement.execute(exampleUpdateMql)),
-                () -> asserter.accept(() -> mongoPreparedStatement.executeQuery(exampleQueryMql)),
-                () -> asserter.accept(() -> mongoPreparedStatement.executeUpdate(exampleUpdateMql)),
-                () -> asserter.accept(() -> mongoPreparedStatement.addBatch(exampleUpdateMql)));
+                () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)));
     }
 
     private void assertThrowsOutOfRangeException(Executable executable) {
