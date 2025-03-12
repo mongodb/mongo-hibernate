@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.crud;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +31,7 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -45,13 +46,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             BasicCrudIntegrationTests.Book.class,
             BasicCrudIntegrationTests.BookWithEmbeddedField.class,
+            BasicCrudIntegrationTests.BookDynamicallyInserted.class,
             BasicCrudIntegrationTests.BookDynamicallyUpdated.class
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     @InjectMongoCollection("books")
-    private static MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -78,6 +80,25 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         _id: 1,
                         title: "War and Peace",
                         author: "Leo Tolstoy",
+                        publishYear: 1867
+                    }""");
+            assertCollectionContainsExactly(expectedDocument);
+        }
+
+        @Test
+        void testDynamicInsert() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new BookDynamicallyInserted();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.publishYear = 1867;
+                session.persist(book);
+            });
+            var expectedDocument = BsonDocument.parse(
+                    """
+                    {
+                        _id: 1,
+                        title: "War and Peace",
                         publishYear: 1867
                     }""");
             assertCollectionContainsExactly(expectedDocument);
@@ -204,7 +225,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     private static List<BsonDocument> getCollectionDocuments() {
         var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
+        mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)).into(documents);
         return documents;
     }
 
@@ -215,6 +236,20 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @Entity
     @Table(name = "books")
     static class Book {
+        @Id
+        int id;
+
+        String title;
+
+        String author;
+
+        int publishYear;
+    }
+
+    @Entity
+    @Table(name = "books")
+    @DynamicInsert
+    static class BookDynamicallyInserted {
         @Id
         int id;
 
