@@ -16,12 +16,9 @@
 
 package com.mongodb.hibernate;
 
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Column;
@@ -143,14 +140,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
                 session.persist(book);
             });
-            assertThat(getCollectionDocuments()).hasSize(1);
+            assertThat(collection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
                 session.remove(book);
             });
 
-            assertThat(getCollectionDocuments()).isEmpty();
+            assertThat(collection.find()).isEmpty();
         }
     }
 
@@ -201,12 +198,8 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-    private static FindIterable<BsonDocument> getCollectionDocuments() {
-        return collection.find().sort(Sorts.ascending(ID_FIELD_NAME));
-    }
-
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).containsExactly(expectedDoc);
+        assertThat(collection.find()).containsExactly(expectedDoc);
     }
 
     @Entity
