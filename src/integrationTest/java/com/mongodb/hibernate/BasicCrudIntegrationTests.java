@@ -17,10 +17,8 @@
 package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Column;
@@ -28,9 +26,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
-import java.util.List;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -41,13 +38,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
-        annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookWithEmbeddedField.class
+        annotatedClasses = {
+            BasicCrudIntegrationTests.Book.class,
+            BasicCrudIntegrationTests.BookWithEmbeddedField.class,
+            BasicCrudIntegrationTests.BookDynamicallyUpdated.class
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
     @InjectMongoCollection("books")
-    private static MongoCollection<BsonDocument> collection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -76,7 +76,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         author: "Leo Tolstoy",
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
 
         @Test
@@ -96,7 +96,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         author: null,
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
 
         @Test
@@ -121,7 +121,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         authorLastName: "Tolstoy",
                         publishYear: 1867
                     }""");
-            assertCollectionContainsOnly(expectedDocument);
+            assertCollectionContainsExactly(expectedDocument);
         }
     }
 
@@ -140,32 +140,72 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 book.publishYear = 1867;
                 session.persist(book);
             });
-            assertThat(getCollectionDocuments()).hasSize(1);
+            assertThat(mongoCollection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
                 var book = session.getReference(Book.class, id);
                 session.remove(book);
             });
 
-            assertThat(getCollectionDocuments()).isEmpty();
+            assertThat(mongoCollection.find()).isEmpty();
         }
     }
 
-    private List<BsonDocument> getCollectionDocuments() {
-        var documents = new ArrayList<BsonDocument>();
-        collection.find().sort(Sorts.ascending("_id")).into(documents);
-        return documents;
+    @Nested
+    class UpdateTests {
+
+        @Test
+        void testSimpleUpdate() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new Book();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1867;
+                session.persist(book);
+                session.flush();
+
+                book.title = "Resurrection";
+                book.publishYear = 1899;
+            });
+
+            assertCollectionContainsExactly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
+                            """));
+        }
+
+        @Test
+        void testDynamicUpdate() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new BookDynamicallyUpdated();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1899;
+                session.persist(book);
+                session.flush();
+
+                book.publishYear = 1867;
+            });
+
+            assertCollectionContainsExactly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
+                            """));
+        }
     }
 
-    private void assertCollectionContainsOnly(BsonDocument expectedDoc) {
-        assertThat(getCollectionDocuments()).asInstanceOf(LIST).singleElement().isEqualTo(expectedDoc);
+    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
+        assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }
 
-    @Entity(name = "Book")
+    @Entity
     @Table(name = "books")
     static class Book {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;
@@ -175,11 +215,24 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         int publishYear;
     }
 
-    @Entity(name = "BookWithEmbeddedField")
+    @Entity
+    @Table(name = "books")
+    @DynamicUpdate
+    static class BookDynamicallyUpdated {
+        @Id
+        int id;
+
+        String title;
+
+        String author;
+
+        int publishYear;
+    }
+
+    @Entity
     @Table(name = "books")
     static class BookWithEmbeddedField {
         @Id
-        @Column(name = "_id")
         int id;
 
         String title;

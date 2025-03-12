@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,15 +25,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoExtension;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
@@ -45,7 +45,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(MongoExtension.class)
 class MongoPreparedStatementIntegrationTests {
 
     static class MongoPreparedStatementIntegrationWithAutoCommitTests extends MongoPreparedStatementIntegrationTests {
@@ -80,9 +82,7 @@ class MongoPreparedStatementIntegrationTests {
     @AutoClose
     private static SessionFactory sessionFactory;
 
-    @AutoClose
-    private static MongoClient mongoClient;
-
+    @InjectMongoCollection("books")
     private static MongoCollection<BsonDocument> mongoCollection;
 
     @AutoClose
@@ -91,15 +91,11 @@ class MongoPreparedStatementIntegrationTests {
     @BeforeAll
     static void beforeAll() {
         sessionFactory = new Configuration().buildSessionFactory();
-        var config = new MongoConfigurationBuilder(sessionFactory.getProperties()).build();
-        mongoClient = MongoClients.create(config.mongoClientSettings());
-        mongoCollection = mongoClient.getDatabase(config.databaseName()).getCollection("books", BsonDocument.class);
     }
 
     @BeforeEach
     void beforeEach() {
         session = sessionFactory.openSession();
-        deleteCollection();
     }
 
     @Test
@@ -347,9 +343,8 @@ class MongoPreparedStatementIntegrationTests {
                 connection.setAutoCommit(autoCommit());
                 try (var pstmt = pstmtProvider.apply(connection)) {
                     testInTransaction(connection, () -> assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate()));
-                    var actualDocuments =
-                            mongoCollection.find().sort(Sorts.ascending("_id")).into(new ArrayList<>());
-                    assertEquals(expectedDocuments, actualDocuments);
+                    assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
+                            .containsExactlyElementsOf(expectedDocuments);
                 }
             });
         }
