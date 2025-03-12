@@ -49,7 +49,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import org.bson.BsonDocument;
-import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
 
@@ -241,13 +240,12 @@ final class MongoResultSet implements ResultSetAdapter {
 
     private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter) throws SQLException {
         try {
-            var bsonValue = assertNotNull(currentDocument).get(getKey(columnIndex), BsonNull.VALUE);
-            final T value;
-            if (bsonValue.isNull()) {
-                value = null;
-            } else {
-                value = toJavaConverter.apply(bsonValue);
+            var key = getKey(columnIndex);
+            var bsonValue = assertNotNull(currentDocument).get(key);
+            if (bsonValue == null) {
+                throw new RuntimeException(format("The BSON document field with the name [%s] is missing", key));
             }
+            T value = bsonValue.isNull() ? null : toJavaConverter.apply(bsonValue);
             lastReadColumnValueWasNull = value == null;
             return value;
         } catch (RuntimeException e) {
