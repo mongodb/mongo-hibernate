@@ -18,8 +18,8 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,8 +38,8 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
 
 @ExtendWith(MongoExtension.class)
@@ -51,7 +51,7 @@ class MongoStatementIntegrationTests {
             return true;
         }
 
-        void testInTransaction(Connection connection, Executable executable) {
+        void executeInTransaction(Connection connection, Executable executable) {
             try {
                 executable.execute();
             } catch (Throwable e) {
@@ -64,7 +64,7 @@ class MongoStatementIntegrationTests {
         return false;
     }
 
-    void testInTransaction(Connection connection, Executable executable) throws SQLException {
+    void executeInTransaction(Connection connection, Executable executable) throws SQLException {
         try {
             executable.execute();
         } catch (Throwable e) {
@@ -110,7 +110,7 @@ class MongoStatementIntegrationTests {
         session.doWork(conn -> {
             conn.setAutoCommit(autoCommit());
             try (var stmt = conn.createStatement()) {
-                testInTransaction(conn, () -> {
+                executeInTransaction(conn, () -> {
                     var rs = stmt.executeQuery(
                             """
                             {
@@ -286,7 +286,7 @@ class MongoStatementIntegrationTests {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit());
                 try (var stmt = (MongoStatement) connection.createStatement()) {
-                    testInTransaction(connection, () -> assertEquals(expectedRowCount, stmt.executeUpdate(mql)));
+                    executeInTransaction(connection, () -> assertEquals(expectedRowCount, stmt.executeUpdate(mql)));
                     assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
                             .containsExactlyElementsOf(expectedDocuments);
                 }

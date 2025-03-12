@@ -44,8 +44,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 
 @ExtendWith(MongoExtension.class)
 class MongoPreparedStatementIntegrationTests {
@@ -56,7 +56,7 @@ class MongoPreparedStatementIntegrationTests {
             return true;
         }
 
-        void testInTransaction(Connection connection, Executable executable) {
+        void executeInTransaction(Connection connection, Executable executable) {
             try {
                 executable.execute();
             } catch (Throwable e) {
@@ -69,7 +69,7 @@ class MongoPreparedStatementIntegrationTests {
         return false;
     }
 
-    void testInTransaction(Connection connection, Executable executable) throws SQLException {
+    void executeInTransaction(Connection connection, Executable executable) throws SQLException {
         try {
             executable.execute();
         } catch (Throwable e) {
@@ -126,7 +126,7 @@ class MongoPreparedStatementIntegrationTests {
 
                 pstmt.setString(1, "Leo Tolstoy");
 
-                testInTransaction(conn, () -> {
+                executeInTransaction(conn, () -> {
                     var rs = pstmt.executeQuery();
 
                     assertTrue(rs.next());
@@ -193,7 +193,7 @@ class MongoPreparedStatementIntegrationTests {
                 pstmt.setBigDecimal(6, bigDecimalValue);
                 pstmt.setBytes(7, bytes);
 
-                testInTransaction(conn, pstmt::executeUpdate);
+                executeInTransaction(conn, pstmt::executeUpdate);
             }
         });
 
@@ -221,7 +221,7 @@ class MongoPreparedStatementIntegrationTests {
                     }""")) {
 
                 pstmt.setInt(1, 1);
-                testInTransaction(conn, () -> {
+                executeInTransaction(conn, () -> {
                     var rs = pstmt.executeQuery();
 
                     assertTrue(rs.next());
@@ -342,7 +342,8 @@ class MongoPreparedStatementIntegrationTests {
             session.doWork(connection -> {
                 connection.setAutoCommit(autoCommit());
                 try (var pstmt = pstmtProvider.apply(connection)) {
-                    testInTransaction(connection, () -> assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate()));
+                    executeInTransaction(
+                            connection, () -> assertEquals(expectedUpdatedRowCount, pstmt.executeUpdate()));
                     assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
                             .containsExactlyElementsOf(expectedDocuments);
                 }
