@@ -78,6 +78,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public int executeUpdate() throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         checkAllParametersSet();
         return executeUpdateCommand(command);
     }

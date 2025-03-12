@@ -99,6 +99,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         var command = parse(mql);
         return executeUpdateCommand(command);
     }
@@ -142,6 +143,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public boolean execute(String mql) throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
@@ -178,6 +180,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
