@@ -16,11 +16,14 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -82,15 +85,32 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    private static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
+    @VisibleForTesting(otherwise = PRIVATE)
+    static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
         var fieldNames = new ArrayList<String>(projectStage.size());
-        projectStage.forEach((key, value) -> {
-            boolean skip = (value.isNumber() && value.asNumber().intValue() == 0)
+
+        var idExplicitlyIncluded = false;
+        var idImplicitInclusionSuppressed = false;
+
+        for (var entry : projectStage.entrySet()) {
+            var key = entry.getKey();
+            var value = entry.getValue();
+            var skip = (value.isNumber() && value.asNumber().intValue() == 0)
                     || (value.isBoolean() && value.asBoolean().equals(BsonBoolean.FALSE));
-            if (!skip) {
+            if (skip) {
+                if (ID_FIELD_NAME.equals(key)) {
+                    idImplicitInclusionSuppressed = true;
+                }
+            } else {
                 fieldNames.add(key);
+                if (ID_FIELD_NAME.equals(key)) {
+                    idExplicitlyIncluded = true;
+                }
             }
-        });
+        }
+        if (!idExplicitlyIncluded && !idImplicitInclusionSuppressed) {
+            fieldNames.add(ID_FIELD_NAME);
+        }
         return fieldNames;
     }
 

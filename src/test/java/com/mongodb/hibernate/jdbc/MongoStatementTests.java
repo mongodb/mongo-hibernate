@@ -41,6 +41,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
@@ -178,6 +180,19 @@ class MongoStatementTests {
             assertThrows(FeatureNotSupportedException.class, () -> mongoStatement.executeBatch());
             assertTrue(lastOpenResultSet.isClosed());
         }
+    }
+
+    @Test
+    void testGetProjectStageFieldNames() {
+        var map = Map.of(
+                BsonDocument.parse("{title: 1, publishYear: 1}"), List.of("title", "publishYear", "_id"),
+                BsonDocument.parse("{title: 1, publishYear: 0}"), List.of("title", "_id"),
+                BsonDocument.parse("{title: 1, publishYear: false}"), List.of("title", "_id"),
+                BsonDocument.parse("{title: 1, _id: 0}"), List.of("title"),
+                BsonDocument.parse("{title: 1, _id: false}"), List.of("title"),
+                BsonDocument.parse("{_id: 1, title: 1}"), List.of("_id", "title"));
+        map.forEach((stage, expectedFields) ->
+                assertEquals(expectedFields, MongoStatement.getFieldNamesFromProjectStage(stage)));
     }
 
     @Nested
