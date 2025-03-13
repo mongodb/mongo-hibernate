@@ -19,17 +19,26 @@ package com.mongodb.hibernate.jdbc;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Time;
@@ -39,6 +48,7 @@ import java.util.Calendar;
 import java.util.function.Consumer;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -142,6 +152,58 @@ class MongoPreparedStatementTests {
     void testParameterIndexOverflow() throws SQLSyntaxErrorException {
         var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
         checkSetterMethods(mongoPreparedStatement, 6, this::assertThrowsOutOfRangeException);
+    }
+
+    @Nested
+    class ExecuteMethodClosesLastOpenResultSetTests {
+
+        @Mock
+        MongoCollection<BsonDocument> mongoCollection;
+
+        @Mock
+        AggregateIterable<BsonDocument> aggregateIterable;
+
+        @Mock
+        MongoCursor<BsonDocument> mongoCursor;
+
+        private ResultSet lastOpenResultSet;
+
+        private MongoPreparedStatement mongoPreparedStatement;
+
+        @BeforeEach
+        void beforeEach() throws SQLException {
+            String exampleQueryMql =
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { _id: { $eq: 1 } } },
+                            { $project: { _id: 0, title: 1, publishYear: 1 } }
+                        ]
+                    }""";
+            mongoPreparedStatement = createMongoPreparedStatement(exampleQueryMql);
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
+            doReturn(mongoCursor).when(aggregateIterable).cursor();
+
+            lastOpenResultSet = mongoPreparedStatement.executeQuery();
+            assertFalse(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteQuery() throws SQLException {
+            mongoPreparedStatement.executeQuery();
+            assertTrue(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteUpdate() throws SQLException {
+            doReturn(Document.parse("{n: 10}"))
+                    .when(mongoDatabase)
+                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            mongoPreparedStatement.executeUpdate();
+            assertTrue(lastOpenResultSet.isClosed());
+        }
     }
 
     @Test

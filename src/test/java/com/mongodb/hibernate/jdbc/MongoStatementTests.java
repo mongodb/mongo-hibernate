@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,10 +36,13 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import org.bson.BsonDocument;
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -100,6 +104,80 @@ class MongoStatementTests {
         mongoStatement.close();
 
         assertTrue(resultSet.isClosed());
+    }
+
+    @Nested
+    class ExecuteMethodClosesLastOpenResultSetTests {
+
+        private final String exampleQueryMql =
+                """
+                {
+                    aggregate: "books",
+                    pipeline: [
+                        { $match: { _id: { $eq: 1 } } },
+                        { $project: { _id: 0, title: 1, publishYear: 1 } }
+                    ]
+                }""";
+        private final String exampleUpdateMql =
+                """
+                {
+                  update: "members",
+                  updates: [
+                    {
+                      q: {},
+                      u: { $inc: { points: 1 } },
+                      multi: true
+                    }
+                  ]
+                }""";
+
+        @Mock
+        MongoCollection<BsonDocument> mongoCollection;
+
+        @Mock
+        AggregateIterable<BsonDocument> aggregateIterable;
+
+        @Mock
+        MongoCursor<BsonDocument> mongoCursor;
+
+        private ResultSet lastOpenResultSet;
+
+        @BeforeEach
+        void beforeEach() throws SQLException {
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
+            doReturn(mongoCursor).when(aggregateIterable).cursor();
+
+            lastOpenResultSet = mongoStatement.executeQuery(exampleQueryMql);
+            assertFalse(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteQuery() throws SQLException {
+            mongoStatement.executeQuery(exampleQueryMql);
+            assertTrue(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteUpdate() throws SQLException {
+            doReturn(Document.parse("{n: 10}"))
+                    .when(mongoDatabase)
+                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            mongoStatement.executeUpdate(exampleUpdateMql);
+            assertTrue(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecute() throws SQLException {
+            assertThrows(FeatureNotSupportedException.class, () -> mongoStatement.execute(exampleUpdateMql));
+            assertTrue(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteBatch() throws SQLException {
+            assertThrows(FeatureNotSupportedException.class, () -> mongoStatement.executeBatch());
+            assertTrue(lastOpenResultSet.isClosed());
+        }
     }
 
     @Nested
