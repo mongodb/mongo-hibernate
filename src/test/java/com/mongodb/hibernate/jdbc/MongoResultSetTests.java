@@ -206,6 +206,7 @@ class MongoResultSetTests {
                 () -> asserter.accept(() -> mongoResultSet.wasNull()),
                 () -> asserter.accept(() -> mongoResultSet.getMetaData()),
                 () -> asserter.accept(() -> mongoResultSet.findColumn("id")),
+                () -> asserter.accept(() -> mongoResultSet.getMetaData()),
                 () -> asserter.accept(() -> mongoResultSet.isWrapperFor(MongoResultSet.class)));
     }
 

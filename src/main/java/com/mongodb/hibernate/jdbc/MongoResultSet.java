@@ -208,7 +208,7 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of native query tickets");
+        return new MongoResultSetMetadata();
     }
 
     @Override
@@ -254,10 +254,15 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     private void checkColumnIndex(int columnIndex) throws SQLException {
+        if (fieldNames.isEmpty()) {
+            throw new SQLException("No field exists");
+        }
         if (columnIndex < 1 || columnIndex > fieldNames.size()) {
             throw new SQLException(format(
                     "Invalid column index [%d]; cannot be under 1 or over the current number of fields [%d]",
                     columnIndex, fieldNames.size()));
         }
     }
+
+    private static class MongoResultSetMetadata implements ResultSetMetaDataAdapter {}
 }
