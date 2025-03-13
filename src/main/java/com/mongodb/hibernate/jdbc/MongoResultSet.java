@@ -32,6 +32,7 @@ package com.mongodb.hibernate.jdbc;
  * limitations under the License.
  */
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
@@ -65,6 +66,7 @@ final class MongoResultSet implements ResultSetAdapter {
     private boolean closed;
 
     MongoResultSet(MongoCursor<BsonDocument> mongoCursor, List<String> fieldNames) {
+        assertFalse(fieldNames.isEmpty());
         this.mongoCursor = mongoCursor;
         this.fieldNames = fieldNames;
     }
@@ -254,9 +256,6 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     private void checkColumnIndex(int columnIndex) throws SQLException {
-        if (fieldNames.isEmpty()) {
-            throw new SQLException("No field exists");
-        }
         if (columnIndex < 1 || columnIndex > fieldNames.size()) {
             throw new SQLException(format(
                     "Invalid column index [%d]; cannot be under 1 or over the current number of fields [%d]",
