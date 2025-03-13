@@ -22,6 +22,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
@@ -44,7 +45,13 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             InFlightMetadataCollector metadata,
             ResourceStreamLocator resourceStreamLocator,
             MetadataBuildingContext buildingContext) {
-        metadata.getEntityBindings().forEach(MongoAdditionalMappingContributor::setIdentifierColumnName);
+        metadata.getEntityBindings().forEach(persistentClass -> {
+            if (persistentClass.useDynamicInsert()) {
+                throw new FeatureNotSupportedException(
+                        format("%s is not supported", DynamicInsert.class.getSimpleName()));
+            }
+            setIdentifierColumnName(persistentClass);
+        });
     }
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {
