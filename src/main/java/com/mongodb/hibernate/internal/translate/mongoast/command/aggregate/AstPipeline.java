@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,19 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstInsertCommand(String collection, AstDocument document) implements AstCommand {
+public record AstPipeline(List<AstStage> stages) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeStartDocument();
+        writer.writeStartArray();
         {
-            writer.writeString("insert", collection);
-            writer.writeName("documents");
-            writer.writeStartArray();
-            {
-                document.render(writer);
-            }
-            writer.writeEndArray();
+            stages.forEach(stage -> stage.render(writer));
         }
-        writer.writeEndDocument();
+        writer.writeEndArray();
     }
 }

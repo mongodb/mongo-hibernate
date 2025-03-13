@@ -198,6 +198,27 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    @Nested
+    class LoadByIdTests {
+
+        @Test
+        void testLoad() {
+            var book = new Book();
+            book.id = 1;
+            book.title = "In Search of Lost Time";
+            book.publishYear = 1913;
+
+            sessionFactoryScope.inTransaction(session -> session.persist(book));
+
+            var loadedBook = sessionFactoryScope.fromTransaction(session -> {
+                var loaded = new Book();
+                session.load(loaded, 1);
+                return loaded;
+            });
+            assertThat(loadedBook).usingRecursiveComparison().isEqualTo(book);
+        }
+    }
+
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
         assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }

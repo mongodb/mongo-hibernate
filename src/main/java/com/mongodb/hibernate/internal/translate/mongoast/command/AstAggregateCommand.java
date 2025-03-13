@@ -16,27 +16,18 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstPipeline;
 import org.bson.BsonWriter;
 
-public record AstDeleteCommand(String collection, AstFilter filter) implements AstCommand {
+public record AstAggregateCommand(String collection, AstPipeline pipeline) implements AstCommand {
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeString("delete", collection);
-            writer.writeName("deletes");
-            writer.writeStartArray();
-            {
-                writer.writeStartDocument();
-                {
-                    writer.writeName("q");
-                    filter.render(writer);
-                    writer.writeInt32("limit", 0);
-                }
-                writer.writeEndDocument();
-            }
-            writer.writeEndArray();
+            writer.writeString("aggregate", collection);
+            writer.writeName("pipeline");
+            pipeline.render(writer);
         }
         writer.writeEndDocument();
     }

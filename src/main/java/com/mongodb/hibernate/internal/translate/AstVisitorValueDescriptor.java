@@ -19,18 +19,30 @@ package com.mongodb.hibernate.internal.translate;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("UnusedTypeParameter")
 final class AstVisitorValueDescriptor<T> {
 
-    static final AstVisitorValueDescriptor<AstNode> COLLECTION_MUTATION = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<AstCommand> COLLECTION_MUTATION = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<AstCommand> COLLECTION_AGGREGATE = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<String> FIELD_NAME = new AstVisitorValueDescriptor<>();
     static final AstVisitorValueDescriptor<AstValue> FIELD_VALUE = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
+            new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
 
     private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 

@@ -17,12 +17,12 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstUpdateCommand(String collection, AstFilter filter, List<AstFieldUpdate> updates) implements AstNode {
+public record AstUpdateCommand(String collection, AstFilter filter, List<AstFieldUpdate> updates)
+        implements AstCommand {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
