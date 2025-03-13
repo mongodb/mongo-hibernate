@@ -264,5 +264,5 @@ final class MongoResultSet implements ResultSetAdapter {
         }
     }
 
-    private static class MongoResultSetMetadata implements ResultSetMetaDataAdapter {}
+    private static final class MongoResultSetMetadata implements ResultSetMetaDataAdapter {}
 }
