@@ -16,17 +16,25 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toCollection;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.bson.BsonDocument;
+import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
@@ -35,6 +43,7 @@ class MongoStatement implements StatementAdapter {
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
 
+    private @Nullable ResultSet resultSet;
     private boolean closed;
 
     MongoStatement(MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection) {
@@ -46,54 +55,80 @@ class MongoStatement implements StatementAdapter {
     @Override
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
+        closeLastOpenResultSet();
+        var command = parse(mql);
+        return executeQueryCommand(command);
+    }
+
+    void closeLastOpenResultSet() throws SQLException {
+        if (resultSet != null && !resultSet.isClosed()) {
+            resultSet.close();
+        }
+    }
+
+    ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
+        try {
+            startTransactionIfNeeded();
+
+            var collectionName = command.getString("aggregate").getValue();
+            var collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
+
+            var pipeline = command.getArray("pipeline").stream()
+                    .map(BsonValue::asDocument)
+                    .toList();
+            var fieldNames = getFieldNamesFromProjectStage(
+                    pipeline.get(pipeline.size() - 1).getDocument("$project"));
+
+            return resultSet = new MongoResultSet(
+                    collection.aggregate(clientSession, pipeline).cursor(), fieldNames);
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to execute query", e);
+        }
+    }
+
+    @VisibleForTesting(otherwise = PRIVATE)
+    static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
+        var fieldNames = projectStage.entrySet().stream()
+                .filter(field -> trueOrOne(field.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(toCollection(ArrayList::new));
+        if (!projectStage.containsKey(ID_FIELD_NAME)) {
+            // MongoDB includes this field unless it is explicitly excluded
+            fieldNames.add(ID_FIELD_NAME);
+        }
+        return fieldNames;
+    }
+
+    private static boolean trueOrOne(BsonValue value) {
+        return (value.isBoolean() && value.asBoolean().getValue())
+                || (value.isNumber() && value.asNumber().intValue() == 1);
     }
 
     @Override
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         var command = parse(mql);
         return executeUpdateCommand(command);
     }
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
-        startTransactionIfNeeded();
         try {
+            startTransactionIfNeeded();
             return mongoDatabase.runCommand(clientSession, command).getInteger("n");
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new SQLException("Failed to execute update command", e);
         }
     }
 
     @Override
-    public void close() {
+    public void close() throws SQLException {
         if (!closed) {
             closed = true;
+            if (resultSet != null) {
+                resultSet.close();
+            }
         }
-    }
-
-    @Override
-    public int getMaxRows() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public void setMaxRows(int max) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public int getQueryTimeout() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public void setQueryTimeout(int seconds) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
     }
 
     @Override
@@ -108,17 +143,15 @@ class MongoStatement implements StatementAdapter {
         return null;
     }
 
-    /** Only used in {@link org.hibernate.engine.jdbc.spi.SqlExceptionHelper}. */
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();
     }
 
-    // ----------------------- Multiple Results --------------------------
-
     @Override
     public boolean execute(String mql) throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
@@ -141,18 +174,6 @@ class MongoStatement implements StatementAdapter {
     }
 
     @Override
-    public void setFetchSize(int rows) throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
-    public int getFetchSize() throws SQLException {
-        checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-21 https://jira.mongodb.org/browse/HIBERNATE-21");
-    }
-
-    @Override
     public void addBatch(String mql) throws SQLException {
         checkClosed();
         throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
@@ -167,6 +188,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
+        closeLastOpenResultSet();
         throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 

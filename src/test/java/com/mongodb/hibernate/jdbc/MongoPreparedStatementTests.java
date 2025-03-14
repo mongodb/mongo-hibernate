@@ -16,40 +16,44 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
-import java.util.Map;
-import java.util.stream.Stream;
+import java.util.function.Consumer;
 import org.bson.BsonDocument;
 import org.bson.Document;
-import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -136,180 +140,142 @@ class MongoPreparedStatementTests {
                 assertEquals(expectedDoc, command);
             }
         }
+    }
 
-        @Test
-        @DisplayName("SQLException is thrown when parameter index is invalid")
-        void testParameterIndexInvalid() throws SQLSyntaxErrorException {
-            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
-                var sqlException =
-                        assertThrows(SQLException.class, () -> preparedStatement.setString(0, "War and Peace"));
-                assertEquals(
-                        format("Parameter index invalid: %d; should be within [1, %d]", 0, 5),
-                        sqlException.getMessage());
-            }
-        }
+    @Test
+    void testParameterIndexUnderflow() throws SQLSyntaxErrorException {
+        var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
+        checkSetterMethods(mongoPreparedStatement, 0, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
+    }
+
+    @Test
+    void testParameterIndexOverflow() throws SQLSyntaxErrorException {
+        var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
+        checkSetterMethods(mongoPreparedStatement, 6, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
     }
 
     @Nested
-    class CloseTests {
+    class ExecuteMethodClosesLastOpenResultSetTests {
 
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called on a closed MongoPreparedStatement")
-        @MethodSource("getMongoPreparedStatementMethodInvocationsImpactedByClosing")
-        void testCheckClosed(String label, PreparedStatementMethodInvocation methodInvocation)
-                throws SQLSyntaxErrorException {
+        @Mock
+        MongoCollection<BsonDocument> mongoCollection;
 
-            var mql =
-                    """
-                    {
-                       insert: "books",
-                       documents: [
-                           {
-                               title: "War and Peace",
-                               author: "Leo Tolstoy",
-                               outOfStock: false,
-                               values: [
-                                   { $undefined: true }
-                               ]
-                           }
-                       ]
-                    }
-                    """;
+        @Mock
+        AggregateIterable<BsonDocument> aggregateIterable;
 
-            var preparedStatement = createMongoPreparedStatement(mql);
-            preparedStatement.close();
+        @Mock
+        MongoCursor<BsonDocument> mongoCursor;
 
-            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertThat(sqlException.getMessage()).matches("MongoPreparedStatement has been closed");
-        }
+        private ResultSet lastOpenResultSet;
 
-        private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsImpactedByClosing() {
-            var now = System.currentTimeMillis();
-            var calendar = Calendar.getInstance();
-            return Map.<String, PreparedStatementMethodInvocation>ofEntries(
-                            Map.entry("executeQuery()", MongoPreparedStatement::executeQuery),
-                            Map.entry("executeUpdate()", MongoPreparedStatement::executeUpdate),
-                            Map.entry("setNull(int,int)", pstmt -> pstmt.setNull(1, Types.INTEGER)),
-                            Map.entry("setBoolean(int,boolean)", pstmt -> pstmt.setBoolean(1, true)),
-                            Map.entry("setByte(int,byte)", pstmt -> pstmt.setByte(1, (byte) 10)),
-                            Map.entry("setShort(int,short)", pstmt -> pstmt.setShort(1, (short) 10)),
-                            Map.entry("setInt(int,int)", pstmt -> pstmt.setInt(1, 1)),
-                            Map.entry("setLong(int,long)", pstmt -> pstmt.setLong(1, 1L)),
-                            Map.entry("setFloat(int,float)", pstmt -> pstmt.setFloat(1, 1.0F)),
-                            Map.entry("setDouble(int,double)", pstmt -> pstmt.setDouble(1, 1.0)),
-                            Map.entry(
-                                    "setBigDecimal(int,BigDecimal)",
-                                    pstmt -> pstmt.setBigDecimal(1, new BigDecimal(1))),
-                            Map.entry("setString(int,String)", pstmt -> pstmt.setString(1, "")),
-                            Map.entry("setBytes(int,byte[])", pstmt -> pstmt.setBytes(1, "".getBytes())),
-                            Map.entry("setDate(int,Date)", pstmt -> pstmt.setDate(1, new Date(now))),
-                            Map.entry("setTime(int,Time)", pstmt -> pstmt.setTime(1, new Time(now))),
-                            Map.entry(
-                                    "setTimestamp(int,Timestamp)", pstmt -> pstmt.setTimestamp(1, new Timestamp(now))),
-                            Map.entry(
-                                    "setBinaryStream(int,InputStream,int)",
-                                    pstmt -> pstmt.setBinaryStream(1, new ByteArrayInputStream("".getBytes()), 0)),
-                            Map.entry(
-                                    "setObject(int,Object,int)",
-                                    pstmt -> pstmt.setObject(1, Mockito.mock(Array.class), Types.OTHER)),
-                            Map.entry("addBatch()", MongoPreparedStatement::addBatch),
-                            Map.entry("setArray(int,Array)", pstmt -> pstmt.setArray(1, Mockito.mock(Array.class))),
-                            Map.entry("setDate(int,Date,Calendar)", pstmt -> pstmt.setDate(1, new Date(now), calendar)),
-                            Map.entry("setTime(int,Time,Calendar)", pstmt -> pstmt.setTime(1, new Time(now), calendar)),
-                            Map.entry(
-                                    "setTimestamp(int,Timestamp,Calendar)",
-                                    pstmt -> pstmt.setTimestamp(1, new Timestamp(now), calendar)),
-                            Map.entry("setNull(int,Object,String)", pstmt -> pstmt.setNull(1, Types.STRUCT, "BOOK")))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
-        }
-    }
-
-    @Nested
-    class ParameterIndexCheckingTests {
-
-        @AutoClose
-        private MongoPreparedStatement preparedStatement;
+        private MongoPreparedStatement mongoPreparedStatement;
 
         @BeforeEach
-        void beforeEach() throws SQLSyntaxErrorException {
-            preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
+        void beforeEach() throws SQLException {
+            String exampleQueryMql =
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { _id: { $eq: 1 } } },
+                            { $project: { _id: 0, title: 1, publishYear: 1 } }
+                        ]
+                    }""";
+            mongoPreparedStatement = createMongoPreparedStatement(exampleQueryMql);
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
+            doReturn(mongoCursor).when(aggregateIterable).cursor();
+
+            lastOpenResultSet = mongoPreparedStatement.executeQuery();
+            assertFalse(lastOpenResultSet.isClosed());
         }
 
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too low")
-        @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow")
-        void testParameterIndexUnderflow(String label, PreparedStatementMethodInvocation methodInvocation) {
-            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertThat(sqlException.getMessage()).startsWith("Parameter index invalid");
+        @Test
+        void testExecuteQuery() throws SQLException {
+            mongoPreparedStatement.executeQuery();
+            assertTrue(lastOpenResultSet.isClosed());
         }
 
-        @ParameterizedTest(name = "SQLException is thrown when \"{0}\" is called with parameter index being too high")
-        @MethodSource("getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow")
-        void testParameterIndexOverflow(String label, PreparedStatementMethodInvocation methodInvocation) {
-            var sqlException = assertThrows(SQLException.class, () -> methodInvocation.runOn(preparedStatement));
-            assertThat(sqlException.getMessage()).startsWith("Parameter index invalid");
-        }
-
-        private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexUnderflow() {
-            return doGetMongoPreparedStatementMethodInvocationsWithParameterIndex(0);
-        }
-
-        private static Stream<Arguments> getMongoPreparedStatementMethodInvocationsWithParameterIndexOverflow() {
-            return doGetMongoPreparedStatementMethodInvocationsWithParameterIndex(6);
-        }
-
-        private static Stream<Arguments> doGetMongoPreparedStatementMethodInvocationsWithParameterIndex(
-                int parameterIndex) {
-            var now = System.currentTimeMillis();
-            var calendar = Calendar.getInstance();
-            return Map.<String, PreparedStatementMethodInvocation>ofEntries(
-                            Map.entry("setNull(int,int)", pstmt -> pstmt.setNull(parameterIndex, Types.INTEGER)),
-                            Map.entry("setBoolean(int,boolean)", pstmt -> pstmt.setBoolean(parameterIndex, true)),
-                            Map.entry("setByte(int,byte)", pstmt -> pstmt.setByte(parameterIndex, (byte) 10)),
-                            Map.entry("setShort(int,short)", pstmt -> pstmt.setShort(parameterIndex, (short) 10)),
-                            Map.entry("setInt(int,int)", pstmt -> pstmt.setInt(parameterIndex, 1)),
-                            Map.entry("setLong(int,long)", pstmt -> pstmt.setLong(parameterIndex, 1L)),
-                            Map.entry("setFloat(int,float)", pstmt -> pstmt.setFloat(parameterIndex, 1.0F)),
-                            Map.entry("setDouble(int,double)", pstmt -> pstmt.setDouble(parameterIndex, 1.0)),
-                            Map.entry(
-                                    "setBigDecimal(int,BigDecimal)",
-                                    pstmt -> pstmt.setBigDecimal(parameterIndex, new BigDecimal(1))),
-                            Map.entry("setString(int,String)", pstmt -> pstmt.setString(parameterIndex, "")),
-                            Map.entry("setBytes(int,byte[])", pstmt -> pstmt.setBytes(parameterIndex, "".getBytes())),
-                            Map.entry("setDate(int,Date)", pstmt -> pstmt.setDate(parameterIndex, new Date(now))),
-                            Map.entry("setTime(int,Time)", pstmt -> pstmt.setTime(parameterIndex, new Time(now))),
-                            Map.entry(
-                                    "setTimestamp(int,Timestamp)",
-                                    pstmt -> pstmt.setTimestamp(parameterIndex, new Timestamp(now))),
-                            Map.entry(
-                                    "setBinaryStream(int,InputStream,int)",
-                                    pstmt -> pstmt.setBinaryStream(
-                                            parameterIndex, new ByteArrayInputStream("".getBytes()), 0)),
-                            Map.entry(
-                                    "setObject(int,Object,int)",
-                                    pstmt -> pstmt.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
-                            Map.entry(
-                                    "setArray(int,Array)",
-                                    pstmt -> pstmt.setArray(parameterIndex, Mockito.mock(Array.class))),
-                            Map.entry(
-                                    "setDate(int,Date,Calendar)",
-                                    pstmt -> pstmt.setDate(parameterIndex, new Date(now), calendar)),
-                            Map.entry(
-                                    "setTime(int,Time,Calendar)",
-                                    pstmt -> pstmt.setTime(parameterIndex, new Time(now), calendar)),
-                            Map.entry(
-                                    "setTimestamp(int,Timestamp,Calendar)",
-                                    pstmt -> pstmt.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
-                            Map.entry(
-                                    "setNull(int,Object,String)",
-                                    pstmt -> pstmt.setNull(parameterIndex, Types.STRUCT, "BOOK")))
-                    .entrySet()
-                    .stream()
-                    .map(entry -> Arguments.of(entry.getKey(), entry.getValue()));
+        @Test
+        void testExecuteUpdate() throws SQLException {
+            doReturn(Document.parse("{n: 10}"))
+                    .when(mongoDatabase)
+                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            mongoPreparedStatement.executeUpdate();
+            assertTrue(lastOpenResultSet.isClosed());
         }
     }
 
-    interface PreparedStatementMethodInvocation {
-        void runOn(MongoPreparedStatement pstmt) throws SQLException;
+    @Test
+    void testCheckClosed() throws SQLException {
+        var mql =
+                """
+                {
+                   insert: "books",
+                   documents: [
+                       {
+                           title: "War and Peace",
+                           author: "Leo Tolstoy",
+                           outOfStock: false,
+                           values: [
+                               { $undefined: true }
+                           ]
+                       }
+                   ]
+                }
+                """;
+        var mongoPreparedStatement = createMongoPreparedStatement(mql);
+        mongoPreparedStatement.close();
+        checkMethodsWithOpenPrecondition(
+                mongoPreparedStatement, MongoPreparedStatementTests::assertThrowsClosedException);
+    }
+
+    private static void checkSetterMethods(
+            MongoPreparedStatement mongoPreparedStatement, int parameterIndex, Consumer<Executable> asserter) {
+        var now = System.currentTimeMillis();
+        var calendar = Calendar.getInstance();
+        assertAll(
+                () -> asserter.accept(() -> mongoPreparedStatement.setNull(parameterIndex, Types.INTEGER)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setBoolean(parameterIndex, true)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setInt(parameterIndex, 1)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setLong(parameterIndex, 1L)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setDouble(parameterIndex, 1.0)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setBigDecimal(parameterIndex, new BigDecimal(1))),
+                () -> asserter.accept(() -> mongoPreparedStatement.setString(parameterIndex, "")),
+                () -> asserter.accept(() -> mongoPreparedStatement.setBytes(parameterIndex, "".getBytes())),
+                () -> asserter.accept(() -> mongoPreparedStatement.setDate(parameterIndex, new Date(now))),
+                () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now))),
+                () -> asserter.accept(() -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now))),
+                () -> asserter.accept(
+                        () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
+                () -> asserter.accept(
+                        () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class))),
+                () -> asserter.accept(() -> mongoPreparedStatement.setArray(parameterIndex, Mockito.mock(Array.class))),
+                () -> asserter.accept(() -> mongoPreparedStatement.setDate(parameterIndex, new Date(now), calendar)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now), calendar)),
+                () -> asserter.accept(
+                        () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setNull(parameterIndex, Types.STRUCT, "BOOK")));
+    }
+
+    private static void checkMethodsWithOpenPrecondition(
+            MongoPreparedStatement mongoPreparedStatement, Consumer<Executable> asserter) {
+        checkSetterMethods(mongoPreparedStatement, 1, asserter);
+        assertAll(
+                () -> asserter.accept(mongoPreparedStatement::executeQuery),
+                () -> asserter.accept(mongoPreparedStatement::executeUpdate),
+                () -> asserter.accept(mongoPreparedStatement::addBatch),
+                () -> asserter.accept(() -> mongoPreparedStatement.setQueryTimeout(20_000)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)));
+    }
+
+    private static void assertThrowsOutOfRangeException(Executable executable) {
+        var e = assertThrows(SQLException.class, executable);
+        assertThat(e.getMessage()).startsWith("Invalid parameter index");
+    }
+
+    private static void assertThrowsClosedException(Executable executable) {
+        var exception = assertThrows(SQLException.class, executable);
+        assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
     }
 }

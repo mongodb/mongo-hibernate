@@ -18,24 +18,29 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.jdbc.Work;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
 class MongoStatementIntegrationTests {
@@ -59,23 +64,52 @@ class MongoStatementIntegrationTests {
         session = sessionFactory.openSession();
     }
 
+    @Test
+    void testExecuteQuery() {
+
+        insertTestData(
+                session,
+                """
+                {
+                    insert: "books",
+                    documents: [
+                        { _id: 1, publishYear: 1867, title: "War and Peace", author: "Leo Tolstoy" },
+                        { _id: 2, publishYear: 1878, author: "Leo Tolstoy", title: "Anna Karenina" },
+                        { _id: 3, publishYear: 1866, title: "Crime and Punishment", author: "Fyodor Dostoevsky" }
+                    ]
+                }""");
+
+        doWorkAwareOfAutoCommit(connection -> {
+            try (var stmt = connection.createStatement()) {
+                try (var rs = stmt.executeQuery(
+                        """
+                        {
+                            aggregate: "books",
+                            pipeline: [
+                                { $match: { author: { $eq: "Leo Tolstoy" } } },
+                                { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
+                            ]
+                        }""")) {
+                    assertTrue(rs.next());
+                    assertAll(
+                            () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                            () -> assertEquals(1867, rs.getInt(2)),
+                            () -> assertEquals("War and Peace", rs.getString(3)));
+
+                    assertTrue(rs.next());
+                    assertAll(
+                            () -> assertEquals("Leo Tolstoy", rs.getString(1)),
+                            () -> assertEquals(1878, rs.getInt(2)),
+                            () -> assertEquals("Anna Karenina", rs.getString(3)));
+
+                    assertFalse(rs.next());
+                }
+            }
+        });
+    }
+
     @Nested
     class ExecuteUpdateTests {
-
-        @BeforeEach
-        void beforeEach() {
-            session.doWork(conn -> {
-                conn.createStatement()
-                        .executeUpdate(
-                                """
-                                {
-                                    delete: "books",
-                                    deletes: [
-                                        { q: {}, limit: 0 }
-                                    ]
-                                }""");
-            });
-        }
 
         private static final String INSERT_MQL =
                 """
@@ -103,9 +137,8 @@ class MongoStatementIntegrationTests {
                     ]
                 }""";
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testInsert(boolean autoCommit) {
+        @Test
+        void testInsert() {
             var expectedDocs = List.of(
                     BsonDocument.parse(
                             """
@@ -131,14 +164,13 @@ class MongoStatementIntegrationTests {
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false
                             }"""));
-            assertExecuteUpdate(INSERT_MQL, autoCommit, 3, expectedDocs);
+            assertExecuteUpdate(INSERT_MQL, 3, expectedDocs);
         }
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testUpdate(boolean autoCommit) {
+        @Test
+        void testUpdate() {
 
-            prepareData();
+            insertTestData(session, INSERT_MQL);
 
             var updateMql =
                     """
@@ -179,14 +211,13 @@ class MongoStatementIntegrationTests {
                                 author: "Fyodor Dostoevsky",
                                 outOfStock: false
                             }"""));
-            assertExecuteUpdate(updateMql, autoCommit, 2, expectedDocs);
+            assertExecuteUpdate(updateMql, 2, expectedDocs);
         }
 
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testDelete(boolean autoCommit) {
+        @Test
+        void testDelete() {
 
-            prepareData();
+            insertTestData(session, INSERT_MQL);
 
             var deleteMql =
                     """
@@ -216,33 +247,71 @@ class MongoStatementIntegrationTests {
                                  author: "Fyodor Dostoevsky",
                                  outOfStock: false
                             }"""));
-            assertExecuteUpdate(deleteMql, autoCommit, 1, expectedDocs);
-        }
-
-        private void prepareData() {
-            session.doWork(connection -> {
-                connection.setAutoCommit(true);
-                var statement = connection.createStatement();
-                statement.executeUpdate(INSERT_MQL);
-            });
+            assertExecuteUpdate(deleteMql, 1, expectedDocs);
         }
 
         private void assertExecuteUpdate(
-                String mql, boolean autoCommit, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
-            session.doWork(connection -> {
-                connection.setAutoCommit(autoCommit);
+                String mql, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
+            doWorkAwareOfAutoCommit(connection -> {
                 try (var stmt = (MongoStatement) connection.createStatement()) {
-                    try {
-                        assertEquals(expectedRowCount, stmt.executeUpdate(mql));
-                    } finally {
-                        if (!autoCommit) {
-                            connection.commit();
-                        }
-                    }
-                    assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
-                            .containsExactlyElementsOf(expectedDocuments);
+                    assertEquals(expectedRowCount, stmt.executeUpdate(mql));
                 }
             });
+            assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
+                    .containsExactlyElementsOf(expectedDocuments);
         }
+    }
+
+    static void insertTestData(Session session, String insertMql) {
+        session.doWork(connection -> doWithSpecifiedAutoCommit(
+                false,
+                connection,
+                () -> doAndTerminateTransaction(connection, () -> {
+                    try (var statement = connection.createStatement()) {
+                        statement.executeUpdate(insertMql);
+                    }
+                })));
+    }
+
+    private void doWorkAwareOfAutoCommit(Work work) {
+        session.doWork(connection -> doAwareOfAutoCommit(connection, () -> work.execute(connection)));
+    }
+
+    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
+        doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
+    }
+
+    static void doWithSpecifiedAutoCommit(boolean autoCommit, Connection connection, SqlExecutable work)
+            throws SQLException {
+        var originalAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(autoCommit);
+        try {
+            work.execute();
+        } finally {
+            connection.setAutoCommit(originalAutoCommit);
+        }
+    }
+
+    static void doAndTerminateTransaction(Connection connectionNoAutoCommit, SqlExecutable work) throws SQLException {
+        Throwable primaryException = null;
+        try {
+            work.execute();
+            connectionNoAutoCommit.commit();
+        } catch (Throwable e) {
+            primaryException = e;
+            throw e;
+        } finally {
+            if (primaryException != null) {
+                try {
+                    connectionNoAutoCommit.rollback();
+                } catch (Throwable suppressedException) {
+                    primaryException.addSuppressed(suppressedException);
+                }
+            }
+        }
+    }
+
+    interface SqlExecutable {
+        void execute() throws SQLException;
     }
 }
