@@ -40,7 +40,6 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
-import java.sql.Statement;
 import java.util.List;
 import java.util.function.BiConsumer;
 import org.bson.BsonDocument;
@@ -261,6 +260,7 @@ class MongoStatementTests {
                 () -> assertThrowsClosedException(mongoStatement::cancel),
                 () -> assertThrowsClosedException(mongoStatement::getWarnings),
                 () -> assertThrowsClosedException(mongoStatement::clearWarnings),
+                () -> assertThrowsClosedException(() -> mongoStatement.execute(exampleUpdateMql)),
                 () -> assertThrowsClosedException(mongoStatement::getResultSet),
                 () -> assertThrowsClosedException(mongoStatement::getMoreResults),
                 () -> assertThrowsClosedException(mongoStatement::getUpdateCount),
@@ -268,7 +268,7 @@ class MongoStatementTests {
                 () -> assertThrowsClosedException(mongoStatement::clearBatch),
                 () -> assertThrowsClosedException(mongoStatement::executeBatch),
                 () -> assertThrowsClosedException(mongoStatement::getConnection),
-                () -> assertThrowsClosedException(() -> mongoStatement.isWrapperFor(Statement.class)));
+                () -> assertThrowsClosedException(() -> mongoStatement.isWrapperFor(MongoStatement.class)));
     }
 
     private static void assertThrowsClosedException(Executable executable) {

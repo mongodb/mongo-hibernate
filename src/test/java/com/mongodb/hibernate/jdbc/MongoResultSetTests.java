@@ -71,18 +71,18 @@ class MongoResultSetTests {
 
     @Test
     void testColumnIndexUnderflow() {
-        checkGetterMethods(0, this::assertThrowsOutOfRangeException);
+        checkGetterMethods(0, MongoResultSetTests::assertThrowsOutOfRangeException);
     }
 
     @Test
     void testColumnIndexOverflow() {
-        checkGetterMethods(FIELDS.size() + 1, this::assertThrowsOutOfRangeException);
+        checkGetterMethods(FIELDS.size() + 1, MongoResultSetTests::assertThrowsOutOfRangeException);
     }
 
     @Test
     void testCheckClosed() throws SQLException {
         mongoResultSet.close();
-        checkMethodsWithOpenPrecondition(this::assertThrowsClosedException);
+        checkMethodsWithOpenPrecondition(MongoResultSetTests::assertThrowsClosedException);
     }
 
     @Nested
@@ -228,17 +228,17 @@ class MongoResultSetTests {
                 () -> asserter.accept(() -> mongoResultSet.getObject(columnIndex, UUID.class)));
     }
 
-    private void assertThrowsOutOfRangeException(Executable executable) {
+    private static void assertThrowsOutOfRangeException(Executable executable) {
         var e = assertThrows(SQLException.class, executable);
         assertThat(e.getMessage()).startsWith("Invalid column index");
     }
 
-    private void assertThrowsClosedException(Executable executable) {
+    private static void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).isEqualTo("MongoResultSet has been closed");
     }
 
-    private void assertThrowsTypeMismatchException(Executable executable) {
+    private static void assertThrowsTypeMismatchException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).startsWith("Failed to get value from column");
     }

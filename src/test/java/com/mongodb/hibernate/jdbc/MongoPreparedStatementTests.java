@@ -145,13 +145,13 @@ class MongoPreparedStatementTests {
     @Test
     void testParameterIndexUnderflow() throws SQLSyntaxErrorException {
         var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
-        checkSetterMethods(mongoPreparedStatement, 0, this::assertThrowsOutOfRangeException);
+        checkSetterMethods(mongoPreparedStatement, 0, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
     }
 
     @Test
     void testParameterIndexOverflow() throws SQLSyntaxErrorException {
         var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
-        checkSetterMethods(mongoPreparedStatement, 6, this::assertThrowsOutOfRangeException);
+        checkSetterMethods(mongoPreparedStatement, 6, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
     }
 
     @Nested
@@ -226,10 +226,11 @@ class MongoPreparedStatementTests {
                 """;
         var mongoPreparedStatement = createMongoPreparedStatement(mql);
         mongoPreparedStatement.close();
-        checkMethodsWithOpenPrecondition(mongoPreparedStatement, this::assertThrowsClosedException);
+        checkMethodsWithOpenPrecondition(
+                mongoPreparedStatement, MongoPreparedStatementTests::assertThrowsClosedException);
     }
 
-    private void checkSetterMethods(
+    private static void checkSetterMethods(
             MongoPreparedStatement mongoPreparedStatement, int parameterIndex, Consumer<Executable> asserter) {
         var now = System.currentTimeMillis();
         var calendar = Calendar.getInstance();
@@ -243,11 +244,12 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setString(parameterIndex, "")),
                 () -> asserter.accept(() -> mongoPreparedStatement.setBytes(parameterIndex, "".getBytes())),
                 () -> asserter.accept(() -> mongoPreparedStatement.setDate(parameterIndex, new Date(now))),
-                () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now), calendar)),
-                () -> asserter.accept(
-                        () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now))),
+                () -> asserter.accept(() -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now))),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
+                () -> asserter.accept(
+                        () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class))),
                 () -> asserter.accept(() -> mongoPreparedStatement.setArray(parameterIndex, Mockito.mock(Array.class))),
                 () -> asserter.accept(() -> mongoPreparedStatement.setDate(parameterIndex, new Date(now), calendar)),
                 () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now), calendar)),
@@ -256,30 +258,9 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setNull(parameterIndex, Types.STRUCT, "BOOK")));
     }
 
-    private void checkMethodsWithOpenPrecondition(
+    private static void checkMethodsWithOpenPrecondition(
             MongoPreparedStatement mongoPreparedStatement, Consumer<Executable> asserter) {
         checkSetterMethods(mongoPreparedStatement, 1, asserter);
-        var exampleQueryMql =
-                """
-                {
-                  find: "restaurants",
-                  filter: { rating: { $gte: 9 }, cuisine: "italian" },
-                  projection: { name: 1, rating: 1, address: 1 },
-                  sort: { name: 1 },
-                  limit: 5
-                }""";
-        var exampleUpdateMql =
-                """
-                {
-                  update: "members",
-                  updates: [
-                    {
-                      q: {},
-                      u: { $inc: { points: 1 } },
-                      multi: true
-                    }
-                  ]
-                }""";
         assertAll(
                 () -> asserter.accept(mongoPreparedStatement::executeQuery),
                 () -> asserter.accept(mongoPreparedStatement::executeUpdate),
@@ -288,12 +269,12 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setFetchSize(10)));
     }
 
-    private void assertThrowsOutOfRangeException(Executable executable) {
+    private static void assertThrowsOutOfRangeException(Executable executable) {
         var e = assertThrows(SQLException.class, executable);
         assertThat(e.getMessage()).startsWith("Invalid parameter index");
     }
 
-    private void assertThrowsClosedException(Executable executable) {
+    private static void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
     }
