@@ -18,9 +18,9 @@ plugins {
     `kotlin-dsl`
 }
 
-repositories {
-    mavenCentral()
-}
+repositories { mavenCentral() }
+
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
 dependencies {
     implementation("com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}")

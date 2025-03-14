@@ -18,5 +18,5 @@
 
 # Gradle
 .gradle/
+.kotlin/
 build/
-

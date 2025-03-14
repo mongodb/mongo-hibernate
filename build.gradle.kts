@@ -42,15 +42,13 @@ sourceSets {
     }
 }
 
-val integrationTestSourceSet: SourceSet = sourceSets["integrationTest"]
+val integrationTestSourceSet = sourceSets["integrationTest"]
 
-val integrationTestImplementation: Configuration by
-    configurations.getting { extendsFrom(configurations.implementation.get()) }
-val integrationTestRuntimeOnly: Configuration by
-    configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
+val integrationTestImplementation by configurations.getting { extendsFrom(configurations.implementation.get()) }
+val integrationTestRuntimeOnly by configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
 
-val integrationTestTask: Task =
-    task<Test>("integrationTest") {
+val integrationTestTask =
+    tasks.register<Test>("integrationTest") {
         group = LifecycleBasePlugin.VERIFICATION_GROUP
         testClassesDirs = integrationTestSourceSet.output.classesDirs
         classpath = integrationTestSourceSet.runtimeClasspath
