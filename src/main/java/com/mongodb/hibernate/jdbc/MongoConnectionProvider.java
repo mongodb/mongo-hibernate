@@ -23,7 +23,7 @@ import com.mongodb.MongoDriverInformation;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import java.io.IOException;
