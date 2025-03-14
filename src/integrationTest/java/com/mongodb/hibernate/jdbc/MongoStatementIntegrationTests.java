@@ -34,45 +34,16 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.jdbc.Work;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.function.Executable;
 
 @ExtendWith(MongoExtension.class)
 class MongoStatementIntegrationTests {
-
-    static class MongoStatementIntegrationWithAutoCommitTests extends MongoStatementIntegrationTests {
-        @Override
-        boolean autoCommit() {
-            return true;
-        }
-
-        void executeInTransaction(Connection connection, Executable executable) {
-            try {
-                executable.execute();
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    boolean autoCommit() {
-        return false;
-    }
-
-    void executeInTransaction(Connection connection, Executable executable) throws SQLException {
-        try {
-            executable.execute();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        } finally {
-            connection.commit();
-        }
-    }
 
     @AutoClose
     private static SessionFactory sessionFactory;
@@ -97,6 +68,7 @@ class MongoStatementIntegrationTests {
     void testExecuteQuery() {
 
         insertTestData(
+                session,
                 """
                 {
                     insert: "books",
@@ -107,20 +79,17 @@ class MongoStatementIntegrationTests {
                     ]
                 }""");
 
-        session.doWork(conn -> {
-            conn.setAutoCommit(autoCommit());
-            try (var stmt = conn.createStatement()) {
-                executeInTransaction(conn, () -> {
-                    var rs = stmt.executeQuery(
-                            """
-                            {
-                                aggregate: "books",
-                                pipeline: [
-                                    { $match: { author: { $eq: "Leo Tolstoy" } } },
-                                    { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
-                                ]
-                            }""");
-
+        doWorkAwareOfAutoCommit(connection -> {
+            try (var stmt = connection.createStatement()) {
+                try (var rs = stmt.executeQuery(
+                        """
+                        {
+                            aggregate: "books",
+                            pipeline: [
+                                { $match: { author: { $eq: "Leo Tolstoy" } } },
+                                { $project: { author: 1, _id: 0, publishYear: 1, title: 1 } }
+                            ]
+                        }""")) {
                     assertTrue(rs.next());
                     assertAll(
                             () -> assertEquals("Leo Tolstoy", rs.getString(1)),
@@ -134,7 +103,7 @@ class MongoStatementIntegrationTests {
                             () -> assertEquals("Anna Karenina", rs.getString(3)));
 
                     assertFalse(rs.next());
-                });
+                }
             }
         });
     }
@@ -201,7 +170,7 @@ class MongoStatementIntegrationTests {
         @Test
         void testUpdate() {
 
-            insertTestData(INSERT_MQL);
+            insertTestData(session, INSERT_MQL);
 
             var updateMql =
                     """
@@ -248,7 +217,7 @@ class MongoStatementIntegrationTests {
         @Test
         void testDelete() {
 
-            insertTestData(INSERT_MQL);
+            insertTestData(session, INSERT_MQL);
 
             var deleteMql =
                     """
@@ -283,25 +252,66 @@ class MongoStatementIntegrationTests {
 
         private void assertExecuteUpdate(
                 String mql, int expectedRowCount, List<? extends BsonDocument> expectedDocuments) {
-            session.doWork(connection -> {
-                connection.setAutoCommit(autoCommit());
+            doWorkAwareOfAutoCommit(connection -> {
                 try (var stmt = (MongoStatement) connection.createStatement()) {
-                    executeInTransaction(connection, () -> assertEquals(expectedRowCount, stmt.executeUpdate(mql)));
-                    assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
-                            .containsExactlyElementsOf(expectedDocuments);
+                    assertEquals(expectedRowCount, stmt.executeUpdate(mql));
                 }
             });
+            assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
+                    .containsExactlyElementsOf(expectedDocuments);
         }
     }
 
-    private void insertTestData(String insertMql) {
-        session.doWork(connection -> {
-            connection.setAutoCommit(false);
-            try (var statement = connection.createStatement()) {
-                statement.executeUpdate(insertMql);
-            } finally {
-                connection.commit();
+    static void insertTestData(Session session, String insertMql) {
+        session.doWork(connection -> doWithSpecifiedAutoCommit(
+                false,
+                connection,
+                () -> doAndTerminateTransaction(connection, () -> {
+                    try (var statement = connection.createStatement()) {
+                        statement.executeUpdate(insertMql);
+                    }
+                })));
+    }
+
+    private void doWorkAwareOfAutoCommit(Work work) {
+        session.doWork(connection -> doAwareOfAutoCommit(connection, () -> work.execute(connection)));
+    }
+
+    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
+        doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
+    }
+
+    static void doWithSpecifiedAutoCommit(boolean autoCommit, Connection connection, SqlExecutable work)
+            throws SQLException {
+        var originalAutoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(autoCommit);
+        try {
+            work.execute();
+        } finally {
+            connection.setAutoCommit(originalAutoCommit);
+        }
+    }
+
+    static void doAndTerminateTransaction(Connection connectionNoAutoCommit, SqlExecutable work) throws SQLException {
+        Throwable primaryException = null;
+        try {
+            work.execute();
+            connectionNoAutoCommit.commit();
+        } catch (Throwable e) {
+            primaryException = e;
+            throw e;
+        } finally {
+            if (primaryException != null) {
+                try {
+                    connectionNoAutoCommit.rollback();
+                } catch (Throwable suppressedException) {
+                    primaryException.addSuppressed(suppressedException);
+                }
             }
-        });
+        }
+    }
+
+    interface SqlExecutable {
+        void execute() throws SQLException;
     }
 }
