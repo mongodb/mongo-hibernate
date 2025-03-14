@@ -84,7 +84,7 @@ spotless {
 
         formatAnnotations()
 
-        // need to add license header manually to package-info.java
+        // need to add license header manually to package-info.java and module-info.java
         // due to the bug: https://github.com/diffplug/spotless/issues/532
         licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
 
