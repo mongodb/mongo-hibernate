@@ -151,7 +151,7 @@ class MongoConnectionTests {
                 () -> assertThrowsClosedException(() -> mongoConnection.isWrapperFor(Connection.class)));
     }
 
-    private void assertThrowsClosedException(Executable executable) {
+    private static void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertEquals("MongoConnection has been closed", exception.getMessage());
     }
