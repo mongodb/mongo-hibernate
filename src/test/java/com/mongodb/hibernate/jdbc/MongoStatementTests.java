@@ -184,15 +184,15 @@ class MongoStatementTests {
 
     @Test
     void testGetProjectStageFieldNames() {
-        var map = Map.of(
-                BsonDocument.parse("{title: 1, publishYear: 1}"), List.of("title", "publishYear", "_id"),
-                BsonDocument.parse("{title: 1, publishYear: 0}"), List.of("title", "_id"),
-                BsonDocument.parse("{title: 1, publishYear: false}"), List.of("title", "_id"),
-                BsonDocument.parse("{title: 1, _id: 0}"), List.of("title"),
-                BsonDocument.parse("{title: 1, _id: false}"), List.of("title"),
-                BsonDocument.parse("{_id: 1, title: 1}"), List.of("_id", "title"));
-        map.forEach((stage, expectedFields) ->
-                assertEquals(expectedFields, MongoStatement.getFieldNamesFromProjectStage(stage)));
+        BiConsumer<String, List<String>> asserter = (projectStage, expectedFieldNames) -> assertEquals(
+                expectedFieldNames, MongoStatement.getFieldNamesFromProjectStage(BsonDocument.parse(projectStage)));
+        assertAll(
+                () -> asserter.accept("{title: 1, publishYear: 1}", List.of("title", "publishYear", "_id")),
+                () -> asserter.accept("{title: 1, publishYear: 0}", List.of("title", "_id")),
+                () -> asserter.accept("{title: 1, publishYear: false}", List.of("title", "_id")),
+                () -> asserter.accept("{title: 1, _id: 0}", List.of("title")),
+                () -> asserter.accept("{title: 1, _id: false}", List.of("title")),
+                () -> asserter.accept("{_id: 1, title: 1}", List.of("_id", "title")));
     }
 
     @Nested
