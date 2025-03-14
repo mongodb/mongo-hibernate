@@ -19,6 +19,7 @@ package com.mongodb.hibernate.jdbc;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toCollection;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
@@ -31,7 +32,7 @@ import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.List;
-import org.bson.BsonBoolean;
+import java.util.Map;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
@@ -87,31 +88,20 @@ class MongoStatement implements StatementAdapter {
 
     @VisibleForTesting(otherwise = PRIVATE)
     static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
-        var fieldNames = new ArrayList<String>(projectStage.size());
-
-        var idExplicitlyIncluded = false;
-        var idImplicitInclusionSuppressed = false;
-
-        for (var entry : projectStage.entrySet()) {
-            var key = entry.getKey();
-            var value = entry.getValue();
-            var skip = (value.isNumber() && value.asNumber().intValue() == 0)
-                    || (value.isBoolean() && value.asBoolean().equals(BsonBoolean.FALSE));
-            if (skip) {
-                if (ID_FIELD_NAME.equals(key)) {
-                    idImplicitInclusionSuppressed = true;
-                }
-            } else {
-                fieldNames.add(key);
-                if (ID_FIELD_NAME.equals(key)) {
-                    idExplicitlyIncluded = true;
-                }
-            }
-        }
-        if (!idExplicitlyIncluded && !idImplicitInclusionSuppressed) {
+        var fieldNames = projectStage.entrySet().stream()
+                .filter(field -> trueOrOne(field.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(toCollection(ArrayList::new));
+        if (!projectStage.containsKey(ID_FIELD_NAME)) {
+            // MongoDB includes this field unless it is explicitly excluded
             fieldNames.add(ID_FIELD_NAME);
         }
         return fieldNames;
+    }
+
+    private static boolean trueOrOne(BsonValue value) {
+        return (value.isBoolean() && value.asBoolean().getValue())
+                || (value.isNumber() && value.asNumber().intValue() == 1);
     }
 
     @Override
