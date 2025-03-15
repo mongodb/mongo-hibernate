@@ -84,7 +84,7 @@ spotless {
 
         // need to add license header manually to package-info.java and module-info.java
         // due to the bug: https://github.com/diffplug/spotless/issues/532
-        licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
+        licenseHeaderFile(file("spotless.license.java")) // contains '$YEAR' placeholder
 
         targetExclude("build/generated/sources/buildConfig/**/*.java")
     }
@@ -99,6 +99,8 @@ spotless {
         endWithNewline()
     }
 }
+
+tasks.check { dependsOn(tasks.spotlessApply) }
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
@@ -129,14 +131,13 @@ buildConfig {
 dependencies {
     testImplementation(libs.bundles.test.common)
     testImplementation(libs.mockito.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     integrationTestImplementation(libs.bundles.test.common)
     @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
-
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     api(libs.jspecify)

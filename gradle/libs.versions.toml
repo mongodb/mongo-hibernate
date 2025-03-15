@@ -46,5 +46,6 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 test-common = ["junit-jupiter", "assertj", "logback-classic"]
 
 [plugins]
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }

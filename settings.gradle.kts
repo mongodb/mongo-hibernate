@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2024-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,4 @@
  * limitations under the License.
  */
 
-plugins {
-    `kotlin-dsl`
-    alias(libs.plugins.spotless)
-}
-
-repositories { mavenCentral() }
-
-java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
-
-dependencies {
-    implementation("com.diffplug.spotless:spotless-plugin-gradle:${libs.versions.spotless.get()}")
-}
+rootProject.name = "mongo-hibernate"
