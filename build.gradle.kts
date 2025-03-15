@@ -136,10 +136,8 @@ dependencies {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
 
-    libs.junit.platform.launcher.let {
-        testRuntimeOnly(it)
-        integrationTestRuntimeOnly(it)
-    }
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     api(libs.jspecify)
 
