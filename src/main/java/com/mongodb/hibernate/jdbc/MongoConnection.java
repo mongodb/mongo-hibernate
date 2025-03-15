@@ -22,7 +22,7 @@ import static java.lang.String.format;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import java.sql.Array;

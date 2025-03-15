@@ -17,5 +17,6 @@
 /out/
 
 # Gradle
-/.gradle/
-/build/
+.gradle/
+.kotlin/
+build/
