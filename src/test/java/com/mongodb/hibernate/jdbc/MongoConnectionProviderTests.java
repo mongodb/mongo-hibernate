@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.internal.MongoClientImpl;
-import com.mongodb.hibernate.BuildConfig;
+import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import java.sql.SQLException;
