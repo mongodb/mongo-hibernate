@@ -21,6 +21,7 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.type.MqlType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -46,10 +47,12 @@ import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
+import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
@@ -186,9 +189,20 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
+        // VAKOTODO add tests
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        BsonValue value;
+        if (targetSqlType == MqlType.OBJECT_ID.getVendorTypeNumber()) {
+            if (x instanceof ObjectId v) {
+                value = new BsonObjectId(v);
+            } else {
+                throw fail();
+            }
+        } else {
+            throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        }
+        setParameter(parameterIndex, value);
     }
 
     @Override

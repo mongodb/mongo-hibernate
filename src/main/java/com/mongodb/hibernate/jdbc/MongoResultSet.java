@@ -202,6 +202,7 @@ final class MongoResultSet implements ResultSetAdapter {
 
     @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
+        // VAKOTODO implement reading and add MongoResultSet tests
         checkClosed();
         checkColumnIndex(columnIndex);
         throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
