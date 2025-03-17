@@ -17,6 +17,7 @@ slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
 mockito = "5.15.2"
 buildconfig = "5.5.1"
+jmh = "0.7.2"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -36,3 +37,4 @@ mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "buildconfig" }
+jmh = { id = "me.champeau.jmh", version.ref = "jmh" }

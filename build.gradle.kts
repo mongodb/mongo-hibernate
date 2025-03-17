@@ -29,6 +29,7 @@ plugins {
     alias(libs.plugins.spotless)
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
+    alias(libs.plugins.jmh)
 }
 
 repositories { mavenCentral() }
