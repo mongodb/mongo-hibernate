@@ -183,15 +183,23 @@ class MongoStatementTests {
 
     @Test
     void testGetProjectStageFieldNames() {
-        BiConsumer<String, List<String>> asserter = (projectStage, expectedFieldNames) -> assertEquals(
+        BiConsumer<String, List<String>> successAsserter = (projectStage, expectedFieldNames) -> assertEquals(
                 expectedFieldNames, MongoStatement.getFieldNamesFromProjectStage(BsonDocument.parse(projectStage)));
+        BiConsumer<String, String> failureAsserter = (projectStage, expectedMessageFragment) -> {
+            Throwable e = assertThrows(
+                    RuntimeException.class,
+                    () -> MongoStatement.getFieldNamesFromProjectStage(BsonDocument.parse(projectStage)));
+            assertThat(e.getMessage()).contains(expectedMessageFragment);
+        };
         assertAll(
-                () -> asserter.accept("{title: 1, publishYear: 1}", List.of("title", "publishYear", "_id")),
-                () -> asserter.accept("{title: 1, publishYear: 0}", List.of("title", "_id")),
-                () -> asserter.accept("{title: 1, publishYear: false}", List.of("title", "_id")),
-                () -> asserter.accept("{title: 1, _id: 0}", List.of("title")),
-                () -> asserter.accept("{title: 1, _id: false}", List.of("title")),
-                () -> asserter.accept("{_id: 1, title: 1}", List.of("_id", "title")));
+                () -> successAsserter.accept("{title: 1, publishYear: 1}", List.of("title", "publishYear", "_id")),
+                () -> successAsserter.accept("{title: 1, _id: 0}", List.of("title")),
+                () -> successAsserter.accept("{title: 1, _id: false}", List.of("title")),
+                () -> successAsserter.accept("{_id: 1, title: 1}", List.of("_id", "title")),
+                () -> failureAsserter.accept("{title: 1, publishYear: 0}", "Exclusions are not allowed"),
+                () -> failureAsserter.accept("{title: 1, publishYear: false}", "Exclusions are not allowed"),
+                () -> failureAsserter.accept("{title: '$fieldName'}", "Expressions are not allowed"),
+                () -> failureAsserter.accept("{title: {fieldName: 'fieldValue'}}", "Expressions are not allowed"));
     }
 
     @Nested
