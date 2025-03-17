@@ -23,11 +23,11 @@ import static java.util.stream.Collectors.toCollection;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
@@ -134,7 +134,7 @@ class MongoStatement implements StatementAdapter {
     @Override
     public void cancel() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException();
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -152,44 +152,44 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public @Nullable ResultSet getResultSet() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public boolean getMoreResults() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public int getUpdateCount() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
     }
 
     @Override
     public void addBatch(String mql) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
     }
 
     @Override

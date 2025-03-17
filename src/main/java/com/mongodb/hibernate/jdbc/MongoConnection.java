@@ -23,7 +23,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.BuildConfig;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
@@ -153,13 +152,13 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException();
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException();
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
