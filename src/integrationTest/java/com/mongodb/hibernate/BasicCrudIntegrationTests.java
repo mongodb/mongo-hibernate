@@ -215,7 +215,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 session.load(loaded, 1);
                 return loaded;
             });
-            assertThat(loadedBook).usingRecursiveComparison().isEqualTo(book);
+            assertThat(loadedBook)
+                    .usingRecursiveComparison()
+                    .withStrictTypeChecking()
+                    .isEqualTo(book);
         }
     }
 
