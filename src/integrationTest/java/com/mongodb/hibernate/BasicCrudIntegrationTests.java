@@ -199,10 +199,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class LoadByIdTests {
+    class LoadByPrimaryKeyTests {
 
         @Test
-        void testLoad() {
+        void testGetById() {
             var book = new Book();
             book.id = 1;
             book.title = "In Search of Lost Time";
@@ -210,12 +210,9 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
             sessionFactoryScope.inTransaction(session -> session.persist(book));
 
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> {
-                var loaded = new Book();
-                session.load(loaded, 1);
-                return loaded;
-            });
+            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
             assertThat(loadedBook)
+                    .isNotNull()
                     .usingRecursiveComparison()
                     .withStrictTypeChecking()
                     .isEqualTo(book);
