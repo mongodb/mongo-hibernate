@@ -109,7 +109,7 @@ class MongoStatement implements StatementAdapter {
                     "Exclusions are not allowed in `$project` specifications, except for the [%s] field: [%s, %s]",
                     ID_FIELD_NAME, key, value));
         }
-        if (!value.isBoolean() && !value.isInt32()) {
+        if (!value.isBoolean() && !value.isNumber()) {
             throw new FeatureNotSupportedException(format(
                     "Expressions and literals are not supported in `$project` specifications: [%s: %s]", key, value));
         }
