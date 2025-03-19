@@ -17,6 +17,7 @@ slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
 mockito = "5.15.2"
 buildconfig = "5.5.1"
+checker-qual = "3.49.1"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -31,6 +32,7 @@ mongo-java-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.r
 sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "checker-qual" }
 
 [plugins]
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

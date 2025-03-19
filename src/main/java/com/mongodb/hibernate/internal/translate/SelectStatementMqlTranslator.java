@@ -16,8 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 
+import com.mongodb.hibernate.internal.VisibleForTesting;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.Statement;
@@ -38,9 +41,8 @@ final class SelectStatementMqlTranslator extends AbstractMqlTranslator<JdbcOpera
     @Override
     public JdbcOperationQuerySelect translate(
             @Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
-        var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
+        var aggregateCommand = getAggregateCommand();
         var mql = renderMongoAstNode(aggregateCommand);
-
         var sessionFactory = getSessionFactory();
         var jdbcValuesMappingProducer = sessionFactory
                 .getFastSessionServices()
@@ -49,5 +51,10 @@ final class SelectStatementMqlTranslator extends AbstractMqlTranslator<JdbcOpera
 
         return new JdbcOperationQuerySelect(
                 mql, getParameterBinders(), jdbcValuesMappingProducer, getAffectedTableNames());
+    }
+
+    @VisibleForTesting(otherwise = PRIVATE)
+    AstCommand getAggregateCommand() {
+        return acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
     }
 }
