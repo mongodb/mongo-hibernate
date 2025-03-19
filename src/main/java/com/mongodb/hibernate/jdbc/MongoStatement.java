@@ -89,7 +89,7 @@ class MongoStatement implements StatementAdapter {
     @VisibleForTesting(otherwise = PRIVATE)
     static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
         var fieldNames = projectStage.entrySet().stream()
-                .filter(MongoStatement::isIncludeProjectSpecification)
+                .filter(specification -> !isExcludeProjectSpecification(specification))
                 .map(Map.Entry::getKey)
                 .collect(toCollection(ArrayList::new));
         if (!projectStage.containsKey(ID_FIELD_NAME)) {
@@ -99,21 +99,21 @@ class MongoStatement implements StatementAdapter {
         return fieldNames;
     }
 
-    private static boolean isIncludeProjectSpecification(Map.Entry<String, BsonValue> specification) {
+    private static boolean isExcludeProjectSpecification(Map.Entry<String, BsonValue> specification) {
+        var key = specification.getKey();
         var value = specification.getValue();
-        if (value.isString() || value.isDocument()) {
-            throw new RuntimeException(format(
-                    "Expressions are not allowed in `$project` specifications: [%s: %s]",
-                    specification.getKey(), specification.getValue()));
-        }
-        var include = (value.isBoolean() && value.asBoolean().getValue())
-                || (value.isNumber() && value.asNumber().intValue() == 1);
-        if (!include && !specification.getKey().equals(ID_FIELD_NAME)) {
+        var exclude = (value.isBoolean() && !value.asBoolean().getValue())
+                || (value.isNumber() && value.asNumber().intValue() == 0);
+        if (exclude && !key.equals(ID_FIELD_NAME)) {
             throw new RuntimeException(format(
                     "Exclusions are not allowed in `$project` specifications, except for the [%s] field: [%s, %s]",
-                    ID_FIELD_NAME, specification.getKey(), specification.getValue()));
+                    ID_FIELD_NAME, key, value));
         }
-        return include;
+        if (!value.isBoolean() && !value.isInt32()) {
+            throw new FeatureNotSupportedException(format(
+                    "Expressions and literals are not supported in `$project` specifications: [%s: %s]", key, value));
+        }
+        return exclude;
     }
 
     @Override
