@@ -35,8 +35,7 @@ class AstMatchStageTests {
                 new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("Jane Eyre"))));
         var astMatchStage = new AstMatchStage(astFilter);
 
-        var expectedJson =
-                """
+        var expectedJson = """
                 {"$match": {"title": {"$eq": "Jane Eyre"}}}\
                 """;
         assertRender(expectedJson, astMatchStage);

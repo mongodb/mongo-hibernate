@@ -28,8 +28,7 @@ class AstProjectStageTests {
     void testRendering() {
         var astProjectStageSpecifications = List.of(include("name"), include("address"));
         var astProjectStage = new AstProjectStage(astProjectStageSpecifications);
-        var expectedJson =
-                """
+        var expectedJson = """
                 {"$project": {"name": true, "address": true}}\
                 """;
         assertRender(expectedJson, astProjectStage);
