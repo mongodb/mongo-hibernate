@@ -19,11 +19,9 @@ package com.mongodb.hibernate.internal.translate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.internal.FastSessionServices;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -46,7 +44,6 @@ class SelectStatementMqlTranslatorTests {
     void testAffectedTableNames(
             @Mock EntityPersister entityPersister,
             @Mock(mockMaker = MockMakers.PROXY) SessionFactoryImplementor sessionFactory,
-            @Mock FastSessionServices fastSessionServices,
             @Mock JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider,
             @Mock(mockMaker = MockMakers.PROXY) ServiceRegistryImplementor serviceRegistry,
             @Mock StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
@@ -65,10 +62,10 @@ class SelectStatementMqlTranslatorTests {
             selectFromTableName = new SelectStatement(querySpec);
         }
         { // prepare `sessionFactory`
-            when(sessionFactory.getFastSessionServices()).thenReturn(fastSessionServices);
-            when(fastSessionServices.getJdbcValuesMappingProducerProvider())
-                    .thenReturn(jdbcValuesMappingProducerProvider);
-            when(sessionFactory.getServiceRegistry()).thenReturn(serviceRegistry);
+            doReturn(serviceRegistry).when(sessionFactory).getServiceRegistry();
+            doReturn(jdbcValuesMappingProducerProvider)
+                    .when(serviceRegistry)
+                    .requireService(eq(JdbcValuesMappingProducerProvider.class));
             doReturn(standardServiceRegistryScopedState)
                     .when(serviceRegistry)
                     .requireService(eq(StandardServiceRegistryScopedState.class));
