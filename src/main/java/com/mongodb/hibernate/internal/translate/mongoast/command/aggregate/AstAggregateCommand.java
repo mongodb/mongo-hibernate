@@ -21,7 +21,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage
 import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstAggregateCommand(String collection, List<AstStage> stages) implements AstCommand {
+public record AstAggregateCommand(String collection, List<? extends AstStage> stages) implements AstCommand {
 
     @Override
     public void render(BsonWriter writer) {

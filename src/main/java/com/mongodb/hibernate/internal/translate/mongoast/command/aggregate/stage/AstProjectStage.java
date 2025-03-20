@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stag
 import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstProjectStage(List<AstProjectStageSpecification> specifications) implements AstStage {
+public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

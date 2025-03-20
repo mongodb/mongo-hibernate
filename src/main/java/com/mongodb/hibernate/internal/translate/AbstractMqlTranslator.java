@@ -46,13 +46,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAg
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStageSpecification;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstMatchesEverythingFilter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
