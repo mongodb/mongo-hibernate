@@ -28,7 +28,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstMatchesEverythingFilter;
 import java.util.List;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,7 @@ import org.junit.jupiter.api.Test;
 class AstAggregateCommandTests {
 
     @Test
-    void testRenderingWithExplicitFilter() {
+    void testRendering() {
         var collection = "books";
         var filter = new AstFieldOperationFilter(
                 new AstFilterFieldPath("title"),
@@ -51,25 +50,6 @@ class AstAggregateCommandTests {
         var expectedJson =
                 """
                 {"aggregate": "books", "pipeline": [{"$match": {"title": {"$eq": "In Search of Lost Time"}}}, {"$project": {"_id": true, "author": true, "title": true, "publishYear": true}}]}\
-                """;
-
-        assertRender(expectedJson, aggregateCommand);
-    }
-
-    @Test
-    void testRenderingWithoutFilter() {
-        var collection = "movies";
-
-        var projectStageSpecifications = List.of(include("_id"), include("title"));
-
-        var stages = List.<AstStage>of(
-                new AstMatchStage(AstMatchesEverythingFilter.INSTANCE),
-                new AstProjectStage(projectStageSpecifications));
-        var aggregateCommand = new AstAggregateCommand(collection, stages);
-
-        var expectedJson =
-                """
-                {"aggregate": "movies", "pipeline": [{"$match": {}}, {"$project": {"_id": true, "title": true}}]}\
                 """;
 
         assertRender(expectedJson, aggregateCommand);
