@@ -199,10 +199,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class LoadByPrimaryKeyTests {
+    class SelectTests {
 
         @Test
-        void testGetByIdWithoutNullValue() {
+        void testGetByPrimaryKeyWithoutNullValueField() {
             var book = new Book();
             book.id = 1;
             book.author = "Marcel Proust";
@@ -220,7 +220,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        void testGetByIdWithNullValue() {
+        void testGetByPrimaryKeyWithNullValueField() {
             var book = new Book();
             book.id = 1;
             book.title = "Brave New World";

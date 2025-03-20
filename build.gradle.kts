@@ -181,7 +181,6 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
     testCompileOnly(libs.checker.qual)
 
-    integrationTestImplementation(libs.mockito.junit.jupiter)
     @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
