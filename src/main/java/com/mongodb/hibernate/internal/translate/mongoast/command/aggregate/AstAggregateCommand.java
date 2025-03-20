@@ -16,17 +16,24 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstPipeline(List<AstStage> stages) implements AstNode {
+public record AstAggregateCommand(String collection, List<AstStage> stages) implements AstCommand {
+
     @Override
     public void render(BsonWriter writer) {
-        writer.writeStartArray();
+        writer.writeStartDocument();
         {
-            stages.forEach(stage -> stage.render(writer));
+            writer.writeString("aggregate", collection);
+            writer.writeName("pipeline");
+            writer.writeStartArray();
+            {
+                stages.forEach(stage -> stage.render(writer));
+            }
+            writer.writeEndArray();
         }
-        writer.writeEndArray();
+        writer.writeEndDocument();
     }
 }

@@ -21,11 +21,13 @@ import org.bson.BsonWriter;
 
 public abstract class AstProjectStageSpecification implements AstNode {
 
-    public static AstProjectStageSpecification include(String path) {
+    private AstProjectStageSpecification() {}
+
+    public static AstProjectStageSpecification include(String fieldPath) {
         return new AstProjectStageSpecification() {
             @Override
             public void render(BsonWriter writer) {
-                writer.writeInt32(path, 1);
+                writer.writeInt32(fieldPath, 1);
             }
         };
     }

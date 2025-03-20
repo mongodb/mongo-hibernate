@@ -21,7 +21,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregat
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstPipeline;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStage;
@@ -46,7 +46,7 @@ class AstAggregateCommandTests {
                 List.of(include("_id"), include("author"), include("title"), include("publishYear"));
 
         var stages = List.<AstStage>of(new AstMatchStage(filter), new AstProjectStage(projectStageSpecifications));
-        var aggregateCommand = new AstAggregateCommand(collection, new AstPipeline(stages));
+        var aggregateCommand = new AstAggregateCommand(collection, stages);
 
         var expectedJson =
                 """
@@ -65,7 +65,7 @@ class AstAggregateCommandTests {
         var stages = List.<AstStage>of(
                 new AstMatchStage(AstMatchesEverythingFilter.INSTANCE),
                 new AstProjectStage(projectStageSpecifications));
-        var aggregateCommand = new AstAggregateCommand(collection, new AstPipeline(stages));
+        var aggregateCommand = new AstAggregateCommand(collection, stages);
 
         var expectedJson =
                 """

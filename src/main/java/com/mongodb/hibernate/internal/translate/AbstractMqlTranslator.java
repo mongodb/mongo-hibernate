@@ -36,12 +36,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstPipeline;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStage;
@@ -348,7 +347,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
 
         var stages = List.<AstStage>of(new AstMatchStage(filter), new AstProjectStage(projectStageSpecifications));
-        astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, new AstPipeline(stages)));
+        astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
     }
 
     @Override
