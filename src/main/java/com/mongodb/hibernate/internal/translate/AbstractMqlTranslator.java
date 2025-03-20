@@ -407,8 +407,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             if (!(sqlSelection.getExpression() instanceof ColumnReference columnReference)) {
                 throw new FeatureNotSupportedException();
             }
-            var columnName = acceptAndYield(columnReference, FIELD_PATH);
-            projectStageSpecifications.add(include(columnName));
+            var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
+            projectStageSpecifications.add(include(fieldPath));
         }
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
     }
