@@ -27,7 +27,7 @@ public abstract class AstProjectStageSpecification implements AstNode {
         return new AstProjectStageSpecification() {
             @Override
             public void render(BsonWriter writer) {
-                writer.writeInt32(fieldPath, 1);
+                writer.writeBoolean(fieldPath, true);
             }
         };
     }

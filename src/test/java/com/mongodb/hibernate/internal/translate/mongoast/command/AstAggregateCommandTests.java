@@ -50,7 +50,7 @@ class AstAggregateCommandTests {
 
         var expectedJson =
                 """
-                {"aggregate": "books", "pipeline": [{"$match": {"title": {"$eq": "In Search of Lost Time"}}}, {"$project": {"_id": 1, "author": 1, "title": 1, "publishYear": 1}}]}\
+                {"aggregate": "books", "pipeline": [{"$match": {"title": {"$eq": "In Search of Lost Time"}}}, {"$project": {"_id": true, "author": true, "title": true, "publishYear": true}}]}\
                 """;
 
         assertRender(expectedJson, aggregateCommand);
@@ -69,7 +69,7 @@ class AstAggregateCommandTests {
 
         var expectedJson =
                 """
-                {"aggregate": "movies", "pipeline": [{"$match": {}}, {"$project": {"_id": 1, "title": 1}}]}\
+                {"aggregate": "movies", "pipeline": [{"$match": {}}, {"$project": {"_id": true, "title": true}}]}\
                 """;
 
         assertRender(expectedJson, aggregateCommand);
