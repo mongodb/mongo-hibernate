@@ -14,19 +14,14 @@
  * limitations under the License.
  */
 
-import com.diffplug.spotless.FormatterFunc
-import com.diffplug.spotless.FormatterStep
-import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
-version = "1.0.0-SNAPSHOT"
-
 plugins {
-    eclipse
-    idea
-    `java-library`
-    alias(libs.plugins.spotless)
+    id("eclipse")
+    id("idea")
+    id("java-library")
+    id("spotless-java-extension")
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
 }
@@ -52,8 +47,8 @@ val integrationTestImplementation: Configuration by
 val integrationTestRuntimeOnly: Configuration by
     configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
 
-val integrationTestTask: Task =
-    task<Test>("integrationTest") {
+val integrationTestTask =
+    tasks.register<Test>("integrationTest") {
         group = LifecycleBasePlugin.VERIFICATION_GROUP
         testClassesDirs = integrationTestSourceSet.output.classesDirs
         classpath = integrationTestSourceSet.runtimeClasspath
@@ -83,68 +78,29 @@ spotless {
 
         removeUnusedImports()
 
-        palantirJavaFormat(libs.versions.palantir.get()).formatJavadoc(true)
+        palantirJavaFormat(libs.versions.plugin.palantir.get()).formatJavadoc(true)
 
         formatAnnotations()
 
-        // need to add license header manually to package-info.java
+        // need to add license header manually to package-info.java and module-info.java
         // due to the bug: https://github.com/diffplug/spotless/issues/532
-        licenseHeaderFile("spotless.license.java") // contains '$YEAR' placeholder
+        licenseHeaderFile(file("spotless.license.java")) // contains '$YEAR' placeholder
 
-        targetExclude("${layout.buildDirectory.get().asFile.name}/generated/**/*.java")
-
-        addStep(
-            FormatterStep.create(
-                "multilineFormatter",
-                MultilineFormatter(),
-                { formatter -> FormatterFunc { input -> formatter.format(input) } }))
+        targetExclude("build/generated/sources/buildConfig/**/*.java")
     }
 
     kotlinGradle {
-        ktfmt(libs.versions.ktfmt.get()).configure {
+        ktfmt(libs.versions.plugin.ktfmt.get()).configure {
             it.setMaxWidth(120)
             it.setBlockIndent(4)
-            it.setContinuationIndent(4)
         }
+        trimTrailingWhitespace()
+        leadingTabsToSpaces()
+        endWithNewline()
     }
 }
 
-/** Format multiline strings to match the initial """ indentation level */
-class MultilineFormatter : Serializable {
-    fun format(content: String): String {
-        val tripleQuote = "\"\"\""
-        val lines = content.lines()
-        val result = StringBuilder()
-        var i = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            if (!line.trimEnd().endsWith(tripleQuote)) {
-                result.append(line)
-                if (i + 1 < lines.size) result.append("\n")
-                i++
-                continue
-            }
-            val baseIndent = line.indexOf(tripleQuote)
-            result.append(line).append("\n")
-            i++
-            val multilineStringLines = mutableListOf<String>()
-            while (i < lines.size) {
-                val multilineStringLine = lines[i++]
-                multilineStringLines.add(multilineStringLine)
-                if (multilineStringLine.contains(tripleQuote)) break
-            }
-            val minIndent =
-                multilineStringLines
-                    .filter { it.isNotBlank() }
-                    .map { l -> l.indexOfFirst { ch -> !ch.isWhitespace() }.takeIf { it >= 0 } ?: line.length }
-                    .minOrNull() ?: 0
-            multilineStringLines.forEach { blockLine ->
-                result.append(" ".repeat(baseIndent)).append(blockLine.drop(minIndent)).append("\n")
-            }
-        }
-        return result.toString()
-    }
-}
+tasks.check { dependsOn(tasks.spotlessApply) }
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
@@ -163,29 +119,27 @@ tasks.withType<JavaCompile>().configureEach {
 // Build Config
 
 buildConfig {
+    useJavaOutput()
+    packageName("com.mongodb.hibernate.internal")
     buildConfigField("NAME", provider { project.name })
     buildConfigField("VERSION", provider { "${project.version}" })
-    packageName("com.mongodb.hibernate")
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Dependencies
 
 dependencies {
-    listOf(libs.junit.jupiter, libs.assertj, libs.logback.classic).forEach {
-        testImplementation(it)
-        integrationTestImplementation(it)
-    }
-
+    testImplementation(libs.bundles.test.common)
     testImplementation(libs.mockito.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testCompileOnly(libs.checker.qual)
 
+    integrationTestImplementation(libs.bundles.test.common)
     @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
-    integrationTestRuntimeOnly(libs.junit.platform.launcher)
+    integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     api(libs.jspecify)
 

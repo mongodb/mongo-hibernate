@@ -36,9 +36,9 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -170,13 +170,13 @@ class MongoStatementTests {
 
         @Test
         void testExecute() throws SQLException {
-            assertThrows(FeatureNotSupportedException.class, () -> mongoStatement.execute(exampleUpdateMql));
+            assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.execute(exampleUpdateMql));
             assertTrue(lastOpenResultSet.isClosed());
         }
 
         @Test
         void testExecuteBatch() throws SQLException {
-            assertThrows(FeatureNotSupportedException.class, () -> mongoStatement.executeBatch());
+            assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.executeBatch());
             assertTrue(lastOpenResultSet.isClosed());
         }
     }

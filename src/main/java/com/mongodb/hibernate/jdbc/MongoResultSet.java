@@ -37,12 +37,12 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
@@ -153,35 +153,35 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Date getDate(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override
@@ -197,14 +197,14 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Array getArray(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException();
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new FeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
     }
 
     @Override
@@ -216,7 +216,7 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         checkClosed();
-        throw new FeatureNotSupportedException("To be implemented in scope of native query tickets");
+        throw new SQLFeatureNotSupportedException("To be implemented in scope of native query tickets");
     }
 
     @Override
