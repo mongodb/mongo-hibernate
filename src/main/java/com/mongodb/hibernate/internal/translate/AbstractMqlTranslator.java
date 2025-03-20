@@ -343,12 +343,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
         var filter = whereClauseRestrictions == null || whereClauseRestrictions.isEmpty()
-                ? AstMatchesEverythingFilter.INSTANCE
+                ? null
                 : acceptAndYield(whereClauseRestrictions, FILTER);
 
         var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
 
-        var stages = List.<AstStage>of(new AstMatchStage(filter), new AstProjectStage(projectStageSpecifications));
+        var stages = filter == null
+                ? List.of(new AstProjectStage(projectStageSpecifications))
+                : List.of(new AstMatchStage(filter), new AstProjectStage(projectStageSpecifications));
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
     }
 
