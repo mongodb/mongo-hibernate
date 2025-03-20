@@ -14,25 +14,24 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStageSpecification.include;
 
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStage;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class AstAggregateCommandTests {
+class AstProjectStageTests {
 
     @Test
     void testRendering() {
-        var aggregateCommand = new AstAggregateCommand(
-                "books", List.of(new AstProjectStage(List.of()), new AstProjectStage(List.of())));
+        var astProjectStageSpecifications = List.of(include("name"), include("address"));
+        var astProjectStage = new AstProjectStage(astProjectStageSpecifications);
         var expectedJson =
                 """
-                {"aggregate": "books", "pipeline": [{"$project": {}}, {"$project": {}}]}\
+                {"$project": {"name": true, "address": true}}\
                 """;
-        assertRender(expectedJson, aggregateCommand);
+        assertRender(expectedJson, astProjectStage);
     }
 }
