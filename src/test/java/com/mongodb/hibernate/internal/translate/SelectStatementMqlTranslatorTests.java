@@ -26,6 +26,7 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.hibernate.spi.NavigablePath;
+import org.hibernate.sql.ast.spi.SqlAliasBaseImpl;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.StandardTableGroup;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
@@ -53,11 +54,17 @@ class SelectStatementMqlTranslatorTests {
         { // prepare `selectFromTableName`
             doReturn(new String[] {tableName}).when(entityPersister).getQuerySpaces();
 
-            NamedTableReference namedTableReference = new NamedTableReference(tableName, "b");
+            var namedTableReference = new NamedTableReference(tableName, "b1_0");
 
-            QuerySpec querySpec = new QuerySpec(true);
-            StandardTableGroup tableGroup = new StandardTableGroup(
-                    false, new NavigablePath("b"), entityPersister, "b", namedTableReference, null, null);
+            var querySpec = new QuerySpec(true);
+            var tableGroup = new StandardTableGroup(
+                    false,
+                    new NavigablePath("Book"),
+                    entityPersister,
+                    null,
+                    namedTableReference,
+                    new SqlAliasBaseImpl("b1"),
+                    sessionFactory);
             querySpec.getFromClause().addRoot(tableGroup);
             selectFromTableName = new SelectStatement(querySpec);
         }
@@ -71,7 +78,7 @@ class SelectStatementMqlTranslatorTests {
                     .requireService(eq(StandardServiceRegistryScopedState.class));
         }
 
-        SelectStatementMqlTranslator translator = new SelectStatementMqlTranslator(sessionFactory, selectFromTableName);
+        var translator = new SelectStatementMqlTranslator(sessionFactory, selectFromTableName);
 
         translator.translate(null, QueryOptions.NONE);
 
