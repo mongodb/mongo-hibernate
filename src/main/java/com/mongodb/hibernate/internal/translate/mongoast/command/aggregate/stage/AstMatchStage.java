@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage;
 
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import org.bson.BsonWriter;
 

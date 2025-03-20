@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 

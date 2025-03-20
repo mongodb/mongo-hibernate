@@ -17,39 +17,66 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
+import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.internal.FastSessionServices;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.StandardTableGroup;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockMakers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SelectStatementMqlTranslatorTests {
 
     @Test
-    void testAffectedTableNames(@Mock EntityPersister entityPersister) {
+    void testAffectedTableNames(
+            @Mock EntityPersister entityPersister,
+            @Mock(mockMaker = MockMakers.PROXY) SessionFactoryImplementor sessionFactory,
+            @Mock FastSessionServices fastSessionServices,
+            @Mock JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider,
+            @Mock(mockMaker = MockMakers.PROXY) ServiceRegistryImplementor serviceRegistry,
+            @Mock StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
 
         var tableName = "books";
-        doReturn(new String[] {tableName}).when(entityPersister).getQuerySpaces();
+        SelectStatement selectFromTableName;
+        { // prepare `selectFromTableName`
+            doReturn(new String[] {tableName}).when(entityPersister).getQuerySpaces();
 
-        NamedTableReference namedTableReference = new NamedTableReference(tableName, "b");
+            NamedTableReference namedTableReference = new NamedTableReference(tableName, "b");
 
-        QuerySpec querySpec = new QuerySpec(true);
-        StandardTableGroup tableGroup = new StandardTableGroup(
-                false, new NavigablePath("b"), entityPersister, "b", namedTableReference, null, null);
-        querySpec.getFromClause().addRoot(tableGroup);
+            QuerySpec querySpec = new QuerySpec(true);
+            StandardTableGroup tableGroup = new StandardTableGroup(
+                    false, new NavigablePath("b"), entityPersister, "b", namedTableReference, null, null);
+            querySpec.getFromClause().addRoot(tableGroup);
+            selectFromTableName = new SelectStatement(querySpec);
+        }
+        { // prepare `sessionFactory`
+            when(sessionFactory.getFastSessionServices()).thenReturn(fastSessionServices);
+            when(fastSessionServices.getJdbcValuesMappingProducerProvider())
+                    .thenReturn(jdbcValuesMappingProducerProvider);
+            when(sessionFactory.getServiceRegistry()).thenReturn(serviceRegistry);
+            doReturn(standardServiceRegistryScopedState)
+                    .when(serviceRegistry)
+                    .requireService(eq(StandardServiceRegistryScopedState.class));
+        }
 
-        SelectStatementMqlTranslator translator =
-                new SelectStatementMqlTranslator(null, new SelectStatement(querySpec));
+        SelectStatementMqlTranslator translator = new SelectStatementMqlTranslator(sessionFactory, selectFromTableName);
 
-        translator.getAggregateCommand();
+        translator.translate(null, QueryOptions.NONE);
 
         assertThat(translator.getAffectedTableNames()).containsExactly(tableName);
     }
