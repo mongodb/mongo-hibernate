@@ -29,6 +29,7 @@
 /*.iws
 /*.iml
 /out/
+!/.idea/inspectionProfiles/Project_Default.xml
 
 # Gradle
 .gradle/
