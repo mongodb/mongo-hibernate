@@ -18,7 +18,6 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
 
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStage;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

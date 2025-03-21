@@ -21,7 +21,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.lang.reflect.Modifier;
 import java.util.Collections;

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage.AstProjectStageSpecification.include;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification.include;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;

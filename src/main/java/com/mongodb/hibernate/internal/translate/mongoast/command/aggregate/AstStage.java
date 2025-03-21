@@ -14,21 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import org.bson.BsonWriter;
 
-public abstract class AstProjectStageSpecification implements AstNode {
-
-    private AstProjectStageSpecification() {}
-
-    public static AstProjectStageSpecification include(String fieldPath) {
-        return new AstProjectStageSpecification() {
-            @Override
-            public void render(BsonWriter writer) {
-                writer.writeBoolean(fieldPath, true);
-            }
-        };
-    }
-}
+public interface AstStage extends AstNode {}

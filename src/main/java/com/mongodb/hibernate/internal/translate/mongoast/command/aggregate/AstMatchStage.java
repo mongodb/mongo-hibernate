@@ -14,8 +14,19 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.stage;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import org.bson.BsonWriter;
 
-public interface AstStage extends AstNode {}
+public record AstMatchStage(AstFilter filter) implements AstStage {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        {
+            writer.writeName("$match");
+            filter.render(writer);
+        }
+        writer.writeEndDocument();
+    }
+}
