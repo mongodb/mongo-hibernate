@@ -234,12 +234,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         var astElements = new ArrayList<AstElement>(tableInsert.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsert.getValueBindings()) {
-            var columnExpression = columnValueBinding.getColumnReference().getColumnExpression();
-
-            var valueExpression = columnValueBinding.getValueExpression();
-            var astValue = acceptAndYield(valueExpression, FIELD_VALUE);
-
-            astElements.add(new AstElement(columnExpression, astValue));
+            var fieldName = columnValueBinding.getColumnReference().getColumnExpression();
+            var fieldValue = acceptAndYield(columnValueBinding.getValueExpression(), FIELD_VALUE);
+            astElements.add(new AstElement(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
                 COLLECTION_MUTATION,
@@ -282,9 +279,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var keyFilter = getKeyFilter(tableUpdate);
         var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
         for (var valueBinding : tableUpdate.getValueBindings()) {
-            var columnExpression = valueBinding.getColumnReference().getColumnExpression();
-            var astValue = acceptAndYield(valueBinding.getValueExpression(), FIELD_VALUE);
-            updates.add(new AstFieldUpdate(columnExpression, astValue));
+            var fieldName = valueBinding.getColumnReference().getColumnExpression();
+            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), FIELD_VALUE);
+            updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
                 COLLECTION_MUTATION,
@@ -305,8 +302,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var astFilterFieldPath =
                 new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
-        var astValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
-        return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, astValue));
+        var fieldValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
+        return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
 
     @Override

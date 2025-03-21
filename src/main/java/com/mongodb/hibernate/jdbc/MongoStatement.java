@@ -23,6 +23,7 @@ import static java.util.stream.Collectors.toCollection;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -89,7 +90,7 @@ class MongoStatement implements StatementAdapter {
     @VisibleForTesting(otherwise = PRIVATE)
     static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
         var fieldNames = projectStage.entrySet().stream()
-                .filter(field -> trueOrOne(field.getValue()))
+                .filter(specification -> !isExcludeProjectSpecification(specification))
                 .map(Map.Entry::getKey)
                 .collect(toCollection(ArrayList::new));
         if (!projectStage.containsKey(ID_FIELD_NAME)) {
@@ -99,9 +100,21 @@ class MongoStatement implements StatementAdapter {
         return fieldNames;
     }
 
-    private static boolean trueOrOne(BsonValue value) {
-        return (value.isBoolean() && value.asBoolean().getValue())
-                || (value.isNumber() && value.asNumber().intValue() == 1);
+    private static boolean isExcludeProjectSpecification(Map.Entry<String, BsonValue> specification) {
+        var key = specification.getKey();
+        var value = specification.getValue();
+        var exclude = (value.isBoolean() && !value.asBoolean().getValue())
+                || (value.isNumber() && value.asNumber().intValue() == 0);
+        if (exclude && !key.equals(ID_FIELD_NAME)) {
+            throw new RuntimeException(format(
+                    "Exclusions are not allowed in `$project` specifications, except for the [%s] field: [%s, %s]",
+                    ID_FIELD_NAME, key, value));
+        }
+        if (!value.isBoolean() && !value.isNumber()) {
+            throw new FeatureNotSupportedException(format(
+                    "Expressions and literals are not supported in `$project` specifications: [%s: %s]", key, value));
+        }
+        return exclude;
     }
 
     @Override

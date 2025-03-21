@@ -21,7 +21,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstUpdateCommand(String collection, AstFilter filter, List<AstFieldUpdate> updates)
+public record AstUpdateCommand(String collection, AstFilter filter, List<? extends AstFieldUpdate> updates)
         implements AstCommand {
     @Override
     public void render(BsonWriter writer) {
