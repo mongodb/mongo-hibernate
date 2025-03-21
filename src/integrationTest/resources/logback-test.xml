@@ -10,7 +10,9 @@
     <logger name="org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator" level="debug" additivity="true"/>
     <logger name="org.hibernate.SQL" level="debug" additivity="true"/>
     <logger name="org.hibernate.orm.jdbc.bind" level="trace" additivity="true"/>
+    <logger name="org.hibernate.orm.jdbc.extract" level="trace" additivity="true"/>
     <logger name="org.hibernate.persister.entity" level="debug" additivity="true"/>
+    <logger name="org.hibernate.orm.sql.ast.tree" level="debug" additivity="true"/>
     <logger name="org.mongodb.driver" level="warn" additivity="true"/>
     <logger name="com.mongodb.hibernate" level="debug" additivity="true"/>
     <root level="info">

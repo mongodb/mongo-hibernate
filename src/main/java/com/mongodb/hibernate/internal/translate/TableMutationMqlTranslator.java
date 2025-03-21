@@ -40,7 +40,7 @@ final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends 
         assertNull(jdbcParameterBindings);
         // QueryOptions class is not applicable to table mutation so a dummy value is always passed in
 
-        var rootAstNode = acceptAndYield(tableMutation, COLLECTION_MUTATION);
-        return tableMutation.createMutationOperation(renderMongoAstNode(rootAstNode), getParameterBinders());
+        var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
+        return tableMutation.createMutationOperation(renderMongoAstNode(mutationCommand), getParameterBinders());
     }
 }

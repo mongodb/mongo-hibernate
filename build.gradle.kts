@@ -132,6 +132,7 @@ dependencies {
     testImplementation(libs.bundles.test.common)
     testImplementation(libs.mockito.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testCompileOnly(libs.checker.qual)
 
     integrationTestImplementation(libs.bundles.test.common)
     @Suppress("UnstableApiUsage")
