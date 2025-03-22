@@ -16,16 +16,20 @@
 
 package com.mongodb.hibernate.internal.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
 
 class StandardServiceRegistryScopedStateTests {
     @Test
-    void differentStandardServiceRegistriesHaveDifferentStateInstances() {
+    void differentStandardServiceRegistriesHaveDifferentStates() {
         try (var bootstrapServiceRegistry = new BootstrapServiceRegistryBuilder().build()) {
             var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder(bootstrapServiceRegistry);
             try (var standardServiceRegistry1 = standardServiceRegistryBuilder.build();
@@ -33,6 +37,42 @@ class StandardServiceRegistryScopedStateTests {
                 assertNotSame(
                         standardServiceRegistry1.requireService(StandardServiceRegistryScopedState.class),
                         standardServiceRegistry2.requireService(StandardServiceRegistryScopedState.class));
+            }
+        }
+    }
+
+    @Test
+    void differentMongoConfiguratorPassedForEachStandardServiceRegistry() {
+        var mongoConfigurators = new ArrayList<>();
+        try (var bootstrapServiceRegistry = new BootstrapServiceRegistryBuilder().build()) {
+            var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder(bootstrapServiceRegistry)
+                    .addService(MongoConfigurationContributor.class, mongoConfigurators::add);
+            try (var standardServiceRegistry1 = standardServiceRegistryBuilder.build();
+                    var standardServiceRegistry2 = standardServiceRegistryBuilder.build()) {
+                standardServiceRegistry1.requireService(StandardServiceRegistryScopedState.class);
+                standardServiceRegistry2.requireService(StandardServiceRegistryScopedState.class);
+                for (var i = 0; i < mongoConfigurators.size(); i++) {
+                    for (var j = 0; j < mongoConfigurators.size(); j++) {
+                        if (i != j) {
+                            assertNotSame(mongoConfigurators.get(i), mongoConfigurators.get(j));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void mongoConfigurationContributorCalledOncePerStandardServiceRegistry() {
+        var counter = new AtomicInteger();
+        try (var bootstrapServiceRegistry = new BootstrapServiceRegistryBuilder().build()) {
+            var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder(bootstrapServiceRegistry)
+                    .addService(MongoConfigurationContributor.class, c -> counter.incrementAndGet());
+            try (var standardServiceRegistry1 = standardServiceRegistryBuilder.build();
+                    var standardServiceRegistry2 = standardServiceRegistryBuilder.build()) {
+                standardServiceRegistry1.requireService(StandardServiceRegistryScopedState.class);
+                standardServiceRegistry2.requireService(StandardServiceRegistryScopedState.class);
+                assertEquals(2, counter.get());
             }
         }
     }
