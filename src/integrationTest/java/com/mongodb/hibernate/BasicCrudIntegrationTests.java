@@ -219,6 +219,37 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    @Nested
+    class NativeQueryTests {
+
+        @Test
+        void testNative() {
+            var book = new Book();
+            book.id = 1;
+            book.title = "In Search of Lost Time";
+            book.publishYear = 1913;
+
+            sessionFactoryScope.inTransaction(session -> session.persist(book));
+
+            var nativeQuery =
+                    """
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match :  { _id: { $eq: :id } } },
+                            { $project: { _id: 1, publishYear: 1, title: 1, author: 1 } }
+                        ]
+                    }
+                    """;
+            sessionFactoryScope.inTransaction(session -> {
+                var query = session.createNativeQuery(nativeQuery, Book.class)
+                        .setParameter("id", book.id);
+                var queriedBook = query.getSingleResult();
+                assertThat(queriedBook).usingRecursiveComparison().isEqualTo(book);
+            });
+        }
+    }
+
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
         assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }

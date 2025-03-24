@@ -311,7 +311,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static boolean isParameterMarker(BsonValue value) {
-        return value.getBsonType() == BsonType.UNDEFINED;
+        return value.getBsonType() == BsonType.PLACEHOLDER;
     }
 
     private void checkParameterIndex(int parameterIndex) throws SQLException {

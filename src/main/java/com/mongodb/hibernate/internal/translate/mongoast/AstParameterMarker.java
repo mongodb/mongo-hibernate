@@ -26,6 +26,6 @@ public final class AstParameterMarker implements AstValue {
 
     @Override
     public void render(BsonWriter writer) {
-        writer.writeUndefined();
+        writer.writePlaceholder();
     }
 }

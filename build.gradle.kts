@@ -31,7 +31,10 @@ plugins {
     alias(libs.plugins.buildconfig)
 }
 
-repositories { mavenCentral() }
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
