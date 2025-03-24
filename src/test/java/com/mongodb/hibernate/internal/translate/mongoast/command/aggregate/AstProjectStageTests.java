@@ -17,20 +17,18 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification.include;
 
-import java.util.List;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 class AstProjectStageTests {
 
     @Test
     void testRendering() {
-        var astProjectStageSpecifications = List.of(include("name"), include("address"));
-        var astProjectStage = new AstProjectStage(astProjectStageSpecifications);
+        var astProjectStage = new AstProjectStage(Collections.emptyList());
         var expectedJson = """
-                {"$project": {"name": true, "address": true}}\
-                """;
+                           {"$project": {}}\
+                           """;
         assertRender(expectedJson, astProjectStage);
     }
 }

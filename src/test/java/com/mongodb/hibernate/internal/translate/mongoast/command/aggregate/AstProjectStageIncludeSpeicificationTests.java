@@ -16,6 +16,20 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
 
-public interface AstProjectStageSpecification extends AstNode {}
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class AstProjectStageIncludeSpeicificationTests {
+
+    @Test
+    void testRendering() {
+        var astProjectStageSpecifications = List.of(new AstProjectStageIncludeSpecification("name"));
+        var astProjectStage = new AstProjectStage(astProjectStageSpecifications);
+        var expectedJson = """
+                           {"$project": {"name": true}}\
+                           """;
+        assertRender(expectedJson, astProjectStage);
+    }
+}

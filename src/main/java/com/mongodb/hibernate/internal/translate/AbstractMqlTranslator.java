@@ -26,7 +26,6 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification.include;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static java.lang.String.format;
 import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
@@ -45,6 +44,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
@@ -403,7 +403,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 throw new FeatureNotSupportedException();
             }
             var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
-            projectStageSpecifications.add(include(fieldPath));
+            projectStageSpecifications.add(new AstProjectStageIncludeSpecification(fieldPath));
         }
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
     }

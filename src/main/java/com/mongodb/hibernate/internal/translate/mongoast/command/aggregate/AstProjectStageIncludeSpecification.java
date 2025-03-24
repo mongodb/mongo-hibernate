@@ -16,6 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import org.bson.BsonWriter;
 
-public interface AstProjectStageSpecification extends AstNode {}
+public record AstProjectStageIncludeSpecification(String fieldPath) implements AstProjectStageSpecification {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeBoolean(fieldPath, true);
+    }
+}
