@@ -19,7 +19,6 @@ package com.mongodb.hibernate.internal.translate;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import org.hibernate.LockOptions;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.Statement;
@@ -47,9 +46,7 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
         if (jdbcParameterBindings != null) {
             throw new FeatureNotSupportedException();
         }
-        if (!LockOptions.NONE.equals(queryOptions.getLockOptions())) {
-            throw new FeatureNotSupportedException();
-        }
+        checkQueryOptionsSupportability(queryOptions);
         var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
         var jdbcValuesMappingProducer =
                 jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, getSessionFactory());

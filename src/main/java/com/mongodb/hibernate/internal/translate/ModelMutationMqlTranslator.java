@@ -38,7 +38,7 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
     @Override
     public O translate(@Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
         assertNull(jdbcParameterBindings);
-        // QueryOptions class is not applicable to table mutation so a dummy value is always passed in
+        checkQueryOptionsSupportability(queryOptions);
 
         var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
         return tableMutation.createMutationOperation(renderMongoAstNode(mutationCommand), getParameterBinders());

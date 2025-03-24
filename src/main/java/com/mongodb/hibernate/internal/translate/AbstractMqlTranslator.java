@@ -64,6 +64,8 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
+import org.hibernate.query.spi.Limit;
+import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
@@ -734,5 +736,57 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdateCustomSql) {
         throw new FeatureNotSupportedException();
+    }
+
+    void checkQueryOptionsSupportability(QueryOptions queryOptions) {
+        if (queryOptions.getTimeout() != null) {
+            throw new FeatureNotSupportedException("'timeout' inQueryOptions not supported");
+        }
+        if (queryOptions.getFlushMode() != null) {
+            throw new FeatureNotSupportedException("'flushMode' in QueryOptions not supported");
+        }
+        if (Boolean.TRUE.equals(queryOptions.isReadOnly())) {
+            throw new FeatureNotSupportedException("'readOnly' in QueryOptions not supported");
+        }
+        if (queryOptions.getAppliedGraph() != null) {
+            throw new FeatureNotSupportedException("'appliedGraph' in QueryOptions not supported");
+        }
+        if (queryOptions.getTupleTransformer() != null) {
+            throw new FeatureNotSupportedException("'tupleTransformer' in QueryOptions not supported");
+        }
+        if (queryOptions.getResultListTransformer() != null) {
+            throw new FeatureNotSupportedException("'resultListTransformer' in QueryOptions not supported");
+        }
+        if (Boolean.TRUE.equals(queryOptions.isResultCachingEnabled())) {
+            throw new FeatureNotSupportedException("'resultCaching' in QueryOptions not supported");
+        }
+        if (queryOptions.getDisabledFetchProfiles() != null
+                && !queryOptions.getDisabledFetchProfiles().isEmpty()) {
+            throw new FeatureNotSupportedException("'disabledFetchProfiles' in QueryOptions not supported");
+        }
+        if (queryOptions.getEnabledFetchProfiles() != null
+                && !queryOptions.getEnabledFetchProfiles().isEmpty()) {
+            throw new FeatureNotSupportedException("'enabledFetchProfiles' in QueryOptions not supported");
+        }
+        if (Boolean.TRUE.equals(queryOptions.getQueryPlanCachingEnabled())) {
+            throw new FeatureNotSupportedException("'queryPlanCaching' in QueryOptions not supported");
+        }
+        if (queryOptions.getLockOptions() != null
+                && !queryOptions.getLockOptions().isEmpty()) {
+            throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
+        }
+        if (queryOptions.getComment() != null) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
+        }
+        if (queryOptions.getDatabaseHints() != null
+                && !queryOptions.getDatabaseHints().isEmpty()) {
+            throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
+        }
+        if (queryOptions.getFetchSize() != null) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
+        }
+        if (queryOptions.getLimit() != null && !queryOptions.getLimit().isCompatible(Limit.NONE)) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+        }
     }
 }
