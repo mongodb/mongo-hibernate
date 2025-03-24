@@ -39,7 +39,7 @@ import org.mockito.MockMakers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class SelectStatementMqlTranslatorTests {
+class SelectMqlTranslatorTests {
 
     @Test
     void testAffectedTableNames(
@@ -78,7 +78,7 @@ class SelectStatementMqlTranslatorTests {
                     .requireService(eq(StandardServiceRegistryScopedState.class));
         }
 
-        var translator = new SelectStatementMqlTranslator(sessionFactory, selectFromTableName);
+        var translator = new SelectMqlTranslator(sessionFactory, selectFromTableName);
 
         translator.translate(null, QueryOptions.NONE);
 

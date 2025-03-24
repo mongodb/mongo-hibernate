@@ -26,11 +26,11 @@ import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.jspecify.annotations.Nullable;
 
-final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
+final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
 
     private final TableMutation<O> tableMutation;
 
-    TableMutationMqlTranslator(TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactory) {
+    ModelMutationMqlTranslator(TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactory) {
         super(sessionFactory);
         this.tableMutation = tableMutation;
     }

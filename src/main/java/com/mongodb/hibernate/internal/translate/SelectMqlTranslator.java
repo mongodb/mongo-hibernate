@@ -29,12 +29,12 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.jspecify.annotations.Nullable;
 
-final class SelectStatementMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuerySelect> {
+final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuerySelect> {
 
     private final SelectStatement selectStatement;
     private final JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider;
 
-    SelectStatementMqlTranslator(SessionFactoryImplementor sessionFactory, SelectStatement selectStatement) {
+    SelectMqlTranslator(SessionFactoryImplementor sessionFactory, SelectStatement selectStatement) {
         super(sessionFactory);
         this.selectStatement = selectStatement;
         jdbcValuesMappingProducerProvider =
