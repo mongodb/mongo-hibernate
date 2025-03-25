@@ -28,7 +28,6 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static java.lang.String.format;
-import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -337,6 +336,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         if (querySpec.hasSortSpecifications()) {
             throw new FeatureNotSupportedException("Sorting not supported");
+        }
+        if (querySpec.hasOffsetOrFetchClause()) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
