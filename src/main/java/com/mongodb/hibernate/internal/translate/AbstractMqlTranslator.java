@@ -399,6 +399,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelectClause(SelectClause selectClause) {
+        if (selectClause.isDistinct()) {
+            throw new FeatureNotSupportedException();
+        }
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());
 
