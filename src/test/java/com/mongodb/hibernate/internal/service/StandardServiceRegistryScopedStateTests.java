@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.util.ArrayList;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.DisplayName;
@@ -43,17 +44,23 @@ class StandardServiceRegistryScopedStateTests {
 
     @Test
     @DisplayName(
-            "MongoConfigurationContributor is called once per building StandardServiceRegistry, different MongoConfigurator passed")
+            "MongoConfigurationContributor is called once per StandardServiceRegistry, different MongoConfigurator instances passed")
+    @SuppressWarnings("try")
     void mongoConfigurationContributorInvocationsAndMongoConfiguratorInstances() {
         try (var bootstrapServiceRegistry = new BootstrapServiceRegistryBuilder().build()) {
             var mongoConfigurators = new ArrayList<>();
             MongoConfigurationContributor mongoConfigurationContributor = mongoConfigurators::add;
             var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder(bootstrapServiceRegistry)
                     .addService(MongoConfigurationContributor.class, mongoConfigurationContributor);
+            var metadataSources = new MetadataSources();
             try (var standardServiceRegistry1 = standardServiceRegistryBuilder.build();
-                    var standardServiceRegistry2 = standardServiceRegistryBuilder.build()) {
-                standardServiceRegistry1.requireService(StandardServiceRegistryScopedState.class);
-                standardServiceRegistry2.requireService(StandardServiceRegistryScopedState.class);
+                    var sessionFactory1 = metadataSources
+                            .buildMetadata(standardServiceRegistry1)
+                            .buildSessionFactory();
+                    var standardServiceRegistry2 = standardServiceRegistryBuilder.build();
+                    var sessionFactory2 = metadataSources
+                            .buildMetadata(standardServiceRegistry2)
+                            .buildSessionFactory()) {
                 assertEquals(2, mongoConfigurators.size());
                 assertNotSame(mongoConfigurators.get(0), mongoConfigurators.get(1));
             }
