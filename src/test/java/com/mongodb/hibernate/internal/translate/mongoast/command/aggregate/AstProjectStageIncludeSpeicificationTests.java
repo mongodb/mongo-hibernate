@@ -21,7 +21,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertion
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class AstProjectStageIncludeSpeicificationTests {
+class AstProjectStageIncludeSpecificationTests {
 
     @Test
     void testRendering() {
