@@ -320,7 +320,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelectStatement(SelectStatement selectStatement) {
-        logSqlAst(selectStatement);
         if (!selectStatement.getQueryPart().isRoot()) {
             throw new FeatureNotSupportedException("Subquery not supported");
         }
