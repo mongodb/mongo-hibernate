@@ -30,7 +30,7 @@ public final class AstNodeAssertions {
         doAssertRender(expectedJson, node, false);
     }
 
-    public static void assertNameValueRender(String expectedJson, AstNode node) {
+    public static void assertElementRender(String expectedJson, AstNode node) {
         doAssertRender(expectedJson, node, true);
     }
 

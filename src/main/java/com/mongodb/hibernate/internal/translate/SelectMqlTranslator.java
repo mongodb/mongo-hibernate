@@ -44,12 +44,13 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
     @Override
     public JdbcOperationQuerySelect translate(
             @Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
+
+        logSqlAst(selectStatement);
+
         if (jdbcParameterBindings != null) {
             throw new FeatureNotSupportedException();
         }
         checkQueryOptionsSupportability(queryOptions);
-
-        logSqlAst(selectStatement);
 
         var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
         var jdbcValuesMappingProducer =
