@@ -198,6 +198,45 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    @Nested
+    class SelectTests {
+
+        @Test
+        void testGetByPrimaryKeyWithoutNullValueField() {
+            var book = new Book();
+            book.id = 1;
+            book.author = "Marcel Proust";
+            book.title = "In Search of Lost Time";
+            book.publishYear = 1913;
+
+            sessionFactoryScope.inTransaction(session -> session.persist(book));
+
+            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
+            assertThat(loadedBook)
+                    .isNotNull()
+                    .usingRecursiveComparison()
+                    .withStrictTypeChecking()
+                    .isEqualTo(book);
+        }
+
+        @Test
+        void testGetByPrimaryKeyWithNullValueField() {
+            var book = new Book();
+            book.id = 1;
+            book.title = "Brave New World";
+            book.publishYear = 1932;
+
+            sessionFactoryScope.inTransaction(session -> session.persist(book));
+
+            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
+            assertThat(loadedBook)
+                    .isNotNull()
+                    .usingRecursiveComparison()
+                    .withStrictTypeChecking()
+                    .isEqualTo(book);
+        }
+    }
+
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
         assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }

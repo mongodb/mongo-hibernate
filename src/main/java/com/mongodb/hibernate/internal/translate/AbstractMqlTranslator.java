@@ -19,8 +19,13 @@ package com.mongodb.hibernate.internal.translate;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static java.lang.String.format;
 
@@ -31,16 +36,24 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.bson.json.JsonMode;
@@ -48,7 +61,10 @@ import org.bson.json.JsonWriter;
 import org.bson.json.JsonWriterSettings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
+import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
@@ -143,6 +159,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
+    private final Set<String> affectedTableNames = new HashSet<>();
+
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
         assertNotNull(sessionFactory
@@ -178,7 +196,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public Set<String> getAffectedTableNames() {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
+        return affectedTableNames;
     }
 
     List<JdbcParameterBinder> getParameterBinders() {
@@ -197,12 +215,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @SuppressWarnings("overloads")
-    <R extends AstNode> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
+    <R extends AstCommand> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> statement.accept(this));
     }
 
     @SuppressWarnings("overloads")
-    <R extends AstNode> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
+    <R> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }
 
@@ -217,17 +235,16 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astElements = new ArrayList<AstElement>(tableInsert.getNumberOfValueBindings());
         for (var columnValueBinding : tableInsert.getValueBindings()) {
             var fieldName = columnValueBinding.getColumnReference().getColumnExpression();
-
             var valueExpression = columnValueBinding.getValueExpression();
             if (valueExpression == null) {
                 throw new FeatureNotSupportedException();
             }
             var fieldValue = acceptAndYield(valueExpression, FIELD_VALUE);
-
             astElements.add(new AstElement(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
-                COLLECTION_MUTATION, new AstInsertCommand(tableInsert.getTableName(), new AstDocument(astElements)));
+                COLLECTION_MUTATION,
+                new AstInsertCommand(tableInsert.getMutatingTable().getTableName(), new AstDocument(astElements)));
     }
 
     @Override
@@ -301,7 +318,111 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelectStatement(SelectStatement selectStatement) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22");
+        if (!selectStatement.getQueryPart().isRoot()) {
+            throw new FeatureNotSupportedException("Subquery not supported");
+        }
+        if (!selectStatement.getCteStatements().isEmpty()
+                || !selectStatement.getCteObjects().isEmpty()) {
+            throw new FeatureNotSupportedException("CTE not supported");
+        }
+        selectStatement.getQueryPart().accept(this);
+    }
+
+    @Override
+    public void visitQuerySpec(QuerySpec querySpec) {
+        if (!querySpec.getGroupByClauseExpressions().isEmpty()) {
+            throw new FeatureNotSupportedException("GroupBy not supported");
+        }
+        if (querySpec.hasSortSpecifications()) {
+            throw new FeatureNotSupportedException("Sorting not supported");
+        }
+        if (querySpec.hasOffsetOrFetchClause()) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+        }
+
+        var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
+
+        var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
+        var filter = whereClauseRestrictions == null || whereClauseRestrictions.isEmpty()
+                ? null
+                : acceptAndYield(whereClauseRestrictions, FILTER);
+
+        var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
+
+        var stages = filter == null
+                ? List.of(new AstProjectStage(projectStageSpecifications))
+                : List.of(new AstMatchStage(filter), new AstProjectStage(projectStageSpecifications));
+        astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
+    }
+
+    @Override
+    public void visitFromClause(FromClause fromClause) {
+        if (fromClause.getRoots().size() != 1) {
+            throw new FeatureNotSupportedException();
+        }
+        var tableGroup = fromClause.getRoots().get(0);
+
+        if (!(tableGroup.getModelPart() instanceof EntityPersister entityPersister)
+                || entityPersister.getQuerySpaces().length != 1) {
+            throw new FeatureNotSupportedException();
+        }
+
+        affectedTableNames.add(((String[]) entityPersister.getQuerySpaces())[0]);
+        tableGroup.getPrimaryTableReference().accept(this);
+    }
+
+    @Override
+    public void visitNamedTableReference(NamedTableReference namedTableReference) {
+        astVisitorValueHolder.yield(COLLECTION_NAME, namedTableReference.getTableExpression());
+    }
+
+    @Override
+    public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
+        var astComparisonFilterOperator = getAstComparisonFilterOperator(comparisonPredicate.getOperator());
+
+        var fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
+        var fieldValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_VALUE);
+
+        var filter = new AstFieldOperationFilter(
+                new AstFilterFieldPath(fieldPath),
+                new AstComparisonFilterOperation(astComparisonFilterOperator, fieldValue));
+        astVisitorValueHolder.yield(FILTER, filter);
+    }
+
+    private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
+        return switch (operator) {
+            case EQUAL -> EQ;
+            default -> throw new FeatureNotSupportedException("Unsupported operator: " + operator.name());
+        };
+    }
+
+    @Override
+    public void visitSelectClause(SelectClause selectClause) {
+        if (selectClause.isDistinct()) {
+            throw new FeatureNotSupportedException();
+        }
+        var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
+                selectClause.getSqlSelections().size());
+
+        for (SqlSelection sqlSelection : selectClause.getSqlSelections()) {
+            if (sqlSelection.isVirtual()) {
+                continue;
+            }
+            if (!(sqlSelection.getExpression() instanceof ColumnReference columnReference)) {
+                throw new FeatureNotSupportedException();
+            }
+            var field = acceptAndYield(columnReference, FIELD_PATH);
+            projectStageSpecifications.add(new AstProjectStageIncludeSpecification(field));
+        }
+        astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
+    }
+
+    @Override
+    public void visitColumnReference(ColumnReference columnReference) {
+        if (columnReference.isColumnExpressionFormula()) {
+            throw new FeatureNotSupportedException();
+        }
+        astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
     }
 
     @Override
@@ -330,11 +451,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitQuerySpec(QuerySpec querySpec) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
         throw new FeatureNotSupportedException();
     }
@@ -345,17 +461,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitSelectClause(SelectClause selectClause) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitSqlSelection(SqlSelection sqlSelection) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitFromClause(FromClause fromClause) {
         throw new FeatureNotSupportedException();
     }
 
@@ -366,11 +472,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitTableGroupJoin(TableGroupJoin tableGroupJoin) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitNamedTableReference(NamedTableReference namedTableReference) {
         throw new FeatureNotSupportedException();
     }
 
@@ -391,11 +492,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitTableReferenceJoin(TableReferenceJoin tableReferenceJoin) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitColumnReference(ColumnReference columnReference) {
         throw new FeatureNotSupportedException();
     }
 
@@ -610,11 +706,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitSelfRenderingPredicate(SelfRenderingPredicate selfRenderingPredicate) {
         throw new FeatureNotSupportedException();
     }
@@ -652,5 +743,57 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdateCustomSql) {
         throw new FeatureNotSupportedException();
+    }
+
+    void checkQueryOptionsSupportability(QueryOptions queryOptions) {
+        if (queryOptions.getTimeout() != null) {
+            throw new FeatureNotSupportedException("'timeout' inQueryOptions not supported");
+        }
+        if (queryOptions.getFlushMode() != null) {
+            throw new FeatureNotSupportedException("'flushMode' in QueryOptions not supported");
+        }
+        if (Boolean.TRUE.equals(queryOptions.isReadOnly())) {
+            throw new FeatureNotSupportedException("'readOnly' in QueryOptions not supported");
+        }
+        if (queryOptions.getAppliedGraph() != null) {
+            throw new FeatureNotSupportedException("'appliedGraph' in QueryOptions not supported");
+        }
+        if (queryOptions.getTupleTransformer() != null) {
+            throw new FeatureNotSupportedException("'tupleTransformer' in QueryOptions not supported");
+        }
+        if (queryOptions.getResultListTransformer() != null) {
+            throw new FeatureNotSupportedException("'resultListTransformer' in QueryOptions not supported");
+        }
+        if (Boolean.TRUE.equals(queryOptions.isResultCachingEnabled())) {
+            throw new FeatureNotSupportedException("'resultCaching' in QueryOptions not supported");
+        }
+        if (queryOptions.getDisabledFetchProfiles() != null
+                && !queryOptions.getDisabledFetchProfiles().isEmpty()) {
+            throw new FeatureNotSupportedException("'disabledFetchProfiles' in QueryOptions not supported");
+        }
+        if (queryOptions.getEnabledFetchProfiles() != null
+                && !queryOptions.getEnabledFetchProfiles().isEmpty()) {
+            throw new FeatureNotSupportedException("'enabledFetchProfiles' in QueryOptions not supported");
+        }
+        if (Boolean.TRUE.equals(queryOptions.getQueryPlanCachingEnabled())) {
+            throw new FeatureNotSupportedException("'queryPlanCaching' in QueryOptions not supported");
+        }
+        if (queryOptions.getLockOptions() != null
+                && !queryOptions.getLockOptions().isEmpty()) {
+            throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
+        }
+        if (queryOptions.getComment() != null) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
+        }
+        if (queryOptions.getDatabaseHints() != null
+                && !queryOptions.getDatabaseHints().isEmpty()) {
+            throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
+        }
+        if (queryOptions.getFetchSize() != null) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
+        }
+        if (queryOptions.getLimit() != null && !queryOptions.getLimit().isEmpty()) {
+            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+        }
     }
 }

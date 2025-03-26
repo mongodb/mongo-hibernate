@@ -27,9 +27,23 @@ public final class AstNodeAssertions {
     private AstNodeAssertions() {}
 
     public static void assertRender(String expectedJson, AstNode node) {
+        doAssertRender(expectedJson, node, false);
+    }
+
+    public static void assertElementRender(String expectedJson, AstNode node) {
+        doAssertRender(expectedJson, node, true);
+    }
+
+    private static void doAssertRender(String expectedJson, AstNode node, boolean isElement) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter)) {
+            if (isElement) {
+                jsonWriter.writeStartDocument();
+            }
             node.render(jsonWriter);
+            if (isElement) {
+                jsonWriter.writeEndDocument();
+            }
             jsonWriter.flush();
             var actualJson = stringWriter.toString();
             assertEquals(expectedJson, actualJson);

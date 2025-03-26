@@ -14,29 +14,22 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstDeleteCommand(String collection, AstFilter filter) implements AstCommand {
+public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeString("delete", collection);
-            writer.writeName("deletes");
-            writer.writeStartArray();
+            writer.writeName("$project");
+            writer.writeStartDocument();
             {
-                writer.writeStartDocument();
-                {
-                    writer.writeName("q");
-                    filter.render(writer);
-                    writer.writeInt32("limit", 0);
-                }
-                writer.writeEndDocument();
+                specifications.forEach(specification -> specification.render(writer));
             }
-            writer.writeEndArray();
+            writer.writeEndDocument();
         }
         writer.writeEndDocument();
     }

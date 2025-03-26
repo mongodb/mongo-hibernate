@@ -26,11 +26,11 @@ import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.jspecify.annotations.Nullable;
 
-final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
+final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
 
     private final TableMutation<O> tableMutation;
 
-    TableMutationMqlTranslator(TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactory) {
+    ModelMutationMqlTranslator(TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactory) {
         super(sessionFactory);
         this.tableMutation = tableMutation;
     }
@@ -38,9 +38,9 @@ final class TableMutationMqlTranslator<O extends JdbcMutationOperation> extends 
     @Override
     public O translate(@Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
         assertNull(jdbcParameterBindings);
-        // QueryOptions class is not applicable to table mutation so a dummy value is always passed in
+        checkQueryOptionsSupportability(queryOptions);
 
-        var rootAstNode = acceptAndYield(tableMutation, COLLECTION_MUTATION);
-        return tableMutation.createMutationOperation(renderMongoAstNode(rootAstNode), getParameterBinders());
+        var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
+        return tableMutation.createMutationOperation(renderMongoAstNode(mutationCommand), getParameterBinders());
     }
 }

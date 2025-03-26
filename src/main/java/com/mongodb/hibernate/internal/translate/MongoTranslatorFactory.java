@@ -30,8 +30,7 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
-        // TODO-HIBERNATE-22 https://jira.mongodb.org/browse/HIBERNATE-22
-        return new NoopSqlAstTranslator<>();
+        return new SelectMqlTranslator(sessionFactoryImplementor, selectStatement);
     }
 
     @Override
@@ -44,6 +43,6 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
             TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactoryImplementor) {
-        return new TableMutationMqlTranslator<>(tableMutation, sessionFactoryImplementor);
+        return new ModelMutationMqlTranslator<>(tableMutation, sessionFactoryImplementor);
     }
 }
