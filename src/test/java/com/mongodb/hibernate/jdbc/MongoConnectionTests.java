@@ -16,8 +16,8 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_DATABASE_PRODUCT_NAME;
-import static com.mongodb.hibernate.jdbc.MongoDatabaseMetaData.MONGO_JDBC_DRIVER_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_JDBC_DRIVER_NAME;
 import static java.sql.ResultSet.CONCUR_READ_ONLY;
 import static java.sql.ResultSet.CONCUR_UPDATABLE;
 import static java.sql.ResultSet.TYPE_FORWARD_ONLY;
@@ -324,7 +324,7 @@ class MongoConnectionTests {
             var metaData = assertDoesNotThrow(() -> mongoConnection.getMetaData());
 
             assertAll(
-                    () -> assertEquals(MONGO_DATABASE_PRODUCT_NAME, metaData.getDatabaseProductName()),
+                    () -> assertEquals(MONGO_DBMS_NAME, metaData.getDatabaseProductName()),
                     () -> assertEquals(MONGO_JDBC_DRIVER_NAME, metaData.getDriverName()),
                     () -> assertEquals("8.0.1", metaData.getDatabaseProductVersion()),
                     () -> assertEquals(8, metaData.getDatabaseMajorVersion()),
