@@ -56,9 +56,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.bson.BsonUndefined;
+import org.bson.json.Converter;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
 import org.bson.json.JsonWriterSettings;
+import org.bson.json.StrictJsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
@@ -151,7 +155,9 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
     private static final JsonWriterSettings JSON_WRITER_SETTINGS =
-            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED)
+                    .undefinedConverter((bsonUndefined, strictJsonWriter) -> strictJsonWriter.writeRaw("?"))
+                    .build();
 
     private final SessionFactoryImplementor sessionFactory;
 
