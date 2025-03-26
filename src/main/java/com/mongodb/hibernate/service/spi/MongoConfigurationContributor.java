@@ -18,6 +18,7 @@ package com.mongodb.hibernate.service.spi;
 
 import com.mongodb.hibernate.cfg.MongoConfigurator;
 import java.util.Map;
+import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.Service;
 import org.hibernate.service.spi.Configurable;
@@ -53,7 +54,9 @@ import org.hibernate.service.spi.ServiceContributor;
 public interface MongoConfigurationContributor extends Service {
 
     /**
-     * Configures the MongoDB extension of Hibernate ORM.
+     * Configures the MongoDB extension of Hibernate ORM. This method is called once per instance of
+     * {@link StandardServiceRegistry} that has this {@link MongoConfigurationContributor}
+     * {@linkplain StandardServiceRegistryBuilder#addService(Class, Service) added}.
      *
      * @param configurator The {@link MongoConfigurator} pre-configured with {@linkplain Configurable#configure(Map)
      *     configuration properties}.
