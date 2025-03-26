@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.extension;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -60,7 +61,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         var idColumns = identifier.getColumns();
         if (idColumns.size() > 1) {
             throw new FeatureNotSupportedException(
-                    format("MongoDB doesn't support '%s' field spanning multiple columns", ID_FIELD_NAME));
+                    format("%s doesn't support '%s' field spanning multiple columns", MONGO_DBMS_NAME, ID_FIELD_NAME));
         }
         assertTrue(idColumns.size() == 1);
         var idColumn = idColumns.get(0);

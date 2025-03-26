@@ -18,15 +18,14 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_JDBC_DRIVER_NAME;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 
 final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
-
-    public static final String MONGO_DATABASE_PRODUCT_NAME = "MongoDB";
-    public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
 
     private final Connection connection;
 
@@ -46,7 +45,7 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public String getDatabaseProductName() {
-        return MONGO_DATABASE_PRODUCT_NAME;
+        return MONGO_DBMS_NAME;
     }
 
     @Override
