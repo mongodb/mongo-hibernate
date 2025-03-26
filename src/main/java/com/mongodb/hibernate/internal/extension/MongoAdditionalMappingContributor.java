@@ -23,13 +23,22 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.PersistentClass;
 
+/**
+ * The instance methods like {@link #getContributorName()}, {@link #contribute(AdditionalMappingContributions,
+ * InFlightMetadataCollector, ResourceStreamLocator, MetadataBuildingContext)} are called multiple times if multiple
+ * {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
+ * {@link BootstrapServiceRegistry}.
+ */
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
 
     public MongoAdditionalMappingContributor() {}

@@ -27,6 +27,10 @@ import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 
 public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
+    public static MongoTranslatorFactory INSTANCE = new MongoTranslatorFactory();
+
+    private MongoTranslatorFactory() {}
+
     @Override
     public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
