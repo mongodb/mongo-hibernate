@@ -34,14 +34,14 @@ public final class AstNodeAssertions {
         doAssertRender(expectedJson, node, true);
     }
 
-    private static void doAssertRender(String expectedJson, AstNode node, boolean isNameValue) {
+    private static void doAssertRender(String expectedJson, AstNode node, boolean isElement) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter)) {
-            if (isNameValue) {
+            if (isElement) {
                 jsonWriter.writeStartDocument();
             }
             node.render(jsonWriter);
-            if (isNameValue) {
+            if (isElement) {
                 jsonWriter.writeEndDocument();
             }
             jsonWriter.flush();

@@ -18,9 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import org.bson.BsonWriter;
 
-public record AstProjectStageIncludeSpecification(String fieldPath) implements AstProjectStageSpecification {
+public record AstProjectStageIncludeSpecification(String field) implements AstProjectStageSpecification {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeBoolean(fieldPath, true);
+        writer.writeBoolean(field, true);
     }
 }
