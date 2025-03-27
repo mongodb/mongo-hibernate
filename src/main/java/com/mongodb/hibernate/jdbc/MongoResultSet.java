@@ -51,6 +51,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
+import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
 
 final class MongoResultSet implements ResultSetAdapter {
@@ -202,10 +203,16 @@ final class MongoResultSet implements ResultSetAdapter {
 
     @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
-        // VAKOTODO implement reading and add MongoResultSet tests
+        // VAKOTODO add MongoResultSet tests
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        Object value;
+        if (type.equals(ObjectId.class)) {
+            value = getValue(columnIndex, bsonValue -> bsonValue.asObjectId().getValue());
+        } else {
+            throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        }
+        return type.cast(value);
     }
 
     @Override

@@ -47,6 +47,9 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
 
     @Override
     public <X> ObjectId wrap(X value, WrapperOptions options) {
+        if (value instanceof ObjectId wrapped) {
+            return wrapped;
+        }
         throw new FeatureNotSupportedException();
     }
 }

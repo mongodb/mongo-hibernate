@@ -46,16 +46,28 @@ class ObjectIdFieldTypeIntegrationTests implements SessionFactoryScopeAware {
 
     @Test
     void insert() {
-        var id = new ObjectId(1, 0);
-        sessionFactoryScope.inTransaction(session -> {
-            var item = new Item();
-            item.id = id;
-            session.persist(item);
-        });
-        assertThat(mongoCollection.find()).containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonObjectId(id)));
+        var item = new Item();
+        item.id = new ObjectId(1, 0);
+        item.v = new ObjectId(2, 0);
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertThat(mongoCollection.find())
+                .containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonObjectId(item.id))
+                        .append("v", new BsonObjectId(item.v)));
     }
 
-    // VAKOTODO add read tests
+    @Test
+    void getById() {
+        var item = new Item();
+        item.id = new ObjectId(1, 0);
+        item.v = new ObjectId(2, 0);
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        var loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(Item.class, item.id));
+        assertThat(loadedItem)
+                .isNotNull()
+                .usingRecursiveComparison()
+                .withStrictTypeChecking()
+                .isEqualTo(item);
+    }
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
@@ -67,5 +79,7 @@ class ObjectIdFieldTypeIntegrationTests implements SessionFactoryScopeAware {
     static class Item {
         @Id
         ObjectId id;
+
+        ObjectId v;
     }
 }
