@@ -72,6 +72,9 @@ public final class ObjectIdJdbcType implements JdbcType {
         return result;
     }
 
+    /**
+     * Thread-safe.
+     */
     private static final class Binder extends BasicBinder<ObjectId> {
         @Serial
         private static final long serialVersionUID = 1L;
@@ -95,6 +98,9 @@ public final class ObjectIdJdbcType implements JdbcType {
         }
     }
 
+    /**
+     * Thread-safe.
+     */
     private static final class Extractor extends BasicExtractor<ObjectId> {
         @Serial
         private static final long serialVersionUID = 1L;
