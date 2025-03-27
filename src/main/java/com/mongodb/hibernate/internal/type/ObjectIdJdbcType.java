@@ -36,9 +36,9 @@ public final class ObjectIdJdbcType implements JdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    public static final ObjectIdJdbcType INSTANCE = new ObjectIdJdbcType();
     private static final MqlType MQL_TYPE = MqlType.OBJECT_ID;
     private static final ObjectIdJavaType JAVA_TYPE = ObjectIdJavaType.INSTANCE;
-    public static final ObjectIdJdbcType INSTANCE = new ObjectIdJdbcType();
 
     private ObjectIdJdbcType() {}
 
@@ -79,7 +79,7 @@ public final class ObjectIdJdbcType implements JdbcType {
         @Serial
         private static final long serialVersionUID = 1L;
 
-        static Binder INSTANCE = new Binder();
+        static final Binder INSTANCE = new Binder();
 
         private Binder() {
             super(JAVA_TYPE, ObjectIdJdbcType.INSTANCE);
@@ -105,7 +105,7 @@ public final class ObjectIdJdbcType implements JdbcType {
         @Serial
         private static final long serialVersionUID = 1L;
 
-        static Extractor INSTANCE = new Extractor();
+        static final Extractor INSTANCE = new Extractor();
 
         private Extractor() {
             super(JAVA_TYPE, ObjectIdJdbcType.INSTANCE);
