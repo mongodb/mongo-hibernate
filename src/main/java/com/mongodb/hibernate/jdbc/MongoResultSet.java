@@ -203,7 +203,6 @@ final class MongoResultSet implements ResultSetAdapter {
 
     @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
-        // VAKOTODO add MongoResultSet tests
         checkClosed();
         checkColumnIndex(columnIndex);
         Object value;
