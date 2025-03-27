@@ -189,7 +189,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
-        // VAKOTODO add tests
         checkClosed();
         checkParameterIndex(parameterIndex);
         BsonValue value;
