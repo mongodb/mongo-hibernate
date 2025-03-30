@@ -32,14 +32,14 @@ public enum MqlType implements SQLType {
     OBJECT_ID(11_000);
 
     static {
-        assertTrue(maxHibernateSqlType() < minType());
+        assertTrue(maxHibernateSqlTypeCode() < minMqlTypeCode());
     }
 
-    MqlType(int type) {
-        this.type = type;
+    MqlType(int code) {
+        this.code = code;
     }
 
-    private final int type;
+    private final int code;
 
     @Override
     public String getName() {
@@ -53,17 +53,17 @@ public enum MqlType implements SQLType {
 
     @Override
     public Integer getVendorTypeNumber() {
-        return type;
+        return code;
     }
 
-    private static int minType() {
+    private static int minMqlTypeCode() {
         return Arrays.stream(MqlType.values())
                 .mapToInt(MqlType::getVendorTypeNumber)
                 .min()
                 .orElseThrow(MongoAssertions::fail);
     }
 
-    private static int maxHibernateSqlType() {
+    private static int maxHibernateSqlTypeCode() {
         Predicate<Field> publicStaticFinal = field -> {
             var modifiers = field.getModifiers();
             return Modifier.isPublic(modifiers) && Modifier.isStatic(modifiers) && Modifier.isFinal(modifiers);
