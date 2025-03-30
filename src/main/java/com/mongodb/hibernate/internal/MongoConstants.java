@@ -20,5 +20,6 @@ public final class MongoConstants {
 
     private MongoConstants() {}
 
+    public static final String MONGO_DBMS_NAME = "MongoDB";
     public static final String ID_FIELD_NAME = "_id";
 }

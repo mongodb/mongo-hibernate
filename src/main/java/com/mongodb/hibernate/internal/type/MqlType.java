@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 
 import com.mongodb.hibernate.internal.MongoAssertions;
 import java.lang.reflect.Field;
@@ -47,7 +48,7 @@ public enum MqlType implements SQLType {
 
     @Override
     public String getVendor() {
-        return "MongoDB";
+        return MONGO_DBMS_NAME;
     }
 
     @Override
