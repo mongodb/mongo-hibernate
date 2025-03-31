@@ -59,7 +59,7 @@ class MongoConfigurationContributorTests {
         assertSame(expected, actual.getCause());
     }
 
-    private SessionFactory buildSessionFactory(MongoConfigurationContributor mongoConfigurationContributor) {
+    private static SessionFactory buildSessionFactory(MongoConfigurationContributor mongoConfigurationContributor) {
         return new MetadataSources(new StandardServiceRegistryBuilder()
                         .addService(MongoConfigurationContributor.class, mongoConfigurationContributor)
                         .build())

@@ -318,7 +318,7 @@ class MongoConnectionTests {
             var commandResultDoc = Document.parse(commandResultJson);
             doReturn(commandResultDoc)
                     .when(mongoDatabase)
-                    .runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
+                    .runCommand(any(ClientSession.class), argThat(arg -> "buildInfo"
                             .equals(arg.toBsonDocument().getFirstKey())));
 
             var metaData = assertDoesNotThrow(() -> mongoConnection.getMetaData());
@@ -337,7 +337,7 @@ class MongoConnectionTests {
             doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
             doThrow(new RuntimeException())
                     .when(mongoDatabase)
-                    .runCommand(any(ClientSession.class), argThat(arg -> "buildinfo"
+                    .runCommand(any(ClientSession.class), argThat(arg -> "buildInfo"
                             .equals(arg.toBsonDocument().getFirstKey())));
             assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
         }
