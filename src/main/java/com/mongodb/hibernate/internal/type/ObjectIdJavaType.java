@@ -21,7 +21,6 @@ import java.io.Serial;
 import org.bson.types.ObjectId;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.AbstractClassJavaType;
-import org.hibernate.type.descriptor.java.ImmutableMutabilityPlan;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 
@@ -32,7 +31,7 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     public static final ObjectIdJavaType INSTANCE = new ObjectIdJavaType();
 
     private ObjectIdJavaType() {
-        super(ObjectId.class, ImmutableMutabilityPlan.instance());
+        super(ObjectId.class);
     }
 
     @Override
