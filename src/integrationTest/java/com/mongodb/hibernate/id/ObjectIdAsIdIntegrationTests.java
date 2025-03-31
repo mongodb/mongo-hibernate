@@ -18,6 +18,7 @@ package com.mongodb.hibernate.id;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -36,9 +37,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {ObjectIdFieldTypeIntegrationTests.Item.class})
+@DomainModel(annotatedClasses = {ObjectIdAsIdIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
-class ObjectIdFieldTypeIntegrationTests implements SessionFactoryScopeAware {
+class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -48,26 +49,18 @@ class ObjectIdFieldTypeIntegrationTests implements SessionFactoryScopeAware {
     void insert() {
         var item = new Item();
         item.id = new ObjectId(1, 0);
-        item.v = new ObjectId(2, 0);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
-                .containsExactly(new BsonDocument()
-                        .append(ID_FIELD_NAME, new BsonObjectId(item.id))
-                        .append("v", new BsonObjectId(item.v)));
+                .containsExactly(new BsonDocument().append(ID_FIELD_NAME, new BsonObjectId(item.id)));
     }
 
     @Test
     void getById() {
         var item = new Item();
         item.id = new ObjectId(1, 0);
-        item.v = new ObjectId(2, 0);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(Item.class, item.id));
-        assertThat(loadedItem)
-                .isNotNull()
-                .usingRecursiveComparison()
-                .withStrictTypeChecking()
-                .isEqualTo(item);
+        assertEquals(item.id, loadedItem.id);
     }
 
     @Override
@@ -80,7 +73,5 @@ class ObjectIdFieldTypeIntegrationTests implements SessionFactoryScopeAware {
     static class Item {
         @Id
         ObjectId id;
-
-        ObjectId v;
     }
 }
