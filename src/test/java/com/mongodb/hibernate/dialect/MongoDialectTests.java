@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.dialect;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -36,9 +36,9 @@ class MongoDialectTests {
         when(info.makeCopy()).thenCallRealMethod();
         when(info.getDatabaseMajorVersion()).thenReturn(5);
         when(info.getDatabaseMinorVersion()).thenReturn(3);
-        assertThat(assertThrows(RuntimeException.class, () -> new MongoDialect(info))
-                        .getMessage())
-                .isEqualTo("The minimum supported version of MongoDB is 6.0, but you are using 5.3");
+        assertThatThrownBy(() -> new MongoDialect(info))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("The minimum supported version of MongoDB is 6.0, but you are using 5.3");
     }
 
     @Test
