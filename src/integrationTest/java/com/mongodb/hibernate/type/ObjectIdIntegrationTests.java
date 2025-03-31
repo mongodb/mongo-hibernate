@@ -18,6 +18,7 @@ package com.mongodb.hibernate.type;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -25,8 +26,10 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
+import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -54,7 +57,8 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         assertThat(mongoCollection.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(1))
-                        .append("v", new BsonObjectId(item.v)));
+                        .append("v", new BsonObjectId(item.v))
+                        .append("vNull", BsonNull.VALUE));
     }
 
     @Test
@@ -64,10 +68,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         item.v = new ObjectId(2, 0);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(Item.class, item.id));
-        assertThat(loadedItem)
-                .usingRecursiveComparison()
-                .withStrictTypeChecking()
-                .isEqualTo(item);
+        assertEquals(item, loadedItem);
     }
 
     @Override
@@ -82,5 +83,20 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         int id;
 
         ObjectId v;
+        ObjectId vNull;
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Item item = (Item) o;
+            return id == item.id && Objects.equals(v, item.v) && vNull == item.vNull;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, v, vNull);
+        }
     }
 }
