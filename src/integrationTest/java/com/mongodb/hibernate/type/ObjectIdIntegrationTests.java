@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
+import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
@@ -32,6 +34,8 @@ import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.types.ObjectId;
+import org.hibernate.annotations.JavaType;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -52,13 +56,17 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
     void insert() {
         var item = new Item();
         item.id = 1;
-        item.v = new ObjectId(2, 0);
+        item.v = new ObjectId(1, 0);
+        item.vExplicitlyAnnotatedNotForThePublic = new ObjectId(2, 3);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(1))
                         .append("v", new BsonObjectId(item.v))
-                        .append("vNull", BsonNull.VALUE));
+                        .append("vNull", BsonNull.VALUE)
+                        .append(
+                                "vExplicitlyAnnotatedNotForThePublic",
+                                new BsonObjectId(item.vExplicitlyAnnotatedNotForThePublic)));
     }
 
     @Test
@@ -85,18 +93,25 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         ObjectId v;
         ObjectId vNull;
 
+        @JavaType(ObjectIdJavaType.class)
+        @JdbcType(ObjectIdJdbcType.class)
+        ObjectId vExplicitlyAnnotatedNotForThePublic;
+
         @Override
         public boolean equals(Object o) {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
             Item item = (Item) o;
-            return id == item.id && Objects.equals(v, item.v) && vNull == item.vNull;
+            return id == item.id
+                    && Objects.equals(v, item.v)
+                    && Objects.equals(vNull, item.vNull)
+                    && Objects.equals(vExplicitlyAnnotatedNotForThePublic, item.vExplicitlyAnnotatedNotForThePublic);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(id, v, vNull);
+            return Objects.hash(id, v, vNull, vExplicitlyAnnotatedNotForThePublic);
         }
     }
 }

@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.type;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.Serial;
+import java.util.concurrent.ThreadLocalRandom;
 import org.bson.types.ObjectId;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.AbstractClassJavaType;
@@ -27,6 +28,8 @@ import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     @Serial
     private static final long serialVersionUID = 1L;
+
+    private static final int hashCode = ThreadLocalRandom.current().nextInt();
 
     public static final ObjectIdJavaType INSTANCE = new ObjectIdJavaType();
 
@@ -50,5 +53,15 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
             return wrapped;
         }
         throw new FeatureNotSupportedException();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o != null && getClass() == o.getClass();
+    }
+
+    @Override
+    public int hashCode() {
+        return hashCode;
     }
 }
