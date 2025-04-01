@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2024-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+/** The program elements within this package are not part of the public API and may be removed or changed at any time */
+@NullMarked
+package com.mongodb.hibernate.internal.type;
 
-public final class MongoConstants {
-
-    private MongoConstants() {}
-
-    public static final String MONGO_DBMS_NAME = "MongoDB";
-    public static final String ID_FIELD_NAME = "_id";
-}
+import org.jspecify.annotations.NullMarked;
