@@ -17,30 +17,25 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstTestUtils.createFieldOperationFilter;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import java.util.List;
 import org.bson.BsonInt32;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.bson.BsonString;
+import org.junit.jupiter.api.Test;
 
-class AstComparisonFilterOperationTests {
+class AstOrFilterTests {
+    @Test
+    void testRendering() {
+        var astOrFilter = new AstOrFilter(List.of(
+                createFieldOperationFilter("field1", EQ, new BsonInt32(1)),
+                createFieldOperationFilter("field2", EQ, new BsonString("1"))));
 
-    @ParameterizedTest
-    @CsvSource({
-        "EQ,$eq",
-        "GT,$gt",
-        "GTE,$gte",
-        "LT,$lt",
-        "LTE,$lte",
-        "NE,$ne",
-    })
-    void testRendering(String operatorName, String operatorRendered) {
-        var operator = AstComparisonFilterOperator.valueOf(operatorName);
-        var operation = new AstComparisonFilterOperation(operator, new AstLiteralValue(new BsonInt32(1)));
-
-        var expectedJson = """
-                {"%s": 1}\
-                """.formatted(operatorRendered);
-        assertRender(expectedJson, operation);
+        var expectedJson =
+                """
+                {"$or": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
+                """;
+        assertRender(expectedJson, astOrFilter);
     }
 }

@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.type.BsonTypeUtils.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
@@ -39,19 +40,9 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
-import org.bson.BsonBinary;
-import org.bson.BsonBoolean;
-import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
-import org.bson.BsonDouble;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
-import org.bson.BsonNull;
-import org.bson.BsonObjectId;
-import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
-import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
@@ -114,56 +105,56 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLFeatureNotSupportedException(
                         "Unsupported sql type: " + JDBCType.valueOf(sqlType).getName());
         }
-        setParameter(parameterIndex, BsonNull.VALUE);
+        setParameter(parameterIndex, toBsonValue(null));
     }
 
     @Override
     public void setBoolean(int parameterIndex, boolean x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, BsonBoolean.valueOf(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setInt(int parameterIndex, int x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonInt32(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setLong(int parameterIndex, long x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonInt64(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setDouble(int parameterIndex, double x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonDouble(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonDecimal128(new Decimal128(x)));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setString(int parameterIndex, String x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonString(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setBytes(int parameterIndex, byte[] x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonBinary(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
@@ -194,7 +185,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         BsonValue value;
         if (targetSqlType == MqlType.OBJECT_ID.getVendorTypeNumber()) {
             if (x instanceof ObjectId v) {
-                value = new BsonObjectId(v);
+                value = toBsonValue(v);
             } else {
                 throw fail();
             }

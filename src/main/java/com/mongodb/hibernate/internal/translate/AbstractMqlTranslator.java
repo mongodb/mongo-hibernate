@@ -27,6 +27,12 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GT;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GTE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LT;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
+import static com.mongodb.hibernate.internal.type.BsonTypeUtils.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -34,6 +40,7 @@ import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryS
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
@@ -45,11 +52,14 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMa
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstAndFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstNotComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstOrFilter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -126,6 +136,7 @@ import org.hibernate.sql.ast.tree.predicate.Junction;
 import org.hibernate.sql.ast.tree.predicate.LikePredicate;
 import org.hibernate.sql.ast.tree.predicate.NegatedPredicate;
 import org.hibernate.sql.ast.tree.predicate.NullnessPredicate;
+import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.predicate.SelfRenderingPredicate;
 import org.hibernate.sql.ast.tree.predicate.ThruthnessPredicate;
 import org.hibernate.sql.ast.tree.select.QueryGroup;
@@ -160,6 +171,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
     private final Set<String> affectedTableNames = new HashSet<>();
+
+    private final Set<Predicate> subPredicatesInNegatedGroupedPredicate = new HashSet<>();
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -383,17 +396,36 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
         var fieldValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_VALUE);
 
-        var filter = new AstFieldOperationFilter(
-                new AstFilterFieldPath(fieldPath),
-                new AstComparisonFilterOperation(astComparisonFilterOperator, fieldValue));
+        var astFilterOperation = subPredicatesInNegatedGroupedPredicate.contains(comparisonPredicate)
+                ? new AstNotComparisonFilterOperation(astComparisonFilterOperator, fieldValue)
+                : new AstComparisonFilterOperation(astComparisonFilterOperator, fieldValue);
+        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
     private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
         return switch (operator) {
             case EQUAL -> EQ;
-            default -> throw new FeatureNotSupportedException("Unsupported operator: " + operator.name());
+            case NOT_EQUAL -> NE;
+            case LESS_THAN -> LT;
+            case LESS_THAN_OR_EQUAL -> LTE;
+            case GREATER_THAN -> GT;
+            case GREATER_THAN_OR_EQUAL -> GTE;
+            default -> throw new FeatureNotSupportedException("Unsupported comparison operator: " + operator.name());
         };
+    }
+
+    @Override
+    public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
+        var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
+        astVisitorValueHolder.yield(FILTER, filter);
+    }
+
+    @Override
+    public void visitGroupedPredicate(GroupedPredicate groupedPredicate) {
+        subPredicatesInNegatedGroupedPredicate.add(groupedPredicate.getSubPredicate());
+        var filter = acceptAndYield(groupedPredicate.getSubPredicate(), FILTER);
+        astVisitorValueHolder.yield(FILTER, filter);
     }
 
     @Override
@@ -423,6 +455,32 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException();
         }
         astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
+    }
+
+    @Override
+    public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
+        var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
+        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(bsonValue));
+    }
+
+    @Override
+    public void visitJunction(Junction junction) {
+        var subFilters = new ArrayList<AstFilter>(junction.getPredicates().size());
+        for (Predicate predicate : junction.getPredicates()) {
+            subFilters.add(acceptAndYield(predicate, FILTER));
+        }
+        var junctionFilter =
+                switch (junction.getNature()) {
+                    case DISJUNCTION -> new AstOrFilter(subFilters);
+                    case CONJUNCTION -> new AstAndFilter(subFilters);
+                };
+        astVisitorValueHolder.yield(FILTER, junctionFilter);
+    }
+
+    @Override
+    public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
+        astVisitorValueHolder.yield(
+                FIELD_VALUE, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
     }
 
     @Override
@@ -611,16 +669,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitUnaryOperationExpression(UnaryOperation unaryOperation) {
         throw new FeatureNotSupportedException();
     }
@@ -656,11 +704,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitGroupedPredicate(GroupedPredicate groupedPredicate) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
         throw new FeatureNotSupportedException();
     }
@@ -681,17 +724,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitJunction(Junction junction) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
         throw new FeatureNotSupportedException();
     }
 
@@ -755,7 +788,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (Boolean.TRUE.equals(queryOptions.isReadOnly())) {
             throw new FeatureNotSupportedException("'readOnly' in QueryOptions not supported");
         }
-        if (queryOptions.getAppliedGraph() != null) {
+        if (queryOptions.getAppliedGraph() != null
+                && queryOptions.getAppliedGraph().getGraph() != null) {
             throw new FeatureNotSupportedException("'appliedGraph' in QueryOptions not supported");
         }
         if (queryOptions.getTupleTransformer() != null) {
@@ -781,9 +815,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (queryOptions.getLockOptions() != null
                 && !queryOptions.getLockOptions().isEmpty()) {
             throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
-        }
-        if (queryOptions.getComment() != null) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
         }
         if (queryOptions.getDatabaseHints() != null
                 && !queryOptions.getDatabaseHints().isEmpty()) {
