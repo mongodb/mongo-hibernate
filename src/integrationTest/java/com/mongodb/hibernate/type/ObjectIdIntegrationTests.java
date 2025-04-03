@@ -97,7 +97,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void insert() {
             var item = new ItemGenerated();
-            item.id = 123;
+            item.id = 1;
             sessionFactoryScope.inTransaction(session -> session.persist(item));
             assertNotNull(item.v);
             assertThat(mongoCollection.find())
