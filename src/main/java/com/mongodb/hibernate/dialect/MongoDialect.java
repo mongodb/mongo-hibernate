@@ -20,10 +20,14 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
+import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
+import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 
 /**
@@ -79,5 +83,12 @@ public final class MongoDialect extends Dialect {
     @Override
     public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
         return new MongoTranslatorFactory();
+    }
+
+    @Override
+    public void contribute(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
+        super.contribute(typeContributions, serviceRegistry);
+        typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
+        typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
     }
 }

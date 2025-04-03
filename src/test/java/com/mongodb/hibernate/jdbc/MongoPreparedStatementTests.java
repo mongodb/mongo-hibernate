@@ -35,6 +35,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.type.MqlType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -45,9 +46,16 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
+import java.util.List;
 import java.util.function.Consumer;
+import org.bson.BsonArray;
+import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonObjectId;
+import org.bson.BsonString;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -79,16 +87,18 @@ class MongoPreparedStatementTests {
     private static final String EXAMPLE_MQL =
             """
             {
-               insert: "books",
+               insert: "items",
                documents: [
                    {
-                       title: { $undefined: true },
-                       author: { $undefined: true },
-                       publishYear: { $undefined: true },
-                       outOfStock: { $undefined: true },
-                       tags: [
+                       string1: { $undefined: true },
+                       string2: { $undefined: true },
+                       int32: { $undefined: true },
+                       boolean: { $undefined: true },
+                       stringAndObjectId: [
+                           { $undefined: true },
                            { $undefined: true }
                        ]
+                       objectId: { $undefined: true }
                    }
                ]
             }
@@ -110,33 +120,33 @@ class MongoPreparedStatementTests {
 
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
 
-                preparedStatement.setString(1, "War and Peace");
-                preparedStatement.setString(2, "Leo Tolstoy");
-                preparedStatement.setInt(3, 1869);
-                preparedStatement.setBoolean(4, false);
-                preparedStatement.setString(5, "classic");
+                preparedStatement.setString(1, "s1");
+                preparedStatement.setString(2, "s2");
+                preparedStatement.setInt(3, 1);
+                preparedStatement.setBoolean(4, true);
+                preparedStatement.setString(5, "array element");
+                preparedStatement.setObject(6, new ObjectId(1, 2), MqlType.OBJECT_ID.getVendorTypeNumber());
+                preparedStatement.setObject(7, new ObjectId(2, 0), MqlType.OBJECT_ID.getVendorTypeNumber());
 
                 preparedStatement.executeUpdate();
 
                 verify(mongoDatabase).runCommand(eq(clientSession), commandCaptor.capture());
                 var command = commandCaptor.getValue();
-                var expectedDoc = BsonDocument.parse(
-                        """
-                        {
-                            insert: "books",
-                            documents: [
-                                {
-                                    title: "War and Peace",
-                                    author: "Leo Tolstoy",
-                                    publishYear: 1869,
-                                    outOfStock: false,
-                                    tags: [
-                                        "classic"
-                                    ]
-                                }
-                            ]
-                        }
-                        """);
+                var expectedDoc = new BsonDocument()
+                        .append("insert", new BsonString("items"))
+                        .append(
+                                "documents",
+                                new BsonArray(List.of(new BsonDocument()
+                                        .append("string1", new BsonString("s1"))
+                                        .append("string2", new BsonString("s2"))
+                                        .append("int32", new BsonInt32(1))
+                                        .append("boolean", BsonBoolean.TRUE)
+                                        .append(
+                                                "stringAndObjectId",
+                                                new BsonArray(List.of(
+                                                        new BsonString("array element"),
+                                                        new BsonObjectId(new ObjectId(1, 2)))))
+                                        .append("objectId", new BsonObjectId(new ObjectId(2, 0))))));
                 assertEquals(expectedDoc, command);
             }
         }
@@ -151,7 +161,7 @@ class MongoPreparedStatementTests {
     @Test
     void testParameterIndexOverflow() throws SQLSyntaxErrorException {
         var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
-        checkSetterMethods(mongoPreparedStatement, 6, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
+        checkSetterMethods(mongoPreparedStatement, 8, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
     }
 
     @Nested
