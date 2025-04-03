@@ -96,7 +96,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
     class Generated {
         @Test
         void insert() {
-            var item = new ObjectIdIntegrationTests.ItemGenerated();
+            var item = new ItemGenerated();
             item.id = 123;
             sessionFactoryScope.inTransaction(session -> session.persist(item));
             assertNotNull(item.v);
@@ -108,7 +108,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void insertWithPropertyAccess() {
-            var item = new ObjectIdIntegrationTests.ItemGeneratedWithPropertyAccess().setId(1);
+            var item = new ItemGeneratedWithPropertyAccess().setId(1);
             sessionFactoryScope.inTransaction(session -> session.persist(item));
             assertNotNull(item.getV());
             assertThat(mongoCollection.find())
@@ -120,7 +120,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void assignedValue() {
             var v = new ObjectId(1, 0);
-            var item = new ObjectIdIntegrationTests.ItemGenerated();
+            var item = new ItemGenerated();
             item.id = 1;
             item.v = v;
             sessionFactoryScope.inTransaction(session -> session.persist(item));
