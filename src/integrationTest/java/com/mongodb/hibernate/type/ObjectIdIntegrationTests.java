@@ -19,8 +19,10 @@ package com.mongodb.hibernate.type;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -40,11 +42,17 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {ObjectIdIntegrationTests.Item.class})
+@DomainModel(
+        annotatedClasses = {
+            ObjectIdIntegrationTests.Item.class,
+            ObjectIdIntegrationTests.ItemGenerated.class,
+            ObjectIdIntegrationTests.ItemGeneratedWithPropertyAccess.class
+        })
 @ExtendWith(MongoExtension.class)
 class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
@@ -84,6 +92,42 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         this.sessionFactoryScope = sessionFactoryScope;
     }
 
+    @Nested
+    class Generated {
+        @Test
+        void insert() {
+            var item = new ItemGenerated();
+            item.id = 1;
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
+            assertNotNull(item.v);
+            assertThat(mongoCollection.find())
+                    .containsExactly(new BsonDocument()
+                            .append(ID_FIELD_NAME, new BsonInt32(item.id))
+                            .append("v", new BsonObjectId(item.v)));
+        }
+
+        @Test
+        void insertWithPropertyAccess() {
+            var item = new ItemGeneratedWithPropertyAccess().setId(1);
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
+            assertNotNull(item.getV());
+            assertThat(mongoCollection.find())
+                    .containsExactly(new BsonDocument()
+                            .append(ID_FIELD_NAME, new BsonInt32(item.getId()))
+                            .append("v", new BsonObjectId(item.getV())));
+        }
+
+        @Test
+        void assignedValue() {
+            var v = new ObjectId(1, 0);
+            var item = new ItemGenerated();
+            item.id = 1;
+            item.v = v;
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
+            assertEquals(v, item.v);
+        }
+    }
+
     @Entity
     @Table(name = "items")
     static class Item {
@@ -112,6 +156,43 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         @Override
         public int hashCode() {
             return Objects.hash(id, v, vNull, vExplicitlyAnnotatedNotForThePublic);
+        }
+    }
+
+    @Entity
+    @Table(name = "items")
+    static class ItemGenerated {
+        @Id
+        int id;
+
+        @ObjectIdGenerator
+        ObjectId v;
+    }
+
+    @Entity
+    @Table(name = "items")
+    static class ItemGeneratedWithPropertyAccess {
+        private int id;
+        private ObjectId v;
+
+        @Id
+        int getId() {
+            return id;
+        }
+
+        ItemGeneratedWithPropertyAccess setId(int id) {
+            this.id = id;
+            return this;
+        }
+
+        @ObjectIdGenerator
+        ObjectId getV() {
+            return v;
+        }
+
+        ItemGeneratedWithPropertyAccess setV(ObjectId v) {
+            this.v = v;
+            return this;
         }
     }
 }
