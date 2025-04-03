@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.boot;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
