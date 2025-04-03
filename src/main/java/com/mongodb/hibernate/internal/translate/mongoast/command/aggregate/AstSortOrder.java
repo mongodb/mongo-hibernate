@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-public final class MongoConstants {
+public enum AstSortOrder {
+    ASC(1),
+    DESC(-1);
 
-    private MongoConstants() {}
+    private final int renderedValue;
 
-    public static final String MONGO_DBMS_NAME = "MongoDB";
-    public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
-    public static final String ID_FIELD_NAME = "_id";
+    AstSortOrder(int renderedValue) {
+        this.renderedValue = renderedValue;
+    }
 
-    public static final int SORT_KEY_MAX_NUM = 32;
+    public int getRenderedValue() {
+        return renderedValue;
+    }
 }

@@ -20,6 +20,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.SORT_KEY_MAX_NUM;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
@@ -27,6 +28,8 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GTE;
@@ -55,6 +58,9 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMa
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
@@ -67,6 +73,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
@@ -83,6 +90,8 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
+import org.hibernate.query.NullPrecedence;
+import org.hibernate.query.SortDirection;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
@@ -360,26 +369,67 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (!querySpec.getGroupByClauseExpressions().isEmpty()) {
             throw new FeatureNotSupportedException("GroupBy not supported");
         }
-        if (querySpec.hasSortSpecifications()) {
-            throw new FeatureNotSupportedException("Sorting not supported");
-        }
         if (querySpec.hasOffsetOrFetchClause()) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
 
+        var stages = new ArrayList<AstStage>(3);
+
+        // $match stage
         var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
-        var filter = whereClauseRestrictions == null || whereClauseRestrictions.isEmpty()
-                ? null
-                : acceptAndYield(whereClauseRestrictions, FILTER);
+        if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
+            var filter = acceptAndYield(whereClauseRestrictions, FILTER);
+            stages.add(new AstMatchStage(filter));
+        }
 
+        // $sort stage
+        getOptionalAstSortStage(querySpec).ifPresent(stages::add);
+
+        // $project stage
         var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
+        stages.add(new AstProjectStage(projectStageSpecifications));
 
-        var stages = filter == null
-                ? List.of(new AstProjectStage(projectStageSpecifications))
-                : List.of(new AstMatchStage(filter), new AstProjectStage(projectStageSpecifications));
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
+    }
+
+    private Optional<AstSortStage> getOptionalAstSortStage(QuerySpec querySpec) {
+        if (querySpec.hasSortSpecifications()) {
+
+            if (querySpec.getSortSpecifications().size() > SORT_KEY_MAX_NUM) {
+                throw new FeatureNotSupportedException(
+                        format("%s does not support more than %d sort keys", MONGO_DBMS_NAME, SORT_KEY_MAX_NUM));
+            }
+
+            var sortFields = new ArrayList<AstSortField>(
+                    querySpec.getSortSpecifications().size());
+
+            var encounteredSortFieldPaths = new HashSet<String>();
+            for (SortSpecification sortSpecification : querySpec.getSortSpecifications()) {
+                var sortFieldPath = acceptAndYield(sortSpecification.getSortExpression(), FIELD_PATH);
+                if (!encounteredSortFieldPaths.add(sortFieldPath)) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s does not support duplicated sort keys ('%s' field is used more than once)",
+                            MONGO_DBMS_NAME, sortFieldPath));
+                }
+
+                if (sortSpecification.getNullPrecedence() != null
+                        && sortSpecification.getNullPrecedence() != NullPrecedence.NONE) {
+                    throw new FeatureNotSupportedException(
+                            format("%s does not support Null Precedence", MONGO_DBMS_NAME));
+                }
+                if (sortSpecification.isIgnoreCase()) {
+                    throw new FeatureNotSupportedException();
+                }
+
+                var sortField = new AstSortField(
+                        sortFieldPath, sortSpecification.getSortOrder() == SortDirection.ASCENDING ? ASC : DESC);
+                sortFields.add(sortField);
+            }
+            return Optional.of(new AstSortStage(sortFields));
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -496,6 +546,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         astVisitorValueHolder.yield(
                 FIELD_VALUE, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
+    }
+
+    @Override
+    public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
+        sqlSelectionExpression.getSelection().getExpression().accept(this);
     }
 
     @Override
@@ -650,11 +705,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
         throw new FeatureNotSupportedException();
     }
 

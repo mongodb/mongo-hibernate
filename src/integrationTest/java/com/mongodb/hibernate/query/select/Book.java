@@ -16,21 +16,16 @@
 
 package com.mongodb.hibernate.query.select;
 
-import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import org.bson.types.ObjectId;
 
 @Entity(name = "Book")
 @Table(name = "books")
-public class Book {
+class Book {
     @Id
-    @ObjectIdGenerator
-    ObjectId id;
-
-    public Book() {}
+    int id;
 
     String title;
     Boolean outOfStock;
@@ -38,4 +33,24 @@ public class Book {
     Long isbn13;
     Double discount;
     BigDecimal price;
+
+    Book() {}
+
+    Book(int id, String title, Integer publishYear, Boolean outOfStock) {
+        this.id = id;
+        this.title = title;
+        this.publishYear = publishYear;
+        this.outOfStock = outOfStock;
+
+        // the following fields are set dummy values
+        // for currently null value is not supported
+        this.isbn13 = 0L;
+        this.discount = 0.0;
+        this.price = BigDecimal.valueOf(0);
+    }
+
+    @Override
+    public String toString() {
+        return "Book{" + "id=" + id + '}';
+    }
 }

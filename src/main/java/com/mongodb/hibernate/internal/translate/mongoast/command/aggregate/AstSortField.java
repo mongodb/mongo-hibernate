@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-public final class MongoConstants {
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import org.bson.BsonWriter;
 
-    private MongoConstants() {}
-
-    public static final String MONGO_DBMS_NAME = "MongoDB";
-    public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
-    public static final String ID_FIELD_NAME = "_id";
-
-    public static final int SORT_KEY_MAX_NUM = 32;
+public record AstSortField(String path, AstSortOrder order) implements AstNode {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeName(path);
+        writer.writeInt32(order.getRenderedValue());
+    }
 }
