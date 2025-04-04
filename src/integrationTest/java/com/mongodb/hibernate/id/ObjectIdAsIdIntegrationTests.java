@@ -58,8 +58,7 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
         var item = new Item();
         item.id = new ObjectId(1, 0);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollection.find())
-                .containsExactly(new BsonDocument().append(ID_FIELD_NAME, new BsonObjectId(item.id)));
+        assertThat(mongoCollection.find()).containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonObjectId(item.id)));
     }
 
     @Test
