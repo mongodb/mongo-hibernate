@@ -38,7 +38,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             MongoIdFieldNameIntegrationTests.EntityWithoutIdColumnAnnotation.class,
             MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithoutNameElement.class,
-            MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithValidNameElement.class
+            MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithValidNameElement.class,
+            MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithInvalidNameElement.class
         })
 @ExtendWith(MongoExtension.class)
 class MongoIdFieldNameIntegrationTests {
@@ -67,9 +68,19 @@ class MongoIdFieldNameIntegrationTests {
     }
 
     @Test
-    void testEntityWithIdColumnAnnotationWithNameElementIdentical(SessionFactoryScope scope) {
+    void testEntityWithIdColumnAnnotationWithValidNameElement(SessionFactoryScope scope) {
         scope.inTransaction(session -> {
             var movie = new EntityWithIdColumnAnnotationWithValidNameElement();
+            movie.id = 1;
+            session.persist(movie);
+        });
+        assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
+    }
+
+    @Test
+    void testEntityWithIdColumnAnnotationWithInvalidNameElement(SessionFactoryScope scope) {
+        scope.inTransaction(session -> {
+            var movie = new EntityWithIdColumnAnnotationWithInvalidNameElement();
             movie.id = 1;
             session.persist(movie);
         });
@@ -100,6 +111,14 @@ class MongoIdFieldNameIntegrationTests {
     static class EntityWithIdColumnAnnotationWithValidNameElement {
         @Id
         @Column(name = ID_FIELD_NAME)
+        int id;
+    }
+
+    @Entity
+    @Table(name = "movies")
+    static class EntityWithIdColumnAnnotationWithInvalidNameElement {
+        @Id
+        @Column(name = "silentlyReplaced")
         int id;
     }
 }
