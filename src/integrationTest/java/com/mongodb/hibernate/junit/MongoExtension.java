@@ -43,8 +43,14 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
 
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
+        var fieldMustBeStaticMsgFormat = "The field [%s] must be static";
+        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoClient.class)) {
+            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+            field.setAccessible(true);
+            field.set(null, STATE.mongoClient());
+        }
         for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class)) {
-            assertTrue(format("The field [%s] must be static", field), isStatic(field));
+            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
             var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
             var collectionName = annotation.value();
             var mongoCollection = STATE.mongoDatabase().getCollection(collectionName, BsonDocument.class);
