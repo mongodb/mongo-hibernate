@@ -17,30 +17,20 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import org.bson.BsonInt32;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.api.Test;
 
-class AstComparisonFilterOperationTests {
-
-    @ParameterizedTest
-    @CsvSource({
-        "EQ,$eq",
-        "GT,$gt",
-        "GTE,$gte",
-        "LT,$lt",
-        "LTE,$lte",
-        "NE,$ne",
-    })
-    void testRendering(String operatorName, String operatorRendered) {
-        var operator = AstComparisonFilterOperator.valueOf(operatorName);
-        var operation = new AstComparisonFilterOperation(operator, new AstLiteralValue(new BsonInt32(1)));
+class AstNotComparisonFilterOperationTests {
+    @Test
+    void testRendering() {
+        var astNotFilter = new AstNotComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
 
         var expectedJson = """
-                {"%s": 1}\
-                """.formatted(operatorRendered);
-        assertRender(expectedJson, operation);
+                           {"$not": {"$eq": 1}}\
+                           """;
+        assertRender(expectedJson, astNotFilter);
     }
 }

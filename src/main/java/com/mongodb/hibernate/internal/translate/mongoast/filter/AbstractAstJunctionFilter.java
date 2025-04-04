@@ -16,25 +16,31 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+
+import java.util.List;
 import org.bson.BsonWriter;
 
-public class AstComparisonFilterOperation implements AstFilterOperation {
+abstract class AbstractAstJunctionFilter implements AstFilter {
+    private final String renderedName;
+    private final List<? extends AstFilter> subFilters;
 
-    private final AstComparisonFilterOperator operator;
-    private final AstValue value;
-
-    public AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value) {
-        this.operator = operator;
-        this.value = value;
+    AbstractAstJunctionFilter(String renderedName, List<? extends AstFilter> subFilters) {
+        this.renderedName = renderedName;
+        this.subFilters = subFilters;
     }
 
     @Override
     public void render(BsonWriter writer) {
+        assertTrue(!subFilters.isEmpty());
         writer.writeStartDocument();
         {
-            writer.writeName(operator.getOperatorName());
-            value.render(writer);
+            writer.writeName(renderedName);
+            writer.writeStartArray();
+            {
+                subFilters.forEach(filter -> filter.render(writer));
+            }
+            writer.writeEndArray();
         }
         writer.writeEndDocument();
     }

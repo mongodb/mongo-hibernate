@@ -16,21 +16,22 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-public enum AstComparisonFilterOperator {
-    EQ("$eq"),
-    GT("$gt"),
-    GTE("$gte"),
-    LT("$lt"),
-    LTE("$lte"),
-    NE("$ne");
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import org.bson.BsonWriter;
 
-    AstComparisonFilterOperator(String operatorName) {
-        this.operatorName = operatorName;
+public final class AstNotComparisonFilterOperation extends AstComparisonFilterOperation {
+
+    public AstNotComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value) {
+        super(operator, value);
     }
 
-    String getOperatorName() {
-        return operatorName;
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        {
+            writer.writeName("$not");
+            super.render(writer);
+        }
+        writer.writeEndDocument();
     }
-
-    private final String operatorName;
 }
