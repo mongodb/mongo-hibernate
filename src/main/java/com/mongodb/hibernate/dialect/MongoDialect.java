@@ -29,6 +29,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}. Must be used together
@@ -90,5 +91,10 @@ public final class MongoDialect extends Dialect {
         super.contribute(typeContributions, serviceRegistry);
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
         typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
+    }
+
+    @Override
+    public @Nullable String toQuotedIdentifier(@Nullable String name) {
+        return name;
     }
 }
