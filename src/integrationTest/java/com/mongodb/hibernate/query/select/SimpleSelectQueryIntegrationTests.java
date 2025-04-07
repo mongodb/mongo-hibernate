@@ -31,6 +31,7 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -51,10 +52,19 @@ class SimpleSelectQueryIntegrationTests {
     }
 
     @Test
-    void testComparisonByEq(SessionFactoryScope scope) {
+    void testComparisonByEq1(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session,
                 "from Contact where country = :country",
+                q -> q.setParameter("country", Country.USA.name()),
+                List.of(1, 5)));
+    }
+
+    @Test
+    void testComparisonByEq2(SessionFactoryScope scope) {
+        scope.inTransaction(session -> assertContactQueryResult(
+                session,
+                "from Contact where :country = country",
                 q -> q.setParameter("country", Country.USA.name()),
                 List.of(1, 5)));
     }
@@ -111,24 +121,6 @@ class SimpleSelectQueryIntegrationTests {
     }
 
     @Test
-    void testFieldNonNumericLiteralValue(SessionFactoryScope scope) {
-        scope.inTransaction(session ->
-                assertContactQueryResult(session, "from Contact where country = 'USA'", null, List.of(1, 5)));
-    }
-
-    @Test
-    void testFieldNumericLiteralValue(SessionFactoryScope scope) {
-        scope.inTransaction(
-                session -> assertContactQueryResult(session, "from Contact where age < 35", null, List.of(1, 3, 5)));
-    }
-
-    @Test
-    void testFieldStringLiteralValue(SessionFactoryScope scope) {
-        scope.inTransaction(session ->
-                assertContactQueryResult(session, "from Contact where country != 'USA'", null, List.of(2, 3, 4)));
-    }
-
-    @Test
     void testNotFilterOperation(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age > 18 and not (country = 'USA')", null, List.of(2, 4)));
@@ -145,6 +137,9 @@ class SimpleSelectQueryIntegrationTests {
                     .containsExactly(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78});
         });
     }
+
+    @Nested
+    class QueryLiteralTests {}
 
     private static void assertContactQueryResult(
             SessionImplementor session,

@@ -22,8 +22,8 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -43,6 +43,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
@@ -145,6 +146,7 @@ import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectClause;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.ast.tree.select.SortSpecification;
+import org.hibernate.sql.ast.tree.update.Assignable;
 import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
@@ -252,7 +254,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             if (valueExpression == null) {
                 throw new FeatureNotSupportedException();
             }
-            var fieldValue = acceptAndYield(valueExpression, FIELD_VALUE);
+            var fieldValue = acceptAndYield(valueExpression, EXPRESSION);
             astElements.add(new AstElement(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
@@ -297,7 +299,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
         for (var valueBinding : tableUpdate.getValueBindings()) {
             var fieldName = valueBinding.getColumnReference().getColumnExpression();
-            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), FIELD_VALUE);
+            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), EXPRESSION);
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
@@ -319,14 +321,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var astFilterFieldPath =
                 new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
-        var fieldValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
+        var fieldValue = acceptAndYield(keyBinding.getValueExpression(), EXPRESSION);
         return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
 
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
+        astVisitorValueHolder.yield(EXPRESSION, AstParameterMarker.INSTANCE);
     }
 
     @Override
@@ -393,12 +395,24 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
         var astComparisonFilterOperator = getAstComparisonFilterOperator(comparisonPredicate.getOperator());
 
-        var fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
-        var fieldValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_VALUE);
+        if (!(comparisonPredicate.getLeftHandExpression() instanceof Assignable)
+                && !(comparisonPredicate.getRightHandExpression() instanceof Assignable)) {
+            throw new FeatureNotSupportedException();
+        }
+
+        String fieldPath;
+        AstValue comparisonValue;
+        if (comparisonPredicate.getLeftHandExpression() instanceof Assignable) {
+            fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
+            comparisonValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), EXPRESSION);
+        } else {
+            fieldPath = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_PATH);
+            comparisonValue = acceptAndYield(comparisonPredicate.getLeftHandExpression(), EXPRESSION);
+        }
 
         var astFilterOperation = subPredicatesInNegatedGroupedPredicate.contains(comparisonPredicate)
-                ? new AstNotComparisonFilterOperation(astComparisonFilterOperator, fieldValue)
-                : new AstComparisonFilterOperation(astComparisonFilterOperator, fieldValue);
+                ? new AstNotComparisonFilterOperation(astComparisonFilterOperator, comparisonValue)
+                : new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
         var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
@@ -460,7 +474,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(bsonValue));
+        astVisitorValueHolder.yield(EXPRESSION, new AstLiteralValue(bsonValue));
     }
 
     @Override
@@ -480,7 +494,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         astVisitorValueHolder.yield(
-                FIELD_VALUE, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
+                EXPRESSION, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
     }
 
     @Override

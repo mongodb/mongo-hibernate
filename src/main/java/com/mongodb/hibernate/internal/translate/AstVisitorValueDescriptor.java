@@ -38,7 +38,7 @@ final class AstVisitorValueDescriptor<T> {
     static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstValue> FIELD_VALUE = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<AstValue> EXPRESSION = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
             new AstVisitorValueDescriptor<>();

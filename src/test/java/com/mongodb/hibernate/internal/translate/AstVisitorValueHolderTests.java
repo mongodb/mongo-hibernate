@@ -17,7 +17,7 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -44,10 +44,10 @@ class AstVisitorValueHolderTests {
     @Test
     void testSimpleUsage() {
 
-        var value = new AstLiteralValue(new BsonString("field_value"));
-        Runnable valueYielder = () -> astVisitorValueHolder.yield(FIELD_VALUE, value);
+        var value = new AstLiteralValue(new BsonString("EXPRESSION"));
+        Runnable valueYielder = () -> astVisitorValueHolder.yield(EXPRESSION, value);
 
-        var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueYielder);
+        var valueGotten = astVisitorValueHolder.execute(EXPRESSION, valueYielder);
 
         assertSame(value, valueGotten);
     }
@@ -57,9 +57,9 @@ class AstVisitorValueHolderTests {
 
         Runnable tableInserter = () -> {
             Runnable fieldValueYielder = () -> {
-                astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
+                astVisitorValueHolder.yield(EXPRESSION, AstParameterMarker.INSTANCE);
             };
-            var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
+            var fieldValue = astVisitorValueHolder.execute(EXPRESSION, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(
                     COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
@@ -73,11 +73,11 @@ class AstVisitorValueHolderTests {
     void testHolderNotEmptyWhenSetting() {
 
         Runnable valueYielder = () -> {
-            astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
-            astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
+            astVisitorValueHolder.yield(EXPRESSION, new AstLiteralValue(new BsonString("value1")));
+            astVisitorValueHolder.yield(EXPRESSION, new AstLiteralValue(new BsonString("value2")));
         };
 
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, valueYielder));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(EXPRESSION, valueYielder));
     }
 
     @Test
@@ -85,7 +85,7 @@ class AstVisitorValueHolderTests {
     void testHolderExpectingDifferentDescriptor() {
 
         Runnable valueYielder =
-                () -> astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
+                () -> astVisitorValueHolder.yield(EXPRESSION, new AstLiteralValue(new BsonString("some_value")));
 
         assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueYielder));
     }
@@ -93,6 +93,6 @@ class AstVisitorValueHolderTests {
     @Test
     @DisplayName("Exception is thrown when no value is yielded")
     void testHolderStillEmpty() {
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, () -> {}));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(EXPRESSION, () -> {}));
     }
 }
