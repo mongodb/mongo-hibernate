@@ -338,7 +338,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Sorting not supported");
         }
         if (querySpec.hasOffsetOrFetchClause()) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
@@ -784,17 +784,17 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
         }
         if (queryOptions.getComment() != null) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
         }
         if (queryOptions.getDatabaseHints() != null
                 && !queryOptions.getDatabaseHints().isEmpty()) {
             throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
         }
         if (queryOptions.getFetchSize() != null) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
         }
         if (queryOptions.getLimit() != null && !queryOptions.getLimit().isEmpty()) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
     }
 }
