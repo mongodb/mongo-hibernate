@@ -32,7 +32,6 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
-import static com.mongodb.hibernate.internal.type.BsonTypeUtils.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -63,13 +62,26 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstNotComparison
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstOrFilter;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.bson.BsonBinary;
+import org.bson.BsonBoolean;
+import org.bson.BsonDecimal128;
+import org.bson.BsonDouble;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonNull;
+import org.bson.BsonObjectId;
+import org.bson.BsonString;
+import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
@@ -161,6 +173,7 @@ import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
+import org.jspecify.annotations.Nullable;
 
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
     private static final JsonWriterSettings JSON_WRITER_SETTINGS =
@@ -840,5 +853,36 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (queryOptions.getLimit() != null && !queryOptions.getLimit().isEmpty()) {
             throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
+    }
+
+    private static BsonValue toBsonValue(@Nullable Object value) {
+        if (value == null) {
+            return BsonNull.VALUE;
+        }
+        if (value instanceof Boolean boolValue) {
+            return BsonBoolean.valueOf(boolValue);
+        }
+        if (value instanceof Integer intValue) {
+            return new BsonInt32(intValue);
+        }
+        if (value instanceof Long longValue) {
+            return new BsonInt64(longValue);
+        }
+        if (value instanceof Double doubleValue) {
+            return new BsonDouble(doubleValue);
+        }
+        if (value instanceof BigDecimal bigDecimalValue) {
+            return new BsonDecimal128(new Decimal128(bigDecimalValue));
+        }
+        if (value instanceof String stringValue) {
+            return new BsonString(stringValue);
+        }
+        if (value instanceof byte[] bytesValue) {
+            return new BsonBinary(bytesValue);
+        }
+        if (value instanceof ObjectId objectIdValue) {
+            return new BsonObjectId(objectIdValue);
+        }
+        throw new FeatureNotSupportedException("Unsupported Java type: " + value.getClass());
     }
 }
