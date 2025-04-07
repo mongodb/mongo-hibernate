@@ -51,7 +51,7 @@ class SimpleSelectQueryIntegrationTests {
     }
 
     @Test
-    void testComparisonByEQ(SessionFactoryScope scope) {
+    void testComparisonByEq(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session,
                 "from Contact where country = :country",
@@ -60,7 +60,7 @@ class SimpleSelectQueryIntegrationTests {
     }
 
     @Test
-    void testComparisonByNE(SessionFactoryScope scope) {
+    void testComparisonByNe(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session,
                 "from Contact where country != ?1",
@@ -69,31 +69,31 @@ class SimpleSelectQueryIntegrationTests {
     }
 
     @Test
-    void testComparisonByLT(SessionFactoryScope scope) {
+    void testComparisonByLt(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age < :age", q -> q.setParameter("age", 35), List.of(1, 3, 5)));
     }
 
     @Test
-    void testComparisonByLTE(SessionFactoryScope scope) {
+    void testComparisonByLte(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age <= ?1", q -> q.setParameter(1, 35), List.of(1, 2, 3, 5)));
     }
 
     @Test
-    void testComparisonByGT(SessionFactoryScope scope) {
+    void testComparisonByGt(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age > :age", q -> q.setParameter("age", 18), List.of(2, 4, 5)));
     }
 
     @Test
-    void testComparisonByGTE(SessionFactoryScope scope) {
+    void testComparisonByGte(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age >= :age", q -> q.setParameter("age", 18), List.of(1, 2, 4, 5)));
     }
 
     @Test
-    void andFilterTest(SessionFactoryScope scope) {
+    void testAndFilter(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session,
                 "from Contact where country = ?1 and age > ?2",
@@ -102,7 +102,7 @@ class SimpleSelectQueryIntegrationTests {
     }
 
     @Test
-    void orFilterTest(SessionFactoryScope scope) {
+    void testOrFilter(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session,
                 "from Contact where country = :country or age > :age",
