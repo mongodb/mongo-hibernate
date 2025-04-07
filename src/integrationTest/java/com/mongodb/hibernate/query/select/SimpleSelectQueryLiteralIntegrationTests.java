@@ -19,6 +19,7 @@ package com.mongodb.hibernate.query.select;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
@@ -103,11 +104,8 @@ class SimpleSelectQueryLiteralIntegrationTests {
     @Table(name = "items")
     static class Item {
         @Id
+        @ObjectIdGenerator
         ObjectId id;
-
-        Item() {
-            this.id = new ObjectId();
-        }
 
         String stringField;
         Boolean booleanField;

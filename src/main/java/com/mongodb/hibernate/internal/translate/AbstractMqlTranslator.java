@@ -842,9 +842,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 && !queryOptions.getLockOptions().isEmpty()) {
             throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
         }
-        if (queryOptions.getComment() != null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
-        }
         if (queryOptions.getDatabaseHints() != null
                 && !queryOptions.getDatabaseHints().isEmpty()) {
             throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
