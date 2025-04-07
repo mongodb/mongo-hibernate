@@ -22,8 +22,8 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -67,27 +67,25 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonNull;
-import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Decimal128;
-import org.bson.types.ObjectId;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
+import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
@@ -110,6 +108,7 @@ import org.hibernate.sql.ast.tree.expression.DurationUnit;
 import org.hibernate.sql.ast.tree.expression.EmbeddableTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.EntityTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.Every;
+import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.ExtractUnit;
 import org.hibernate.sql.ast.tree.expression.Format;
 import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
@@ -158,7 +157,6 @@ import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectClause;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.ast.tree.select.SortSpecification;
-import org.hibernate.sql.ast.tree.update.Assignable;
 import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
@@ -267,7 +265,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             if (valueExpression == null) {
                 throw new FeatureNotSupportedException();
             }
-            var fieldValue = acceptAndYield(valueExpression, EXPRESSION);
+            var fieldValue = acceptAndYield(valueExpression, FIELD_VALUE);
             astElements.add(new AstElement(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
@@ -312,7 +310,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
         for (var valueBinding : tableUpdate.getValueBindings()) {
             var fieldName = valueBinding.getColumnReference().getColumnExpression();
-            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), EXPRESSION);
+            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), FIELD_VALUE);
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
@@ -334,14 +332,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var astFilterFieldPath =
                 new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
-        var fieldValue = acceptAndYield(keyBinding.getValueExpression(), EXPRESSION);
+        var fieldValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
 
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.yield(EXPRESSION, AstParameterMarker.INSTANCE);
+        astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
     }
 
     @Override
@@ -406,40 +404,40 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        var astComparisonFilterOperator = getAstComparisonFilterOperator(comparisonPredicate.getOperator());
+        var fieldInLeftHandSide = visitFieldPath(comparisonPredicate.getLeftHandExpression());
+        var fieldInRightHandSide = visitFieldPath(comparisonPredicate.getRightHandExpression());
 
-        if (!(comparisonPredicate.getLeftHandExpression() instanceof Assignable)
-                && !(comparisonPredicate.getRightHandExpression() instanceof Assignable)) {
-            throw new FeatureNotSupportedException();
+        if (fieldInLeftHandSide == fieldInRightHandSide) {
+            if (fieldInLeftHandSide) {
+                throw new FeatureNotSupportedException(
+                        "MongoDB's comparison operation doesn't support comparison between two fields");
+            } else {
+                throw new FeatureNotSupportedException(
+                        "MongoDB's comparison operation doesn't support comparison between two values");
+            }
         }
 
         String fieldPath;
         AstValue comparisonValue;
-        if (comparisonPredicate.getLeftHandExpression() instanceof Assignable) {
+
+        if (fieldInLeftHandSide) {
             fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
-            comparisonValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), EXPRESSION);
+            comparisonValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_VALUE);
         } else {
             fieldPath = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_PATH);
-            comparisonValue = acceptAndYield(comparisonPredicate.getLeftHandExpression(), EXPRESSION);
+            comparisonValue = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_VALUE);
         }
+
+        var operator = fieldInLeftHandSide
+                ? comparisonPredicate.getOperator()
+                : comparisonPredicate.getOperator().invert();
+        var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = subPredicatesInNegatedGroupedPredicate.contains(comparisonPredicate)
                 ? new AstNotComparisonFilterOperation(astComparisonFilterOperator, comparisonValue)
                 : new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
         var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
-    }
-
-    private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
-        return switch (operator) {
-            case EQUAL -> EQ;
-            case NOT_EQUAL -> NE;
-            case LESS_THAN -> LT;
-            case LESS_THAN_OR_EQUAL -> LTE;
-            case GREATER_THAN -> GT;
-            case GREATER_THAN_OR_EQUAL -> GTE;
-            default -> throw new FeatureNotSupportedException("Unsupported comparison operator: " + operator.name());
-        };
     }
 
     @Override
@@ -487,7 +485,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(EXPRESSION, new AstLiteralValue(bsonValue));
+        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(bsonValue));
     }
 
     @Override
@@ -507,7 +505,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         astVisitorValueHolder.yield(
-                EXPRESSION, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
+                FIELD_VALUE, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
     }
 
     @Override
@@ -855,34 +853,44 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    private static BsonValue toBsonValue(@Nullable Object value) {
-        if (value == null) {
+    private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
+        return switch (operator) {
+            case EQUAL -> EQ;
+            case NOT_EQUAL -> NE;
+            case LESS_THAN -> LT;
+            case LESS_THAN_OR_EQUAL -> LTE;
+            case GREATER_THAN -> GT;
+            case GREATER_THAN_OR_EQUAL -> GTE;
+            default -> throw new FeatureNotSupportedException("Unsupported comparison operator: " + operator.name());
+        };
+    }
+
+    private static boolean visitFieldPath(Expression expression) {
+        return expression instanceof ColumnReference || expression instanceof BasicValuedPathInterpretation;
+    }
+
+    private static BsonValue toBsonValue(@Nullable Object queryLiteral) {
+        if (queryLiteral == null) {
             return BsonNull.VALUE;
         }
-        if (value instanceof Boolean boolValue) {
+        if (queryLiteral instanceof Boolean boolValue) {
             return BsonBoolean.valueOf(boolValue);
         }
-        if (value instanceof Integer intValue) {
+        if (queryLiteral instanceof Integer intValue) {
             return new BsonInt32(intValue);
         }
-        if (value instanceof Long longValue) {
+        if (queryLiteral instanceof Long longValue) {
             return new BsonInt64(longValue);
         }
-        if (value instanceof Double doubleValue) {
+        if (queryLiteral instanceof Double doubleValue) {
             return new BsonDouble(doubleValue);
         }
-        if (value instanceof BigDecimal bigDecimalValue) {
+        if (queryLiteral instanceof BigDecimal bigDecimalValue) {
             return new BsonDecimal128(new Decimal128(bigDecimalValue));
         }
-        if (value instanceof String stringValue) {
+        if (queryLiteral instanceof String stringValue) {
             return new BsonString(stringValue);
         }
-        if (value instanceof byte[] bytesValue) {
-            return new BsonBinary(bytesValue);
-        }
-        if (value instanceof ObjectId objectIdValue) {
-            return new BsonObjectId(objectIdValue);
-        }
-        throw new FeatureNotSupportedException("Unsupported Java type: " + value.getClass());
+        throw new FeatureNotSupportedException("Unsupported Java type: " + queryLiteral.getClass());
     }
 }

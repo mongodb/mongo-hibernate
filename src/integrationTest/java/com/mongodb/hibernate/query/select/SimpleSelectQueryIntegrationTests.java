@@ -29,20 +29,30 @@ import org.hibernate.query.SelectionQuery;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = SimpleSelectQueryIntegrationTests.Contact.class)
 @ExtendWith(MongoExtension.class)
-class SimpleSelectQueryIntegrationTests {
+class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
+
+    private SessionFactoryScope sessionFactoryScope;
+
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
 
     @BeforeEach
-    void beforeEach(SessionFactoryScope scope) {
-        scope.inTransaction(session -> List.of(
+    void beforeEach() {
+        sessionFactoryScope.inTransaction(session -> List.of(
                         new Contact(1, "Bob", 18, Country.USA),
                         new Contact(2, "Mary", 35, Country.CANADA),
                         new Contact(3, "Dylan", 7, Country.CANADA),
@@ -51,55 +61,67 @@ class SimpleSelectQueryIntegrationTests {
                 .forEach(session::persist));
     }
 
-    @Test
-    void testComparisonByEq1(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
+    @Nested
+    class ComparisonOperatorTests {}
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testComparisonByEq(boolean fieldAsLhs) {
+        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
                 session,
-                "from Contact where country = :country",
+                "from Contact where " + (fieldAsLhs ? "country = :country" : ":country = country"),
                 q -> q.setParameter("country", Country.USA.name()),
                 List.of(1, 5)));
     }
 
-    @Test
-    void testComparisonByEq2(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testComparisonByNe(boolean fieldAsLhs) {
+        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
                 session,
-                "from Contact where :country = country",
-                q -> q.setParameter("country", Country.USA.name()),
-                List.of(1, 5)));
-    }
-
-    @Test
-    void testComparisonByNe(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session,
-                "from Contact where country != ?1",
+                "from Contact where " + (fieldAsLhs ? "country != ?1" : "?1 != country"),
                 q -> q.setParameter(1, Country.USA.name()),
                 List.of(2, 3, 4)));
     }
 
-    @Test
-    void testComparisonByLt(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where age < :age", q -> q.setParameter("age", 35), List.of(1, 3, 5)));
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testComparisonByLt(boolean fieldAsLhs) {
+        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
+                session,
+                "from Contact where " + (fieldAsLhs ? "age < :age" : ":age > age"),
+                q -> q.setParameter("age", 35),
+                List.of(1, 3, 5)));
     }
 
-    @Test
-    void testComparisonByLte(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where age <= ?1", q -> q.setParameter(1, 35), List.of(1, 2, 3, 5)));
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testComparisonByLte(boolean fieldAsLhs) {
+        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
+                session,
+                "from Contact where " + (fieldAsLhs ? "age <= ?1" : "?1 >= age"),
+                q -> q.setParameter(1, 35),
+                List.of(1, 2, 3, 5)));
     }
 
-    @Test
-    void testComparisonByGt(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where age > :age", q -> q.setParameter("age", 18), List.of(2, 4, 5)));
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testComparisonByGt(boolean fieldAsLhs) {
+        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
+                session,
+                "from Contact where " + (fieldAsLhs ? "age > :age" : ":age < age"),
+                q -> q.setParameter("age", 18),
+                List.of(2, 4, 5)));
     }
 
-    @Test
-    void testComparisonByGte(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where age >= :age", q -> q.setParameter("age", 18), List.of(1, 2, 4, 5)));
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testComparisonByGte(boolean fieldAsLhs) {
+        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
+                session,
+                "from Contact where " + (fieldAsLhs ? "age >= :age" : ":age <= age"),
+                q -> q.setParameter("age", 18),
+                List.of(1, 2, 4, 5)));
     }
 
     @Test
@@ -137,9 +159,6 @@ class SimpleSelectQueryIntegrationTests {
                     .containsExactly(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78});
         });
     }
-
-    @Nested
-    class QueryLiteralTests {}
 
     private static void assertContactQueryResult(
             SessionImplementor session,
