@@ -16,6 +16,9 @@
 
 package com.mongodb.hibernate.dialect;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static java.lang.String.format;
+
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
@@ -43,9 +46,38 @@ public final class MongoDialect extends Dialect {
         super(info);
     }
 
+    /**
+     * This constructor is called only if Hibernate ORM falls back to it due to a failure of
+     * {@link MongoDialect#MongoDialect(DialectResolutionInfo)}.
+     *
+     * @deprecated Exists only to avoid the confusing {@link NoSuchMethodException} thrown by Hibernate ORM when
+     *     {@link MongoDialect#MongoDialect(DialectResolutionInfo)} fails.
+     * @throws RuntimeException Always.
+     */
+    @Deprecated()
+    public MongoDialect() {
+        throw new RuntimeException(format(
+                "Could not instantiate [%s], see the earlier exceptions to find out why",
+                MongoDialect.class.getName()));
+    }
+
     @Override
     protected DatabaseVersion getMinimumSupportedVersion() {
         return MINIMUM_VERSION;
+    }
+
+    @Override
+    protected void checkVersion() {
+        var version = getVersion();
+        if (version == null) {
+            return;
+        }
+        var minimumVersion = getMinimumSupportedVersion();
+        if (version.isBefore(minimumVersion)) {
+            throw new RuntimeException(format(
+                    "The minimum supported version of %s is %s, but you are using %s",
+                    MONGO_DBMS_NAME, minimumVersion, version));
+        }
     }
 
     @Override

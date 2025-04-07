@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
@@ -325,7 +326,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         if (tableMutation.getNumberOfKeyBindings() > 1) {
             throw new FeatureNotSupportedException(
-                    format("MongoDB doesn't support '%s' spanning multiple columns", ID_FIELD_NAME));
+                    format("%s doesn't support '%s' spanning multiple columns", MONGO_DBMS_NAME, ID_FIELD_NAME));
         }
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
@@ -363,7 +364,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Sorting not supported");
         }
         if (querySpec.hasOffsetOrFetchClause()) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
@@ -841,15 +842,18 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 && !queryOptions.getLockOptions().isEmpty()) {
             throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
         }
+        if (queryOptions.getComment() != null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-53 https://jira.mongodb.org/browse/HIBERNATE-53");
+        }
         if (queryOptions.getDatabaseHints() != null
                 && !queryOptions.getDatabaseHints().isEmpty()) {
             throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
         }
         if (queryOptions.getFetchSize() != null) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
         }
         if (queryOptions.getLimit() != null && !queryOptions.getLimit().isEmpty()) {
-            throw new FeatureNotSupportedException("TO-DO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
         }
     }
 

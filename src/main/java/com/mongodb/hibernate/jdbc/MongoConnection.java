@@ -167,7 +167,7 @@ final class MongoConnection implements ConnectionAdapter {
         try {
             var commandResult = mongoClient
                     .getDatabase("admin")
-                    .runCommand(clientSession, new BsonDocument("buildinfo", new BsonInt32(1)));
+                    .runCommand(clientSession, new BsonDocument("buildInfo", new BsonInt32(1)));
             var versionText = commandResult.getString("version");
             var versionArray = commandResult.getList("versionArray", Integer.class);
             if (versionArray.size() < 2) {

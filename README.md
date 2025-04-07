@@ -57,7 +57,11 @@ This project uses separate directories for unit and integration tests:
 ./gradlew clean integrationTest
 ```
 
-Integration tests require a MongoDB deployment. You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) as below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
+Integration tests require a MongoDB deployment with test commands enabled,
+which may be achieved with the
+[`--setParameter enableTestCommands=1`](https://www.mongodb.com/docs/manual/reference/parameters/)
+command-line arguments.
+You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) as below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
 
 ```properties
 jakarta.persistence.jdbc.url={your_mongodb_connection_string}
