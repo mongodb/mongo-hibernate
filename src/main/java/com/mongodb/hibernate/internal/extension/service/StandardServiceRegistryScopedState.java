@@ -27,7 +27,9 @@ import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.io.Serial;
 import java.util.Map;
 import org.hibernate.HibernateException;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceInitiator;
+import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.Service;
 import org.hibernate.service.UnknownServiceException;
@@ -49,6 +51,11 @@ public final class StandardServiceRegistryScopedState implements Service {
         return config;
     }
 
+    /**
+     * The instance methods like {@link #contribute(StandardServiceRegistryBuilder)} are called multiple times if
+     * multiple {@link StandardServiceRegistry} instances are {@linkplain StandardServiceRegistryBuilder#build() built}
+     * using the same {@link BootstrapServiceRegistry}.
+     */
     public static final class ServiceContributor implements org.hibernate.service.spi.ServiceContributor {
         public ServiceContributor() {}
 
