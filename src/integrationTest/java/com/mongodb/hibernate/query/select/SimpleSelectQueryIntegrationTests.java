@@ -32,7 +32,6 @@ import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -60,9 +59,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
                         new Contact(5, "John", 25, Country.USA))
                 .forEach(session::persist));
     }
-
-    @Nested
-    class ComparisonOperatorTests {}
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})

@@ -18,14 +18,12 @@ package com.mongodb.hibernate.query.select;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.annotations.ObjectIdGenerator;
-import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.bson.BsonDocument;
+import java.math.BigDecimal;
 import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -37,9 +35,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(annotatedClasses = SimpleSelectQueryLiteralIntegrationTests.Item.class)
 @ExtendWith(MongoExtension.class)
 class SimpleSelectQueryLiteralIntegrationTests {
-
-    @InjectMongoCollection("items")
-    private static MongoCollection<BsonDocument> mongoCollection;
 
     @Test
     void testBoolean(SessionFactoryScope scope) {
@@ -96,8 +91,21 @@ class SimpleSelectQueryLiteralIntegrationTests {
         scope.inTransaction(session -> session.persist(item));
         scope.inTransaction(session -> assertThat(
                         session.createSelectionQuery("from Item where stringField = 'Hello World'", Item.class)
-                                .getResultList())
-                .hasSize(1));
+                                .getSingleResult())
+                .usingRecursiveComparison()
+                .isEqualTo(item));
+    }
+
+    @Test
+    void testBigDecimal(SessionFactoryScope scope) {
+        var item = new Item();
+        item.bigDecimalField = new BigDecimal("3.14");
+        scope.inTransaction(session -> session.persist(item));
+        scope.inTransaction(session -> assertThat(
+                        session.createSelectionQuery("from Item where bigDecimalField = 3.14BD", Item.class)
+                                .getSingleResult())
+                .usingRecursiveComparison()
+                .isEqualTo(item));
     }
 
     @Entity(name = "Item")
@@ -112,5 +120,6 @@ class SimpleSelectQueryLiteralIntegrationTests {
         Integer integerField;
         Long longField;
         Double doubleField;
+        BigDecimal bigDecimalField;
     }
 }
