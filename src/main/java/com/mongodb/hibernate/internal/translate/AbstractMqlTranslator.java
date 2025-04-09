@@ -34,7 +34,6 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
 import static java.lang.String.format;
-import static java.util.Collections.singletonList;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -443,7 +442,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
         var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
-        astVisitorValueHolder.yield(FILTER, new AstNorFilter(singletonList(filter)));
+        astVisitorValueHolder.yield(FILTER, new AstNorFilter(filter));
     }
 
     @Override

@@ -16,25 +16,17 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static java.util.Collections.singletonList;
 
 import java.util.List;
-import org.bson.BsonWriter;
 
-public record AstNorFilter(List<? extends AstFilter> filters) implements AstFilter {
+public class AstNorFilter extends AbstractAstLogicalFilter {
 
-    @Override
-    public void render(BsonWriter writer) {
-        assertFalse(filters.isEmpty());
-        writer.writeStartDocument();
-        {
-            writer.writeName("$nor");
-            writer.writeStartArray();
-            {
-                filters.forEach(filter -> filter.render(writer));
-            }
-            writer.writeEndArray();
-        }
-        writer.writeEndDocument();
+    public AstNorFilter(AstFilter filter) {
+        this(singletonList(filter));
+    }
+
+    public AstNorFilter(List<? extends AstFilter> filters) {
+        super("$nor", filters);
     }
 }

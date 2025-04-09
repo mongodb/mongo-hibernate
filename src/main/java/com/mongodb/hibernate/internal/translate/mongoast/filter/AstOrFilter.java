@@ -18,8 +18,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import java.util.List;
 
-public final class AstOrFilter extends AbstractAstJunctionFilter {
-    public AstOrFilter(List<? extends AstFilter> subFilters) {
-        super("$or", subFilters);
+public final class AstOrFilter extends AbstractAstLogicalFilter {
+    public AstOrFilter(List<? extends AstFilter> filters) {
+        super("$or", filters);
     }
 }
