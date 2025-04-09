@@ -443,11 +443,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
         var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
-        if (filter instanceof AstFieldOperationFilter fieldOperationFilter) {
-            astVisitorValueHolder.yield(FILTER, fieldOperationFilter.negated());
-        } else {
-            astVisitorValueHolder.yield(FILTER, new AstNorFilter(singletonList(filter)));
-        }
+        astVisitorValueHolder.yield(FILTER, new AstNorFilter(singletonList(filter)));
     }
 
     @Override

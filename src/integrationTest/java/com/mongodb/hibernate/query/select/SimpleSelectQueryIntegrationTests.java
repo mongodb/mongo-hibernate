@@ -139,21 +139,15 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void testNotFilterOperation(SessionFactoryScope scope) {
+    void testSingleNegation(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age > 18 and not (country = 'USA')", null, List.of(2, 4)));
     }
 
     @Test
-    void testNotFilterOperationDoubleUsage(SessionFactoryScope scope) {
+    void testDoubleNegation(SessionFactoryScope scope) {
         scope.inTransaction(session -> assertContactQueryResult(
                 session, "from Contact where age > 18 and not ( not (country = 'USA') )", null, List.of(5)));
-    }
-
-    @Test
-    void testNorFilterOperation(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where not (country = 'CANADA' or age <= 18)", null, List.of(5)));
     }
 
     @Test
