@@ -21,21 +21,14 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import java.util.List;
 import org.bson.BsonWriter;
 
-abstract class AbstractAstJunctionFilter implements AstFilter {
-    private final String operator;
-    private final List<? extends AstFilter> filters;
-
-    AbstractAstJunctionFilter(String operator, List<? extends AstFilter> filters) {
-        this.operator = operator;
-        this.filters = filters;
-    }
+public record AstNorFilter(List<? extends AstFilter> filters) implements AstFilter {
 
     @Override
     public void render(BsonWriter writer) {
         assertFalse(filters.isEmpty());
         writer.writeStartDocument();
         {
-            writer.writeName(operator);
+            writer.writeName("$nor");
             writer.writeStartArray();
             {
                 filters.forEach(filter -> filter.render(writer));

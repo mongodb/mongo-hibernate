@@ -34,6 +34,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -60,6 +61,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperatio
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstNorFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstOrFilter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -444,7 +446,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (filter instanceof AstFieldOperationFilter fieldOperationFilter) {
             astVisitorValueHolder.yield(FILTER, fieldOperationFilter.negated());
         } else {
-            throw new FeatureNotSupportedException("Only field operation filter is supported for NegatedPredicate");
+            astVisitorValueHolder.yield(FILTER, new AstNorFilter(singletonList(filter)));
         }
     }
 
