@@ -44,7 +44,7 @@ class AstVisitorValueHolderTests {
     @Test
     void testSimpleUsage() {
 
-        var value = new AstLiteralValue(new BsonString("EXPRESSION"));
+        var value = new AstLiteralValue(new BsonString("field_value"));
         Runnable valueYielder = () -> astVisitorValueHolder.yield(FIELD_VALUE, value);
 
         var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueYielder);

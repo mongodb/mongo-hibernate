@@ -59,7 +59,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstNotComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstOrFilter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -185,8 +185,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
     private final Set<String> affectedTableNames = new HashSet<>();
-
-    private final Set<Predicate> subPredicatesInNegatedGroupedPredicate = new HashSet<>();
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -434,9 +432,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 : comparisonPredicate.getOperator().invert();
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
-        var astFilterOperation = subPredicatesInNegatedGroupedPredicate.contains(comparisonPredicate)
-                ? new AstNotComparisonFilterOperation(astComparisonFilterOperator, comparisonValue)
-                : new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
+        AstFilterOperation astFilterOperation =
+                new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
         var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
@@ -444,12 +441,15 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
         var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
-        astVisitorValueHolder.yield(FILTER, filter);
+        if (filter instanceof AstFieldOperationFilter fieldOperationFilter) {
+            astVisitorValueHolder.yield(FILTER, fieldOperationFilter.negated());
+        } else {
+            throw new FeatureNotSupportedException("Only field operation filter is supported for NegatedPredicate");
+        }
     }
 
     @Override
     public void visitGroupedPredicate(GroupedPredicate groupedPredicate) {
-        subPredicatesInNegatedGroupedPredicate.add(groupedPredicate.getSubPredicate());
         var filter = acceptAndYield(groupedPredicate.getSubPredicate(), FILTER);
         astVisitorValueHolder.yield(FILTER, filter);
     }

@@ -29,4 +29,8 @@ public record AstFieldOperationFilter(AstFilterFieldPath fieldPath, AstFilterOpe
         }
         writer.writeEndDocument();
     }
+
+    public AstFieldOperationFilter negated() {
+        return new AstFieldOperationFilter(fieldPath, new AstNotFilterOperation(filterOperation));
+    }
 }

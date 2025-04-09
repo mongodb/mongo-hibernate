@@ -23,10 +23,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
-class AstNotComparisonFilterOperationTests {
+class AstNotFilterOperationTests {
     @Test
     void testRendering() {
-        var astNotFilter = new AstNotComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
+        var astFilterOperation = new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
+        var astNotFilter = new AstNotFilterOperation(astFilterOperation);
 
         var expectedJson = """
                            {"$not": {"$eq": 1}}\

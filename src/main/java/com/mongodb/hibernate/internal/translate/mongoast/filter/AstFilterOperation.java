@@ -18,4 +18,4 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 
-interface AstFilterOperation extends AstNode {}
+public interface AstFilterOperation extends AstNode {}

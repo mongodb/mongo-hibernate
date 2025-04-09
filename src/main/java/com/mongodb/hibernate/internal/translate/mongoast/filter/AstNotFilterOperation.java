@@ -16,21 +16,16 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
-public final class AstNotComparisonFilterOperation extends AstComparisonFilterOperation {
-
-    public AstNotComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value) {
-        super(operator, value);
-    }
+public record AstNotFilterOperation(AstFilterOperation astFilterOperation) implements AstFilterOperation {
 
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
             writer.writeName("$not");
-            super.render(writer);
+            astFilterOperation.render(writer);
         }
         writer.writeEndDocument();
     }
