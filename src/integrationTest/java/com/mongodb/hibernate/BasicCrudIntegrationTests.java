@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
@@ -212,11 +213,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             sessionFactoryScope.inTransaction(session -> session.persist(book));
 
             var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
-            assertThat(loadedBook)
-                    .isNotNull()
-                    .usingRecursiveComparison()
-                    .withStrictTypeChecking()
-                    .isEqualTo(book);
+            assertEquals(book, loadedBook);
         }
 
         @Test
@@ -229,11 +226,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             sessionFactoryScope.inTransaction(session -> session.persist(book));
 
             var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
-            assertThat(loadedBook)
-                    .isNotNull()
-                    .usingRecursiveComparison()
-                    .withStrictTypeChecking()
-                    .isEqualTo(book);
+            assertEquals(book, loadedBook);
         }
     }
 
