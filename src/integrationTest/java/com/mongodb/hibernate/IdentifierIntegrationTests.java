@@ -39,10 +39,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(
         annotatedClasses = {
             IdentifierIntegrationTests.WithSpaceAndDotAndMixedCase.class,
-            IdentifierIntegrationTests.InBackticks.class,
+            IdentifierIntegrationTests.StartingAndEndingWithBackticks.class,
             IdentifierIntegrationTests.StartingWithBacktick.class,
             IdentifierIntegrationTests.EndingWithBacktick.class,
-            IdentifierIntegrationTests.InDoubleQuotes.class,
+            IdentifierIntegrationTests.StartingAndEndingWithDoubleQuotes.class,
             IdentifierIntegrationTests.StartingWithDoubleQuote.class,
             IdentifierIntegrationTests.EndingWithDoubleQuote.class
         })
@@ -51,8 +51,8 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection(WithSpaceAndDotAndMixedCase.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionWithSpaceAndDotAndMixedCase;
 
-    @InjectMongoCollection(InBackticks.ACTUAL_COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionInBackticks;
+    @InjectMongoCollection(StartingAndEndingWithBackticks.ACTUAL_COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithBackticks;
 
     @InjectMongoCollection(StartingWithBacktick.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionStartingWithBacktick;
@@ -60,8 +60,8 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection(EndingWithBacktick.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionEndingWithBacktick;
 
-    @InjectMongoCollection(InDoubleQuotes.ACTUAL_COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionInDoubleQuotes;
+    @InjectMongoCollection(StartingAndEndingWithDoubleQuotes.ACTUAL_COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithDoubleQuotes;
 
     @InjectMongoCollection(StartingWithDoubleQuote.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionStartingWithDoubleQuote;
@@ -83,14 +83,14 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void inBackticks() {
-        var item = new InBackticks();
+    void startingAndEndingWithBackticks() {
+        var item = new StartingAndEndingWithBackticks();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollectionInBackticks.find())
+        assertThat(mongoCollectionStartingAndEndingWithBackticks.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
-                        .append(InBackticks.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(InBackticks.class, item.id));
+                        .append(StartingAndEndingWithBackticks.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(StartingAndEndingWithBackticks.class, item.id));
     }
 
     @Test
@@ -116,14 +116,14 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void inDoubleQuotes() {
-        var item = new InDoubleQuotes();
+    void startingAndEndingWithDoubleQuotes() {
+        var item = new StartingAndEndingWithDoubleQuotes();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollectionInDoubleQuotes.find())
+        assertThat(mongoCollectionStartingAndEndingWithDoubleQuotes.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
-                        .append(InDoubleQuotes.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(InDoubleQuotes.class, item.id));
+                        .append(StartingAndEndingWithDoubleQuotes.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(StartingAndEndingWithDoubleQuotes.class, item.id));
     }
 
     @Test
@@ -156,8 +156,8 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     @Entity
     @Table(name = WithSpaceAndDotAndMixedCase.COLLECTION_NAME)
     static class WithSpaceAndDotAndMixedCase {
-        static final String COLLECTION_NAME = "collection with space and .dot and Mixed Case";
-        static final String FIELD_NAME = "field with space and Mixed Case";
+        static final String COLLECTION_NAME = "collection name with space and .dot and Mixed Case";
+        static final String FIELD_NAME = "field name with space and Mixed Case";
 
         @Id
         int id;
@@ -167,25 +167,25 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = InBackticks.COLLECTION_NAME)
-    static class InBackticks {
-        static final String COLLECTION_NAME = "`collection in backticks`";
-        static final String FIELD_NAME = "`field in backticks`";
-        static final String ACTUAL_COLLECTION_NAME = "collection in backticks";
-        static final String ACTUAL_FIELD_NAME = "field in backticks";
+    @Table(name = StartingAndEndingWithBackticks.COLLECTION_NAME)
+    static class StartingAndEndingWithBackticks {
+        static final String COLLECTION_NAME = "`collection name starting and ending with backticks`";
+        static final String FIELD_NAME = "`field name starting and ending with backticks`";
+        static final String ACTUAL_COLLECTION_NAME = "collection name starting and ending with backticks";
+        static final String ACTUAL_FIELD_NAME = "field name starting and ending with backticks";
 
         @Id
         int id;
 
-        @Column(name = InBackticks.FIELD_NAME)
+        @Column(name = StartingAndEndingWithBackticks.FIELD_NAME)
         int v;
     }
 
     @Entity
     @Table(name = StartingWithBacktick.COLLECTION_NAME)
     static class StartingWithBacktick {
-        static final String COLLECTION_NAME = "`collection starting with backtick";
-        static final String FIELD_NAME = "`field starting with backtick";
+        static final String COLLECTION_NAME = "`collection name starting with backtick";
+        static final String FIELD_NAME = "`field name starting with backtick";
 
         @Id
         int id;
@@ -197,8 +197,8 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     @Entity
     @Table(name = EndingWithBacktick.COLLECTION_NAME)
     static class EndingWithBacktick {
-        static final String COLLECTION_NAME = "collection ending with backtick`";
-        static final String FIELD_NAME = "field ending with backtick`";
+        static final String COLLECTION_NAME = "collection name ending with backtick`";
+        static final String FIELD_NAME = "field name ending with backtick`";
 
         @Id
         int id;
@@ -208,25 +208,25 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = InDoubleQuotes.COLLECTION_NAME)
-    static class InDoubleQuotes {
-        static final String COLLECTION_NAME = "\"collection in double quotes\"";
-        static final String FIELD_NAME = "\"field in double quotes\"";
-        static final String ACTUAL_COLLECTION_NAME = "collection in double quotes";
-        static final String ACTUAL_FIELD_NAME = "field in double quotes";
+    @Table(name = StartingAndEndingWithDoubleQuotes.COLLECTION_NAME)
+    static class StartingAndEndingWithDoubleQuotes {
+        static final String COLLECTION_NAME = "\"collection name starting and ending with double quotes\"";
+        static final String FIELD_NAME = "\"field name starting and ending with double quotes\"";
+        static final String ACTUAL_COLLECTION_NAME = "collection name starting and ending with double quotes";
+        static final String ACTUAL_FIELD_NAME = "field name starting and ending with double quotes";
 
         @Id
         int id;
 
-        @Column(name = InDoubleQuotes.FIELD_NAME)
+        @Column(name = StartingAndEndingWithDoubleQuotes.FIELD_NAME)
         int v;
     }
 
     @Entity
     @Table(name = StartingWithDoubleQuote.COLLECTION_NAME)
     static class StartingWithDoubleQuote {
-        static final String COLLECTION_NAME = "\"collection starting with double quote";
-        static final String FIELD_NAME = "\"field starting with double quote";
+        static final String COLLECTION_NAME = "\"collection name starting with double quote";
+        static final String FIELD_NAME = "\"field name starting with double quote";
 
         @Id
         int id;
@@ -238,8 +238,8 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     @Entity
     @Table(name = EndingWithDoubleQuote.COLLECTION_NAME)
     static class EndingWithDoubleQuote {
-        static final String COLLECTION_NAME = "collection ending with double quote\"";
-        static final String FIELD_NAME = "field ending with double quote\"";
+        static final String COLLECTION_NAME = "collection name ending with double quote\"";
+        static final String FIELD_NAME = "field name ending with double quote\"";
 
         @Id
         int id;
