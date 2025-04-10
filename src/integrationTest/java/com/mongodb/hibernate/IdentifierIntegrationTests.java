@@ -39,9 +39,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(
         annotatedClasses = {
             IdentifierIntegrationTests.WithSpaceAndDotMixedCase.class,
-            IdentifierIntegrationTests.InSingleQuotesMixedCase.class,
-            IdentifierIntegrationTests.StartingWithSingleQuote.class,
-            IdentifierIntegrationTests.EndingWithSingleQuote.class,
+            IdentifierIntegrationTests.InBackticksMixedCase.class,
+            IdentifierIntegrationTests.StartingWithBacktick.class,
+            IdentifierIntegrationTests.EndingWithBacktick.class,
             IdentifierIntegrationTests.InDoubleQuotesMixedCase.class,
             IdentifierIntegrationTests.StartingWithDoubleQuote.class,
             IdentifierIntegrationTests.EndingWithDoubleQuote.class
@@ -51,14 +51,14 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection(WithSpaceAndDotMixedCase.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionWithSpaceAndDotMixedCase;
 
-    @InjectMongoCollection(InSingleQuotesMixedCase.ACTUAL_COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionInSingleQuotesMixedCase;
+    @InjectMongoCollection(InBackticksMixedCase.ACTUAL_COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionInBackticksMixedCase;
 
-    @InjectMongoCollection(StartingWithSingleQuote.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingWithSingleQuote;
+    @InjectMongoCollection(StartingWithBacktick.COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionStartingWithBacktick;
 
-    @InjectMongoCollection(EndingWithSingleQuote.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionEndingWithSingleQuote;
+    @InjectMongoCollection(EndingWithBacktick.COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionEndingWithBacktick;
 
     @InjectMongoCollection(InDoubleQuotesMixedCase.ACTUAL_COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionInDoubleQuotesMixedCase;
@@ -83,36 +83,36 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void inSingleQuotesMixedCase() {
-        var item = new InSingleQuotesMixedCase();
+    void inBackticksMixedCase() {
+        var item = new InBackticksMixedCase();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollectionInSingleQuotesMixedCase.find())
+        assertThat(mongoCollectionInBackticksMixedCase.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
-                        .append(InSingleQuotesMixedCase.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(InSingleQuotesMixedCase.class, item.id));
+                        .append(InBackticksMixedCase.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(InBackticksMixedCase.class, item.id));
     }
 
     @Test
-    void startingWithSingleQuote() {
-        var item = new StartingWithSingleQuote();
+    void startingWithBacktick() {
+        var item = new StartingWithBacktick();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollectionStartingWithSingleQuote.find())
+        assertThat(mongoCollectionStartingWithBacktick.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
-                        .append(StartingWithSingleQuote.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingWithSingleQuote.class, item.id));
+                        .append(StartingWithBacktick.FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(StartingWithBacktick.class, item.id));
     }
 
     @Test
-    void endingWithSingleQuote() {
-        var item = new EndingWithSingleQuote();
+    void endingWithBacktick() {
+        var item = new EndingWithBacktick();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollectionEndingWithSingleQuote.find())
+        assertThat(mongoCollectionEndingWithBacktick.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
-                        .append(EndingWithSingleQuote.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(EndingWithSingleQuote.class, item.id));
+                        .append(EndingWithBacktick.FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(EndingWithBacktick.class, item.id));
     }
 
     @Test
@@ -167,43 +167,43 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = InSingleQuotesMixedCase.COLLECTION_NAME)
-    static class InSingleQuotesMixedCase {
-        static final String COLLECTION_NAME = "`collection in single quotes Mixed Case`";
-        static final String FIELD_NAME = "`field in single quotes Mixed Case`";
-        static final String ACTUAL_COLLECTION_NAME = "collection in single quotes Mixed Case";
-        static final String ACTUAL_FIELD_NAME = "field in single quotes Mixed Case";
+    @Table(name = InBackticksMixedCase.COLLECTION_NAME)
+    static class InBackticksMixedCase {
+        static final String COLLECTION_NAME = "`collection in backticks Mixed Case`";
+        static final String FIELD_NAME = "`field in backticks Mixed Case`";
+        static final String ACTUAL_COLLECTION_NAME = "collection in backticks Mixed Case";
+        static final String ACTUAL_FIELD_NAME = "field in backticks Mixed Case";
 
         @Id
         int id;
 
-        @Column(name = InSingleQuotesMixedCase.FIELD_NAME)
+        @Column(name = InBackticksMixedCase.FIELD_NAME)
         int v;
     }
 
     @Entity
-    @Table(name = StartingWithSingleQuote.COLLECTION_NAME)
-    static class StartingWithSingleQuote {
-        static final String COLLECTION_NAME = "`collection starting with single quote";
-        static final String FIELD_NAME = "`field starting with single quote";
+    @Table(name = StartingWithBacktick.COLLECTION_NAME)
+    static class StartingWithBacktick {
+        static final String COLLECTION_NAME = "`collection starting with backtick";
+        static final String FIELD_NAME = "`field starting with backtick";
 
         @Id
         int id;
 
-        @Column(name = StartingWithSingleQuote.FIELD_NAME)
+        @Column(name = StartingWithBacktick.FIELD_NAME)
         int v;
     }
 
     @Entity
-    @Table(name = EndingWithSingleQuote.COLLECTION_NAME)
-    static class EndingWithSingleQuote {
-        static final String COLLECTION_NAME = "collection ending with single quote`";
-        static final String FIELD_NAME = "field ending with single quote`";
+    @Table(name = EndingWithBacktick.COLLECTION_NAME)
+    static class EndingWithBacktick {
+        static final String COLLECTION_NAME = "collection ending with backtick`";
+        static final String FIELD_NAME = "field ending with backtick`";
 
         @Id
         int id;
 
-        @Column(name = EndingWithSingleQuote.FIELD_NAME)
+        @Column(name = EndingWithBacktick.FIELD_NAME)
         int v;
     }
 
