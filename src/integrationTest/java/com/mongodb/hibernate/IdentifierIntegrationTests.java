@@ -17,7 +17,9 @@
 package com.mongodb.hibernate;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -28,10 +30,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -332,5 +336,67 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
 
         @Column(name = EndingWithRightSquareBracket.FIELD_NAME)
         int v;
+    }
+
+    @Nested
+    class UnsupportedFieldNames {
+        @Test
+        void idWithDot() {
+            assertThrows(IdWithDot.class, '.');
+        }
+
+        @Test
+        void idWithDollar() {
+            assertThrows(IdWithDollar.class, '$');
+        }
+
+        @Test
+        void columnWithDot() {
+            assertThrows(ColumnWithDot.class, '.');
+        }
+
+        @Test
+        void columnWithDollar() {
+            assertThrows(IdWithDollar.class, '$');
+        }
+
+        private static void assertThrows(final Class<?> annotatedClass, final char unsupportedCharacter) {
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(annotatedClass)
+                            .buildMetadata())
+                    .hasMessageContaining(format("[%c] in field names is not supported", unsupportedCharacter));
+        }
+
+        @Entity
+        static class IdWithDot {
+            @Id
+            @Column(name = "ID field name with .dot")
+            int id;
+        }
+
+        @Entity
+        static class ColumnWithDot {
+            @Id
+            int id;
+
+            @Column(name = "field name with .dot")
+            int v;
+        }
+
+        @Entity
+        static class IdWithDollar {
+            @Id
+            @Column(name = "ID field name with $dollar")
+            int id;
+        }
+
+        @Entity
+        static class ColumnWithDollar {
+            @Id
+            int id;
+
+            @Column(name = "field name with $dollar")
+            int v;
+        }
     }
 }
