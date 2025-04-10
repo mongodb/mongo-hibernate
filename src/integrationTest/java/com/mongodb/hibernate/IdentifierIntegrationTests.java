@@ -44,7 +44,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
             IdentifierIntegrationTests.EndingWithBacktick.class,
             IdentifierIntegrationTests.StartingAndEndingWithDoubleQuotes.class,
             IdentifierIntegrationTests.StartingWithDoubleQuote.class,
-            IdentifierIntegrationTests.EndingWithDoubleQuote.class
+            IdentifierIntegrationTests.EndingWithDoubleQuote.class,
+            IdentifierIntegrationTests.StartingAndEndingWithSquareBrackets.class,
+            IdentifierIntegrationTests.StartingWithLeftSquareBracket.class,
+            IdentifierIntegrationTests.EndingWithRightSquareBracket.class
         })
 @ExtendWith(MongoExtension.class)
 class IdentifierIntegrationTests implements SessionFactoryScopeAware {
@@ -68,6 +71,15 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
 
     @InjectMongoCollection(EndingWithDoubleQuote.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionEndingWithDoubleQuote;
+
+    @InjectMongoCollection(StartingAndEndingWithSquareBrackets.ACTUAL_COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithSquareBrackets;
+
+    @InjectMongoCollection(StartingWithLeftSquareBracket.COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionStartingWithLeftSquareBracket;
+
+    @InjectMongoCollection(EndingWithRightSquareBracket.COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollectionEndingWithRightSquareBracket;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -146,6 +158,39 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(EndingWithDoubleQuote.FIELD_NAME, new BsonInt32(item.v)));
         sessionFactoryScope.inTransaction(session -> session.get(EndingWithDoubleQuote.class, item.id));
+    }
+
+    @Test
+    void startingAndEndingWithSquareBrackets() {
+        var item = new StartingAndEndingWithSquareBrackets();
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertThat(mongoCollectionStartingAndEndingWithSquareBrackets.find())
+                .containsExactly(new BsonDocument()
+                        .append(ID_FIELD_NAME, new BsonInt32(item.id))
+                        .append(StartingAndEndingWithSquareBrackets.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(StartingAndEndingWithSquareBrackets.class, item.id));
+    }
+
+    @Test
+    void startingWithLeftSquareBracket() {
+        var item = new StartingWithLeftSquareBracket();
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertThat(mongoCollectionStartingWithLeftSquareBracket.find())
+                .containsExactly(new BsonDocument()
+                        .append(ID_FIELD_NAME, new BsonInt32(item.id))
+                        .append(StartingWithLeftSquareBracket.FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(StartingWithLeftSquareBracket.class, item.id));
+    }
+
+    @Test
+    void endingWithRightSquareBracket() {
+        var item = new EndingWithRightSquareBracket();
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertThat(mongoCollectionEndingWithRightSquareBracket.find())
+                .containsExactly(new BsonDocument()
+                        .append(ID_FIELD_NAME, new BsonInt32(item.id))
+                        .append(EndingWithRightSquareBracket.FIELD_NAME, new BsonInt32(item.v)));
+        sessionFactoryScope.inTransaction(session -> session.get(EndingWithRightSquareBracket.class, item.id));
     }
 
     @Override
@@ -245,6 +290,47 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
         int id;
 
         @Column(name = EndingWithDoubleQuote.FIELD_NAME)
+        int v;
+    }
+
+    @Entity
+    @Table(name = StartingAndEndingWithSquareBrackets.COLLECTION_NAME)
+    static class StartingAndEndingWithSquareBrackets {
+        static final String COLLECTION_NAME = "[collection name starting and ending with square brackets]";
+        static final String FIELD_NAME = "[field name starting and ending with square brackets]";
+        static final String ACTUAL_COLLECTION_NAME = "collection name starting and ending with square brackets";
+        static final String ACTUAL_FIELD_NAME = "field name starting and ending with square brackets";
+
+        @Id
+        int id;
+
+        @Column(name = StartingAndEndingWithSquareBrackets.FIELD_NAME)
+        int v;
+    }
+
+    @Entity
+    @Table(name = StartingWithLeftSquareBracket.COLLECTION_NAME)
+    static class StartingWithLeftSquareBracket {
+        static final String COLLECTION_NAME = "[collection name starting with left square bracket";
+        static final String FIELD_NAME = "[field name starting with left square bracket";
+
+        @Id
+        int id;
+
+        @Column(name = StartingWithLeftSquareBracket.FIELD_NAME)
+        int v;
+    }
+
+    @Entity
+    @Table(name = EndingWithRightSquareBracket.COLLECTION_NAME)
+    static class EndingWithRightSquareBracket {
+        static final String COLLECTION_NAME = "collection name ending with right square bracket]";
+        static final String FIELD_NAME = "field name ending with right square bracket]";
+
+        @Id
+        int id;
+
+        @Column(name = EndingWithRightSquareBracket.FIELD_NAME)
         int v;
     }
 }
