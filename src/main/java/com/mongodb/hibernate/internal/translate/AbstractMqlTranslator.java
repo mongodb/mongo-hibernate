@@ -410,10 +410,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (fieldInLeftHandSide == fieldInRightHandSide) {
             if (fieldInLeftHandSide) {
                 throw new FeatureNotSupportedException(
-                        "MongoDB's comparison operation doesn't support comparison between two fields");
+                        "Currently comparison between two fields not supported");
             } else {
                 throw new FeatureNotSupportedException(
-                        "MongoDB's comparison operation doesn't support comparison between two values");
+                        "Currently comparison between two values not supported");
             }
         }
 
