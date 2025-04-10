@@ -23,6 +23,8 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import java.util.Collection;
+import java.util.Set;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
@@ -32,6 +34,12 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.PersistentClass;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
+    /**
+     * We do not support these characters because BSON fields with names containing them must be handled specially as
+     * described in <a href=https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/>Field Names with Periods
+     * and Dollar Signs</a>.
+     */
+    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
 
     public MongoAdditionalMappingContributor() {}
 
@@ -51,7 +59,21 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 throw new FeatureNotSupportedException(
                         format("%s is not supported", DynamicInsert.class.getSimpleName()));
             }
+            checkColumnNames(persistentClass);
             setIdentifierColumnName(persistentClass);
+        });
+    }
+
+    private static void checkColumnNames(PersistentClass persistentClass) {
+        persistentClass.getTable().getColumns().forEach(column -> {
+            var columnName = column.getName();
+            UNSUPPORTED_FIELD_NAME_CHARACTERS.forEach(unsupportedCharacter -> {
+                if (columnName.contains(unsupportedCharacter)) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s: the character [%s] in field names is not supported, but is present in the field name [%s]",
+                            persistentClass, unsupportedCharacter, columnName));
+                }
+            });
         });
     }
 
@@ -60,8 +82,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         assertFalse(identifier.hasFormula());
         var idColumns = identifier.getColumns();
         if (idColumns.size() > 1) {
-            throw new FeatureNotSupportedException(
-                    format("%s doesn't support '%s' field spanning multiple columns", MONGO_DBMS_NAME, ID_FIELD_NAME));
+            throw new FeatureNotSupportedException(format(
+                    "%s: %s does not support [%s] field spanning multiple columns %s",
+                    persistentClass, MONGO_DBMS_NAME, ID_FIELD_NAME, idColumns));
         }
         assertTrue(idColumns.size() == 1);
         var idColumn = idColumns.get(0);
