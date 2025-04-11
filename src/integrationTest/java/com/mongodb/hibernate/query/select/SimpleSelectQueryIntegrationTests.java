@@ -22,10 +22,12 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.query.SelectionQuery;
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -37,37 +39,45 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@SessionFactory(exportSchema = false)
+@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
 @DomainModel(annotatedClasses = SimpleSelectQueryIntegrationTests.Contact.class)
 @ExtendWith(MongoExtension.class)
 class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
+    private SQLStatementInspector mqlStatementInterceptor;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+        mqlStatementInterceptor = sessionFactoryScope.getCollectingStatementInspector();
+    }
+
+    private final List<Contact> testingContacts = List.of(
+            new Contact(1, "Bob", 18, Country.USA),
+            new Contact(2, "Mary", 35, Country.CANADA),
+            new Contact(3, "Dylan", 7, Country.CANADA),
+            new Contact(4, "Lucy", 78, Country.CANADA),
+            new Contact(5, "John", 25, Country.USA));
+
+    private List<Contact> getTestingContacts(int... ids) {
+        return Arrays.stream(ids).mapToObj(id -> testingContacts.get(id - 1)).toList();
     }
 
     @BeforeEach
     void beforeEach() {
-        sessionFactoryScope.inTransaction(session -> List.of(
-                        new Contact(1, "Bob", 18, Country.USA),
-                        new Contact(2, "Mary", 35, Country.CANADA),
-                        new Contact(3, "Dylan", 7, Country.CANADA),
-                        new Contact(4, "Lucy", 78, Country.CANADA),
-                        new Contact(5, "John", 25, Country.USA))
-                .forEach(session::persist));
+        sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
+        mqlStatementInterceptor.clear();
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByEq(boolean fieldAsLhs) {
-        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
-                session,
+        assertQuery(
                 "from Contact where " + (fieldAsLhs ? "country = :country" : ":country = country"),
                 q -> q.setParameter("country", Country.USA.name()),
-                List.of(1, 5)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': {'$undefined': true}}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(1, 5));
     }
 
     @ParameterizedTest
@@ -173,6 +183,24 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         }
         var queryResult = selectionQuery.getResultList();
         assertThat(queryResult).extracting(c -> c.id).containsExactly(expectedIds.toArray(new Integer[0]));
+    }
+
+    private void assertQuery(
+            String hql,
+            Consumer<SelectionQuery<Contact>> queryPostProcessor,
+            String mql,
+            List<Contact> expectedContacts) {
+        sessionFactoryScope.inTransaction(session -> {
+            var selectionQuery = session.createSelectionQuery(hql, Contact.class);
+            if (queryPostProcessor != null) {
+                queryPostProcessor.accept(selectionQuery);
+            }
+            var queryResult = selectionQuery.getResultList();
+            assertThat(mqlStatementInterceptor.getSqlQueries()).containsExactly(mql.replace('\'', '"'));
+            assertThat(queryResult)
+                    .usingRecursiveFieldByFieldElementComparator()
+                    .containsExactly(expectedContacts.toArray(new Contact[0]));
+        });
     }
 
     @Entity(name = "Contact")
