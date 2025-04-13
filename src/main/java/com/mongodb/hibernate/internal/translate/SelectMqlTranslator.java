@@ -46,7 +46,7 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
 
         logSqlAst(selectStatement);
 
-        checkJdbcParameterBindings(jdbcParameterBindings);
+        checkJdbcParameterBindingsSupportability(jdbcParameterBindings);
         checkQueryOptionsSupportability(queryOptions);
 
         var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);

@@ -18,39 +18,58 @@ package com.mongodb.hibernate.query.select;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.mongodb.hibernate.cfg.MongoConfigurator;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
+import com.mongodb.hibernate.util.TestCommandListener;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
-import org.hibernate.engine.spi.SessionImplementor;
+import org.bson.BsonDocument;
 import org.hibernate.query.SelectionQuery;
-import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@SessionFactory(exportSchema = false, useCollectingStatementInspector = true)
-@DomainModel(annotatedClasses = SimpleSelectQueryIntegrationTests.Contact.class)
+@SessionFactory(exportSchema = false)
+@DomainModel(annotatedClasses = {SimpleSelectQueryIntegrationTests.Contact.class})
+@ServiceRegistry(
+        services =
+                @ServiceRegistry.Service(
+                        role = MongoConfigurationContributor.class,
+                        impl = SimpleSelectQueryIntegrationTests.TestingMongoConfigurationContributor.class))
 @ExtendWith(MongoExtension.class)
 class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
+    public static class TestingMongoConfigurationContributor implements MongoConfigurationContributor {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public void configure(MongoConfigurator configurator) {
+            configurator.applyToMongoClientSettings(builder -> builder.addCommandListener(MONGO_COMMAND_LISTENER));
+        }
+    }
+
+    private static final TestCommandListener MONGO_COMMAND_LISTENER = new TestCommandListener();
+
     private SessionFactoryScope sessionFactoryScope;
-    private SQLStatementInspector mqlStatementInterceptor;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
-        mqlStatementInterceptor = sessionFactoryScope.getCollectingStatementInspector();
     }
 
     private final List<Contact> testingContacts = List.of(
@@ -67,97 +86,103 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
     @BeforeEach
     void beforeEach() {
         sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
-        mqlStatementInterceptor.clear();
+        MONGO_COMMAND_LISTENER.clear();
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByEq(boolean fieldAsLhs) {
-        assertQuery(
+        assertSelectQuery(
                 "from Contact where " + (fieldAsLhs ? "country = :country" : ":country = country"),
                 q -> q.setParameter("country", Country.USA.name()),
-                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': {'$undefined': true}}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': 'USA'}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                 getTestingContacts(1, 5));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByNe(boolean fieldAsLhs) {
-        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
-                session,
+        assertSelectQuery(
                 "from Contact where " + (fieldAsLhs ? "country != ?1" : "?1 != country"),
                 q -> q.setParameter(1, Country.USA.name()),
-                List.of(2, 3, 4)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$ne': 'USA'}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(2, 3, 4));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByLt(boolean fieldAsLhs) {
-        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
-                session,
+        assertSelectQuery(
                 "from Contact where " + (fieldAsLhs ? "age < :age" : ":age > age"),
                 q -> q.setParameter("age", 35),
-                List.of(1, 3, 5)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$lt': 35}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(1, 3, 5));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByLte(boolean fieldAsLhs) {
-        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
-                session,
+        assertSelectQuery(
                 "from Contact where " + (fieldAsLhs ? "age <= ?1" : "?1 >= age"),
                 q -> q.setParameter(1, 35),
-                List.of(1, 2, 3, 5)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$lte': 35}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(1, 2, 3, 5));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByGt(boolean fieldAsLhs) {
-        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
-                session,
+        assertSelectQuery(
                 "from Contact where " + (fieldAsLhs ? "age > :age" : ":age < age"),
                 q -> q.setParameter("age", 18),
-                List.of(2, 4, 5)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$gt': 18}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(2, 4, 5));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testComparisonByGte(boolean fieldAsLhs) {
-        sessionFactoryScope.inTransaction(session -> assertContactQueryResult(
-                session,
+        assertSelectQuery(
                 "from Contact where " + (fieldAsLhs ? "age >= :age" : ":age <= age"),
                 q -> q.setParameter("age", 18),
-                List.of(1, 2, 4, 5)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$gte': 18}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(1, 2, 4, 5));
     }
 
     @Test
-    void testAndFilter(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session,
+    void testAndFilter() {
+        assertSelectQuery(
                 "from Contact where country = ?1 and age > ?2",
                 q -> q.setParameter(1, Country.CANADA.name()).setParameter(2, 18),
-                List.of(2, 4)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'country': {'$eq': 'CANADA'}}, {'age': {'$gt': 18}}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(2, 4));
     }
 
     @Test
-    void testOrFilter(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session,
+    void testOrFilter() {
+        assertSelectQuery(
                 "from Contact where country = :country or age > :age",
                 q -> q.setParameter("country", Country.CANADA.name()).setParameter("age", 18),
-                List.of(2, 3, 4, 5)));
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$or': [{'country': {'$eq': 'CANADA'}}, {'age': {'$gt': 18}}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(2, 3, 4, 5));
     }
 
     @Test
-    void testSingleNegation(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where age > 18 and not (country = 'USA')", null, List.of(2, 4)));
+    void testSingleNegation() {
+        assertSelectQuery(
+                "from Contact where age > 18 and not (country = 'USA')",
+                null,
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'country': {'$eq': 'USA'}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(2, 4));
     }
 
     @Test
-    void testDoubleNegation(SessionFactoryScope scope) {
-        scope.inTransaction(session -> assertContactQueryResult(
-                session, "from Contact where age > 18 and not ( not (country = 'USA') )", null, List.of(5)));
+    void testDoubleNegation() {
+        assertSelectQuery(
+                "from Contact where age > 18 and not ( not (country = 'USA') )",
+                null,
+                "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'$nor': [{'country': {'$eq': 'USA'}}]}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                getTestingContacts(5));
     }
 
     @Test
@@ -172,34 +197,29 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         });
     }
 
-    private static void assertContactQueryResult(
-            SessionImplementor session,
-            String hql,
-            @Nullable Consumer<SelectionQuery<Contact>> queryPostProcessor,
-            List<Integer> expectedIds) {
-        var selectionQuery = session.createSelectionQuery(hql, Contact.class);
-        if (queryPostProcessor != null) {
-            queryPostProcessor.accept(selectionQuery);
-        }
-        var queryResult = selectionQuery.getResultList();
-        assertThat(queryResult).extracting(c -> c.id).containsExactly(expectedIds.toArray(new Integer[0]));
-    }
-
-    private void assertQuery(
+    private void assertSelectQuery(
             String hql,
             Consumer<SelectionQuery<Contact>> queryPostProcessor,
-            String mql,
-            List<Contact> expectedContacts) {
+            String expectedMql,
+            List<? extends Contact> expectedContacts) {
         sessionFactoryScope.inTransaction(session -> {
             var selectionQuery = session.createSelectionQuery(hql, Contact.class);
             if (queryPostProcessor != null) {
                 queryPostProcessor.accept(selectionQuery);
             }
-            var queryResult = selectionQuery.getResultList();
-            assertThat(mqlStatementInterceptor.getSqlQueries()).containsExactly(mql.replace('\'', '"'));
-            assertThat(queryResult)
+            var resultList = selectionQuery.getResultList();
+
+            var capturedCommands = MONGO_COMMAND_LISTENER.getFinishedCommands();
+
+            assertThat(capturedCommands)
+                    .singleElement()
+                    .extracting(TestCommandListener::getActualAggregateCommand)
+                    .usingRecursiveComparison()
+                    .isEqualTo(BsonDocument.parse(expectedMql));
+
+            assertThat(resultList)
                     .usingRecursiveFieldByFieldElementComparator()
-                    .containsExactly(expectedContacts.toArray(new Contact[0]));
+                    .containsExactlyElementsOf(expectedContacts);
         });
     }
 

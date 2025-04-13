@@ -162,7 +162,6 @@ import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
-import org.hibernate.sql.exec.spi.JdbcParameterBinding;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
@@ -800,9 +799,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         throw new FeatureNotSupportedException();
     }
 
-    void checkJdbcParameterBindings(@Nullable JdbcParameterBindings jdbcParameterBindings) {
+    void checkJdbcParameterBindingsSupportability(@Nullable JdbcParameterBindings jdbcParameterBindings) {
         if (jdbcParameterBindings != null) {
-            for (JdbcParameterBinding jdbcParameterBinding : jdbcParameterBindings.getBindings()) {
+            for (var jdbcParameterBinding : jdbcParameterBindings.getBindings()) {
                 if (jdbcParameterBinding.getBindValue() == null) {
                     throw new FeatureNotSupportedException(
                             "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
