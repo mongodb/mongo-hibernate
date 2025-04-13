@@ -74,7 +74,6 @@ import org.bson.BsonDecimal128;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
-import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonMode;
@@ -404,23 +403,21 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        boolean isFieldInLeftHandSide = visitFieldPath(comparisonPredicate.getLeftHandExpression());
-        boolean isFieldInRightHandSide = visitFieldPath(comparisonPredicate.getRightHandExpression());
+        boolean isFieldInLeftHandSide = isFieldPathExpression(comparisonPredicate.getLeftHandExpression());
+        boolean isFieldInRightHandSide = isFieldPathExpression(comparisonPredicate.getRightHandExpression());
 
-        if (fieldInLeftHandSide == fieldInRightHandSide) {
-            if (fieldInLeftHandSide) {
-                throw new FeatureNotSupportedException(
-                        "Currently comparison between two fields not supported");
+        if (isFieldInLeftHandSide == isFieldInRightHandSide) {
+            if (isFieldInLeftHandSide) {
+                throw new FeatureNotSupportedException("Currently comparison between two fields not supported");
             } else {
-                throw new FeatureNotSupportedException(
-                        "Currently comparison between two values not supported");
+                throw new FeatureNotSupportedException("Currently comparison between two values not supported");
             }
         }
 
         String fieldPath;
         AstValue comparisonValue;
 
-        if (fieldInLeftHandSide) {
+        if (isFieldInLeftHandSide) {
             fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
             comparisonValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_VALUE);
         } else {
@@ -428,7 +425,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             comparisonValue = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_VALUE);
         }
 
-        var operator = fieldInLeftHandSide
+        var operator = isFieldInLeftHandSide
                 ? comparisonPredicate.getOperator()
                 : comparisonPredicate.getOperator().invert();
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
@@ -863,13 +860,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         };
     }
 
-    private static boolean visitFieldPath(Expression expression) {
+    private static boolean isFieldPathExpression(Expression expression) {
         return expression instanceof ColumnReference || expression instanceof BasicValuedPathInterpretation;
     }
 
     private static BsonValue toBsonValue(@Nullable Object queryLiteral) {
         if (queryLiteral == null) {
-            return BsonNull.VALUE;
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
         }
         if (queryLiteral instanceof Boolean boolValue) {
             return BsonBoolean.valueOf(boolValue);
