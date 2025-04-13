@@ -16,9 +16,9 @@
 
 package com.mongodb.hibernate.type;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.mongodb.client.MongoCollection;
@@ -30,7 +30,6 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.Objects;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
@@ -140,23 +139,6 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         @JavaType(ObjectIdJavaType.class)
         @JdbcType(ObjectIdJdbcType.class)
         ObjectId vExplicitlyAnnotatedNotForThePublic;
-
-        @Override
-        public boolean equals(Object o) {
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            Item item = (Item) o;
-            return id == item.id
-                    && Objects.equals(v, item.v)
-                    && Objects.equals(vNull, item.vNull)
-                    && Objects.equals(vExplicitlyAnnotatedNotForThePublic, item.vExplicitlyAnnotatedNotForThePublic);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, v, vNull, vExplicitlyAnnotatedNotForThePublic);
-        }
     }
 
     @Entity
