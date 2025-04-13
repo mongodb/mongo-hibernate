@@ -404,8 +404,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        var fieldInLeftHandSide = visitFieldPath(comparisonPredicate.getLeftHandExpression());
-        var fieldInRightHandSide = visitFieldPath(comparisonPredicate.getRightHandExpression());
+        boolean isFieldInLeftHandSide = visitFieldPath(comparisonPredicate.getLeftHandExpression());
+        boolean isFieldInRightHandSide = visitFieldPath(comparisonPredicate.getRightHandExpression());
 
         if (fieldInLeftHandSide == fieldInRightHandSide) {
             if (fieldInLeftHandSide) {
