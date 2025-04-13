@@ -32,17 +32,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = SimpleSelectQueryLiteralIntegrationTests.Item.class)
+@DomainModel(annotatedClasses = SimpleSelectQueryLiteralIntegrationTests.Book.class)
 @ExtendWith(MongoExtension.class)
 class SimpleSelectQueryLiteralIntegrationTests {
 
     @Test
     void testBoolean(SessionFactoryScope scope) {
-        var item = new Item();
-        item.booleanField = true;
+        var item = new Book();
+        item.outOfStock = true;
         scope.inTransaction(session -> session.persist(item));
         scope.inTransaction(
-                session -> assertThat(session.createSelectionQuery("from Item where booleanField = true", Item.class)
+                session -> assertThat(session.createSelectionQuery("from Book where outOfStock = true", Book.class)
                                 .getSingleResult())
                         .usingRecursiveComparison()
                         .isEqualTo(item));
@@ -50,11 +50,11 @@ class SimpleSelectQueryLiteralIntegrationTests {
 
     @Test
     void testInteger(SessionFactoryScope scope) {
-        var item = new Item();
-        item.integerField = 1;
+        var item = new Book();
+        item.publishYear = 1995;
         scope.inTransaction(session -> session.persist(item));
         scope.inTransaction(
-                session -> assertThat(session.createSelectionQuery("from Item where integerField = 1", Item.class)
+                session -> assertThat(session.createSelectionQuery("from Book where publishYear = 1995", Book.class)
                                 .getSingleResult())
                         .usingRecursiveComparison()
                         .isEqualTo(item));
@@ -62,23 +62,23 @@ class SimpleSelectQueryLiteralIntegrationTests {
 
     @Test
     void testLong(SessionFactoryScope scope) {
-        var item = new Item();
-        item.longField = 1L;
+        var item = new Book();
+        item.isbn13 = 9780310904168L;
         scope.inTransaction(session -> session.persist(item));
-        scope.inTransaction(
-                session -> assertThat(session.createSelectionQuery("from Item where longField = 1", Item.class)
+        scope.inTransaction(session -> assertThat(
+                        session.createSelectionQuery("from Book where isbn13 = 9780310904168L", Book.class)
                                 .getSingleResult())
-                        .usingRecursiveComparison()
-                        .isEqualTo(item));
+                .usingRecursiveComparison()
+                .isEqualTo(item));
     }
 
     @Test
     void testDouble(SessionFactoryScope scope) {
-        var item = new Item();
-        item.doubleField = 3.14;
+        var item = new Book();
+        item.discount = 0.25;
         scope.inTransaction(session -> session.persist(item));
         scope.inTransaction(
-                session -> assertThat(session.createSelectionQuery("from Item where doubleField = 3.14", Item.class)
+                session -> assertThat(session.createSelectionQuery("from Book where discount = 0.25D", Book.class)
                                 .getSingleResult())
                         .usingRecursiveComparison()
                         .isEqualTo(item));
@@ -86,40 +86,40 @@ class SimpleSelectQueryLiteralIntegrationTests {
 
     @Test
     void testString(SessionFactoryScope scope) {
-        var item = new Item();
-        item.stringField = "Hello World";
+        var item = new Book();
+        item.title = "Holy Bible";
         scope.inTransaction(session -> session.persist(item));
-        scope.inTransaction(session -> assertThat(
-                        session.createSelectionQuery("from Item where stringField = 'Hello World'", Item.class)
+        scope.inTransaction(
+                session -> assertThat(session.createSelectionQuery("from Book where title = 'Holy Bible'", Book.class)
                                 .getSingleResult())
-                .usingRecursiveComparison()
-                .isEqualTo(item));
+                        .usingRecursiveComparison()
+                        .isEqualTo(item));
     }
 
     @Test
     void testBigDecimal(SessionFactoryScope scope) {
-        var item = new Item();
-        item.bigDecimalField = new BigDecimal("3.14");
+        var item = new Book();
+        item.price = new BigDecimal("123.50");
         scope.inTransaction(session -> session.persist(item));
-        scope.inTransaction(session -> assertThat(
-                        session.createSelectionQuery("from Item where bigDecimalField = 3.14BD", Item.class)
+        scope.inTransaction(
+                session -> assertThat(session.createSelectionQuery("from Book where price = 123.50BD", Book.class)
                                 .getSingleResult())
-                .usingRecursiveComparison()
-                .isEqualTo(item));
+                        .usingRecursiveComparison()
+                        .isEqualTo(item));
     }
 
-    @Entity(name = "Item")
-    @Table(name = "items")
-    static class Item {
+    @Entity(name = "Book")
+    @Table(name = "books")
+    static class Book {
         @Id
         @ObjectIdGenerator
         ObjectId id;
 
-        String stringField;
-        Boolean booleanField;
-        Integer integerField;
-        Long longField;
-        Double doubleField;
-        BigDecimal bigDecimalField;
+        String title;
+        Boolean outOfStock;
+        Integer publishYear;
+        Long isbn13;
+        Double discount;
+        BigDecimal price;
     }
 }
