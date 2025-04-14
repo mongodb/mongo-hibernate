@@ -115,4 +115,19 @@ public final class MongoAssertions {
         }
         return false;
     }
+
+    /**
+     * Asserts that {@code value} is {@code false} with message.
+     *
+     * @param message the message to explain details.
+     * @param value A value to check.
+     * @return {@code false}.
+     * @throws AssertionError If {@code value} is {@code true}.
+     */
+    public static boolean assertFalse(String message, boolean value) throws AssertionError {
+        if (value) {
+            throw new AssertionError(message);
+        }
+        return true;
+    }
 }
