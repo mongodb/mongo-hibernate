@@ -128,6 +128,6 @@ public final class MongoAssertions {
         if (value) {
             throw new AssertionError(message);
         }
-        return true;
+        return false;
     }
 }

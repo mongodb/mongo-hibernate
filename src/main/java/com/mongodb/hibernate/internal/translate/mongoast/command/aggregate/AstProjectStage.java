@@ -24,7 +24,7 @@ import org.bson.BsonWriter;
 public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
 
     public AstProjectStage {
-        assertFalse("Projection stage must have at least one specification", specifications.isEmpty());
+        assertFalse(specifications.isEmpty());
     }
 
     @Override
