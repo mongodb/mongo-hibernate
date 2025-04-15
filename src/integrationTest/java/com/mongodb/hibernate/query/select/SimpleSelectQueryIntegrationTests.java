@@ -16,18 +16,16 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.mongodb.hibernate.MongoTestAssertions;
 import com.mongodb.hibernate.annotations.ObjectIdGenerator;
-import com.mongodb.hibernate.cfg.MongoConfigurator;
+import com.mongodb.hibernate.internal.MongoTestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
-import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
-import com.mongodb.hibernate.util.TestCommandListener;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.io.Serial;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
@@ -36,7 +34,8 @@ import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.hibernate.testing.orm.junit.ServiceRegistry;
+import org.hibernate.testing.orm.junit.ServiceRegistryScope;
+import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
@@ -53,32 +52,22 @@ import org.junit.jupiter.params.provider.ValueSource;
             SimpleSelectQueryIntegrationTests.Contact.class,
             SimpleSelectQueryIntegrationTests.Book.class
         })
-@ServiceRegistry(
-        services =
-                @ServiceRegistry.Service(
-                        role = MongoConfigurationContributor.class,
-                        impl = SimpleSelectQueryIntegrationTests.TestingMongoConfigurationContributor.class))
 @ExtendWith(MongoExtension.class)
-class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
-
-    public static class TestingMongoConfigurationContributor implements MongoConfigurationContributor {
-
-        @Serial
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public void configure(MongoConfigurator configurator) {
-            configurator.applyToMongoClientSettings(builder -> builder.addCommandListener(MONGO_COMMAND_LISTENER));
-        }
-    }
-
-    private static final TestCommandListener MONGO_COMMAND_LISTENER = new TestCommandListener();
+class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
+
+    private MongoTestCommandListener mongoTestCommandListener;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @Override
+    public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
+        this.mongoTestCommandListener =
+                serviceRegistryScope.getRegistry().requireService(MongoTestCommandListener.class);
     }
 
     @Nested
@@ -93,21 +82,25 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
         private List<Contact> getTestingContacts(int... ids) {
             return Arrays.stream(ids)
-                    .mapToObj(id -> testingContacts.get(id - 1))
+                    .mapToObj(id -> testingContacts.stream()
+                            .filter(c -> c.id == id)
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("id not exists: " + id)))
                     .toList();
         }
 
         @BeforeEach
         void beforeEach() {
             sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
-            MONGO_COMMAND_LISTENER.clear();
+            mongoTestCommandListener.clear();
         }
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByEq(boolean fieldAsLhs) {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where " + (fieldAsLhs ? "country = :country" : ":country = country"),
+                    Contact.class,
                     q -> q.setParameter("country", Country.USA.name()),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': 'USA'}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(1, 5));
@@ -116,8 +109,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByNe(boolean fieldAsLhs) {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where " + (fieldAsLhs ? "country != ?1" : "?1 != country"),
+                    Contact.class,
                     q -> q.setParameter(1, Country.USA.name()),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$ne': 'USA'}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 3, 4));
@@ -126,8 +120,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByLt(boolean fieldAsLhs) {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where " + (fieldAsLhs ? "age < :age" : ":age > age"),
+                    Contact.class,
                     q -> q.setParameter("age", 35),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$lt': 35}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(1, 3, 5));
@@ -136,8 +131,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByLte(boolean fieldAsLhs) {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where " + (fieldAsLhs ? "age <= ?1" : "?1 >= age"),
+                    Contact.class,
                     q -> q.setParameter(1, 35),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$lte': 35}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(1, 2, 3, 5));
@@ -146,8 +142,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByGt(boolean fieldAsLhs) {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where " + (fieldAsLhs ? "age > :age" : ":age < age"),
+                    Contact.class,
                     q -> q.setParameter("age", 18),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$gt': 18}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4, 5));
@@ -156,8 +153,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByGte(boolean fieldAsLhs) {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where " + (fieldAsLhs ? "age >= :age" : ":age <= age"),
+                    Contact.class,
                     q -> q.setParameter("age", 18),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'age': {'$gte': 18}}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(1, 2, 4, 5));
@@ -165,8 +163,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testAndFilter() {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where country = ?1 and age > ?2",
+                    Contact.class,
                     q -> q.setParameter(1, Country.CANADA.name()).setParameter(2, 18),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'country': {'$eq': 'CANADA'}}, {'age': {'$gt': 18}}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4));
@@ -174,8 +173,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testOrFilter() {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where country = :country or age > :age",
+                    Contact.class,
                     q -> q.setParameter("country", Country.CANADA.name()).setParameter("age", 18),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$or': [{'country': {'$eq': 'CANADA'}}, {'age': {'$gt': 18}}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 3, 4, 5));
@@ -183,8 +183,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testSingleNegation() {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where age > 18 and not (country = 'USA')",
+                    Contact.class,
                     null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'country': {'$eq': 'USA'}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4));
@@ -192,50 +193,22 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testDoubleNegation() {
-            assertContactQuery(
+            assertSelectQuery(
                     "from Contact where age > 18 and not ( not (country = 'USA') )",
+                    Contact.class,
                     null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'$nor': [{'country': {'$eq': 'USA'}}]}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(5));
         }
 
-        private void assertContactQuery(
-                String hql,
-                Consumer<SelectionQuery<Contact>> queryPostProcessor,
-                String expectedMql,
-                List<? extends Contact> expectedContacts) {
-            sessionFactoryScope.inTransaction(session -> {
-                var selectionQuery = session.createSelectionQuery(hql, Contact.class);
-                if (queryPostProcessor != null) {
-                    queryPostProcessor.accept(selectionQuery);
-                }
-                var resultList = selectionQuery.getResultList();
-
-                var capturedCommands = MONGO_COMMAND_LISTENER.getFinishedCommands();
-
-                assertThat(capturedCommands)
-                        .singleElement()
-                        .extracting(TestCommandListener::getActualAggregateCommand)
-                        .usingRecursiveComparison()
-                        .isEqualTo(BsonDocument.parse(expectedMql));
-
-                assertThat(resultList)
-                        .usingRecursiveFieldByFieldElementComparator()
-                        .containsExactlyElementsOf(expectedContacts);
-            });
-        }
-
         @Test
         void testProjectOperation() {
-            sessionFactoryScope.inTransaction(session -> {
-                var results = session.createSelectionQuery(
-                                "select name, age from Contact where country = :country", Object[].class)
-                        .setParameter("country", Country.CANADA.name())
-                        .getResultList();
-                assertThat(results)
-                        .containsExactly(
-                                new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78});
-            });
+            assertSelectQuery(
+                    "select name, age from Contact where country = :country",
+                    Object[].class,
+                    q -> q.setParameter("country", Country.CANADA.name()),
+                    "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': 'CANADA'}}}, {'$project': {'name': true, 'age': true}}]}",
+                    List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}));
         }
     }
 
@@ -255,68 +228,99 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware {
             testingBook.price = new BigDecimal("123.50");
             sessionFactoryScope.inTransaction(session -> session.persist(testingBook));
 
-            MONGO_COMMAND_LISTENER.clear();
+            mongoTestCommandListener.clear();
         }
 
         @Test
         void testBoolean() {
-            assertBookQuery(
+            assertSelectQuery(
                     "from Book where outOfStock = true",
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': true}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}");
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': true}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    singletonList(testingBook));
         }
 
         @Test
         void testInteger() {
-            assertBookQuery(
+            assertSelectQuery(
                     "from Book where publishYear = 1995",
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'publishYear': {'$eq': 1995}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}");
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'publishYear': {'$eq': 1995}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    singletonList(testingBook));
         }
 
         @Test
         void testLong() {
-            assertBookQuery(
+            assertSelectQuery(
                     "from Book where isbn13 = 9780310904168L",
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'isbn13': {'$eq': 9780310904168}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}");
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'isbn13': {'$eq': 9780310904168}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    singletonList(testingBook));
         }
 
         @Test
         void testDouble() {
-            assertBookQuery(
-                    "from Book where discount = 0.25",
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'discount': {'$eq': 0.25}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}");
+            assertSelectQuery(
+                    "from Book where discount = 0.25D",
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'discount': {'$eq': 0.25}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    singletonList(testingBook));
         }
 
         @Test
         void testString() {
-            assertBookQuery(
+            assertSelectQuery(
                     "from Book where title = 'Holy Bible'",
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'title': {'$eq': 'Holy Bible'}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}");
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'title': {'$eq': 'Holy Bible'}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    singletonList(testingBook));
         }
 
         @Test
         void testBigDecimal() {
-            assertBookQuery(
+            assertSelectQuery(
                     "from Book where price = 123.50BD",
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'price': {'$eq': {'$numberDecimal': '123.50'}}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}");
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'price': {'$eq': {'$numberDecimal': '123.50'}}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    singletonList(testingBook));
         }
+    }
 
-        private void assertBookQuery(String hql, String expectedMql) {
-            sessionFactoryScope.inTransaction(session -> {
-                var selectionQuery = session.createSelectionQuery(hql, Book.class);
-                var resultList = selectionQuery.getResultList();
+    private <T> void assertSelectQuery(
+            String hql,
+            Class<T> resultType,
+            Consumer<SelectionQuery<T>> queryPostProcessor,
+            String expectedMql,
+            List<T> expectedResultList) {
+        sessionFactoryScope.inTransaction(session -> {
+            var selectionQuery = session.createSelectionQuery(hql, resultType);
+            if (queryPostProcessor != null) {
+                queryPostProcessor.accept(selectionQuery);
+            }
+            var resultList = selectionQuery.getResultList();
 
-                var capturedCommands = MONGO_COMMAND_LISTENER.getFinishedCommands();
+            assertActualCommand(BsonDocument.parse(expectedMql));
 
-                assertThat(capturedCommands)
-                        .singleElement()
-                        .extracting(TestCommandListener::getActualAggregateCommand)
-                        .usingRecursiveComparison()
-                        .isEqualTo(BsonDocument.parse(expectedMql));
+            assertThat(resultList)
+                    .usingRecursiveFieldByFieldElementComparator()
+                    .containsExactlyElementsOf(expectedResultList);
+        });
+    }
 
-                assertThat(resultList).hasSize(1);
-                MongoTestAssertions.assertEquals(testingBook, resultList.get(0));
-            });
-        }
+    private void assertActualCommand(BsonDocument expectedCommand) {
+        assertTrue(mongoTestCommandListener.areAllCommandsFinishedAndSucceeded());
+        var capturedCommands = mongoTestCommandListener.getCommandsSucceeded();
+
+        assertThat(capturedCommands)
+                .singleElement()
+                .extracting(MongoTestCommandListener::getActualAggregateCommand)
+                .isEqualTo(expectedCommand);
     }
 
     @Entity(name = "Contact")

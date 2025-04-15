@@ -46,33 +46,42 @@ public final class MongoTestCommandListener implements CommandListener, Service 
     private final Map<Long, BsonDocument> startedCommands = new HashMap<>();
 
     @Override
-    public void commandStarted(CommandStartedEvent event) {
+    public synchronized void commandStarted(CommandStartedEvent event) {
         startedCommands.put(event.getOperationId(), event.getCommand().clone());
     }
 
     @Override
-    public void commandSucceeded(CommandSucceededEvent event) {
-        var startedCommand = assertNotNull(startedCommands.remove(event.getOperationId()));
-        commandsSucceeded.add(startedCommand);
+    public synchronized void commandSucceeded(CommandSucceededEvent event) {
+        commandsSucceeded.add(getStartedCommand(event.getOperationId()));
     }
 
     @Override
-    public void commandFailed(CommandFailedEvent event) {
-        var startedCommand = assertNotNull(startedCommands.remove(event.getOperationId()));
-        commandsFailed.add(startedCommand);
+    public synchronized void commandFailed(CommandFailedEvent event) {
+        commandsFailed.add(getStartedCommand(event.getOperationId()));
     }
 
-    public boolean allCommandsFinishedAndSucceeded() {
+    private BsonDocument getStartedCommand(long operationId) {
+        return assertNotNull(startedCommands.remove(operationId));
+    }
+
+    public synchronized boolean areAllCommandsFinishedAndSucceeded() {
         return startedCommands.isEmpty() && commandsFailed.isEmpty();
     }
 
-    public List<BsonDocument> getCommandsSucceeded() {
+    public synchronized List<BsonDocument> getCommandsSucceeded() {
         return List.copyOf(commandsSucceeded);
     }
 
-    public void clear() {
+    public synchronized void clear() {
         startedCommands.clear();
         commandsSucceeded.clear();
         commandsFailed.clear();
+    }
+
+    public static BsonDocument getActualAggregateCommand(BsonDocument command) {
+        var actualCommand = new BsonDocument();
+        actualCommand.put("aggregate", command.getString("aggregate"));
+        actualCommand.put("pipeline", command.getArray("pipeline"));
+        return actualCommand;
     }
 }
