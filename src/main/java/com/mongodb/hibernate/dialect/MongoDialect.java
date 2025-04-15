@@ -83,7 +83,7 @@ public final class MongoDialect extends Dialect {
 
     @Override
     public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
-        return new MongoTranslatorFactory();
+        return MongoTranslatorFactory.INSTANCE;
     }
 
     @Override
