@@ -16,10 +16,17 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
 import java.util.List;
 import org.bson.BsonWriter;
 
 public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
+
+    public AstProjectStage {
+        assertFalse(specifications.isEmpty());
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

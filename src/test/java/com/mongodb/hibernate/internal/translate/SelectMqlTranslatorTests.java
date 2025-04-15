@@ -22,15 +22,18 @@ import static org.mockito.Mockito.doReturn;
 
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAliasBaseImpl;
+import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.StandardTableGroup;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
+import org.hibernate.sql.results.internal.SqlSelectionImpl;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,7 +50,8 @@ class SelectMqlTranslatorTests {
             @Mock(mockMaker = MockMakers.PROXY) SessionFactoryImplementor sessionFactory,
             @Mock JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider,
             @Mock(mockMaker = MockMakers.PROXY) ServiceRegistryImplementor serviceRegistry,
-            @Mock StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
+            @Mock StandardServiceRegistryScopedState standardServiceRegistryScopedState,
+            @Mock SelectableMapping selectableMapping) {
 
         var tableName = "books";
         SelectStatement selectFromTableName;
@@ -66,6 +70,10 @@ class SelectMqlTranslatorTests {
                     new SqlAliasBaseImpl("b1"),
                     sessionFactory);
             querySpec.getFromClause().addRoot(tableGroup);
+            querySpec
+                    .getSelectClause()
+                    .addSqlSelection(new SqlSelectionImpl(
+                            new ColumnReference(tableGroup.getPrimaryTableReference(), selectableMapping)));
             selectFromTableName = new SelectStatement(querySpec);
         }
         { // prepare `sessionFactory`
