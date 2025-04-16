@@ -43,6 +43,7 @@ import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -228,19 +229,35 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @Test
         void testProjectUsingWrongAlias() {
             assertSelectQueryFailure(
-                    "select k.name, k.age from Contact as c where c.country = :country",
+                    "select k.name, c.age from Contact as c where c.country = :country",
                     Contact.class,
+                    null,
                     SemanticException.class,
-                    "Could not interpret path expression 'k.name'");
+                    "Could not interpret path expression '%s'",
+                    "k.name");
         }
+    }
 
+    @Nested
+    class FeatureNotSupportedTests {
         @Test
         void testComparisonNotSupported() {
             assertSelectQueryFailure(
                     "from Contact as c where c.age = c.id + 1",
                     Contact.class,
+                    null,
                     FeatureNotSupportedException.class,
                     "Currently only comparison between a field and a value is supported");
+        }
+
+        @Test
+        void testNullParameterNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where country = :country",
+                    Contact.class,
+                    q -> q.setParameter("country", null),
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
         }
     }
 
@@ -327,7 +344,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     private <T> void assertSelectQuery(
             String hql,
             Class<T> resultType,
-            Consumer<SelectionQuery<T>> queryPostProcessor,
+            @Nullable Consumer<SelectionQuery<T>> queryPostProcessor,
             String expectedMql,
             List<T> expectedResultList) {
         sessionFactoryScope.inTransaction(session -> {
@@ -348,11 +365,17 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     private <T> void assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
+            @Nullable Consumer<SelectionQuery<T>> queryPostProcessor,
             Class<? extends Exception> exceptionType,
             String exceptionMessage,
             Object... exceptionMessageParams) {
-        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(
-                        () -> session.createSelectionQuery(hql, resultType).getResultList())
+        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
+                    var query = session.createSelectionQuery(hql, resultType);
+                    if (queryPostProcessor != null) {
+                        queryPostProcessor.accept(query);
+                    }
+                    query.getResultList();
+                })
                 .isInstanceOf(exceptionType)
                 .hasMessage(exceptionMessage, exceptionMessageParams));
     }
