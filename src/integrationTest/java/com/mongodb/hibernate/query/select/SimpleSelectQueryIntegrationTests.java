@@ -19,8 +19,10 @@ package com.mongodb.hibernate.query.select;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.hibernate.annotations.ObjectIdGenerator;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoTestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
@@ -34,6 +36,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.query.SelectionQuery;
+import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
@@ -203,13 +206,41 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         }
 
         @Test
-        void testProjectOperation() {
+        void testProjectWithoutAlias() {
             assertSelectQuery(
                     "select name, age from Contact where country = :country",
                     Object[].class,
                     q -> q.setParameter("country", Country.CANADA.name()),
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': 'CANADA'}}}, {'$project': {'name': true, 'age': true}}]}",
                     List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}));
+        }
+
+        @Test
+        void testProjectUsingAlias() {
+            assertSelectQuery(
+                    "select c.name, c.age from Contact as c where c.country = :country",
+                    Object[].class,
+                    q -> q.setParameter("country", Country.CANADA.name()),
+                    "{'aggregate': 'contacts', 'pipeline': [{'$match': {'country': {'$eq': 'CANADA'}}}, {'$project': {'name': true, 'age': true}}]}",
+                    List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}));
+        }
+
+        @Test
+        void testProjectUsingWrongAlias() {
+            assertSelectQueryFailure(
+                    "select k.name, k.age from Contact as c where c.country = :country",
+                    Contact.class,
+                    SemanticException.class,
+                    "Could not interpret path expression 'k.name'");
+        }
+
+        @Test
+        void testComparisonNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact as c where c.age = c.id + 1",
+                    Contact.class,
+                    FeatureNotSupportedException.class,
+                    "Currently only comparison between a field and a value is supported");
         }
     }
 
@@ -312,6 +343,18 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     .usingRecursiveFieldByFieldElementComparator()
                     .containsExactlyElementsOf(expectedResultList);
         });
+    }
+
+    private <T> void assertSelectQueryFailure(
+            String hql,
+            Class<T> resultType,
+            Class<? extends Exception> exceptionType,
+            String exceptionMessage,
+            Object... exceptionMessageParams) {
+        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(
+                        () -> session.createSelectionQuery(hql, resultType).getResultList())
+                .isInstanceOf(exceptionType)
+                .hasMessage(exceptionMessage, exceptionMessageParams));
     }
 
     private void assertActualCommand(BsonDocument expectedCommand) {
