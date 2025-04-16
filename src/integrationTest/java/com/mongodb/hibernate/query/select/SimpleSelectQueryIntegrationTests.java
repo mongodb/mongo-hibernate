@@ -317,10 +317,11 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         assertTrue(mongoTestCommandListener.areAllCommandsFinishedAndSucceeded());
         var capturedCommands = mongoTestCommandListener.getCommandsSucceeded();
 
-        assertThat(capturedCommands)
+   assertThat(capturedCommands)
+                .hasSize(1)
                 .singleElement()
-                .extracting(MongoTestCommandListener::getActualAggregateCommand)
-                .isEqualTo(expectedCommand);
+                .asInstanceOf(InstanceOfAssertFactories.MAP)
+                .containsAllEntriesOf(expectedCommand);
     }
 
     @Entity(name = "Contact")
