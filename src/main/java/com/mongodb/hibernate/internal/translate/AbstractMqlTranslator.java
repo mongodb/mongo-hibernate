@@ -43,7 +43,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
-import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
@@ -59,7 +58,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstNorFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstOrFilter;
 import java.io.IOException;
@@ -87,6 +85,7 @@ import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
+import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
@@ -114,6 +113,7 @@ import org.hibernate.sql.ast.tree.expression.ExtractUnit;
 import org.hibernate.sql.ast.tree.expression.Format;
 import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
+import org.hibernate.sql.ast.tree.expression.Literal;
 import org.hibernate.sql.ast.tree.expression.ModifiedSubQueryExpression;
 import org.hibernate.sql.ast.tree.expression.NestedColumnReference;
 import org.hibernate.sql.ast.tree.expression.Over;
@@ -404,35 +404,28 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        boolean isFieldInLeftHandSide = isFieldPathExpression(comparisonPredicate.getLeftHandExpression());
-        boolean isFieldInRightHandSide = isFieldPathExpression(comparisonPredicate.getRightHandExpression());
-
-        if (isFieldInLeftHandSide == isFieldInRightHandSide) {
-            if (isFieldInLeftHandSide) {
-                throw new FeatureNotSupportedException("Currently comparison between two fields not supported");
-            } else {
-                throw new FeatureNotSupportedException("Currently comparison between two values not supported");
-            }
+        if (!isComparingFieldWithValue(comparisonPredicate)) {
+            throw new FeatureNotSupportedException(
+                    "Currently only comparison between a field and a value is supported");
         }
 
-        String fieldPath;
-        AstValue comparisonValue;
+        var lhs = comparisonPredicate.getLeftHandExpression();
+        var rhs = comparisonPredicate.getRightHandExpression();
 
-        if (isFieldInLeftHandSide) {
-            fieldPath = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_PATH);
-            comparisonValue = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_VALUE);
-        } else {
-            fieldPath = acceptAndYield(comparisonPredicate.getRightHandExpression(), FIELD_PATH);
-            comparisonValue = acceptAndYield(comparisonPredicate.getLeftHandExpression(), FIELD_VALUE);
+        var isFieldOnLeftHandSide = isFieldPathExpression(lhs);
+        if (!isFieldOnLeftHandSide) {
+            assertTrue(isFieldPathExpression(rhs));
         }
 
-        var operator = isFieldInLeftHandSide
+        var fieldPath = acceptAndYield((isFieldOnLeftHandSide ? lhs : rhs), FIELD_PATH);
+        var comparisonValue = acceptAndYield((isFieldOnLeftHandSide ? rhs : lhs), FIELD_VALUE);
+
+        var operator = isFieldOnLeftHandSide
                 ? comparisonPredicate.getOperator()
                 : comparisonPredicate.getOperator().invert();
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
-        AstFilterOperation astFilterOperation =
-                new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
+        var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
         var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
@@ -874,6 +867,19 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static boolean isFieldPathExpression(Expression expression) {
         return expression instanceof ColumnReference || expression instanceof BasicValuedPathInterpretation;
+    }
+
+    private static boolean isValueExpression(Expression expression) {
+        return expression instanceof Literal
+                || expression instanceof JdbcParameter
+                || expression instanceof SqmParameterInterpretation;
+    }
+
+    private static boolean isComparingFieldWithValue(ComparisonPredicate comparisonPredicate) {
+        var lhs = comparisonPredicate.getLeftHandExpression();
+        var rhs = comparisonPredicate.getRightHandExpression();
+        return (isFieldPathExpression(lhs) && isValueExpression(rhs))
+                || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
     private static BsonValue toBsonValue(@Nullable Object queryLiteral) {
