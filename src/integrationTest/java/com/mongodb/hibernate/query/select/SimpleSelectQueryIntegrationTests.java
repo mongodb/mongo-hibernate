@@ -197,6 +197,38 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         }
 
         @Test
+        void testSingleNegationWithAnd() {
+            assertSelectQuery(
+                    "from Contact where not (country = 'USA' and age > 18)",
+                    Contact.class,
+                    null,
+                    "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$and': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                    getTestingContacts(1, 2, 3, 4));
+        }
+
+        @Test
+        void testSingleNegationWithOr() {
+            assertSelectQuery(
+                    "from Contact where not (country = 'USA' or age > 18)",
+                    Contact.class,
+                    null,
+                    "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$or': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                    getTestingContacts(3));
+        }
+
+
+        @Test
+        void testSingleNegationWithAndOr() {
+            assertSelectQuery(
+                    "from Contact where not (country = 'USA' and age > 18 or age < 25)",
+                    Contact.class,
+                    null,
+                    "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$or': [{'$and': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]},"
+                            + " {'age': {'$lt': {'$numberInt': '25'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
+                    getTestingContacts(2, 4));
+        }
+
+        @Test
         void testDoubleNegation() {
             assertSelectQuery(
                     "from Contact where age > 18 and not ( not (country = 'USA') )",
