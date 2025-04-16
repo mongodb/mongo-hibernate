@@ -80,7 +80,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                 new Contact(4, "Lucy", 78, Country.CANADA),
                 new Contact(5, "John", 25, Country.USA));
 
-        private List<Contact> getTestingContacts(int... ids) {
+        private static List<Contact> getTestingContacts(int... ids) {
             return Arrays.stream(ids)
                     .mapToObj(id -> testingContacts.stream()
                             .filter(c -> c.id == id)
