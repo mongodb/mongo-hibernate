@@ -20,9 +20,9 @@ import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceContributor;
 
-public final class MongoTestCommandListenerContributor implements ServiceContributor {
+public final class MongoTestServiceContributor implements ServiceContributor {
 
-    public MongoTestCommandListenerContributor() {}
+    public MongoTestServiceContributor() {}
 
     @Override
     public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {

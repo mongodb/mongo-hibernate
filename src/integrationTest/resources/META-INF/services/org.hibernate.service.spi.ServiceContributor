@@ -1,1 +1,1 @@
-com.mongodb.hibernate.internal.MongoTestCommandListenerContributor
+com.mongodb.hibernate.internal.MongoTestServiceContributor
