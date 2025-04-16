@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.query.SelectionQuery;
@@ -317,8 +318,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         assertTrue(mongoTestCommandListener.areAllCommandsFinishedAndSucceeded());
         var capturedCommands = mongoTestCommandListener.getCommandsSucceeded();
 
-   assertThat(capturedCommands)
-                .hasSize(1)
+        assertThat(capturedCommands)
                 .singleElement()
                 .asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsAllEntriesOf(expectedCommand);

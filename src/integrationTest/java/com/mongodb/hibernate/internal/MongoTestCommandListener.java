@@ -41,7 +41,7 @@ public final class MongoTestCommandListener implements CommandListener, Service 
     private final List<BsonDocument> commandsSucceeded = new ArrayList<>();
     private final List<BsonDocument> commandsFailed = new ArrayList<>();
     private final Map<Long, BsonDocument> startedCommands = new HashMap<>();
-    
+
     private MongoTestCommandListener() {}
 
     @Override
@@ -60,11 +60,11 @@ public final class MongoTestCommandListener implements CommandListener, Service 
     }
 
     private BsonDocument getStartedCommand(long operationId) {
-        return assertNotNull(startedCommands.remove(operationId));
+        return assertNotNull(startedCommands.get(operationId));
     }
 
     public synchronized boolean areAllCommandsFinishedAndSucceeded() {
-        return startedCommands.isEmpty() && commandsFailed.isEmpty();
+        return commandsSucceeded.size() == startedCommands.size() && commandsFailed.isEmpty();
     }
 
     public synchronized List<BsonDocument> getCommandsSucceeded() {
@@ -75,12 +75,5 @@ public final class MongoTestCommandListener implements CommandListener, Service 
         startedCommands.clear();
         commandsSucceeded.clear();
         commandsFailed.clear();
-    }
-
-    public static BsonDocument getActualAggregateCommand(BsonDocument command) {
-        var actualCommand = new BsonDocument();
-        actualCommand.put("aggregate", command.getString("aggregate"));
-        actualCommand.put("pipeline", command.getArray("pipeline"));
-        return actualCommand;
     }
 }
