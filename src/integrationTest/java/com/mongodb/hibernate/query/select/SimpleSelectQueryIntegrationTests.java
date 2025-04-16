@@ -216,7 +216,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     getTestingContacts(3));
         }
 
-
         @Test
         void testSingleNegationWithAndOr() {
             assertSelectQuery(
