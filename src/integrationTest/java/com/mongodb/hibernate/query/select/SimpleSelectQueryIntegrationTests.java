@@ -73,7 +73,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     @Nested
     class QueryTests {
 
-        private final List<Contact> testingContacts = List.of(
+        private static final List<Contact> testingContacts = List.of(
                 new Contact(1, "Bob", 18, Country.USA),
                 new Contact(2, "Mary", 35, Country.CANADA),
                 new Contact(3, "Dylan", 7, Country.CANADA),
