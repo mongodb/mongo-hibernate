@@ -38,12 +38,11 @@ public final class MongoTestCommandListener implements CommandListener, Service 
 
     static MongoTestCommandListener INSTANCE = new MongoTestCommandListener();
 
-    private MongoTestCommandListener() {}
-
     private final List<BsonDocument> commandsSucceeded = new ArrayList<>();
     private final List<BsonDocument> commandsFailed = new ArrayList<>();
-
     private final Map<Long, BsonDocument> startedCommands = new HashMap<>();
+    
+    private MongoTestCommandListener() {}
 
     @Override
     public synchronized void commandStarted(CommandStartedEvent event) {
