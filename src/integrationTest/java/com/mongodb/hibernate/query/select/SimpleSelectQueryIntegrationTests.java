@@ -316,7 +316,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
     private void assertActualCommand(BsonDocument expectedCommand) {
         assertTrue(mongoTestCommandListener.areAllCommandsFinishedAndSucceeded());
-        var capturedCommands = mongoTestCommandListener.getCommandsSucceeded();
+        var capturedCommands = mongoTestCommandListener.getSucceededCommands();
 
         assertThat(capturedCommands)
                 .singleElement()
