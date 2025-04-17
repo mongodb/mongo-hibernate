@@ -266,13 +266,53 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     @Nested
     class FeatureNotSupportedTests {
         @Test
-        void testComparisonNotSupported() {
+        void testComparisonBetweenFieldAndNonValueNotSupported1() {
             assertSelectQueryFailure(
                     "from Contact as c where c.age = c.id + 1",
                     Contact.class,
                     null,
                     FeatureNotSupportedException.class,
-                    "Currently only comparison between a field and a value is supported");
+                    "Only the following comparisons are supported: field vs literal, field vs parameter");
+        }
+
+        @Test
+        void testComparisonBetweenValuesNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where 1 = 1",
+                    Contact.class,
+                    null,
+                    FeatureNotSupportedException.class,
+                    "Only the following comparisons are supported: field vs literal, field vs parameter");
+        }
+
+        @Test
+        void testComparisonBetweenFieldsNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where age = id",
+                    Contact.class,
+                    null,
+                    FeatureNotSupportedException.class,
+                    "Only the following comparisons are supported: field vs literal, field vs parameter");
+        }
+
+        @Test
+        void testComparisonBetweenParameterAndValueNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where :param = 1",
+                    Contact.class,
+                    q -> q.setParameter("param", 1),
+                    FeatureNotSupportedException.class,
+                    "Only the following comparisons are supported: field vs literal, field vs parameter");
+        }
+
+        @Test
+        void testComparisonBetweenParametersNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where :param = :param",
+                    Contact.class,
+                    q -> q.setParameter("param", 1),
+                    FeatureNotSupportedException.class,
+                    "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
 
         @Test
