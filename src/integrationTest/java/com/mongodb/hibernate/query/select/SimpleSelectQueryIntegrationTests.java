@@ -21,7 +21,6 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoTestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -34,7 +33,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
-import org.bson.types.ObjectId;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -52,11 +50,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @SessionFactory(exportSchema = false)
-@DomainModel(
-        annotatedClasses = {
-            SimpleSelectQueryIntegrationTests.Contact.class,
-            SimpleSelectQueryIntegrationTests.Book.class
-        })
+@DomainModel(annotatedClasses = {SimpleSelectQueryIntegrationTests.Contact.class, Book.class})
 @ExtendWith(MongoExtension.class)
 class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
 
@@ -103,7 +97,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByEq(boolean fieldAsLhs) {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where " + (fieldAsLhs ? "country = :country" : ":country = country"),
                     Contact.class,
                     q -> q.setParameter("country", Country.USA.name()),
@@ -114,7 +108,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByNe(boolean fieldAsLhs) {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where " + (fieldAsLhs ? "country != ?1" : "?1 != country"),
                     Contact.class,
                     q -> q.setParameter(1, Country.USA.name()),
@@ -125,7 +119,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByLt(boolean fieldAsLhs) {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where " + (fieldAsLhs ? "age < :age" : ":age > age"),
                     Contact.class,
                     q -> q.setParameter("age", 35),
@@ -136,7 +130,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByLte(boolean fieldAsLhs) {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where " + (fieldAsLhs ? "age <= ?1" : "?1 >= age"),
                     Contact.class,
                     q -> q.setParameter(1, 35),
@@ -147,7 +141,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByGt(boolean fieldAsLhs) {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where " + (fieldAsLhs ? "age > :age" : ":age < age"),
                     Contact.class,
                     q -> q.setParameter("age", 18),
@@ -158,7 +152,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void testComparisonByGte(boolean fieldAsLhs) {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where " + (fieldAsLhs ? "age >= :age" : ":age <= age"),
                     Contact.class,
                     q -> q.setParameter("age", 18),
@@ -168,7 +162,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testAndFilter() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where country = ?1 and age > ?2",
                     Contact.class,
                     q -> q.setParameter(1, Country.CANADA.name()).setParameter(2, 18),
@@ -178,7 +172,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testOrFilter() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where country = :country or age > :age",
                     Contact.class,
                     q -> q.setParameter("country", Country.CANADA.name()).setParameter("age", 18),
@@ -188,7 +182,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testSingleNegation() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where age > 18 and not (country = 'USA')",
                     Contact.class,
                     null,
@@ -198,7 +192,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testSingleNegationWithAnd() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where not (country = 'USA' and age > 18)",
                     Contact.class,
                     null,
@@ -208,7 +202,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testSingleNegationWithOr() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where not (country = 'USA' or age > 18)",
                     Contact.class,
                     null,
@@ -218,7 +212,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testSingleNegationWithAndOr() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where not (country = 'USA' and age > 18 or age < 25)",
                     Contact.class,
                     null,
@@ -229,7 +223,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testDoubleNegation() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Contact where age > 18 and not ( not (country = 'USA') )",
                     Contact.class,
                     null,
@@ -239,7 +233,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testProjectWithoutAlias() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "select name, age from Contact where country = :country",
                     Object[].class,
                     q -> q.setParameter("country", Country.CANADA.name()),
@@ -249,7 +243,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testProjectUsingAlias() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "select c.name, c.age from Contact as c where c.country = :country",
                     Object[].class,
                     q -> q.setParameter("country", Country.CANADA.name()),
@@ -313,7 +307,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testBoolean() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Book where outOfStock = true",
                     Book.class,
                     null,
@@ -323,7 +317,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testInteger() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Book where publishYear = 1995",
                     Book.class,
                     null,
@@ -333,7 +327,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testLong() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Book where isbn13 = 9780310904168L",
                     Book.class,
                     null,
@@ -343,7 +337,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testDouble() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Book where discount = 0.25D",
                     Book.class,
                     null,
@@ -353,7 +347,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testString() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Book where title = 'Holy Bible'",
                     Book.class,
                     null,
@@ -363,7 +357,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
         @Test
         void testBigDecimal() {
-            assertSelectQuery(
+            assertSelectionQuery(
                     "from Book where price = 123.50BD",
                     Book.class,
                     null,
@@ -372,7 +366,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         }
     }
 
-    private <T> void assertSelectQuery(
+    private <T> void assertSelectionQuery(
             String hql,
             Class<T> resultType,
             @Nullable Consumer<SelectionQuery<T>> queryPostProcessor,
@@ -380,6 +374,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             List<T> expectedResultList) {
         sessionFactoryScope.inTransaction(session -> {
             var selectionQuery = session.createSelectionQuery(hql, resultType);
+            selectionQuery.setQueryPlanCacheable(false);
             if (queryPostProcessor != null) {
                 queryPostProcessor.accept(selectionQuery);
             }
@@ -397,18 +392,19 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             String hql,
             Class<T> resultType,
             @Nullable Consumer<SelectionQuery<T>> queryPostProcessor,
-            Class<? extends Exception> exceptionType,
-            String exceptionMessage,
-            Object... exceptionMessageParams) {
+            Class<? extends Exception> expectedExceptionType,
+            String expectedExceptionMessage,
+            Object... expectedExceptionMessageParameters) {
         sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
-                    var query = session.createSelectionQuery(hql, resultType);
+                    var selectionQuery = session.createSelectionQuery(hql, resultType);
+                    selectionQuery.setQueryPlanCacheable(false);
                     if (queryPostProcessor != null) {
-                        queryPostProcessor.accept(query);
+                        queryPostProcessor.accept(selectionQuery);
                     }
-                    query.getResultList();
+                    selectionQuery.getResultList();
                 })
-                .isInstanceOf(exceptionType)
-                .hasMessage(exceptionMessage, exceptionMessageParams));
+                .isInstanceOf(expectedExceptionType)
+                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
     }
 
     private void assertActualCommand(BsonDocument expectedCommand) {
@@ -444,20 +440,5 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     enum Country {
         USA,
         CANADA
-    }
-
-    @Entity(name = "Book")
-    @Table(name = "books")
-    static class Book {
-        @Id
-        @ObjectIdGenerator
-        ObjectId id;
-
-        String title;
-        Boolean outOfStock;
-        Integer publishYear;
-        Long isbn13;
-        Double discount;
-        BigDecimal price;
     }
 }
