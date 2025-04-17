@@ -792,7 +792,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         throw new FeatureNotSupportedException();
     }
 
-    void checkJdbcParameterBindingsSupportability(@Nullable JdbcParameterBindings jdbcParameterBindings) {
+    static void checkJdbcParameterBindingsSupportability(@Nullable JdbcParameterBindings jdbcParameterBindings) {
         if (jdbcParameterBindings != null) {
             for (var jdbcParameterBinding : jdbcParameterBindings.getBindings()) {
                 if (jdbcParameterBinding.getBindValue() == null) {
