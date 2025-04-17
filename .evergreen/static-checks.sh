@@ -13,4 +13,4 @@ echo "mongo-hibernate: static checking ..."
 
 ./gradlew -version
 
-./gradlew --info -x test -x integrationTest clean check compileJava
+./gradlew --info -x test -x integrationTest -x spotlessApply clean check compileJava
