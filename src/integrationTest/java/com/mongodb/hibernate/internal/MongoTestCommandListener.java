@@ -29,9 +29,7 @@ import java.util.List;
 import java.util.Map;
 import org.bson.BsonDocument;
 import org.hibernate.service.Service;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public final class MongoTestCommandListener implements CommandListener, Service {
     @Serial
     private static final long serialVersionUID = 1L;
