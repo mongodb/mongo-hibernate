@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import org.bson.BsonValue;
 
-public final class AstTestUtils {
+final class FilterTestUtils {
 
-    private AstTestUtils() {}
+    private FilterTestUtils() {}
 
     public static AstFieldOperationFilter createFieldOperationFilter(
             String fieldPath, AstComparisonFilterOperator operator, BsonValue value) {

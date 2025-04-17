@@ -18,15 +18,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static java.util.Collections.singletonList;
 
-import java.util.List;
-
 public final class AstNorFilter extends AbstractAstLogicalFilter {
-
     public AstNorFilter(AstFilter filter) {
-        this(singletonList(filter));
-    }
-
-    public AstNorFilter(List<? extends AstFilter> filters) {
-        super("$nor", filters);
+        super("$nor", singletonList(filter));
     }
 }

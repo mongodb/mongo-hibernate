@@ -19,16 +19,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
-public class AstComparisonFilterOperation implements AstFilterOperation {
-
-    private final AstComparisonFilterOperator operator;
-    private final AstValue value;
-
-    public AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value) {
-        this.operator = operator;
-        this.value = value;
-    }
-
+public record AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value)
+        implements AstFilterOperation {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

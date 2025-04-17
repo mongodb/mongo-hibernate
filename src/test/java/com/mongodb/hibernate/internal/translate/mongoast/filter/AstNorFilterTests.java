@@ -18,27 +18,17 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
-import java.util.List;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
 class AstNorFilterTests {
     @Test
     void testRendering() {
-        var filters = List.of(
-                new AstFieldOperationFilter(
-                        new AstFilterFieldPath("field1"),
-                        new AstComparisonFilterOperation(
-                                AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt32(1)))),
-                new AstFieldOperationFilter(
-                        new AstFilterFieldPath("field2"),
-                        new AstComparisonFilterOperation(
-                                AstComparisonFilterOperator.NE, new AstLiteralValue(new BsonInt32(0)))));
-        var norFilter = new AstNorFilter(filters);
-        var expectedJson =
-                """
-                {"$nor": [{"field1": {"$eq": 1}}, {"field2": {"$ne": 0}}]}\
+        var filter =
+                FilterTestUtils.createFieldOperationFilter("field", AstComparisonFilterOperator.EQ, new BsonInt32(1));
+        var norFilter = new AstNorFilter(filter);
+        var expectedJson = """
+                {"$nor": [{"field": {"$eq": 1}}]}\
                 """;
         assertRender(expectedJson, norFilter);
     }

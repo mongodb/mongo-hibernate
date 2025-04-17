@@ -17,8 +17,8 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
-import static com.mongodb.hibernate.internal.translate.mongoast.AstTestUtils.createFieldOperationFilter;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.FilterTestUtils.createFieldOperationFilter;
 
 import java.util.List;
 import org.bson.BsonInt32;
