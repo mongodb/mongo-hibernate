@@ -20,7 +20,7 @@ import static java.util.Collections.singletonList;
 
 import java.util.List;
 
-public class AstNorFilter extends AbstractAstLogicalFilter {
+public final class AstNorFilter extends AbstractAstLogicalFilter {
 
     public AstNorFilter(AstFilter filter) {
         this(singletonList(filter));
