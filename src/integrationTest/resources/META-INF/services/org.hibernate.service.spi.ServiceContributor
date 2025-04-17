@@ -1,1 +1,1 @@
-com.mongodb.hibernate.internal.MongoTestServiceContributor
+com.mongodb.hibernate.TestServiceContributor

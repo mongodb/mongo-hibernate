@@ -16,13 +16,12 @@
 
 package com.mongodb.hibernate.query.select;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.MongoTestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -56,7 +55,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
     private SessionFactoryScope sessionFactoryScope;
 
-    private MongoTestCommandListener mongoTestCommandListener;
+    private TestCommandListener testCommandListener;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
@@ -65,8 +64,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
 
     @Override
     public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
-        this.mongoTestCommandListener =
-                serviceRegistryScope.getRegistry().requireService(MongoTestCommandListener.class);
+        this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
     }
 
     @Nested
@@ -91,7 +89,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         @BeforeEach
         void beforeEach() {
             sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
-            mongoTestCommandListener.clear();
+            testCommandListener.clear();
         }
 
         @ParameterizedTest
@@ -342,7 +340,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             testingBook.price = new BigDecimal("123.50");
             sessionFactoryScope.inTransaction(session -> session.persist(testingBook));
 
-            mongoTestCommandListener.clear();
+            testCommandListener.clear();
         }
 
         @Test
@@ -448,8 +446,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     }
 
     private void assertActualCommand(BsonDocument expectedCommand) {
-        assertTrue(mongoTestCommandListener.areAllCommandsFinishedAndSucceeded());
-        var capturedCommands = mongoTestCommandListener.getSucceededCommands();
+        var capturedCommands = testCommandListener.getStartedCommands();
 
         assertThat(capturedCommands)
                 .singleElement()

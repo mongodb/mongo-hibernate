@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal;
+package com.mongodb.hibernate;
 
 import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceContributor;
 
-public final class MongoTestServiceContributor implements ServiceContributor {
+public final class TestServiceContributor implements ServiceContributor {
 
-    public MongoTestServiceContributor() {}
+    public TestServiceContributor() {}
 
     @Override
     public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
-        serviceRegistryBuilder.addService(MongoConfigurationContributor.class, (MongoConfigurationContributor)
+        serviceRegistryBuilder.addService(
+                MongoConfigurationContributor.class,
                 configurator -> configurator.applyToMongoClientSettings(
-                        builder -> builder.addCommandListener(MongoTestCommandListener.INSTANCE)));
-        serviceRegistryBuilder.addService(MongoTestCommandListener.class, MongoTestCommandListener.INSTANCE);
+                        builder -> builder.addCommandListener(TestCommandListener.INSTANCE)));
+        serviceRegistryBuilder.addService(TestCommandListener.class, TestCommandListener.INSTANCE);
     }
 }
