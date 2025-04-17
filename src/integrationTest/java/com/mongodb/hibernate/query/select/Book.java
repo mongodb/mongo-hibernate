@@ -14,23 +14,28 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.query.select;
 
-public enum AstComparisonFilterOperator {
-    EQ("$eq"),
-    GT("$gt"),
-    GTE("$gte"),
-    LT("$lt"),
-    LTE("$lte"),
-    NE("$ne");
+import com.mongodb.hibernate.annotations.ObjectIdGenerator;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import org.bson.types.ObjectId;
 
-    AstComparisonFilterOperator(String operatorName) {
-        this.operatorName = operatorName;
-    }
+@Entity(name = "Book")
+@Table(name = "books")
+public class Book {
+    @Id
+    @ObjectIdGenerator
+    ObjectId id;
 
-    String getOperatorName() {
-        return operatorName;
-    }
+    public Book() {}
 
-    private final String operatorName;
+    String title;
+    Boolean outOfStock;
+    Integer publishYear;
+    Long isbn13;
+    Double discount;
+    BigDecimal price;
 }
