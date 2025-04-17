@@ -406,7 +406,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
         if (!isComparingFieldWithValue(comparisonPredicate)) {
             throw new FeatureNotSupportedException(
-                    "Currently only comparison between a field and a value is supported");
+                    "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
 
         var lhs = comparisonPredicate.getLeftHandExpression();
