@@ -412,7 +412,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             List<T> expectedResultList) {
         sessionFactoryScope.inTransaction(session -> {
             var selectionQuery = session.createSelectionQuery(hql, resultType);
-            selectionQuery.setQueryPlanCacheable(false);
             if (queryPostProcessor != null) {
                 queryPostProcessor.accept(selectionQuery);
             }
@@ -435,7 +434,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             Object... expectedExceptionMessageParameters) {
         sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
                     var selectionQuery = session.createSelectionQuery(hql, resultType);
-                    selectionQuery.setQueryPlanCacheable(false);
                     if (queryPostProcessor != null) {
                         queryPostProcessor.accept(selectionQuery);
                     }
