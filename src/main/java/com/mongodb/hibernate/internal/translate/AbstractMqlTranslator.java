@@ -803,7 +803,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    void checkQueryOptionsSupportability(QueryOptions queryOptions) {
+    static void checkQueryOptionsSupportability(QueryOptions queryOptions) {
         if (queryOptions.getTimeout() != null) {
             throw new FeatureNotSupportedException("'timeout' inQueryOptions not supported");
         }
