@@ -40,7 +40,6 @@ import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -407,7 +406,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     private <T> void assertSelectionQuery(
             String hql,
             Class<T> resultType,
-            @Nullable Consumer<SelectionQuery<T>> queryPostProcessor,
+            Consumer<SelectionQuery<T>> queryPostProcessor,
             String expectedMql,
             List<T> expectedResultList) {
         sessionFactoryScope.inTransaction(session -> {
