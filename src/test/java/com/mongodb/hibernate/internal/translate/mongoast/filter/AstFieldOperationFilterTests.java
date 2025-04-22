@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.FilterTestUtils.createFieldOperationFilter;
 
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class AstFieldOperationFilterTests {
     @Test
     void testRendering() {
 
-        var astFieldOperationFilter = FilterTestUtils.createFieldOperationFilter("fieldName", EQ, new BsonInt32(1));
+        var astFieldOperationFilter = createFieldOperationFilter("fieldName", EQ, new BsonInt32(1));
 
         var expectedJson = """
                            {"fieldName": {"$eq": 1}}\
