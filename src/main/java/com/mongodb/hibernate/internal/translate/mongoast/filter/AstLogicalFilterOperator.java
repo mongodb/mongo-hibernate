@@ -16,10 +16,18 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static java.util.Collections.singletonList;
+public enum AstLogicalFilterOperator {
+    AND("$and"),
+    OR("$or"),
+    NOR("$nor");
 
-public final class AstNorFilter extends AbstractAstLogicalFilter {
-    public AstNorFilter(AstFilter filter) {
-        super("$nor", singletonList(filter));
+    AstLogicalFilterOperator(String operatorName) {
+        this.operatorName = operatorName;
     }
+
+    String getOperatorName() {
+        return operatorName;
+    }
+
+    private final String operatorName;
 }

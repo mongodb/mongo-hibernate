@@ -16,10 +16,29 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import java.util.List;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
-public final class AstOrFilter extends AbstractAstLogicalFilter {
-    public AstOrFilter(List<? extends AstFilter> filters) {
-        super("$or", filters);
+import java.util.List;
+import org.bson.BsonWriter;
+
+public record AstLogicalFilter(AstLogicalFilterOperator operator, List<? extends AstFilter> filters)
+        implements AstFilter {
+
+    public AstLogicalFilter {
+        assertFalse(filters.isEmpty());
+    }
+
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        {
+            writer.writeName(operator.getOperatorName());
+            writer.writeStartArray();
+            {
+                filters.forEach(filter -> filter.render(writer));
+            }
+            writer.writeEndArray();
+        }
+        writer.writeEndDocument();
     }
 }

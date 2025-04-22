@@ -33,6 +33,9 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -52,14 +55,12 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMa
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstAndFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstNorFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstOrFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.math.BigDecimal;
@@ -433,7 +434,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
         var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
-        astVisitorValueHolder.yield(FILTER, new AstNorFilter(filter));
+        astVisitorValueHolder.yield(FILTER, new AstLogicalFilter(NOR, List.of(filter)));
     }
 
     @Override
@@ -485,8 +486,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         var junctionFilter =
                 switch (junction.getNature()) {
-                    case DISJUNCTION -> new AstOrFilter(subFilters);
-                    case CONJUNCTION -> new AstAndFilter(subFilters);
+                    case DISJUNCTION -> new AstLogicalFilter(OR, subFilters);
+                    case CONJUNCTION -> new AstLogicalFilter(AND, subFilters);
                 };
         astVisitorValueHolder.yield(FILTER, junctionFilter);
     }

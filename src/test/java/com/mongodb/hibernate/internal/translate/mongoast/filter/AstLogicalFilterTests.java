@@ -23,19 +23,24 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.FilterTes
 import java.util.List;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-class AstOrFilterTests {
-    @Test
-    void testRendering() {
-        var astOrFilter = new AstOrFilter(List.of(
-                createFieldOperationFilter("field1", EQ, new BsonInt32(1)),
-                createFieldOperationFilter("field2", EQ, new BsonString("1"))));
+class AstLogicalFilterTests {
+    @ParameterizedTest
+    @EnumSource(AstLogicalFilterOperator.class)
+    void testRendering(AstLogicalFilterOperator logicalFilterOperator) {
+        var astLogicalFilter = new AstLogicalFilter(
+                logicalFilterOperator,
+                List.of(
+                        createFieldOperationFilter("field1", EQ, new BsonInt32(1)),
+                        createFieldOperationFilter("field2", EQ, new BsonString("1"))));
 
         var expectedJson =
                 """
-                {"$or": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
-                """;
-        assertRender(expectedJson, astOrFilter);
+                {"%s": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
+                """
+                        .formatted(logicalFilterOperator.getOperatorName());
+        assertRender(expectedJson, astLogicalFilter);
     }
 }
