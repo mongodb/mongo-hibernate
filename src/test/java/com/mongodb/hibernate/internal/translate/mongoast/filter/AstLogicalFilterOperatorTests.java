@@ -16,24 +16,21 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
-import org.bson.BsonInt32;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
-class AstComparisonFilterOperationTests {
+class AstLogicalFilterOperatorTests {
 
     @ParameterizedTest
-    @EnumSource(AstComparisonFilterOperator.class)
-    void testRendering(AstComparisonFilterOperator operator) {
-        var operation = new AstComparisonFilterOperation(operator, new AstLiteralValue(new BsonInt32(1)));
-
-        var expectedJson = """
-                           {"%s": 1}\
-                           """
-                .formatted(operator.getOperatorName());
-        assertRender(expectedJson, operation);
+    @CsvSource({
+        "AND,$and",
+        "OR,$or",
+        "NOR,$nor",
+    })
+    void testRendering(String operatorValue, String expectedRenderResult) {
+        var operator = AstLogicalFilterOperator.valueOf(operatorValue);
+        assertEquals(expectedRenderResult, operator.getOperatorName());
     }
 }

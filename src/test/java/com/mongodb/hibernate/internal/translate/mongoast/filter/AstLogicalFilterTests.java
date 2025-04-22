@@ -24,18 +24,14 @@ import java.util.List;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class AstLogicalFilterTests {
     @ParameterizedTest
-    @CsvSource({
-        "AND,$and",
-        "OR,$or",
-        "NOR,$nor",
-    })
-    void testRendering(String operatorName, String operatorRendered) {
+    @EnumSource(AstLogicalFilterOperator.class)
+    void testRendering(AstLogicalFilterOperator operator) {
         var astLogicalFilter = new AstLogicalFilter(
-                AstLogicalFilterOperator.valueOf(operatorName),
+                operator,
                 List.of(
                         createFieldOperationFilter("field1", EQ, new BsonInt32(1)),
                         createFieldOperationFilter("field2", EQ, new BsonString("1"))));
@@ -44,7 +40,7 @@ class AstLogicalFilterTests {
                 """
                 {"%s": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
                 """
-                        .formatted(operatorRendered);
+                        .formatted(operator.getOperatorName());
         assertRender(expectedJson, astLogicalFilter);
     }
 }
