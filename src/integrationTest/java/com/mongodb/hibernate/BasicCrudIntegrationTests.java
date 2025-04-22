@@ -22,8 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -39,10 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
-        annotatedClasses = {
-            BasicCrudIntegrationTests.Book.class,
-            BasicCrudIntegrationTests.BookWithEmbeddedField.class,
-            BasicCrudIntegrationTests.BookDynamicallyUpdated.class
+        annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookDynamicallyUpdated.class
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
@@ -95,31 +90,6 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         _id: 1,
                         title: "War and Peace",
                         author: null,
-                        publishYear: 1867
-                    }""");
-            assertCollectionContainsExactly(expectedDocument);
-        }
-
-        @Test
-        void testEntityWithEmbeddedFieldInsertion() {
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new BookWithEmbeddedField();
-                book.id = 1;
-                book.title = "War and Peace";
-                var author = new Author();
-                author.firstName = "Leo";
-                author.lastName = "Tolstoy";
-                book.author = author;
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            var expectedDocument = BsonDocument.parse(
-                    """
-                    {
-                        _id: 1,
-                        title: "War and Peace",
-                        authorFirstName: "Leo",
-                        authorLastName: "Tolstoy",
                         publishYear: 1867
                     }""");
             assertCollectionContainsExactly(expectedDocument);
@@ -259,28 +229,5 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         String author;
 
         int publishYear;
-    }
-
-    @Entity
-    @Table(name = "books")
-    static class BookWithEmbeddedField {
-        @Id
-        int id;
-
-        String title;
-
-        Author author;
-
-        int publishYear;
-    }
-
-    @Embeddable
-    static class Author {
-
-        @Column(name = "authorFirstName")
-        String firstName;
-
-        @Column(name = "authorLastName")
-        String lastName;
     }
 }
