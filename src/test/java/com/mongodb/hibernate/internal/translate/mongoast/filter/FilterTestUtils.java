@@ -23,7 +23,7 @@ final class FilterTestUtils {
 
     private FilterTestUtils() {}
 
-    public static AstFieldOperationFilter createFieldOperationFilter(
+    static AstFieldOperationFilter createFieldOperationFilter(
             String fieldPath, AstComparisonFilterOperator operator, BsonValue value) {
         var filterFieldPath = new AstFilterFieldPath(fieldPath);
         var filterOperation = new AstComparisonFilterOperation(operator, new AstLiteralValue(value));

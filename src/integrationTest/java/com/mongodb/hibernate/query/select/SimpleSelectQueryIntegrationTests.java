@@ -428,7 +428,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
     private <T> void assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
-            @Nullable Consumer<SelectionQuery<T>> queryPostProcessor,
+            Consumer<SelectionQuery<T>> queryPostProcessor,
             Class<? extends Exception> expectedExceptionType,
             String expectedExceptionMessage,
             Object... expectedExceptionMessageParameters) {

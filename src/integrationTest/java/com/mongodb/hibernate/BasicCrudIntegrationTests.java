@@ -82,10 +82,16 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testEntityWithNullFieldValueInsertion() {
+            var author =
+                    """
+                    TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74,
+                    TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 Make sure `book.author`
+                    is set to `null` when we implement `MongoPreparedStatement.setNull` properly.""";
             sessionFactoryScope.inTransaction(session -> {
                 var book = new Book();
                 book.id = 1;
                 book.title = "War and Peace";
+                book.author = author;
                 book.publishYear = 1867;
                 session.persist(book);
             });
@@ -94,9 +100,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     {
                         _id: 1,
                         title: "War and Peace",
-                        author: null,
+                        author: "%s",
                         publishYear: 1867
-                    }""");
+                    }"""
+                            .formatted(author));
             assertCollectionContainsExactly(expectedDocument);
         }
 
@@ -221,6 +228,11 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             var book = new Book();
             book.id = 1;
             book.title = "Brave New World";
+            book.author =
+                    """
+                    TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74,
+                    TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 Make sure `book.author`
+                    is set to `null` when we implement `MongoPreparedStatement.setNull` properly.""";
             book.publishYear = 1932;
 
             sessionFactoryScope.inTransaction(session -> session.persist(book));
