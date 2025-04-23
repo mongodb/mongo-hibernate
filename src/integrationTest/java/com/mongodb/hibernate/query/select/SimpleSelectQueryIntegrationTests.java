@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -400,6 +401,19 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'price': {'$eq': {'$numberDecimal': '123.50'}}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testBooleanFieldAsPredicate(boolean negated) {
+            assertSelectionQuery(
+                    "from Book where " + (negated ? "not " : "") + "outOfStock",
+                    Book.class,
+                    null,
+                    "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': "
+                            + (negated ? "false" : "true")
+                            + "}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                    negated ? emptyList() : singletonList(testingBook));
         }
     }
 
