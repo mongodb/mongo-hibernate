@@ -160,7 +160,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,
-                "%s does not support Null Precedence",
+                "%s does not support Nulls Precedence",
                 MONGO_DBMS_NAME);
     }
 
