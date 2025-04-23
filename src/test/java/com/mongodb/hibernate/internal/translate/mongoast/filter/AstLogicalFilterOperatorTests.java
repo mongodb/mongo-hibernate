@@ -16,21 +16,21 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-public enum AstComparisonFilterOperator {
-    EQ("$eq"),
-    GT("$gt"),
-    GTE("$gte"),
-    LT("$lt"),
-    LTE("$lte"),
-    NE("$ne");
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-    AstComparisonFilterOperator(String operatorName) {
-        this.operatorName = operatorName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+class AstLogicalFilterOperatorTests {
+
+    @ParameterizedTest
+    @CsvSource({
+        "AND,$and",
+        "OR,$or",
+        "NOR,$nor",
+    })
+    void testRendering(String operatorValue, String expectedRenderResult) {
+        var operator = AstLogicalFilterOperator.valueOf(operatorValue);
+        assertEquals(expectedRenderResult, operator.getOperatorName());
     }
-
-    String getOperatorName() {
-        return operatorName;
-    }
-
-    private final String operatorName;
 }

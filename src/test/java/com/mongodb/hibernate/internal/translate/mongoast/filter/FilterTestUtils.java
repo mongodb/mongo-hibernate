@@ -16,21 +16,17 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-public enum AstComparisonFilterOperator {
-    EQ("$eq"),
-    GT("$gt"),
-    GTE("$gte"),
-    LT("$lt"),
-    LTE("$lte"),
-    NE("$ne");
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import org.bson.BsonValue;
 
-    AstComparisonFilterOperator(String operatorName) {
-        this.operatorName = operatorName;
+final class FilterTestUtils {
+
+    private FilterTestUtils() {}
+
+    static AstFieldOperationFilter createFieldOperationFilter(
+            String fieldPath, AstComparisonFilterOperator operator, BsonValue value) {
+        var filterFieldPath = new AstFilterFieldPath(fieldPath);
+        var filterOperation = new AstComparisonFilterOperation(operator, new AstLiteralValue(value));
+        return new AstFieldOperationFilter(filterFieldPath, filterOperation);
     }
-
-    String getOperatorName() {
-        return operatorName;
-    }
-
-    private final String operatorName;
 }

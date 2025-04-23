@@ -32,7 +32,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
-import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.types.ObjectId;
 import org.hibernate.annotations.JavaType;
@@ -64,13 +63,17 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         var item = new Item();
         item.id = 1;
         item.v = new ObjectId(1, 0);
+        // TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74,
+        // TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 Make sure `item.vNull` is set to `null`
+        // when we implement `MongoPreparedStatement.setNull` properly.
+        item.vNull = new ObjectId();
         item.vExplicitlyAnnotatedNotForThePublic = new ObjectId(2, 3);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(1))
                         .append("v", new BsonObjectId(item.v))
-                        .append("vNull", BsonNull.VALUE)
+                        .append("vNull", new BsonObjectId(item.vNull))
                         .append(
                                 "vExplicitlyAnnotatedNotForThePublic",
                                 new BsonObjectId(item.vExplicitlyAnnotatedNotForThePublic)));
@@ -81,6 +84,11 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         var item = new Item();
         item.id = 1;
         item.v = new ObjectId(2, 0);
+        // TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74,
+        // TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 Make sure `item.vNull` is set to `null`
+        // when we implement `MongoPreparedStatement.setNull` properly.
+        item.vNull = new ObjectId();
+        item.vExplicitlyAnnotatedNotForThePublic = new ObjectId(3, 4);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(Item.class, item.id));
         assertEquals(item, loadedItem);

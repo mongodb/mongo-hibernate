@@ -16,15 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-public enum AstComparisonFilterOperator {
-    EQ("$eq"),
-    GT("$gt"),
-    GTE("$gte"),
-    LT("$lt"),
-    LTE("$lte"),
-    NE("$ne");
+public enum AstLogicalFilterOperator {
+    AND("$and"),
+    OR("$or"),
+    NOR("$nor");
 
-    AstComparisonFilterOperator(String operatorName) {
+    AstLogicalFilterOperator(String operatorName) {
         this.operatorName = operatorName;
     }
 
