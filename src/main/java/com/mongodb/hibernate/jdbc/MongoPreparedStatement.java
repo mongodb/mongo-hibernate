@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.BsonNull;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.ObjectId;
@@ -106,7 +105,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLFeatureNotSupportedException(
                         "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
-        setParameter(parameterIndex, BsonNull.VALUE);
+        throw new SQLFeatureNotSupportedException(
+                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
     }
 
     @Override

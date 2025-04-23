@@ -20,19 +20,27 @@ import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertion
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.FilterTestUtils.createFieldOperationFilter;
 
+import java.util.List;
 import org.bson.BsonInt32;
-import org.junit.jupiter.api.Test;
+import org.bson.BsonString;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-class AstFieldOperationFilterTests {
+class AstLogicalFilterTests {
+    @ParameterizedTest
+    @EnumSource(AstLogicalFilterOperator.class)
+    void testRendering(AstLogicalFilterOperator operator) {
+        var astLogicalFilter = new AstLogicalFilter(
+                operator,
+                List.of(
+                        createFieldOperationFilter("field1", EQ, new BsonInt32(1)),
+                        createFieldOperationFilter("field2", EQ, new BsonString("1"))));
 
-    @Test
-    void testRendering() {
-
-        var astFieldOperationFilter = createFieldOperationFilter("fieldName", EQ, new BsonInt32(1));
-
-        var expectedJson = """
-                           {"fieldName": {"$eq": 1}}\
-                           """;
-        assertRender(expectedJson, astFieldOperationFilter);
+        var expectedJson =
+                """
+                {"%s": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
+                """
+                        .formatted(operator.getOperatorName());
+        assertRender(expectedJson, astLogicalFilter);
     }
 }
