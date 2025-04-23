@@ -35,6 +35,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -62,22 +63,13 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPa
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.bson.BsonBoolean;
-import org.bson.BsonDecimal128;
-import org.bson.BsonDouble;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
-import org.bson.BsonString;
-import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
 import org.bson.json.JsonWriterSettings;
-import org.bson.types.Decimal128;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
@@ -473,8 +465,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(bsonValue));
+        var literalValue = queryLiteral.getLiteralValue();
+        if (literalValue == null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+        }
+        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
@@ -493,8 +488,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
-        astVisitorValueHolder.yield(
-                FIELD_VALUE, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
+        var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
+        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
@@ -880,30 +875,5 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var rhs = comparisonPredicate.getRightHandExpression();
         return (isFieldPathExpression(lhs) && isValueExpression(rhs))
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
-    }
-
-    private static BsonValue toBsonValue(@Nullable Object queryLiteral) {
-        if (queryLiteral == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-        }
-        if (queryLiteral instanceof Boolean boolValue) {
-            return BsonBoolean.valueOf(boolValue);
-        }
-        if (queryLiteral instanceof Integer intValue) {
-            return new BsonInt32(intValue);
-        }
-        if (queryLiteral instanceof Long longValue) {
-            return new BsonInt64(longValue);
-        }
-        if (queryLiteral instanceof Double doubleValue) {
-            return new BsonDouble(doubleValue);
-        }
-        if (queryLiteral instanceof BigDecimal bigDecimalValue) {
-            return new BsonDecimal128(new Decimal128(bigDecimalValue));
-        }
-        if (queryLiteral instanceof String stringValue) {
-            return new BsonString(stringValue);
-        }
-        throw new FeatureNotSupportedException("Unsupported Java type: " + queryLiteral.getClass());
     }
 }

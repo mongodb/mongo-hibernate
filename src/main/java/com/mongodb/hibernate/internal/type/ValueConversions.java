@@ -43,7 +43,7 @@ import org.bson.types.ObjectId;
 public final class ValueConversions {
     private ValueConversions() {}
 
-    static BsonValue toBsonValue(Object value) {
+    public static BsonValue toBsonValue(Object value) {
         assertNotNull(value);
         if (value instanceof Boolean v) {
             return toBsonValue(v.booleanValue());

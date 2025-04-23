@@ -20,6 +20,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoAssertions;
@@ -137,9 +138,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
         return bsonDocument.values().stream()
                 .peek(MongoAssertions::assertNotNull)
-                .map(value -> value instanceof BsonDocument
-                        ? extractJdbcValues(value, options)
-                        : ValueConversions.toDomainValue(value))
+                .map(value -> value instanceof BsonDocument ? extractJdbcValues(value, options) : toDomainValue(value))
                 .toArray();
     }
 
