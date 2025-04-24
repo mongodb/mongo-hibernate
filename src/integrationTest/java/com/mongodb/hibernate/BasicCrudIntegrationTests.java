@@ -210,7 +210,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     class SelectTests {
 
         @Test
-        void testGetByPrimaryKeyWithoutNullValueField() {
+        void testFindByPrimaryKeyWithoutNullValueField() {
             var book = new Book();
             book.id = 1;
             book.author = "Marcel Proust";
@@ -218,13 +218,12 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             book.publishYear = 1913;
 
             sessionFactoryScope.inTransaction(session -> session.persist(book));
-
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
+            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.find(Book.class, 1));
             assertEquals(book, loadedBook);
         }
 
         @Test
-        void testGetByPrimaryKeyWithNullValueField() {
+        void testFindByPrimaryKeyWithNullValueField() {
             var book = new Book();
             book.id = 1;
             book.title = "Brave New World";
@@ -236,8 +235,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             book.publishYear = 1932;
 
             sessionFactoryScope.inTransaction(session -> session.persist(book));
-
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
+            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.find(Book.class, 1));
             assertEquals(book, loadedBook);
         }
     }
