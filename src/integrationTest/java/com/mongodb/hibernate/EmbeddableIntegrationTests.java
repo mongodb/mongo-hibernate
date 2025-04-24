@@ -75,15 +75,15 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         .append("flattened2_flattened_a", new BsonInt32(4))
                         .append("flattened2_flattened_b", new BsonInt32(5)));
         var loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.get(ItemWithFlattenedValues.class, item.id));
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFlattenedValues.class, item.id));
         assertEquals(item, loadedItem);
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
-            var result = session.get(ItemWithFlattenedValues.class, item.id);
+            var result = session.find(ItemWithFlattenedValues.class, item.id);
             result.flattened1.a = -result.flattened1.a;
             return result;
         });
         loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.get(ItemWithFlattenedValues.class, item.id));
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFlattenedValues.class, item.id));
         assertEquals(updatedItem, loadedItem);
     }
 
@@ -111,14 +111,14 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                                         .append("a", new BsonInt32(4))
                                                         .append("b", new BsonInt32(5)))));
         var loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.get(ItemWithNestedValues.class, item.id));
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, item.id));
         assertEquals(item, loadedItem);
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
-            var result = session.get(ItemWithNestedValues.class, item.id);
+            var result = session.find(ItemWithNestedValues.class, item.id);
             result.nested1.a = -result.nested1.a;
             return result;
         });
-        loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(ItemWithNestedValues.class, item.id));
+        loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, item.id));
         assertEquals(updatedItem, loadedItem);
     }
 
@@ -208,7 +208,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                             // non-insertable.
                             new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
             assertThatThrownBy(() -> sessionFactoryScope.fromTransaction(
-                            session -> session.get(ItemWithNestedValueHavingAllNonInsertable.class, item.id)))
+                            session -> session.find(ItemWithNestedValueHavingAllNonInsertable.class, item.id)))
                     .isInstanceOf(Exception.class);
         }
 
