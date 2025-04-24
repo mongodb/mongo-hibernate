@@ -58,7 +58,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @EnumSource(AstSortOrder.class)
     void testOrderBySingleFieldWithoutTies(AstSortOrder sortOrder) {
         assertSelectionQuery(
-                "from Book as b order by b.publishYear " + sortOrder,
+                "from Book as b ORDER BY b.publishYear " + sortOrder,
                 Book.class,
                 null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': "
@@ -71,7 +71,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @EnumSource(AstSortOrder.class)
     void testOrderBySingleFieldWithTies(AstSortOrder sortOrder) {
         assertSelectionQuery(
-                "from Book as b order by b.title " + sortOrder,
+                "from Book as b ORDER BY b.title " + sortOrder,
                 Book.class,
                 null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': " + sortOrder.getRenderedValue()
@@ -90,7 +90,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testOrderByMultipleFieldsWithoutTies() {
         assertSelectionQuery(
-                "from Book where outOfStock = false order by title ASC, publishYear DESC, id ASC",
+                "from Book where outOfStock = false ORDER BY title ASC, publishYear DESC, id ASC",
                 Book.class,
                 null,
                 "{ 'aggregate': 'books', 'pipeline': [ {'$match': {'outOfStock': {'$eq': false}}}, { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
@@ -100,7 +100,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testOrderByMultipleFieldsWithTies() {
         assertSelectionQuery(
-                "from Book order by title ASC, publishYear DESC, id ASC",
+                "from Book ORDER BY title ASC, publishYear DESC, id ASC",
                 Book.class,
                 null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
@@ -113,7 +113,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testSortFieldByAlias() {
         assertSelectionQuery(
-                "select b.title as title, b.publishYear as year from Book as b order by year desc, title asc",
+                "select b.title as title, b.publishYear as year from Book as b ORDER BY year DESC, title ASC",
                 Object[].class,
                 null,
                 "{'aggregate': 'books', 'pipeline': [{'$sort': {'publishYear': -1, 'title': 1}}, {'$project': {'title': true, 'publishYear': true}}]}",
@@ -128,7 +128,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testSortFieldByOrdinalReference() {
         assertSelectionQuery(
-                "select b.title as title, b.publishYear as year from Book as b order by 2 desc, 1 asc",
+                "select b.title as title, b.publishYear as year from Book as b ORDER BY 2 DESC, 1 ASC",
                 Object[].class,
                 null,
                 "{'aggregate': 'books', 'pipeline': [{'$sort': {'publishYear': -1, 'title': 1}}, {'$project': {'title': true, 'publishYear': true}}]}",
@@ -141,9 +141,20 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     }
 
     @Test
+    void testSortFieldNotFieldPathExpression() {
+        assertSelectQueryFailure(
+                "from Book b ORDER BY type(b)",
+                Book.class,
+                null,
+                FeatureNotSupportedException.class,
+                "%s does not support sort key not of field path type",
+                MONGO_DBMS_NAME);
+    }
+
+    @Test
     void testSortFieldDuplicated() {
         assertSelectQueryFailure(
-                "from Book order by title, publishYear, title",
+                "from Book ORDER BY title, publishYear, title",
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,
@@ -155,7 +166,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testNullPrecedenceFeatureNotSupported() {
         assertSelectQueryFailure(
-                "from Book order by publishYear nulls last",
+                "from Book ORDER BY publishYear NULLS LAST",
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,

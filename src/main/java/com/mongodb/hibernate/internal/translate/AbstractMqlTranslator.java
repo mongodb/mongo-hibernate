@@ -93,7 +93,6 @@ import org.hibernate.query.NullPrecedence;
 import org.hibernate.query.SortDirection;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
-import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
@@ -400,6 +399,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
             var encounteredSortFieldPaths = new HashSet<String>();
             for (SortSpecification sortSpecification : querySpec.getSortSpecifications()) {
+                if (!isFieldPathExpression(sortSpecification.getSortExpression())) {
+                    throw new FeatureNotSupportedException(
+                            format("%s does not support sort key not of field path type", MONGO_DBMS_NAME));
+                }
                 var sortFieldPath = acceptAndYield(sortSpecification.getSortExpression(), FIELD_PATH);
                 if (!encounteredSortFieldPaths.add(sortFieldPath)) {
                     throw new FeatureNotSupportedException(format(
@@ -908,7 +911,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     private static boolean isFieldPathExpression(Expression expression) {
-        return expression instanceof ColumnReference || expression instanceof BasicValuedPathInterpretation;
+        return expression.getColumnReference() != null;
     }
 
     private static boolean isValueExpression(Expression expression) {
