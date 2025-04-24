@@ -20,11 +20,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.MongoConstants;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import java.util.Arrays;
 import java.util.List;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -33,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-@DomainModel(annotatedClasses = {Book.class, SortingIntegrationTests.EntityWithTooManyFields.class})
+@DomainModel(annotatedClasses = Book.class)
 class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     private static final List<Book> BOOKS = List.of(
@@ -145,18 +141,6 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     }
 
     @Test
-    void testTooManySortFieldsThrowsException() {
-        assertSelectQueryFailure(
-                "from EntityWithTooManyFields order by f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32,f33",
-                EntityWithTooManyFields.class,
-                null,
-                FeatureNotSupportedException.class,
-                "%s does not support more than %d sort keys",
-                MONGO_DBMS_NAME,
-                MongoConstants.SORT_KEY_MAX_NUM);
-    }
-
-    @Test
     void testSortFieldDuplicated() {
         assertSelectQueryFailure(
                 "from Book order by title, publishYear, title",
@@ -177,47 +161,6 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 FeatureNotSupportedException.class,
                 "%s does not support Nulls Precedence",
                 MONGO_DBMS_NAME);
-    }
-
-    @Entity(name = "EntityWithTooManyFields")
-    @Table(name = "entities")
-    static class EntityWithTooManyFields {
-        @Id
-        int id;
-
-        String f1;
-        String f2;
-        String f3;
-        String f4;
-        String f5;
-        String f6;
-        String f7;
-        String f8;
-        String f9;
-        String f10;
-        String f11;
-        String f12;
-        String f13;
-        String f14;
-        String f15;
-        String f16;
-        String f17;
-        String f18;
-        String f19;
-        String f20;
-        String f21;
-        String f22;
-        String f23;
-        String f24;
-        String f25;
-        String f26;
-        String f27;
-        String f28;
-        String f29;
-        String f30;
-        String f31;
-        String f32;
-        String f33;
     }
 
     static void assertResultList(List<Book> resultList, List<Book> expectedBooks) {

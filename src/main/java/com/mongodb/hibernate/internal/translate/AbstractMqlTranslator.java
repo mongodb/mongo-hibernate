@@ -20,7 +20,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static com.mongodb.hibernate.internal.MongoConstants.SORT_KEY_MAX_NUM;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
@@ -396,12 +395,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private Optional<AstSortStage> getOptionalAstSortStage(QuerySpec querySpec) {
         if (querySpec.hasSortSpecifications()) {
-
-            if (querySpec.getSortSpecifications().size() > SORT_KEY_MAX_NUM) {
-                throw new FeatureNotSupportedException(
-                        format("%s does not support more than %d sort keys", MONGO_DBMS_NAME, SORT_KEY_MAX_NUM));
-            }
-
             var sortFields = new ArrayList<AstSortField>(
                     querySpec.getSortSpecifications().size());
 
