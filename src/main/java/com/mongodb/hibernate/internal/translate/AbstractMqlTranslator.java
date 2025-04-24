@@ -420,7 +420,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                             format("%s does not support Nulls Precedence", MONGO_DBMS_NAME));
                 }
                 if (sortSpecification.isIgnoreCase()) {
-                    throw new FeatureNotSupportedException();
+                    throw new FeatureNotSupportedException(
+                            format("%s does not support string sorting ignoring case", MONGO_DBMS_NAME));
                 }
 
                 var sortField = new AstSortField(

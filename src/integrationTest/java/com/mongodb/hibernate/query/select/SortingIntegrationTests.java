@@ -130,6 +130,21 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     }
 
     @Test
+    void testSortFieldByOrdinalReference() {
+        assertSelectionQuery(
+                "select b.title as title, b.publishYear as year from Book as b order by 2 desc, 1 asc",
+                Object[].class,
+                null,
+                "{'aggregate': 'books', 'pipeline': [{'$sort': {'publishYear': -1, 'title': 1}}, {'$project': {'title': true, 'publishYear': true}}]}",
+                List.of(
+                        new Object[] {"War and Peace", 2025},
+                        new Object[] {"The Brothers Karamazov", 1880},
+                        new Object[] {"Anna Karenina", 1877},
+                        new Object[] {"War and Peace", 1869},
+                        new Object[] {"Crime and Punishment", 1866}));
+    }
+
+    @Test
     void testTooManySortFieldsThrowsException() {
         assertSelectQueryFailure(
                 "from EntityWithTooManyFields order by f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32,f33",
