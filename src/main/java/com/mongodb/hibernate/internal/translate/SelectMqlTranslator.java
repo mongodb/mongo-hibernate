@@ -19,10 +19,12 @@ package com.mongodb.hibernate.internal.translate;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
 
+import java.util.Collections;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
+import org.hibernate.sql.exec.spi.JdbcLockStrategy;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
@@ -49,6 +51,9 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
         checkJdbcParameterBindingsSupportability(jdbcParameterBindings);
         checkQueryOptionsSupportability(queryOptions);
 
+        setLimit(
+                queryOptions.getLimit() == null ? null : queryOptions.getLimit().makeCopy());
+
         var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
         var jdbcValuesMappingProducer =
                 jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, getSessionFactory());
@@ -57,6 +62,12 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
                 renderMongoAstNode(aggregateCommand),
                 getParameterBinders(),
                 jdbcValuesMappingProducer,
-                getAffectedTableNames());
+                getAffectedTableNames(),
+                0,
+                Integer.MAX_VALUE,
+                Collections.emptyMap(),
+                JdbcLockStrategy.NONE,
+                getFirstRowParameter(),
+                getMaxRowsParameter());
     }
 }

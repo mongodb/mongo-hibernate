@@ -1,0 +1,513 @@
+/*
+ * Copyright 2025-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.mongodb.hibernate.query.select;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+import com.mongodb.hibernate.TestDialect;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.MongoConstants;
+import java.util.Arrays;
+import java.util.List;
+import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.query.SelectionQuery;
+import org.hibernate.query.sqm.FetchClauseType;
+import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.ServiceRegistry;
+import org.hibernate.testing.orm.junit.Setting;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+
+@DomainModel(annotatedClasses = Book.class)
+class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+
+    private static final List<Book> testingBooks = List.of(
+            new Book(0, "Nostromo", 1904, true),
+            new Book(1, "The Age of Innocence", 1920, false),
+            new Book(2, "Remembrance of Things Past", 1913, true),
+            new Book(3, "The Magic Mountain", 1924, false),
+            new Book(4, "A Passage to India", 1924, true),
+            new Book(5, "Ulysses", 1922, false),
+            new Book(6, "Mrs. Dalloway", 1925, false),
+            new Book(7, "The Trial", 1925, true),
+            new Book(8, "Sons and Lovers", 1913, false),
+            new Book(9, "The Sound and the Fury", 1929, false));
+
+    private static List<Book> getBooksByIds(int... ids) {
+        return Arrays.stream(ids)
+                .mapToObj(id -> testingBooks.stream()
+                        .filter(c -> c.id == id)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
+                .toList();
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
+
+    @Nested
+    class WithoutQueryOptionsLimit {
+
+        @Test
+        void testHqlLimitClauseOnly() {
+            assertSelectionQuery(
+                    "from Book order by id LIMIT :limit",
+                    Book.class,
+                    q -> q.setParameter("limit", 5),
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$sort": {
+                            "_id": 1
+                          }
+                        },
+                        {
+                          "$limit": %d
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "discount": true,
+                            "isbn13": true,
+                            "outOfStock": true,
+                            "price": true,
+                            "publishYear": true,
+                            "title": true
+                          }
+                        }
+                      ]
+                    }
+                    """
+                            .formatted(5),
+                    getBooksByIds(0, 1, 2, 3, 4));
+        }
+
+        @Test
+        void testHqlOffsetClauseOnly() {
+            assertSelectionQuery(
+                    "from Book order by id OFFSET :offset",
+                    Book.class,
+                    q -> q.setParameter("offset", 7),
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$sort": {
+                            "_id": 1
+                          }
+                        },
+                        {
+                          "$skip": %d
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "discount": true,
+                            "isbn13": true,
+                            "outOfStock": true,
+                            "price": true,
+                            "publishYear": true,
+                            "title": true
+                          }
+                        }
+                      ]
+                    }
+                    """
+                            .formatted(7),
+                    getBooksByIds(7, 8, 9));
+        }
+
+        @Test
+        void testHqlLimitAndOffsetClauses() {
+            assertSelectionQuery(
+                    "from Book order by id LIMIT :limit OFFSET :offset",
+                    Book.class,
+                    q -> q.setParameter("offset", 3).setParameter("limit", 2),
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$sort": {
+                            "_id": 1
+                          }
+                        },
+                        {
+                          "$skip": %d
+                        },
+                        {
+                          "$limit": %d
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "discount": true,
+                            "isbn13": true,
+                            "outOfStock": true,
+                            "price": true,
+                            "publishYear": true,
+                            "title": true
+                          }
+                        }
+                      ]
+                    }
+                    """
+                            .formatted(3, 2),
+                    getBooksByIds(3, 4));
+        }
+
+        @Test
+        void testHqlFetchClauseOnly() {
+            assertSelectionQuery(
+                    "from Book order by id FETCH FIRST :limit ROWS ONLY",
+                    Book.class,
+                    q -> q.setParameter("limit", 5),
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$sort": {
+                            "_id": 1
+                          }
+                        },
+                        {
+                          "$limit": %d
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "discount": true,
+                            "isbn13": true,
+                            "outOfStock": true,
+                            "price": true,
+                            "publishYear": true,
+                            "title": true
+                          }
+                        }
+                      ]
+                    }
+                    """
+                            .formatted(5),
+                    getBooksByIds(0, 1, 2, 3, 4));
+        }
+    }
+
+    @Nested
+    class WithQueryOptionsLimit {
+
+        @Nested
+        class WithoutHqlClauses {
+            @Test
+            void testQueryOptionsSetFirstResultOnly() {
+                assertSelectionQuery(
+                        "from Book order by id",
+                        Book.class,
+                        q -> q.setFirstResult(6),
+                        """
+                        {
+                          "aggregate": "books",
+                          "pipeline": [
+                            {
+                              "$sort": {
+                                "_id": 1
+                              }
+                            },
+                            {
+                              "$skip": %d
+                            },
+                            {
+                              "$project": {
+                                "_id": true,
+                                "discount": true,
+                                "isbn13": true,
+                                "outOfStock": true,
+                                "price": true,
+                                "publishYear": true,
+                                "title": true
+                              }
+                            }
+                          ]
+                        }
+                        """
+                                .formatted(6),
+                        getBooksByIds(6, 7, 8, 9));
+            }
+
+            @Test
+            void testQueryOptionsSetMaxResultOnly() {
+                assertSelectionQuery(
+                        "from Book order by id",
+                        Book.class,
+                        q -> q.setMaxResults(3),
+                        """
+                        {
+                          "aggregate": "books",
+                          "pipeline": [
+                            {
+                              "$sort": {
+                                "_id": 1
+                              }
+                            },
+                            {
+                              "$limit": %d
+                            },
+                            {
+                              "$project": {
+                                "_id": true,
+                                "discount": true,
+                                "isbn13": true,
+                                "outOfStock": true,
+                                "price": true,
+                                "publishYear": true,
+                                "title": true
+                              }
+                            }
+                          ]
+                        }
+                        """
+                                .formatted(3),
+                        getBooksByIds(0, 1, 2));
+            }
+
+            @Test
+            void testQueryOptionsSetFirstResultAndMaxResults() {
+                assertSelectionQuery(
+                        "from Book order by id",
+                        Book.class,
+                        q -> q.setFirstResult(2).setMaxResults(3),
+                        """
+                        {
+                          "aggregate": "books",
+                          "pipeline": [
+                            {
+                              "$sort": {
+                                "_id": 1
+                              }
+                            },
+                            {
+                              "$skip": %d
+                            },
+                            {
+                              "$limit": %d
+                            },
+                            {
+                              "$project": {
+                                "_id": true,
+                                "discount": true,
+                                "isbn13": true,
+                                "outOfStock": true,
+                                "price": true,
+                                "publishYear": true,
+                                "title": true
+                              }
+                            }
+                          ]
+                        }
+                        """
+                                .formatted(2, 3),
+                        getBooksByIds(2, 3, 4));
+            }
+        }
+
+        @Nested
+        class WithHqlClauses {
+
+            @ParameterizedTest
+            @CsvSource({"true,false", "false,true", "true,true"})
+            void testWithDirectConflicts(boolean isFirstResultSet, boolean isMaxResultsSet) {
+                assertTrue(isFirstResultSet || isMaxResultsSet);
+                var firstResult = 5;
+                var maxResults = 3;
+                final List<Book> expectedBooks;
+                if (!isMaxResultsSet) {
+                    expectedBooks = getBooksByIds(5, 6, 7, 8, 9); // firstResult: 5
+                } else if (!isFirstResultSet) {
+                    expectedBooks = getBooksByIds(0, 1, 2); // maxResults: 3
+                } else {
+                    expectedBooks = getBooksByIds(5, 6, 7); // firstResult: 5 && maxResults: 3
+                }
+                assertSelectionQuery(
+                        "from Book order by id LIMIT :limit OFFSET :offset",
+                        Book.class,
+                        q -> {
+                            q.setParameter("limit", 10)
+                                    .setParameter("offset", 0); // hql clauses will be ignored totally
+                            if (isFirstResultSet) {
+                                q.setFirstResult(firstResult);
+                            }
+                            if (isMaxResultsSet) {
+                                q.setMaxResults(maxResults);
+                            }
+                        },
+                        """
+                                {
+                          "aggregate": "books",
+                          "pipeline": [
+                            {
+                              "$sort": {
+                                "_id": 1
+                              }
+                            },
+                            %s
+                            %s
+                            {
+                              "$project": {
+                                "_id": true,
+                                "discount": true,
+                                "isbn13": true,
+                                "outOfStock": true,
+                                "price": true,
+                                "publishYear": true,
+                                "title": true
+                              }
+                            }
+                          ]
+                        }
+                        """
+                                .formatted(
+                                        (isFirstResultSet ? "{'$skip': " + firstResult + "}" : ""),
+                                        (isMaxResultsSet ? " {'$limit': " + maxResults + "}" : "")),
+                        expectedBooks);
+            }
+        }
+    }
+
+    @Nested
+    class FeatureNotSupportedTests {
+
+        @ParameterizedTest
+        @EnumSource(
+                value = FetchClauseType.class,
+                names = {"ROWS_WITH_TIES", "PERCENT_ONLY", "PERCENT_WITH_TIES"})
+        void testUnsupportedFetchClauseType(FetchClauseType fetchClauseType) {
+            var hqlSuffix =
+                    switch (fetchClauseType) {
+                        case ROWS_ONLY -> fail("ROWS_ONLY should have been excluded from the test");
+                        case ROWS_WITH_TIES -> "FETCH FIRST :limit ROWS WITH TIES";
+                        case PERCENT_ONLY -> "FETCH FIRST :limit PERCENT ROWS ONLY";
+                        case PERCENT_WITH_TIES -> "FETCH FIRST :limit PERCENT ROWS WITH TIES";
+                    };
+            var hql = "from Book order by id " + hqlSuffix;
+            assertSelectQueryFailure(
+                    hql,
+                    Book.class,
+                    q -> q.setParameter("limit", 10),
+                    FeatureNotSupportedException.class,
+                    "%s does not support '%s' fetch clause type",
+                    MongoConstants.MONGO_DBMS_NAME,
+                    fetchClauseType);
+        }
+    }
+
+    @Nested
+    @DomainModel(annotatedClasses = Book.class)
+    @ServiceRegistry(
+            settings = {
+                @Setting(name = AvailableSettings.QUERY_PLAN_CACHE_ENABLED, value = "true"),
+                @Setting(name = AvailableSettings.DIALECT, value = "com.mongodb.hibernate.TestDialect")
+            })
+    class QueryPlanCacheTests extends AbstractSelectionQueryIntegrationTests {
+
+        private static final String HQL = "from Book order by id";
+
+        private TestDialect testDialect;
+
+        @BeforeEach
+        void beforeEach() {
+            testDialect = (TestDialect) getSessionFactoryScope()
+                    .getSessionFactory()
+                    .getJdbcServices()
+                    .getDialect();
+        }
+
+        @ParameterizedTest
+        @CsvSource({"true,false", "false,true", "true,true"})
+        void testQueryOptionsLimitCached(boolean isFirstResultSet, boolean isMaxResultsSet) {
+            getSessionFactoryScope().inTransaction(session -> {
+                var query = session.createSelectionQuery(HQL, Book.class);
+                setQueryOptionsAndQuery(query, isFirstResultSet ? 5 : null, isMaxResultsSet ? 10 : null);
+                var initialSelectTranslatingCount = testDialect.getSelectTranslatingCounter();
+
+                query = session.createSelectionQuery(HQL, Book.class);
+                setQueryOptionsAndQuery(query, isFirstResultSet ? 3 : null, isMaxResultsSet ? 6 : null);
+                assertThat(testDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount);
+            });
+        }
+
+        private void setQueryOptionsAndQuery(SelectionQuery<Book> query, Integer firstResult, Integer maxResults) {
+            if (firstResult != null) {
+                query.setFirstResult(firstResult);
+            }
+            if (maxResults != null) {
+                query.setMaxResults(maxResults);
+            }
+            query.getResultList();
+        }
+
+        @Test
+        void testCacheInvalidatedDueToQueryOptionsAdded() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createSelectionQuery(HQL, Book.class).getResultList();
+                var initialSelectTranslatingCount = testDialect.getSelectTranslatingCounter();
+
+                session.createSelectionQuery(HQL, Book.class).setFirstResult(1).getResultList();
+                assertThat(testDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
+
+                session.createSelectionQuery(HQL, Book.class)
+                        .setFirstResult(1)
+                        .setMaxResults(5)
+                        .getResultList();
+                assertThat(testDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 2);
+            });
+        }
+
+        @Test
+        void testCacheInvalidatedDueToQueryOptionsRemoved() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createSelectionQuery(HQL, Book.class).setFirstResult(10).getResultList();
+                var initialSelectTranslatingCount = testDialect.getSelectTranslatingCounter();
+
+                session.createSelectionQuery(HQL, Book.class).getResultList();
+                assertThat(testDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
+            });
+        }
+
+        @Test
+        void testCacheInvalidatedDueToDifferentQueryOptions() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createSelectionQuery(HQL, Book.class).setFirstResult(10).getResultList();
+                var initialSelectTranslatingCount = testDialect.getSelectTranslatingCounter();
+
+                session.createSelectionQuery(HQL, Book.class).setMaxResults(20).getResultList();
+                assertThat(testDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
+            });
+        }
+    }
+}
