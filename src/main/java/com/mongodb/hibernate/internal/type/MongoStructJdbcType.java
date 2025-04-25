@@ -92,6 +92,9 @@ public final class MongoStructJdbcType implements StructJdbcType {
     @Override
     public BsonDocument createJdbcValue(Object domainValue, WrapperOptions options) {
         var embeddableMappingType = assertNotNull(this.embeddableMappingType);
+        if (embeddableMappingType.isPolymorphic()) {
+            throw new FeatureNotSupportedException("Polymorphic mapping is not supported");
+        }
         var result = new BsonDocument();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
