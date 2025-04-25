@@ -49,6 +49,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(
         annotatedClasses = {
             EmbeddableIntegrationTests.ItemWithFlattenedValues.class,
+            EmbeddableIntegrationTests.ItemWithFattenedEmptyValue.class,
             EmbeddableIntegrationTests.ItemWithNestedValues.class,
             EmbeddableIntegrationTests.ItemWithNestedEmptyValue.class,
             EmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
@@ -93,6 +94,33 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         });
         loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFlattenedValues.class, item.id));
+        assertEquals(updatedItem, loadedItem);
+    }
+
+    @Test
+    void testFlattenedEmptyValue() {
+        var item = new ItemWithFattenedEmptyValue();
+        {
+            item.id = 1;
+            item.omitted = new EmbeddableEmptyValue();
+        }
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertThat(mongoCollection.find())
+                .containsExactly(
+                        // Hibernate ORM does not store `item.omitted` despite it being non-`null`
+                        new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        var loadedItem =
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFattenedEmptyValue.class, item.id));
+        // the entity we stored and the entity we loaded are not equal because Hibernate ORM omits `item.omitted`
+        assertNotEquals(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithFattenedEmptyValue.class, item.id);
+            result.omitted = null;
+            return result;
+        });
+        assertThat(mongoCollection.find()).containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        loadedItem =
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFattenedEmptyValue.class, item.id));
         assertEquals(updatedItem, loadedItem);
     }
 
@@ -214,6 +242,18 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Embeddable
     record EmbeddablePairValue2(int a, int b) {}
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithFattenedEmptyValue {
+        @Id
+        int id;
+
+        EmbeddableEmptyValue omitted;
+    }
+
+    @Embeddable
+    static class EmbeddableEmptyValue {}
 
     @Entity
     @Table(name = "items")
