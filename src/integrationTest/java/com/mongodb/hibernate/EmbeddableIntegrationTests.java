@@ -199,7 +199,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
          * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
          * field-based access}.
          */
-        public void setParent(ItemWithFlattenedValues parent) {
+        void setParent(ItemWithFlattenedValues parent) {
             this.parent = parent;
         }
 
@@ -244,7 +244,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
          * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
          * field-based access}.
          */
-        public void setParent(ItemWithNestedValues parent) {
+        void setParent(ItemWithNestedValues parent) {
             this.parent = parent;
         }
 
