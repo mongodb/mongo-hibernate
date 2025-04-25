@@ -17,6 +17,7 @@
 package com.mongodb.hibernate;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
+import static com.mongodb.hibernate.MongoTestAssertions.assertNotEquals;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,6 +48,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             EmbeddableIntegrationTests.ItemWithFlattenedValues.class,
             EmbeddableIntegrationTests.ItemWithNestedValues.class,
+            EmbeddableIntegrationTests.ItemWithNestedEmptyValue.class,
             EmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
             EmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingAllNonInsertable.class,
             EmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class
@@ -122,6 +124,30 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         assertEquals(updatedItem, loadedItem);
     }
 
+    @Test
+    void nestedEmptyValue() {
+        var item = new ItemWithNestedEmptyValue();
+        item.id = 1;
+        item.omitted = new StructAggregateEmbeddableEmptyValue();
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertThat(mongoCollection.find()).containsExactly(
+                // Hibernate ORM does not store `item.omitted` despite it being non-`null`
+                new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        var loadedItem =
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedEmptyValue.class, item.id));
+        // the entity we stored and the entity we loaded are not equal because Hibernate ORM omits `item.omitted`
+        assertNotEquals(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithNestedEmptyValue.class, item.id);
+            result.omitted = null;
+            return result;
+        });
+        assertThat(mongoCollection.find()).containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        loadedItem =
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedEmptyValue.class, item.id));
+        assertEquals(updatedItem, loadedItem);
+    }
+
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
@@ -178,6 +204,19 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Struct(name = "StructAggregateEmbeddablePairValue2")
     record StructAggregateEmbeddablePairValue2(int a, int b) {}
 
+    @Entity
+    @Table(name = "items")
+    static class ItemWithNestedEmptyValue {
+        @Id
+        int id;
+
+        StructAggregateEmbeddableEmptyValue omitted;
+    }
+
+    @Embeddable
+    @Struct(name = "StructAggregateEmbeddableEmptyValue")
+    static class StructAggregateEmbeddableEmptyValue {}
+
     @Nested
     class Unsupported {
         @Test
@@ -220,7 +259,6 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 nested.b = 3;
                 var item = new ItemWithNestedValueHavingNonUpdatable(1, nested);
                 session.persist(item);
-                nested.b = -nested.b;
                 assertThatThrownBy(session::flush).hasMessageContaining("must be updatable");
             });
         }

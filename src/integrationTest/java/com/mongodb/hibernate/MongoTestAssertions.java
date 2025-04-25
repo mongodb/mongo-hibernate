@@ -35,4 +35,17 @@ public final class MongoTestAssertions {
                 .withStrictTypeChecking()
                 .isEqualTo(expected);
     }
+
+    /**
+     * This method is intended to be a drop-in replacement for
+     * {@link org.junit.jupiter.api.Assertions#assertNotEquals(Object, Object)}. It should work even if
+     * {@code expected}/{@code actual} does not override {@link Object#equals(Object)}.
+     */
+    public static void assertNotEquals(@Nullable Object unexpected, @Nullable Object actual) {
+        assertThat(actual)
+                .usingRecursiveComparison()
+                .usingOverriddenEquals()
+                .withStrictTypeChecking()
+                .isNotEqualTo(unexpected);
+    }
 }
