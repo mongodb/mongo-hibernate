@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.type;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
@@ -99,9 +100,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
             var jdbcValueSelectable = embeddableMappingType.getJdbcValueSelectable(columnIndex);
-            if (jdbcValueSelectable.isFormula()) {
-                throw new FeatureNotSupportedException("Formulas are not supported");
-            }
+            assertFalse(jdbcValueSelectable.isFormula());
             if (!jdbcValueSelectable.isInsertable()) {
                 throw new FeatureNotSupportedException(
                         "Persistent attributes of a `@Struct @Embeddable` must be insertable");
