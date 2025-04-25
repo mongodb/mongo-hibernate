@@ -63,7 +63,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     private SessionFactoryScope sessionFactoryScope;
 
     @Test
-    void flattenedValues() {
+    void testFlattenedValues() {
         var item = new ItemWithFlattenedValues();
         {
             item.id = new EmbeddableValue();
@@ -97,7 +97,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void nestedValues() {
+    void testNestedValues() {
         var item = new ItemWithNestedValues();
         {
             item.id = new StructAggregateEmbeddableValue();
@@ -137,7 +137,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void nestedEmptyValue() {
+    void testNestedEmptyValue() {
         var item = new ItemWithNestedEmptyValue();
         {
             item.id = 1;
@@ -277,7 +277,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Nested
     class Unsupported {
         @Test
-        void primaryKeySpanningMultipleFields() {
+        void testPrimaryKeySpanningMultipleFields() {
             assertThatThrownBy(() -> new MetadataSources()
                             .addAnnotatedClass(ItemWithFlattenedPairValueAsId.class)
                             .buildMetadata())
@@ -285,7 +285,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        void nonInsertable() {
+        void testNonInsertable() {
             var item = new ItemWithNestedValueHavingNonInsertable(
                     1, new StructAggregateEmbeddablePairValueHavingNonInsertable(2, 3));
             assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
@@ -293,7 +293,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        void allNonInsertable() {
+        void testAllNonInsertable() {
             var item = new ItemWithNestedValueHavingAllNonInsertable();
             {
                 item.id = 1;
@@ -311,7 +311,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        void nonUpdatable() {
+        void testNonUpdatable() {
             sessionFactoryScope.inTransaction(session -> {
                 var nested = new StructAggregateEmbeddablePairValueHavingNonUpdatable();
                 {
