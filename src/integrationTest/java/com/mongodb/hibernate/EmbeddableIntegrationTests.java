@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import jakarta.persistence.AccessType;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -33,6 +34,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
+import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -63,11 +65,16 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Test
     void flattenedValues() {
         var item = new ItemWithFlattenedValues();
-        item.id = new EmbeddableValue();
-        item.id.a = 1;
-        item.flattened1 = new EmbeddableValue();
-        item.flattened1.a = 2;
-        item.flattened2 = new EmbeddablePairValue1(3, new EmbeddablePairValue2(4, 5));
+        {
+            item.id = new EmbeddableValue();
+            item.id.a = 1;
+            item.flattened1 = new EmbeddableValue();
+            item.flattened1.a = 2;
+            item.flattened2 = new EmbeddablePairValue1();
+            item.flattened2.a = 3;
+            item.flattened2.flattened = new EmbeddablePairValue2(4, 5);
+            item.flattened2.parent = item;
+        }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
                 .containsExactly(new BsonDocument()
@@ -92,11 +99,16 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Test
     void nestedValues() {
         var item = new ItemWithNestedValues();
-        item.id = new StructAggregateEmbeddableValue();
-        item.id.a = 1;
-        item.nested1 = new StructAggregateEmbeddableValue();
-        item.nested1.a = 2;
-        item.nested2 = new StructAggregateEmbeddablePairValue1(3, new StructAggregateEmbeddablePairValue2(4, 5));
+        {
+            item.id = new StructAggregateEmbeddableValue();
+            item.id.a = 1;
+            item.nested1 = new StructAggregateEmbeddableValue();
+            item.nested1.a = 2;
+            item.nested2 = new StructAggregateEmbeddablePairValue1();
+            item.nested2.a = 3;
+            item.nested2.nested = new StructAggregateEmbeddablePairValue2(4, 5);
+            item.nested2.parent = item;
+        }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
                 .containsExactly(new BsonDocument()
@@ -127,12 +139,15 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Test
     void nestedEmptyValue() {
         var item = new ItemWithNestedEmptyValue();
-        item.id = 1;
-        item.omitted = new StructAggregateEmbeddableEmptyValue();
+        {
+            item.id = 1;
+            item.omitted = new StructAggregateEmbeddableEmptyValue();
+        }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollection.find()).containsExactly(
-                // Hibernate ORM does not store `item.omitted` despite it being non-`null`
-                new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        assertThat(mongoCollection.find())
+                .containsExactly(
+                        // Hibernate ORM does not store `item.omitted` despite it being non-`null`
+                        new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedEmptyValue.class, item.id));
         // the entity we stored and the entity we loaded are not equal because Hibernate ORM omits `item.omitted`
@@ -174,7 +189,28 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    record EmbeddablePairValue1(int a, EmbeddablePairValue2 flattened) {}
+    static class EmbeddablePairValue1 {
+        int a;
+        EmbeddablePairValue2 flattened;
+
+        @Parent ItemWithFlattenedValues parent;
+
+        /**
+         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
+         * field-based access}.
+         */
+        public void setParent(ItemWithFlattenedValues parent) {
+            this.parent = parent;
+        }
+
+        /**
+         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
+         * field-based access}.
+         */
+        ItemWithFlattenedValues getParent() {
+            return parent;
+        }
+    }
 
     @Embeddable
     record EmbeddablePairValue2(int a, int b) {}
@@ -198,7 +234,28 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Embeddable
     @Struct(name = "StructAggregateEmbeddablePairValue1")
-    record StructAggregateEmbeddablePairValue1(int a, StructAggregateEmbeddablePairValue2 nested) {}
+    static class StructAggregateEmbeddablePairValue1 {
+        int a;
+        StructAggregateEmbeddablePairValue2 nested;
+
+        @Parent ItemWithNestedValues parent;
+
+        /**
+         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
+         * field-based access}.
+         */
+        public void setParent(ItemWithNestedValues parent) {
+            this.parent = parent;
+        }
+
+        /**
+         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
+         * field-based access}.
+         */
+        ItemWithNestedValues getParent() {
+            return parent;
+        }
+    }
 
     @Embeddable
     @Struct(name = "StructAggregateEmbeddablePairValue2")
@@ -238,8 +295,10 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void allNonInsertable() {
             var item = new ItemWithNestedValueHavingAllNonInsertable();
-            item.id = 1;
-            item.omitted = new StructAggregateEmbeddablePairValueAllNonInsertable(2, 3);
+            {
+                item.id = 1;
+                item.omitted = new StructAggregateEmbeddablePairValueAllNonInsertable(2, 3);
+            }
             sessionFactoryScope.inTransaction(session -> session.persist(item));
             assertThat(mongoCollection.find())
                     .containsExactly(
@@ -255,8 +314,10 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         void nonUpdatable() {
             sessionFactoryScope.inTransaction(session -> {
                 var nested = new StructAggregateEmbeddablePairValueHavingNonUpdatable();
-                nested.a = 2;
-                nested.b = 3;
+                {
+                    nested.a = 2;
+                    nested.b = 3;
+                }
                 var item = new ItemWithNestedValueHavingNonUpdatable(1, nested);
                 session.persist(item);
                 assertThatThrownBy(session::flush).hasMessageContaining("must be updatable");
