@@ -196,7 +196,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             value = v;
         } else {
             throw new SQLFeatureNotSupportedException(format(
-                    "Parameter value [%s] of SQL type [%s] with index [%d] is not supported",
+                    "Parameter value [%s] of SQL type [%d] with index [%d] is not supported",
                     x, targetSqlType, parameterIndex));
         }
         setParameter(parameterIndex, value);
