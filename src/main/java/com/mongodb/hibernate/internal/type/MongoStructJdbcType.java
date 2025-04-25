@@ -55,9 +55,9 @@ public final class MongoStructJdbcType implements StructJdbcType {
     public static final MongoStructJdbcType INSTANCE = new MongoStructJdbcType();
     private static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
 
-    @Nullable private final EmbeddableMappingType embeddableMappingType;
+    private final @Nullable EmbeddableMappingType embeddableMappingType;
 
-    @Nullable private final String structTypeName;
+    private final @Nullable String structTypeName;
 
     private MongoStructJdbcType() {
         this(null, null);
