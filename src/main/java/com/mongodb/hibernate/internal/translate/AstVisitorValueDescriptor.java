@@ -22,6 +22,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
@@ -43,6 +44,8 @@ final class AstVisitorValueDescriptor<T> {
     static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
             new AstVisitorValueDescriptor<>();
     static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<AstSortField> SORT_FIELD = new AstVisitorValueDescriptor<>();
 
     private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 

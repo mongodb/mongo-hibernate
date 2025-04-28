@@ -152,25 +152,13 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     }
 
     @Test
-    void testSortFieldDuplicated() {
-        assertSelectQueryFailure(
-                "from Book ORDER BY title, publishYear, title",
-                Book.class,
-                null,
-                FeatureNotSupportedException.class,
-                "%s does not support duplicated sort keys ('%s' field is used more than once)",
-                MONGO_DBMS_NAME,
-                "title");
-    }
-
-    @Test
     void testNullPrecedenceFeatureNotSupported() {
         assertSelectQueryFailure(
                 "from Book ORDER BY publishYear NULLS LAST",
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,
-                "%s does not support Nulls Precedence",
+                "%s does not support nulls precedence: NULLS LAST",
                 MONGO_DBMS_NAME);
     }
 
