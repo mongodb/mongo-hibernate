@@ -18,8 +18,10 @@ package com.mongodb.hibernate.query.select;
 
 import static java.util.Collections.singletonList;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -49,7 +51,7 @@ class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryI
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void testBooleanExpressionPredicateTranslating(boolean negated) {
+    void testBooleanFieldPathExpression(boolean negated) {
         assertSelectionQuery(
                 "from Book where" + (negated ? " not " : " ") + "outOfStock",
                 Book.class,
@@ -58,5 +60,16 @@ class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryI
                         + (negated ? "false" : "true")
                         + "}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                 negated ? singletonList(bookInStock) : singletonList(bookOutOfStock));
+    }
+
+    @Test
+    void testNonFieldPathExpressionNotSupported() {
+        assertSelectQueryFailure(
+                "from Book where true",
+                Book.class,
+                null,
+                FeatureNotSupportedException.class,
+                "Expression not of field path not supported"
+        );
     }
 }
