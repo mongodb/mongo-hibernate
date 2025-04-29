@@ -62,7 +62,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 "from Book as b ORDER BY b.publishYear " + sortOrder,
                 Book.class,
                 null,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': " + sortOrder.getRenderedValue()
+                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': " + (sortOrder == ASC ? "1" : "-1")
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 sortOrder == ASC ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
     }
@@ -74,7 +74,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 "from Book as b ORDER BY b.title " + sortOrder,
                 Book.class,
                 null,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': " + sortOrder.getRenderedValue()
+                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': " + (sortOrder == ASC ? "1" : "-1")
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 sortOrder == ASC
                         ? resultList -> assertThat(resultList)
@@ -128,16 +128,16 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testSortFieldByOrdinalReference() {
         assertSelectionQuery(
-                "select b.title as title, b.publishYear as year from Book as b ORDER BY 2 DESC, 1 ASC",
+                "select b.title as title, b.publishYear as year from Book as b ORDER BY 1 ASC, 2 DESC",
                 Object[].class,
                 null,
                 "{'aggregate': 'books', 'pipeline': [{'$sort': {'publishYear': -1, 'title': 1}}, {'$project': {'title': true, 'publishYear': true}}]}",
                 List.of(
-                        new Object[] {"War and Peace", 2025},
-                        new Object[] {"The Brothers Karamazov", 1880},
                         new Object[] {"Anna Karenina", 1877},
-                        new Object[] {"War and Peace", 1869},
-                        new Object[] {"Crime and Punishment", 1866}));
+                        new Object[] {"Crime and Punishment", 1866},
+                        new Object[] {"The Brothers Karamazov", 1880},
+                        new Object[] {"War and Peace", 2025},
+                        new Object[] {"War and Peace", 1869}));
     }
 
     @Test

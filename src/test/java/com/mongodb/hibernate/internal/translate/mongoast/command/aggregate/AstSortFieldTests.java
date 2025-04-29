@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -26,11 +27,11 @@ class AstSortFieldTests {
     @ParameterizedTest
     @EnumSource(AstSortOrder.class)
     void testRendering(AstSortOrder sortOrder) {
-        var sortField = new AstSortField("path", sortOrder);
-        var expectedJson =
-                """
-                {"path": %d}\
-                """.formatted(sortOrder.getRenderedValue());
+        var sortField = new AstSortField("field", sortOrder);
+        var expectedJson = """
+                           {"field": %d}\
+                           """
+                .formatted(sortOrder == ASC ? 1 : -1);
         assertElementRender(expectedJson, sortField);
     }
 }

@@ -27,12 +27,13 @@ class Book {
     @Id
     int id;
 
-    String title;
-    Boolean outOfStock;
-    Integer publishYear;
-    Long isbn13;
-    Double discount;
-    BigDecimal price;
+    // dummy values are set for currently null value is not supported
+    String title = "";
+    Boolean outOfStock = false;
+    Integer publishYear = 0;
+    Long isbn13 = 0L;
+    Double discount = 0.0;
+    BigDecimal price = new BigDecimal("0.0");
 
     Book() {}
 
@@ -41,16 +42,5 @@ class Book {
         this.title = title;
         this.publishYear = publishYear;
         this.outOfStock = outOfStock;
-
-        // the following fields are set dummy values
-        // for currently null value is not supported
-        this.isbn13 = 0L;
-        this.discount = 0.0;
-        this.price = BigDecimal.valueOf(0);
-    }
-
-    @Override
-    public String toString() {
-        return "Book{" + "id=" + id + '}';
     }
 }

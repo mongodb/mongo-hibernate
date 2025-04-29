@@ -23,6 +23,6 @@ public record AstSortField(String path, AstSortOrder order) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
         writer.writeName(path);
-        writer.writeInt32(order.getRenderedValue());
+        order.render(writer);
     }
 }

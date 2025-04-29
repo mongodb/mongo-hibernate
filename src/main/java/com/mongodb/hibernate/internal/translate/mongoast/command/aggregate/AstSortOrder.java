@@ -16,7 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-public enum AstSortOrder {
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import org.bson.BsonWriter;
+
+public enum AstSortOrder implements AstNode {
     ASC(1),
     DESC(-1);
 
@@ -26,7 +29,8 @@ public enum AstSortOrder {
         this.renderedValue = renderedValue;
     }
 
-    public int getRenderedValue() {
-        return renderedValue;
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeInt32(renderedValue);
     }
 }
