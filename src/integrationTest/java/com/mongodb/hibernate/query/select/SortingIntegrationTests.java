@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -32,7 +33,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 @DomainModel(annotatedClasses = Book.class)
 class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
-    private static final List<Book> BOOKS = List.of(
+    private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
             new Book(2, "Crime and Punishment", 1866, false),
             new Book(3, "Anna Karenina", 1877, false),
@@ -41,7 +42,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     private static List<Book> getBooksByIds(int... ids) {
         return Arrays.stream(ids)
-                .mapToObj(id -> BOOKS.stream()
+                .mapToObj(id -> testingBooks.stream()
                         .filter(c -> c.id == id)
                         .findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
@@ -50,7 +51,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     @BeforeEach
     void beforeEach() {
-        sessionFactoryScope.inTransaction(session -> BOOKS.forEach(session::persist));
+        sessionFactoryScope.inTransaction(session -> testingBooks.forEach(session::persist));
         testCommandListener.clear();
     }
 
@@ -61,10 +62,9 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 "from Book as b ORDER BY b.publishYear " + sortOrder,
                 Book.class,
                 null,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': "
-                        + sortOrder.getRenderedValue()
+                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': " + sortOrder.getRenderedValue()
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
-                sortOrder == AstSortOrder.ASC ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
+                sortOrder == ASC ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
     }
 
     @ParameterizedTest
@@ -76,15 +76,15 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': " + sortOrder.getRenderedValue()
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
-                sortOrder == AstSortOrder.ASC
+                sortOrder == ASC
                         ? resultList -> assertThat(resultList)
                                 .satisfiesAnyOf(
-                                        list -> assertResultList(resultList, getBooksByIds(3, 2, 4, 1, 5)),
-                                        list -> assertResultList(resultList, getBooksByIds(3, 2, 4, 5, 1)))
+                                        list -> assertResultListEquals(getBooksByIds(3, 2, 4, 1, 5), list),
+                                        list -> assertResultListEquals(getBooksByIds(3, 2, 4, 5, 1), list))
                         : resultList -> assertThat(resultList)
                                 .satisfiesAnyOf(
-                                        list -> assertResultList(resultList, getBooksByIds(1, 5, 4, 2, 3)),
-                                        list -> assertResultList(resultList, getBooksByIds(5, 1, 4, 2, 3))));
+                                        list -> assertResultListEquals(getBooksByIds(1, 5, 4, 2, 3), list),
+                                        list -> assertResultListEquals(getBooksByIds(5, 1, 4, 2, 3), list)));
     }
 
     @Test
@@ -106,8 +106,8 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 resultList -> assertThat(resultList)
                         .satisfiesAnyOf(
-                                list -> assertResultList(resultList, getBooksByIds(3, 2, 4, 1, 5)),
-                                list -> assertResultList(resultList, getBooksByIds(3, 2, 4, 5, 1))));
+                                list -> assertResultListEquals(getBooksByIds(3, 2, 4, 1, 5), list),
+                                list -> assertResultListEquals(getBooksByIds(3, 2, 4, 5, 1), list)));
     }
 
     @Test
@@ -143,7 +143,7 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
     @Test
     void testSortFieldNotFieldPathExpression() {
         assertSelectQueryFailure(
-                "from Book b ORDER BY type(b)",
+                "from Book ORDER BY length(title)",
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,
@@ -160,9 +160,5 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
                 FeatureNotSupportedException.class,
                 "%s does not support nulls precedence: NULLS LAST",
                 MONGO_DBMS_NAME);
-    }
-
-    static void assertResultList(List<Book> resultList, List<Book> expectedBooks) {
-        assertThat(resultList).usingRecursiveFieldByFieldElementComparator().containsExactlyElementsOf(expectedBooks);
     }
 }

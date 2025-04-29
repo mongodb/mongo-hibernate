@@ -107,4 +107,11 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsAllEntriesOf(expectedCommand);
     }
+
+    @SuppressWarnings("unchecked")
+    static <T> void assertResultListEquals(List<T> expectedResultList, List<? extends T> actualResultList) {
+        assertThat((List<T>) actualResultList)
+                .usingRecursiveFieldByFieldElementComparator()
+                .containsExactlyElementsOf(expectedResultList);
+    }
 }
