@@ -16,56 +16,25 @@
 
 package com.mongodb.hibernate.query.select;
 
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.bson.BsonDocument;
-import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.hibernate.testing.orm.junit.ServiceRegistryScope;
-import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
-import org.hibernate.testing.orm.junit.SessionFactory;
-import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {SimpleSelectQueryIntegrationTests.Contact.class, Book.class})
-@ExtendWith(MongoExtension.class)
-class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
-
-    private SessionFactoryScope sessionFactoryScope;
-
-    private TestCommandListener testCommandListener;
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
-    }
-
-    @Override
-    public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
-        this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
-    }
+class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     @Nested
     class QueryTests {
@@ -82,7 +51,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     .mapToObj(id -> testingContacts.stream()
                             .filter(c -> c.id == id)
                             .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("id not exists: " + id)))
+                            .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                     .toList();
         }
 
@@ -402,67 +371,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'price': {'$eq': {'$numberDecimal': '123.50'}}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
-
-        @ParameterizedTest
-        @ValueSource(booleans = {true, false})
-        void testBooleanFieldAsPredicate(boolean negated) {
-            assertSelectionQuery(
-                    "from Book where " + (negated ? "not " : "") + "outOfStock",
-                    Book.class,
-                    null,
-                    "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': "
-                            + (negated ? "false" : "true")
-                            + "}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
-                    negated ? emptyList() : singletonList(testingBook));
-        }
-    }
-
-    private <T> void assertSelectionQuery(
-            String hql,
-            Class<T> resultType,
-            Consumer<SelectionQuery<T>> queryPostProcessor,
-            String expectedMql,
-            List<T> expectedResultList) {
-        sessionFactoryScope.inTransaction(session -> {
-            var selectionQuery = session.createSelectionQuery(hql, resultType);
-            if (queryPostProcessor != null) {
-                queryPostProcessor.accept(selectionQuery);
-            }
-            var resultList = selectionQuery.getResultList();
-
-            assertActualCommand(BsonDocument.parse(expectedMql));
-
-            assertThat(resultList)
-                    .usingRecursiveFieldByFieldElementComparator()
-                    .containsExactlyElementsOf(expectedResultList);
-        });
-    }
-
-    private <T> void assertSelectQueryFailure(
-            String hql,
-            Class<T> resultType,
-            Consumer<SelectionQuery<T>> queryPostProcessor,
-            Class<? extends Exception> expectedExceptionType,
-            String expectedExceptionMessage,
-            Object... expectedExceptionMessageParameters) {
-        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
-                    var selectionQuery = session.createSelectionQuery(hql, resultType);
-                    if (queryPostProcessor != null) {
-                        queryPostProcessor.accept(selectionQuery);
-                    }
-                    selectionQuery.getResultList();
-                })
-                .isInstanceOf(expectedExceptionType)
-                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
-    }
-
-    private void assertActualCommand(BsonDocument expectedCommand) {
-        var capturedCommands = testCommandListener.getStartedCommands();
-
-        assertThat(capturedCommands)
-                .singleElement()
-                .asInstanceOf(InstanceOfAssertFactories.MAP)
-                .containsAllEntriesOf(expectedCommand);
     }
 
     @Entity(name = "Contact")
