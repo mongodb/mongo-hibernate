@@ -107,7 +107,8 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
                 .containsExactly(
-                        // Hibernate ORM does not store `item.omitted` despite it being non-`null`
+                        // Hibernate ORM does not store/read the empty `item.omitted` value.
+                        // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
                         new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFattenedEmptyValue.class, item.id));
@@ -174,7 +175,8 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertThat(mongoCollection.find())
                 .containsExactly(
-                        // Hibernate ORM does not store `item.omitted` despite it being non-`null`
+                        // Hibernate ORM does not store/read the empty `item.omitted` value.
+                        // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
                         new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedEmptyValue.class, item.id));
