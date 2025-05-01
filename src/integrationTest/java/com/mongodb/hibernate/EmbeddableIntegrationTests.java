@@ -17,7 +17,7 @@
 package com.mongodb.hibernate;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
-import static com.mongodb.hibernate.MongoTestAssertions.assertNotEquals;
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -112,8 +112,9 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFattenedEmptyValue.class, item.id));
-        // the entity we stored and the entity we loaded are not equal because Hibernate ORM omits `item.omitted`
-        assertNotEquals(item, loadedItem);
+        assertUsingRecursiveComparison(item, loadedItem, (assertion, actual) -> assertion
+                .ignoringFields("omitted")
+                .isEqualTo(actual));
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
             var result = session.find(ItemWithFattenedEmptyValue.class, item.id);
             result.omitted = null;
@@ -180,8 +181,9 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedEmptyValue.class, item.id));
-        // the entity we stored and the entity we loaded are not equal because Hibernate ORM omits `item.omitted`
-        assertNotEquals(item, loadedItem);
+        assertUsingRecursiveComparison(item, loadedItem, (assertion, actual) -> assertion
+                .ignoringFields("omitted")
+                .isEqualTo(actual));
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
             var result = session.find(ItemWithNestedEmptyValue.class, item.id);
             result.omitted = null;
