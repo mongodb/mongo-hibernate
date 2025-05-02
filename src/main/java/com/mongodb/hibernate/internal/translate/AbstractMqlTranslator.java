@@ -24,10 +24,11 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATHS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELD;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -40,6 +41,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogica
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -378,14 +380,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var stages = new ArrayList<AstStage>(3);
 
         // $match stage
-        var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
-        if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
-            var filter = acceptAndYield(whereClauseRestrictions, FILTER);
-            stages.add(new AstMatchStage(filter));
-        }
+        getAstMatchStage(querySpec).ifPresent(stages::add);
 
         // $sort stage
-        getOptionalAstSortStage(querySpec).ifPresent(stages::add);
+        getAstSortStage(querySpec).ifPresent(stages::add);
 
         // $project stage
         var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
@@ -394,26 +392,22 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
     }
 
-    private Optional<AstSortStage> getOptionalAstSortStage(QuerySpec querySpec) {
+    private Optional<AstMatchStage> getAstMatchStage(QuerySpec querySpec) {
+        var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
+        if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
+            var filter = acceptAndYield(whereClauseRestrictions, FILTER);
+            return Optional.of(new AstMatchStage(filter));
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<AstSortStage> getAstSortStage(QuerySpec querySpec) {
         if (querySpec.hasSortSpecifications()) {
             var sortFields = new ArrayList<AstSortField>(
                     querySpec.getSortSpecifications().size());
-            for (SortSpecification sortSpecification : querySpec.getSortSpecifications()) {
-                if (!isFieldPathExpression(sortSpecification.getSortExpression())) {
-                    throw new FeatureNotSupportedException(
-                            format("%s does not support sort key not of field path type", MONGO_DBMS_NAME));
-                }
-                if (sortSpecification.getNullPrecedence() != null
-                        && sortSpecification.getNullPrecedence() != NullPrecedence.NONE) {
-                    throw new FeatureNotSupportedException(format(
-                            "%s does not support nulls precedence: NULLS %s",
-                            MONGO_DBMS_NAME, sortSpecification.getNullPrecedence()));
-                }
-                if (sortSpecification.isIgnoreCase()) {
-                    throw new FeatureNotSupportedException(
-                            format("%s does not support case-insensitive sort key", MONGO_DBMS_NAME));
-                }
-                sortFields.add(acceptAndYield(sortSpecification, SORT_FIELD));
+            for (var sortSpecification : querySpec.getSortSpecifications()) {
+                sortFields.addAll(acceptAndYield(sortSpecification, SORT_FIELDS));
             }
             return Optional.of(new AstSortStage(sortFields));
         }
@@ -541,12 +535,57 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         sqlSelectionExpression.getSelection().getExpression().accept(this);
     }
 
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ORDER BY clause
+
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
-        var sortFieldPath = acceptAndYield(sortSpecification.getSortExpression(), FIELD_PATH);
-        var astSortField = new AstSortField(
-                sortFieldPath, sortSpecification.getSortOrder() == SortDirection.ASCENDING ? ASC : DESC);
-        astVisitorValueHolder.yield(SORT_FIELD, astSortField);
+        if (sortSpecification.getNullPrecedence() != null
+                && sortSpecification.getNullPrecedence() != NullPrecedence.NONE) {
+            throw new FeatureNotSupportedException(format(
+                    "%s does not support nulls precedence: NULLS %s",
+                    MONGO_DBMS_NAME, sortSpecification.getNullPrecedence()));
+        }
+        if (sortSpecification.isIgnoreCase()) {
+            throw new FeatureNotSupportedException(
+                    format("%s does not support case-insensitive sort key [%s]", MONGO_DBMS_NAME, sortSpecification));
+        }
+        var sortExpression = sortSpecification.getSortExpression();
+        final List<String> fieldPaths;
+        if (sortExpression instanceof SqlTuple sqlTuple) {
+            fieldPaths = acceptAndYield(sqlTuple, FIELD_PATHS);
+        } else {
+            if (!isFieldPathExpression(sortExpression)) {
+                throw new FeatureNotSupportedException(
+                        format("%s does not support sort key not of field path type", MONGO_DBMS_NAME));
+            }
+            var sortFieldPath = acceptAndYield(sortExpression, FIELD_PATH);
+            fieldPaths = singletonList(sortFieldPath);
+        }
+
+        var astSortFields = new ArrayList<AstSortField>(fieldPaths.size());
+        for (var fieldPath : fieldPaths) {
+            var astSortField = new AstSortField(
+                    fieldPath, sortSpecification.getSortOrder() == SortDirection.ASCENDING ? ASC : DESC);
+            astSortFields.add(astSortField);
+        }
+        astVisitorValueHolder.yield(SORT_FIELDS, astSortFields);
+    }
+
+    @Override
+    public void visitTuple(SqlTuple sqlTuple) {
+        List<String> fieldPaths = new ArrayList<>(sqlTuple.getExpressions().size());
+        for (var expression : sqlTuple.getExpressions()) {
+            if (expression instanceof SqlTuple) {
+                fieldPaths.addAll(acceptAndYield(expression, FIELD_PATHS));
+            } else {
+                if (!isFieldPathExpression(expression)) {
+                    throw new FeatureNotSupportedException();
+                }
+                fieldPaths.add(acceptAndYield(expression, FIELD_PATH));
+            }
+        }
+        astVisitorValueHolder.yield(FIELD_PATHS, fieldPaths);
     }
 
     @Override
@@ -706,11 +745,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitEmbeddableTypeLiteral(EmbeddableTypeLiteral embeddableTypeLiteral) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitTuple(SqlTuple sqlTuple) {
         throw new FeatureNotSupportedException();
     }
 

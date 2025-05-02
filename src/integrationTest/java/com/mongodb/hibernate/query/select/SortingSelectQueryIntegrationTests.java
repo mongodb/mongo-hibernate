@@ -26,12 +26,13 @@ import java.util.Arrays;
 import java.util.List;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
@@ -145,7 +146,6 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
         assertSelectQueryFailure(
                 "from Book ORDER BY length(title)",
                 Book.class,
-                null,
                 FeatureNotSupportedException.class,
                 "%s does not support sort key not of field path type",
                 MONGO_DBMS_NAME);
@@ -156,9 +156,32 @@ class SortingIntegrationTests extends AbstractSelectionQueryIntegrationTests {
         assertSelectQueryFailure(
                 "from Book ORDER BY publishYear NULLS LAST",
                 Book.class,
-                null,
                 FeatureNotSupportedException.class,
                 "%s does not support nulls precedence: NULLS LAST",
                 MONGO_DBMS_NAME);
+    }
+
+    @Nested
+    class SqlTupleTests {
+
+        @Test
+        void testOrderBySimpleTuple() {
+            assertSelectionQuery(
+                    "from Book ORDER BY (publishYear, title) ASC",
+                    Book.class,
+                    null,
+                    "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': 1, 'title': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
+                    getBooksByIds(2, 1, 3, 4, 5));
+        }
+
+        @Test
+        void testOrderByNestedTuple() {
+            assertSelectionQuery(
+                    "from Book ORDER BY (title, (id, publishYear)) DESC",
+                    Book.class,
+                    null,
+                    "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': -1, '_id': -1, 'publishYear': -1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
+                    getBooksByIds(5, 1, 4, 2, 3));
+        }
     }
 }

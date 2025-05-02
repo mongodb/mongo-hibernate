@@ -99,6 +99,21 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
     }
 
+    <T> void assertSelectQueryFailure(
+            String hql,
+            Class<T> resultType,
+            Class<? extends Exception> expectedExceptionType,
+            String expectedExceptionMessage,
+            Object... expectedExceptionMessageParameters) {
+        assertSelectQueryFailure(
+                hql,
+                resultType,
+                null,
+                expectedExceptionType,
+                expectedExceptionMessage,
+                expectedExceptionMessageParameters);
+    }
+
     void assertActualCommand(BsonDocument expectedCommand) {
         var capturedCommands = testCommandListener.getStartedCommands();
 

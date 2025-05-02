@@ -45,7 +45,9 @@ final class AstVisitorValueDescriptor<T> {
             new AstVisitorValueDescriptor<>();
     static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
 
-    static final AstVisitorValueDescriptor<AstSortField> SORT_FIELD = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<List<AstSortField>> SORT_FIELDS = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<List<String>> FIELD_PATHS = new AstVisitorValueDescriptor<>();
 
     private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 
