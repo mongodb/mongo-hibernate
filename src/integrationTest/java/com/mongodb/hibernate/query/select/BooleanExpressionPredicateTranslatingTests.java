@@ -21,7 +21,6 @@ import static java.util.Collections.singletonList;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -34,11 +33,9 @@ class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryI
     @BeforeEach
     void beforeEach() {
         bookOutOfStock = new Book();
-        bookOutOfStock.id = 1;
         bookOutOfStock.outOfStock = true;
 
         bookInStock = new Book();
-        bookInStock.id = 2;
         bookInStock.outOfStock = false;
 
         sessionFactoryScope.inTransaction(session -> {
@@ -62,7 +59,7 @@ class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryI
                 negated ? singletonList(bookInStock) : singletonList(bookOutOfStock));
     }
 
- @ParameterizedTest
+    @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void testNonFieldPathExpressionNotSupported(final boolean booleanLiteral) {
         assertSelectQueryFailure(
@@ -70,6 +67,6 @@ class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryI
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,
-                "Expression not of field path not supported"
-        );
+                "Expression not of field path not supported");
+    }
 }

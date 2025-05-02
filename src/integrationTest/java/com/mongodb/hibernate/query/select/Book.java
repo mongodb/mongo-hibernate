@@ -16,16 +16,19 @@
 
 package com.mongodb.hibernate.query.select;
 
+import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import org.bson.types.ObjectId;
 
 @Entity(name = "Book")
 @Table(name = "books")
 public class Book {
     @Id
-    int id;
+    @ObjectIdGenerator
+    ObjectId id;
 
     Book() {}
 
