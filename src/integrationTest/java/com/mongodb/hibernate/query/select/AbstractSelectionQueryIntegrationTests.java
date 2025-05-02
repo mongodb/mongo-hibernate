@@ -70,6 +70,10 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .containsExactlyElementsOf(expectedResultList));
     }
 
+    <T> void assertSelectionQuery(String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
+        assertSelectionQuery(hql, resultType, null, expectedMql, expectedResultList);
+    }
+
     <T> void assertSelectionQuery(
             String hql,
             Class<T> resultType,
@@ -89,6 +93,11 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
         });
     }
 
+    <T> void assertSelectionQuery(
+            String hql, Class<T> resultType, String expectedMql, Consumer<List<T>> resultListVerifier) {
+        assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
+    }
+
     <T> void assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
@@ -105,6 +114,21 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 })
                 .isInstanceOf(expectedExceptionType)
                 .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+    }
+
+    <T> void assertSelectQueryFailure(
+            String hql,
+            Class<T> resultType,
+            Class<? extends Exception> expectedExceptionType,
+            String expectedExceptionMessage,
+            Object... expectedExceptionMessageParameters) {
+        assertSelectQueryFailure(
+                hql,
+                resultType,
+                null,
+                expectedExceptionType,
+                expectedExceptionMessage,
+                expectedExceptionMessageParameters);
     }
 
     void assertActualCommand(BsonDocument expectedCommand) {
