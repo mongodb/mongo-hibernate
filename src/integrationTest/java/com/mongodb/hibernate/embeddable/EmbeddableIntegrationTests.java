@@ -59,13 +59,13 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     void testFlattenedValues() {
         var item = new ItemWithFlattenedValues();
         {
-            item.flattenedId = new EmbeddableValue();
+            item.flattenedId = new SingleValue();
             item.flattenedId.a = 1;
-            item.flattened1 = new EmbeddableValue();
+            item.flattened1 = new SingleValue();
             item.flattened1.a = 2;
-            item.flattened2 = new EmbeddablePairValue1();
+            item.flattened2 = new MultiValueWithParent();
             item.flattened2.a = 3;
-            item.flattened2.flattened = new EmbeddablePairValue2(4, 5);
+            item.flattened2.flattened = new MultiValue(4, 5);
             item.flattened2.parent = item;
         }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
@@ -107,7 +107,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         var item = new ItemWithOmittedEmptyValue();
         {
             item.id = 1;
-            item.omitted = new EmbeddableEmptyValue();
+            item.omitted = new EmptyValue();
         }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -152,26 +152,26 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Table(name = "items")
     static class ItemWithFlattenedValues {
         @Id
-        EmbeddableValue flattenedId;
+        SingleValue flattenedId;
 
         @AttributeOverride(name = "a", column = @Column(name = "flattened1_a"))
-        EmbeddableValue flattened1;
+        SingleValue flattened1;
 
         @AttributeOverride(name = "a", column = @Column(name = "flattened2_a"))
         @AttributeOverride(name = "flattened.a", column = @Column(name = "flattened2_flattened_a"))
         @AttributeOverride(name = "flattened.b", column = @Column(name = "flattened2_flattened_b"))
-        EmbeddablePairValue1 flattened2;
+        MultiValueWithParent flattened2;
     }
 
     @Embeddable
-    static class EmbeddableValue {
+    static class SingleValue {
         int a;
     }
 
     @Embeddable
-    static class EmbeddablePairValue1 {
+    static class MultiValueWithParent {
         int a;
-        EmbeddablePairValue2 flattened;
+        MultiValue flattened;
 
         @Parent ItemWithFlattenedValues parent;
 
@@ -193,7 +193,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    record EmbeddablePairValue2(int a, int b) {}
+    record MultiValue(int a, int b) {}
 
     @Entity
     @Table(name = "items")
@@ -201,27 +201,27 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @Id
         int id;
 
-        EmbeddableEmptyValue omitted;
+        EmptyValue omitted;
     }
 
     @Embeddable
-    static class EmbeddableEmptyValue {}
+    static class EmptyValue {}
 
     @Nested
     class Unsupported {
         @Test
         void testPrimaryKeySpanningMultipleFields() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithPairValueAsId.class)
+                            .addAnnotatedClass(ItemWithMultiValueAsId.class)
                             .buildMetadata())
                     .hasMessageContaining("does not support primary key spanning multiple columns");
         }
 
         @Entity
         @Table(name = "items")
-        static class ItemWithPairValueAsId {
+        static class ItemWithMultiValueAsId {
             @Id
-            EmbeddablePairValue2 id;
+            MultiValue id;
         }
     }
 }
