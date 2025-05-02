@@ -18,7 +18,6 @@ package com.mongodb.hibernate.embeddable;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
 import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -33,7 +32,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.hibernate.annotations.Parent;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -71,13 +69,16 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             item.flattened2.parent = item;
         }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollection.find())
-                .containsExactly(new BsonDocument()
-                        .append(ID_FIELD_NAME, new BsonInt32(item.flattenedId.a))
-                        .append("flattened1_a", new BsonInt32(2))
-                        .append("flattened2_a", new BsonInt32(3))
-                        .append("flattened2_flattened_a", new BsonInt32(4))
-                        .append("flattened2_flattened_b", new BsonInt32(5)));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    flattened1_a: 2,
+                    flattened2_a: 3,
+                    flattened2_flattened_a: 4,
+                    flattened2_flattened_b: 5
+                }
+                """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithFlattenedValues.class, item.flattenedId));
         assertEquals(item, loadedItem);
@@ -86,6 +87,16 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             result.flattened1.a = -result.flattened1.a;
             return result;
         });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    flattened1_a: -2,
+                    flattened2_a: 3,
+                    flattened2_flattened_a: 4,
+                    flattened2_flattened_b: 5
+                }
+                """);
         loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithFlattenedValues.class, item.flattenedId));
         assertEquals(updatedItem, loadedItem);
@@ -99,11 +110,14 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             item.omitted = new EmbeddableEmptyValue();
         }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollection.find())
-                .containsExactly(
-                        // Hibernate ORM does not store/read the empty `item.omitted` value.
-                        // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
-                        new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        assertCollectionContainsExactly(
+                // Hibernate ORM does not store/read the empty `item.omitted` value.
+                // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
+                """
+                {
+                    _id: 1
+                }
+                """);
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
         assertUsingRecursiveComparison(item, loadedItem, (assertion, actual) -> assertion
@@ -114,7 +128,12 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             result.omitted = null;
             return result;
         });
-        assertThat(mongoCollection.find()).containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1
+                }
+                """);
         loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
         assertEquals(updatedItem, loadedItem);
@@ -123,6 +142,10 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    private static void assertCollectionContainsExactly(String json) {
+        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(json));
     }
 
     @Entity

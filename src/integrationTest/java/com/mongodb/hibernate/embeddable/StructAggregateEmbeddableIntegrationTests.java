@@ -18,7 +18,6 @@ package com.mongodb.hibernate.embeddable;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
 import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -32,7 +31,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
@@ -74,20 +72,23 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             item.nested2.parent = item;
         }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollection.find())
-                .containsExactly(new BsonDocument()
-                        // Hibernate ORM flattens `item.id` despite it being of an aggregate type
-                        .append(ID_FIELD_NAME, new BsonInt32(item.nestedId.a))
-                        .append("nested1", new BsonDocument("a", new BsonInt32(2)))
-                        .append(
-                                "nested2",
-                                new BsonDocument()
-                                        .append("a", new BsonInt32(3))
-                                        .append(
-                                                "nested",
-                                                new BsonDocument()
-                                                        .append("a", new BsonInt32(4))
-                                                        .append("b", new BsonInt32(5)))));
+        assertCollectionContainsExactly(
+                // Hibernate ORM flattens `item.id` despite it being of an aggregate type
+                """
+                {
+                    _id: 1,
+                    nested1: {
+                        a: 2
+                    },
+                    nested2: {
+                        a: 3,
+                        nested: {
+                            a: 4,
+                            b: 5
+                        }
+                    }
+                }
+                """);
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, item.nestedId));
         assertEquals(item, loadedItem);
@@ -96,6 +97,22 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             result.nested1.a = -result.nested1.a;
             return result;
         });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    nested1: {
+                        a: -2
+                    },
+                    nested2: {
+                        a: 3,
+                        nested: {
+                            a: 4,
+                            b: 5
+                        }
+                    }
+                }
+                """);
         loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, item.nestedId));
         assertEquals(updatedItem, loadedItem);
@@ -109,11 +126,14 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             item.omitted = new StructAggregateEmbeddableEmptyValue();
         }
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        assertThat(mongoCollection.find())
-                .containsExactly(
-                        // Hibernate ORM does not store/read the empty `item.omitted` value.
-                        // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
-                        new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        assertCollectionContainsExactly(
+                // Hibernate ORM does not store/read the empty `item.omitted` value.
+                // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
+                """
+                {
+                    _id: 1
+                }
+                """);
         var loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
         assertUsingRecursiveComparison(item, loadedItem, (assertion, actual) -> assertion
@@ -124,7 +144,12 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             result.omitted = null;
             return result;
         });
-        assertThat(mongoCollection.find()).containsExactly(new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1
+                }
+                """);
         loadedItem =
                 sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
         assertEquals(updatedItem, loadedItem);
@@ -133,6 +158,10 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    private static void assertCollectionContainsExactly(String json) {
+        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(json));
     }
 
     @Entity
@@ -221,11 +250,15 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                 item.omitted = new StructAggregateEmbeddablePairValueAllNonInsertable(2, 3);
             }
             sessionFactoryScope.inTransaction(session -> session.persist(item));
-            assertThat(mongoCollection.find())
-                    .containsExactly(
-                            // Hibernate ORM does not persist `item.omitted`, because all its persistent attributes are
-                            // non-insertable.
-                            new BsonDocument(ID_FIELD_NAME, new BsonInt32(item.id)));
+            assertCollectionContainsExactly(
+                    // `item.omitted` is considered empty because all its persistent attributes are non-insertable.
+                    // Hibernate ORM does not store/read the empty `item.omitted` value.
+                    // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
+                    """
+                    {
+                        _id: 1
+                    }
+                    """);
             assertThatThrownBy(() -> sessionFactoryScope.fromTransaction(
                             session -> session.find(ItemWithNestedValueHavingAllNonInsertable.class, item.id)))
                     .isInstanceOf(Exception.class);
