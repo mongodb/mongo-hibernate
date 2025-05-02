@@ -62,14 +62,14 @@ class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryI
                 negated ? singletonList(bookInStock) : singletonList(bookOutOfStock));
     }
 
-    @Test
-    void testNonFieldPathExpressionNotSupported() {
+ @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testNonFieldPathExpressionNotSupported(final boolean booleanLiteral) {
         assertSelectQueryFailure(
-                "from Book where true",
+                "from Book where " + booleanLiteral,
                 Book.class,
                 null,
                 FeatureNotSupportedException.class,
                 "Expression not of field path not supported"
         );
-    }
 }
