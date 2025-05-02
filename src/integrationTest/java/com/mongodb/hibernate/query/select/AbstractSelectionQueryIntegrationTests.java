@@ -39,7 +39,7 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
 
     SessionFactoryScope sessionFactoryScope;
 
-    TestCommandListener testCommandListener;
+    protected TestCommandListener testCommandListener;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
