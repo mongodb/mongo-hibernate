@@ -95,7 +95,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(WithSpaceAndDotAndMixedCase.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(WithSpaceAndDotAndMixedCase.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(WithSpaceAndDotAndMixedCase.class, item.id));
     }
 
     @Test
@@ -106,7 +106,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(StartingAndEndingWithBackticks.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingAndEndingWithBackticks.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(StartingAndEndingWithBackticks.class, item.id));
     }
 
     @Test
@@ -117,7 +117,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(StartingWithBacktick.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingWithBacktick.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(StartingWithBacktick.class, item.id));
     }
 
     @Test
@@ -128,7 +128,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(EndingWithBacktick.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(EndingWithBacktick.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(EndingWithBacktick.class, item.id));
     }
 
     @Test
@@ -139,7 +139,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(StartingAndEndingWithDoubleQuotes.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingAndEndingWithDoubleQuotes.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(StartingAndEndingWithDoubleQuotes.class, item.id));
     }
 
     @Test
@@ -150,7 +150,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(StartingWithDoubleQuote.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingWithDoubleQuote.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(StartingWithDoubleQuote.class, item.id));
     }
 
     @Test
@@ -161,7 +161,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(EndingWithDoubleQuote.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(EndingWithDoubleQuote.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(EndingWithDoubleQuote.class, item.id));
     }
 
     @Test
@@ -172,7 +172,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(StartingAndEndingWithSquareBrackets.ACTUAL_FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingAndEndingWithSquareBrackets.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(StartingAndEndingWithSquareBrackets.class, item.id));
     }
 
     @Test
@@ -183,7 +183,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(StartingWithLeftSquareBracket.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(StartingWithLeftSquareBracket.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(StartingWithLeftSquareBracket.class, item.id));
     }
 
     @Test
@@ -194,7 +194,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                 .containsExactly(new BsonDocument()
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(EndingWithRightSquareBracket.FIELD_NAME, new BsonInt32(item.v)));
-        sessionFactoryScope.inTransaction(session -> session.get(EndingWithRightSquareBracket.class, item.id));
+        sessionFactoryScope.inTransaction(session -> session.find(EndingWithRightSquareBracket.class, item.id));
     }
 
     @Override

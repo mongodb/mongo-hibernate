@@ -62,11 +62,11 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void getById() {
+    void findById() {
         var item = new Item();
         item.id = new ObjectId(1, 0);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        var loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(Item.class, item.id));
+        var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
         assertEquals(item.id, loadedItem.id);
     }
 
