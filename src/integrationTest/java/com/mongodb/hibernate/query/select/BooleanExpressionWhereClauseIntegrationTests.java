@@ -30,7 +30,6 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQuer
     private Book bookOutOfStock;
     private Book bookInStock;
 
-
     @BeforeEach
     void beforeEach() {
         bookOutOfStock = new Book();
@@ -39,12 +38,12 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQuer
         bookInStock = new Book();
         bookInStock.outOfStock = false;
 
-        sessionFactoryScope.inTransaction(session -> {
+        getSessionFactoryScope().inTransaction(session -> {
             session.persist(bookOutOfStock);
             session.persist(bookInStock);
         });
 
-        testCommandListener.clear();
+        getTestCommandListener().clear();
     }
 
     @ParameterizedTest

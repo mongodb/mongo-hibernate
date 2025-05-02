@@ -37,9 +37,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(MongoExtension.class)
 abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
 
-    protected SessionFactoryScope sessionFactoryScope;
+    private SessionFactoryScope sessionFactoryScope;
 
-    protected TestCommandListener testCommandListener;
+    private TestCommandListener testCommandListener;
+
+    protected SessionFactoryScope getSessionFactoryScope() {
+        return sessionFactoryScope;
+    }
+
+    protected TestCommandListener getTestCommandListener() {
+        return testCommandListener;
+    }
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {

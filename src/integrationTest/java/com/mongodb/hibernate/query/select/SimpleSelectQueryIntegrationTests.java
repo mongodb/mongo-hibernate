@@ -57,8 +57,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
 
         @BeforeEach
         void beforeEach() {
-            sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
-            testCommandListener.clear();
+            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
+            getTestCommandListener().clear();
         }
 
         @ParameterizedTest
@@ -307,9 +307,9 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             testingBook.isbn13 = 9780310904168L;
             testingBook.discount = 0.25;
             testingBook.price = new BigDecimal("123.50");
-            sessionFactoryScope.inTransaction(session -> session.persist(testingBook));
+            getSessionFactoryScope().inTransaction(session -> session.persist(testingBook));
 
-            testCommandListener.clear();
+            getTestCommandListener().clear();
         }
 
         @Test
