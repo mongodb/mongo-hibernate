@@ -25,10 +25,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class BooleanExpressionPredicateTranslatingTests extends AbstractSelectionQueryIntegrationTests {
+class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     private Book bookOutOfStock;
     private Book bookInStock;
+
 
     @BeforeEach
     void beforeEach() {
