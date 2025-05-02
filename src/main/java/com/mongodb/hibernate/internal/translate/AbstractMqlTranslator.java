@@ -380,10 +380,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var stages = new ArrayList<AstStage>(3);
 
         // $match stage
-        getAstMatchStage(querySpec).ifPresent(stages::add);
+        createMatchStage(querySpec).ifPresent(stages::add);
 
         // $sort stage
-        getAstSortStage(querySpec).ifPresent(stages::add);
+        createSortStage(querySpec).ifPresent(stages::add);
 
         // $project stage
         var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
@@ -392,7 +392,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
     }
 
-    private Optional<AstMatchStage> getAstMatchStage(QuerySpec querySpec) {
+    private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
         var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
         if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
             var filter = acceptAndYield(whereClauseRestrictions, FILTER);
@@ -402,7 +402,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    private Optional<AstSortStage> getAstSortStage(QuerySpec querySpec) {
+    private Optional<AstSortStage> createSortStage(QuerySpec querySpec) {
         if (querySpec.hasSortSpecifications()) {
             var sortFields = new ArrayList<AstSortField>(
                     querySpec.getSortSpecifications().size());
