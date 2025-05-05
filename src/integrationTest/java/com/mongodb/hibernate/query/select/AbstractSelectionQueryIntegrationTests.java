@@ -98,7 +98,10 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
     }
 
     <T> void assertSelectionQuery(
-            String hql, Class<T> resultType, String expectedMql, Consumer<List<T>> resultListVerifier) {
+            String hql,
+            Class<T> resultType,
+            String expectedMql,
+            Consumer<List<T>> resultListVerifier) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
     }
 
