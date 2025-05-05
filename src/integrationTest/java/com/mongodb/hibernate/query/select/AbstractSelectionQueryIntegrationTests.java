@@ -70,7 +70,11 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .containsExactlyElementsOf(expectedResultList));
     }
 
-    <T> void assertSelectionQuery(String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
+    <T> void assertSelectionQuery(
+            String hql, 
+            Class<T> resultType, 
+            String expectedMql, 
+            List<T> expectedResultList) {
         assertSelectionQuery(hql, resultType, null, expectedMql, expectedResultList);
     }
 
