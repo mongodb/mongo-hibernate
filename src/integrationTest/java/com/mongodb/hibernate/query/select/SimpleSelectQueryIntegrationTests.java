@@ -17,6 +17,9 @@
 package com.mongodb.hibernate.query.select;
 
 import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Entity;
@@ -281,6 +284,15 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
                     q -> q.setParameter("country", null),
                     FeatureNotSupportedException.class,
                     "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+        }
+
+        @Test
+        void testQueryPlanCacheIsSupported() {
+            sessionFactoryScope.inTransaction(
+                    session -> assertThatCode(() -> session.createSelectionQuery("from Contact", Contact.class)
+                                    .setQueryPlanCacheable(true)
+                                    .getResultList())
+                            .doesNotThrowAnyException());
         }
     }
 

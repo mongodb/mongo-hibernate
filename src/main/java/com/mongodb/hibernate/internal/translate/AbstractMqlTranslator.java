@@ -844,9 +844,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 && !queryOptions.getEnabledFetchProfiles().isEmpty()) {
             throw new FeatureNotSupportedException("'enabledFetchProfiles' in QueryOptions not supported");
         }
-        if (Boolean.TRUE.equals(queryOptions.getQueryPlanCachingEnabled())) {
-            throw new FeatureNotSupportedException("'queryPlanCaching' in QueryOptions not supported");
-        }
         if (queryOptions.getLockOptions() != null
                 && !queryOptions.getLockOptions().isEmpty()) {
             throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
