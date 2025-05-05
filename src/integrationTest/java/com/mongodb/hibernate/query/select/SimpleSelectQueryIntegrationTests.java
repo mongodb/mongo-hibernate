@@ -58,8 +58,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
 
         @BeforeEach
         void beforeEach() {
-            sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
-            testCommandListener.clear();
+            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
+            getTestCommandListener().clear();
         }
 
         @ParameterizedTest
@@ -153,7 +153,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Contact where age > 18 and not (country = 'USA')",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'country': {'$eq': 'USA'}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4));
         }
@@ -163,7 +162,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Contact where not (country = 'USA' and age > 18)",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$and': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(1, 2, 3, 4));
         }
@@ -173,7 +171,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Contact where not (country = 'USA' or age > 18)",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$or': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(3));
         }
@@ -183,7 +180,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Contact where not (country = 'USA' and age > 18 or age < 25)",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$or': [{'$and': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]},"
                             + " {'age': {'$lt': {'$numberInt': '25'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4));
@@ -194,7 +190,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Contact where age > 18 and not ( not (country = 'USA') )",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'$nor': [{'country': {'$eq': 'USA'}}]}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(5));
         }
@@ -224,7 +219,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectQueryFailure(
                     "select k.name, c.age from Contact as c where c.country = :country",
                     Contact.class,
-                    null,
                     SemanticException.class,
                     "Could not interpret path expression '%s'",
                     "k.name");
@@ -238,7 +232,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectQueryFailure(
                     "from Contact as c where c.age = c.id + 1",
                     Contact.class,
-                    null,
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
@@ -248,7 +241,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectQueryFailure(
                     "from Contact where 1 = 1",
                     Contact.class,
-                    null,
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
@@ -258,7 +250,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectQueryFailure(
                     "from Contact where age = id",
                     Contact.class,
-                    null,
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
@@ -295,11 +286,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
 
         @Test
         void testQueryPlanCacheIsSupported() {
-            sessionFactoryScope.inTransaction(
-                    session -> assertThatCode(() -> session.createSelectionQuery("from Contact", Contact.class)
+            getSessionFactoryScope().inTransaction(session -> assertThatCode(
+                            () -> session.createSelectionQuery("from Contact", Contact.class)
                                     .setQueryPlanCacheable(true)
                                     .getResultList())
-                            .doesNotThrowAnyException());
+                    .doesNotThrowAnyException());
         }
     }
 
@@ -317,9 +308,9 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             testingBook.isbn13 = 9780310904168L;
             testingBook.discount = 0.25;
             testingBook.price = new BigDecimal("123.50");
-            sessionFactoryScope.inTransaction(session -> session.persist(testingBook));
+            getSessionFactoryScope().inTransaction(session -> session.persist(testingBook));
 
-            testCommandListener.clear();
+            getTestCommandListener().clear();
         }
 
         @Test
@@ -327,7 +318,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Book where outOfStock = true",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': true}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -337,7 +327,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Book where publishYear = 1995",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'publishYear': {'$eq': 1995}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -347,7 +336,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Book where isbn13 = 9780310904168L",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'isbn13': {'$eq': 9780310904168}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -357,7 +345,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Book where discount = 0.25D",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'discount': {'$eq': 0.25}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -367,7 +354,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Book where title = 'Holy Bible'",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'title': {'$eq': 'Holy Bible'}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -377,7 +363,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
             assertSelectionQuery(
                     "from Book where price = 123.50BD",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'price': {'$eq': {'$numberDecimal': '123.50'}}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }

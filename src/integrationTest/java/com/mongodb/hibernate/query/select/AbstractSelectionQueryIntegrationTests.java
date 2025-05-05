@@ -37,9 +37,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(MongoExtension.class)
 abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
 
-    SessionFactoryScope sessionFactoryScope;
+    private SessionFactoryScope sessionFactoryScope;
 
-    TestCommandListener testCommandListener;
+    private TestCommandListener testCommandListener;
+
+    SessionFactoryScope getSessionFactoryScope() {
+        return sessionFactoryScope;
+    }
+
+    TestCommandListener getTestCommandListener() {
+        return testCommandListener;
+    }
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
@@ -62,6 +70,10 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .containsExactlyElementsOf(expectedResultList));
     }
 
+    <T> void assertSelectionQuery(String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
+        assertSelectionQuery(hql, resultType, null, expectedMql, expectedResultList);
+    }
+
     <T> void assertSelectionQuery(
             String hql,
             Class<T> resultType,
@@ -79,6 +91,11 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
 
             resultListVerifier.accept(resultList);
         });
+    }
+
+    <T> void assertSelectionQuery(
+            String hql, Class<T> resultType, String expectedMql, Consumer<List<T>> resultListVerifier) {
+        assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
     }
 
     <T> void assertSelectQueryFailure(

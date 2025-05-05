@@ -31,6 +31,8 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.FALSE;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.TRUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GTE;
@@ -517,6 +519,18 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
+    public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
+        if (!isFieldPathExpression(booleanExpressionPredicate.getExpression())) {
+            throw new FeatureNotSupportedException("Expression not of field path not supported");
+        }
+        var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
+        var astFilterOperation =
+                new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
+        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        astVisitorValueHolder.yield(FILTER, filter);
+    }
+
+    @Override
     public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
         sqlSelectionExpression.getSelection().getExpression().accept(this);
     }
@@ -757,11 +771,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitModifiedSubQueryExpression(ModifiedSubQueryExpression modifiedSubQueryExpression) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
         throw new FeatureNotSupportedException();
     }
 
