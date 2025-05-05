@@ -17,9 +17,7 @@
 package com.mongodb.hibernate.query.select;
 
 import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Entity;
@@ -288,11 +286,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegratio
 
         @Test
         void testQueryPlanCacheIsSupported() {
-            sessionFactoryScope.inTransaction(
-                    session -> assertThatCode(() -> session.createSelectionQuery("from Contact", Contact.class)
+            getSessionFactoryScope().inTransaction(session -> assertThatCode(
+                            () -> session.createSelectionQuery("from Contact", Contact.class)
                                     .setQueryPlanCacheable(true)
                                     .getResultList())
-                            .doesNotThrowAnyException());
+                    .doesNotThrowAnyException());
         }
     }
 
