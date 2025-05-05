@@ -547,8 +547,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                     MONGO_DBMS_NAME, sortSpecification.getNullPrecedence()));
         }
         if (sortSpecification.isIgnoreCase()) {
-            throw new FeatureNotSupportedException(
-                    format("%s does not support case-insensitive sort key [%s]", MONGO_DBMS_NAME, sortSpecification));
+            throw new FeatureNotSupportedException();
         }
         var sortExpression = sortSpecification.getSortExpression();
         final List<String> fieldPaths;

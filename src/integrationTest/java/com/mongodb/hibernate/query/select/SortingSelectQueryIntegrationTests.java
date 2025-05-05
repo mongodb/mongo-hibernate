@@ -19,11 +19,14 @@ package com.mongodb.hibernate.query.select;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import java.util.Arrays;
 import java.util.List;
+import org.hibernate.query.NullPrecedence;
+import org.hibernate.query.SortDirection;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -142,7 +145,7 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
     }
 
     @Test
-    void testSortFieldNotFieldPathExpression() {
+    void testSortFieldNotFieldPathExpressionNotSupported() {
         assertSelectQueryFailure(
                 "from Book ORDER BY length(title)",
                 Book.class,
@@ -159,6 +162,19 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 FeatureNotSupportedException.class,
                 "%s does not support nulls precedence: NULLS LAST",
                 MONGO_DBMS_NAME);
+    }
+
+    @Test
+    void testCaseInsensitiveSortSpecNotSupported() {
+        sessionFactoryScope.inTransaction(session -> {
+            var cb = sessionFactoryScope.getSessionFactory().getCriteriaBuilder();
+            var criteria = cb.createQuery(Book.class);
+            var root = criteria.from(Book.class);
+            criteria.select(root);
+            criteria.orderBy(cb.sort(root.get("title"), SortDirection.ASCENDING, NullPrecedence.NONE, true));
+            assertThatThrownBy(() -> session.createSelectionQuery(criteria).getResultList())
+                    .isInstanceOf(FeatureNotSupportedException.class);
+        });
     }
 
     @Nested
