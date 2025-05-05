@@ -41,11 +41,11 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
 
     private TestCommandListener testCommandListener;
 
-    protected SessionFactoryScope getSessionFactoryScope() {
+    SessionFactoryScope getSessionFactoryScope() {
         return sessionFactoryScope;
     }
 
-    protected TestCommandListener getTestCommandListener() {
+    TestCommandListener getTestCommandListener() {
         return testCommandListener;
     }
 
@@ -70,11 +70,7 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .containsExactlyElementsOf(expectedResultList));
     }
 
-    <T> void assertSelectionQuery(
-            String hql, 
-            Class<T> resultType, 
-            String expectedMql, 
-            List<T> expectedResultList) {
+    <T> void assertSelectionQuery(String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
         assertSelectionQuery(hql, resultType, null, expectedMql, expectedResultList);
     }
 
@@ -98,10 +94,7 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
     }
 
     <T> void assertSelectionQuery(
-            String hql,
-            Class<T> resultType,
-            String expectedMql,
-            Consumer<List<T>> resultListVerifier) {
+            String hql, Class<T> resultType, String expectedMql, Consumer<List<T>> resultListVerifier) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
     }
 
