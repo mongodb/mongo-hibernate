@@ -324,7 +324,7 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
         }
 
         @Test
-        void testQueryPlanCacheIsNotForbidden() {
+        void testQueryPlanCacheIsSupported() {
             sessionFactoryScope.inTransaction(
                     session -> assertThatCode(() -> session.createSelectionQuery("from Contact", Contact.class)
                                     .setQueryPlanCacheable(true)
