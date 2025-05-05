@@ -20,6 +20,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hibernate.cfg.QuerySettings.DEFAULT_NULL_ORDERING;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
@@ -28,6 +29,8 @@ import java.util.List;
 import org.hibernate.query.NullPrecedence;
 import org.hibernate.query.SortDirection;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.ServiceRegistry;
+import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -145,6 +148,21 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
     }
 
     @Nested
+    @DomainModel(annotatedClasses = Book.class)
+    @ServiceRegistry(settings = @Setting(name = DEFAULT_NULL_ORDERING, value = "first"))
+    class DefaultNullPrecedenceTests extends AbstractSelectionQueryIntegrationTests {
+        @Test
+        void testDefaultNullPrecedenceFeatureNotSupported() {
+            assertSelectQueryFailure(
+                    "from Book ORDER BY publishYear",
+                    Book.class,
+                    FeatureNotSupportedException.class,
+                    "%s does not support null precedence: NULLS FIRST",
+                    MONGO_DBMS_NAME);
+        }
+    }
+
+    @Nested
     class UnsupportedTests {
         @Test
         void testSortFieldNotFieldPathExpressionNotSupported() {
@@ -157,12 +175,12 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         }
 
         @Test
-        void testNullPrecedenceFeatureNotSupported() {
+        void testQueryNullPrecedenceFeatureNotSupported() {
             assertSelectQueryFailure(
                     "from Book ORDER BY publishYear NULLS LAST",
                     Book.class,
                     FeatureNotSupportedException.class,
-                    "%s does not support nulls precedence: NULLS LAST",
+                    "%s does not support null precedence: NULLS LAST",
                     MONGO_DBMS_NAME);
         }
 
@@ -181,8 +199,7 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
     }
 
     @Nested
-    class SqlTupleTests {
-
+    class SortKeyTupleTests {
         @Test
         void testOrderBySimpleTuple() {
             assertSelectionQuery(

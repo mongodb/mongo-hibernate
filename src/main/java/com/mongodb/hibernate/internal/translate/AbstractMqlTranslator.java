@@ -526,11 +526,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
-        if (sortSpecification.getNullPrecedence() != null
-                && sortSpecification.getNullPrecedence() != NullPrecedence.NONE) {
-            throw new FeatureNotSupportedException(format(
-                    "%s does not support nulls precedence: NULLS %s",
-                    MONGO_DBMS_NAME, sortSpecification.getNullPrecedence()));
+        var nullPrecedence = sortSpecification.getNullPrecedence();
+        if (nullPrecedence == null || nullPrecedence == NullPrecedence.NONE) {
+            nullPrecedence = sessionFactory.getSessionFactoryOptions().getDefaultNullPrecedence();
+        }
+        if (nullPrecedence != null && nullPrecedence != NullPrecedence.NONE) {
+            throw new FeatureNotSupportedException(
+                    format("%s does not support null precedence: NULLS %s", MONGO_DBMS_NAME, nullPrecedence));
         }
         if (sortSpecification.isIgnoreCase()) {
             throw new FeatureNotSupportedException();
