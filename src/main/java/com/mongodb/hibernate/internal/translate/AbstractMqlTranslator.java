@@ -24,11 +24,11 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATHS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -41,7 +41,6 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogica
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
-import static java.util.Collections.singletonList;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -61,6 +60,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstPr
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
@@ -93,7 +93,6 @@ import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.NullPrecedence;
-import org.hibernate.query.SortDirection;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
@@ -134,6 +133,7 @@ import org.hibernate.sql.ast.tree.expression.QueryLiteral;
 import org.hibernate.sql.ast.tree.expression.SelfRenderingExpression;
 import org.hibernate.sql.ast.tree.expression.SqlSelectionExpression;
 import org.hibernate.sql.ast.tree.expression.SqlTuple;
+import org.hibernate.sql.ast.tree.expression.SqlTupleContainer;
 import org.hibernate.sql.ast.tree.expression.Star;
 import org.hibernate.sql.ast.tree.expression.Summarization;
 import org.hibernate.sql.ast.tree.expression.TrimSpecification;
@@ -239,17 +239,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     List<JdbcParameterBinder> getParameterBinders() {
         return parameterBinders;
-    }
-
-    static String renderMongoAstNode(AstNode rootAstNode) {
-        try (var stringWriter = new StringWriter();
-                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
-            rootAstNode.render(jsonWriter);
-            jsonWriter.flush();
-            return stringWriter.toString();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @SuppressWarnings("overloads")
@@ -379,13 +368,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var stages = new ArrayList<AstStage>(3);
 
-        // $match stage
         createMatchStage(querySpec).ifPresent(stages::add);
 
-        // $sort stage
         createSortStage(querySpec).ifPresent(stages::add);
 
-        // $project stage
         var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
         stages.add(new AstProjectStage(projectStageSpecifications));
 
@@ -535,7 +521,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         sqlSelectionExpression.getSelection().getExpression().accept(this);
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     // ORDER BY clause
 
     @Override
@@ -549,42 +535,47 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (sortSpecification.isIgnoreCase()) {
             throw new FeatureNotSupportedException();
         }
-        var sortExpression = sortSpecification.getSortExpression();
-        final List<String> fieldPaths;
-        if (sortExpression instanceof SqlTuple sqlTuple) {
-            fieldPaths = acceptAndYield(sqlTuple, FIELD_PATHS);
-        } else {
-            if (!isFieldPathExpression(sortExpression)) {
-                throw new FeatureNotSupportedException(
-                        format("%s does not support sort key not of field path type", MONGO_DBMS_NAME));
-            }
-            var sortFieldPath = acceptAndYield(sortExpression, FIELD_PATH);
-            fieldPaths = singletonList(sortFieldPath);
-        }
 
-        var astSortFields = new ArrayList<AstSortField>(fieldPaths.size());
-        for (var fieldPath : fieldPaths) {
-            var astSortField = new AstSortField(
-                    fieldPath, sortSpecification.getSortOrder() == SortDirection.ASCENDING ? ASC : DESC);
-            astSortFields.add(astSortField);
+        var astSortOrder =
+                switch (sortSpecification.getSortOrder()) {
+                    case ASCENDING -> ASC;
+                    case DESCENDING -> DESC;
+                };
+        var sortExpression = sortSpecification.getSortExpression();
+        var sqlTuple = SqlTupleContainer.getSqlTuple(sortExpression);
+        if (sqlTuple == null) {
+            var astSortField = createAstSortField(sortExpression, astSortOrder);
+            astVisitorValueHolder.yield(SORT_FIELDS, List.of(astSortField));
+        } else {
+            var expressions = acceptAndYield(sqlTuple, TUPLE);
+            var astSortFields = new ArrayList<AstSortField>(expressions.size());
+            for (var expression : expressions) {
+                astSortFields.add(createAstSortField(expression, astSortOrder));
+            }
+            astVisitorValueHolder.yield(SORT_FIELDS, astSortFields);
         }
-        astVisitorValueHolder.yield(SORT_FIELDS, astSortFields);
+    }
+
+    private AstSortField createAstSortField(Expression sortExpression, AstSortOrder astSortOrder) {
+        if (!isFieldPathExpression(sortExpression)) {
+            throw new FeatureNotSupportedException(
+                    format("%s does not support sort key not of field path type", MONGO_DBMS_NAME));
+        }
+        var fieldPath = acceptAndYield(sortExpression, FIELD_PATH);
+        return new AstSortField(fieldPath, astSortOrder);
     }
 
     @Override
     public void visitTuple(SqlTuple sqlTuple) {
-        List<String> fieldPaths = new ArrayList<>(sqlTuple.getExpressions().size());
+        var expressions = new ArrayList<Expression>(sqlTuple.getExpressions().size());
         for (var expression : sqlTuple.getExpressions()) {
-            if (expression instanceof SqlTuple) {
-                fieldPaths.addAll(acceptAndYield(expression, FIELD_PATHS));
+            if (SqlTupleContainer.getSqlTuple(expression) != null) {
+                expressions.addAll(acceptAndYield(expression, TUPLE));
             } else {
-                if (!isFieldPathExpression(expression)) {
-                    throw new FeatureNotSupportedException();
-                }
-                fieldPaths.add(acceptAndYield(expression, FIELD_PATH));
+                expressions.add(expression);
             }
         }
-        astVisitorValueHolder.yield(FIELD_PATHS, fieldPaths);
+        astVisitorValueHolder.yield(TUPLE, expressions);
     }
 
     @Override
@@ -865,6 +856,17 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdateCustomSql) {
         throw new FeatureNotSupportedException();
+    }
+
+    static String renderMongoAstNode(AstNode rootAstNode) {
+        try (var stringWriter = new StringWriter();
+                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
+            rootAstNode.render(jsonWriter);
+            jsonWriter.flush();
+            return stringWriter.toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     static void checkJdbcParameterBindingsSupportability(@Nullable JdbcParameterBindings jdbcParameterBindings) {

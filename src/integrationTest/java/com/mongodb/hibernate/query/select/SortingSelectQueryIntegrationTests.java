@@ -144,37 +144,40 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                         new Object[] {"War and Peace", 1869}));
     }
 
-    @Test
-    void testSortFieldNotFieldPathExpressionNotSupported() {
-        assertSelectQueryFailure(
-                "from Book ORDER BY length(title)",
-                Book.class,
-                FeatureNotSupportedException.class,
-                "%s does not support sort key not of field path type",
-                MONGO_DBMS_NAME);
-    }
+    @Nested
+    class UnsupportedTests {
+        @Test
+        void testSortFieldNotFieldPathExpressionNotSupported() {
+            assertSelectQueryFailure(
+                    "from Book ORDER BY length(title)",
+                    Book.class,
+                    FeatureNotSupportedException.class,
+                    "%s does not support sort key not of field path type",
+                    MONGO_DBMS_NAME);
+        }
 
-    @Test
-    void testNullPrecedenceFeatureNotSupported() {
-        assertSelectQueryFailure(
-                "from Book ORDER BY publishYear NULLS LAST",
-                Book.class,
-                FeatureNotSupportedException.class,
-                "%s does not support nulls precedence: NULLS LAST",
-                MONGO_DBMS_NAME);
-    }
+        @Test
+        void testNullPrecedenceFeatureNotSupported() {
+            assertSelectQueryFailure(
+                    "from Book ORDER BY publishYear NULLS LAST",
+                    Book.class,
+                    FeatureNotSupportedException.class,
+                    "%s does not support nulls precedence: NULLS LAST",
+                    MONGO_DBMS_NAME);
+        }
 
-    @Test
-    void testCaseInsensitiveSortSpecNotSupported() {
-        sessionFactoryScope.inTransaction(session -> {
-            var cb = sessionFactoryScope.getSessionFactory().getCriteriaBuilder();
-            var criteria = cb.createQuery(Book.class);
-            var root = criteria.from(Book.class);
-            criteria.select(root);
-            criteria.orderBy(cb.sort(root.get("title"), SortDirection.ASCENDING, NullPrecedence.NONE, true));
-            assertThatThrownBy(() -> session.createSelectionQuery(criteria).getResultList())
-                    .isInstanceOf(FeatureNotSupportedException.class);
-        });
+        @Test
+        void testCaseInsensitiveSortSpecNotSupported() {
+            sessionFactoryScope.inTransaction(session -> {
+                var cb = sessionFactoryScope.getSessionFactory().getCriteriaBuilder();
+                var criteria = cb.createQuery(Book.class);
+                var root = criteria.from(Book.class);
+                criteria.select(root);
+                criteria.orderBy(cb.sort(root.get("title"), SortDirection.ASCENDING, NullPrecedence.NONE, true));
+                assertThatThrownBy(() -> session.createSelectionQuery(criteria).getResultList())
+                        .isInstanceOf(FeatureNotSupportedException.class);
+            });
+        }
     }
 
     @Nested

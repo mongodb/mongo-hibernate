@@ -97,9 +97,4 @@ public final class MongoDialect extends Dialect {
     public @Nullable String toQuotedIdentifier(@Nullable String name) {
         return name;
     }
-
-    @Override
-    public boolean supportsNullPrecedence() {
-        return false;
-    }
 }

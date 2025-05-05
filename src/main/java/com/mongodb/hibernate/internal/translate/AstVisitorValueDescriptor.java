@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.sql.ast.tree.expression.Expression;
 
 @SuppressWarnings("UnusedTypeParameter")
 final class AstVisitorValueDescriptor<T> {
@@ -47,7 +48,7 @@ final class AstVisitorValueDescriptor<T> {
 
     static final AstVisitorValueDescriptor<List<AstSortField>> SORT_FIELDS = new AstVisitorValueDescriptor<>();
 
-    static final AstVisitorValueDescriptor<List<String>> FIELD_PATHS = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<List<Expression>> TUPLE = new AstVisitorValueDescriptor<>();
 
     private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 
