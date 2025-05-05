@@ -29,10 +29,10 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.FALSE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.TRUE;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GTE;

@@ -33,9 +33,11 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQuer
     @BeforeEach
     void beforeEach() {
         bookOutOfStock = new Book();
+        bookOutOfStock.id = 1;
         bookOutOfStock.outOfStock = true;
 
         bookInStock = new Book();
+        bookInStock.id = 2;
         bookInStock.outOfStock = false;
 
         getSessionFactoryScope().inTransaction(session -> {

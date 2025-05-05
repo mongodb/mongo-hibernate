@@ -58,8 +58,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
 
     @BeforeEach
     void beforeEach() {
-        sessionFactoryScope.inTransaction(session -> testingBooks.forEach(session::persist));
-        testCommandListener.clear();
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
     }
 
     @ParameterizedTest
@@ -68,7 +68,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         assertSelectionQuery(
                 "from Book as b ORDER BY b.publishYear " + sortOrder,
                 Book.class,
-                null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': " + (sortOrder == ASC ? "1" : "-1")
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 sortOrder == ASC ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
@@ -80,7 +79,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         assertSelectionQuery(
                 "from Book as b ORDER BY b.title " + sortOrder,
                 Book.class,
-                null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': " + (sortOrder == ASC ? "1" : "-1")
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 sortOrder == ASC
@@ -99,7 +97,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         assertSelectionQuery(
                 "from Book where outOfStock = false ORDER BY title ASC, publishYear DESC, id ASC",
                 Book.class,
-                null,
                 "{ 'aggregate': 'books', 'pipeline': [ {'$match': {'outOfStock': {'$eq': false}}}, { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 getBooksByIds(3, 2, 4, 5));
     }
@@ -109,7 +106,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         assertSelectionQuery(
                 "from Book ORDER BY title ASC, publishYear DESC, id ASC",
                 Book.class,
-                null,
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 resultList -> assertThat(resultList)
                         .satisfiesAnyOf(
@@ -122,7 +118,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         assertSelectionQuery(
                 "select b.title as title, b.publishYear as year from Book as b ORDER BY year DESC, title ASC",
                 Object[].class,
-                null,
                 "{'aggregate': 'books', 'pipeline': [{'$sort': {'publishYear': -1, 'title': 1}}, {'$project': {'title': true, 'publishYear': true}}]}",
                 List.of(
                         new Object[] {"War and Peace", 2025},
@@ -137,7 +132,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
         assertSelectionQuery(
                 "select b.title as title, b.publishYear as year from Book as b ORDER BY 1 ASC, 2 DESC",
                 Object[].class,
-                null,
                 "{'aggregate': 'books', 'pipeline': [{'$sort': {'publishYear': -1, 'title': 1}}, {'$project': {'title': true, 'publishYear': true}}]}",
                 List.of(
                         new Object[] {"Anna Karenina", 1877},
@@ -186,8 +180,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
 
         @Test
         void testCaseInsensitiveSortSpecNotSupported() {
-            sessionFactoryScope.inTransaction(session -> {
-                var cb = sessionFactoryScope.getSessionFactory().getCriteriaBuilder();
+            getSessionFactoryScope().inTransaction(session -> {
+                var cb = getSessionFactoryScope().getSessionFactory().getCriteriaBuilder();
                 var criteria = cb.createQuery(Book.class);
                 var root = criteria.from(Book.class);
                 criteria.select(root);
@@ -205,7 +199,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
             assertSelectionQuery(
                     "from Book ORDER BY (publishYear, title) ASC",
                     Book.class,
-                    null,
                     "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': 1, 'title': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                     getBooksByIds(2, 1, 3, 4, 5));
         }
@@ -215,7 +208,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
             assertSelectionQuery(
                     "from Book ORDER BY (title, (id, publishYear)) DESC",
                     Book.class,
-                    null,
                     "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': -1, '_id': -1, 'publishYear': -1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                     getBooksByIds(5, 1, 4, 2, 3));
         }
