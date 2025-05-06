@@ -17,13 +17,11 @@
 package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.QuerySettings.DEFAULT_NULL_ORDERING;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import java.util.Arrays;
 import java.util.List;
 import org.hibernate.query.NullPrecedence;
@@ -35,7 +33,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
@@ -64,25 +61,27 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
     }
 
     @ParameterizedTest
-    @EnumSource(AstSortOrder.class)
-    void testOrderBySingleFieldWithoutTies(AstSortOrder sortOrder) {
+    @ValueSource(strings = {"ASC", "DESC"})
+    void testOrderBySingleFieldWithoutTies(String sortDirection) {
         assertSelectionQuery(
-                "from Book as b ORDER BY b.publishYear " + sortOrder,
+                "from Book as b ORDER BY b.publishYear " + sortDirection,
                 Book.class,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': " + (sortOrder == ASC ? "1" : "-1")
+                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'publishYear': "
+                        + (sortDirection.equals("ASC") ? "1" : "-1")
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
-                sortOrder == ASC ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
+                sortDirection.equals("ASC") ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
     }
 
     @ParameterizedTest
-    @EnumSource(AstSortOrder.class)
-    void testOrderBySingleFieldWithTies(AstSortOrder sortOrder) {
+    @ValueSource(strings = {"ASC", "DESC"})
+    void testOrderBySingleFieldWithTies(String sortDirection) {
         assertSelectionQuery(
-                "from Book as b ORDER BY b.title " + sortOrder,
+                "from Book as b ORDER BY b.title " + sortDirection,
                 Book.class,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': " + (sortOrder == ASC ? "1" : "-1")
+                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': "
+                        + (sortDirection.equals("ASC") ? "1" : "-1")
                         + " } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
-                sortOrder == ASC
+                sortDirection.equals("ASC")
                         ? resultList -> assertThat(resultList)
                                 .satisfiesAnyOf(
                                         list -> assertResultListEquals(getBooksByIds(3, 2, 4, 1, 5), list),
