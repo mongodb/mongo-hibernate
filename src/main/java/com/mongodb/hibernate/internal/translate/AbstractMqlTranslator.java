@@ -371,11 +371,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var stages = new ArrayList<AstStage>(3);
 
         createMatchStage(querySpec).ifPresent(stages::add);
-
         createSortStage(querySpec).ifPresent(stages::add);
-
-        var projectStageSpecifications = acceptAndYield(querySpec.getSelectClause(), PROJECT_STAGE_SPECIFICATIONS);
-        stages.add(new AstProjectStage(projectStageSpecifications));
+        stages.add(createProjectStage(querySpec.getSelectClause()));
 
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
     }
@@ -400,6 +397,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             return Optional.of(new AstSortStage(sortFields));
         }
         return Optional.empty();
+    }
+
+    private AstProjectStage createProjectStage(SelectClause selectClause) {
+        var projectStageSpecifications = acceptAndYield(selectClause, PROJECT_STAGE_SPECIFICATIONS);
+        return new AstProjectStage(projectStageSpecifications);
     }
 
     @Override
