@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
 class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
@@ -164,8 +165,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                     "from Book ORDER BY length(title)",
                     Book.class,
                     FeatureNotSupportedException.class,
-                    "%s does not support sort key not of field path type",
-                    MONGO_DBMS_NAME);
+                    "TODO-HIBERNATE-%1$d https://jira.mongodb.org/browse/HIBERNATE-%1$d",
+                    79);
         }
 
         @ParameterizedTest
@@ -188,7 +189,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 criteria.select(root);
                 criteria.orderBy(cb.sort(root.get("title"), SortDirection.ASCENDING, NullPrecedence.NONE, true));
                 assertThatThrownBy(() -> session.createSelectionQuery(criteria).getResultList())
-                        .isInstanceOf(FeatureNotSupportedException.class);
+                        .isInstanceOf(FeatureNotSupportedException.class)
+                        .hasMessage("TODO-HIBERNATE-%1$d https://jira.mongodb.org/browse/HIBERNATE-%1$d", 79);
             });
         }
     }
