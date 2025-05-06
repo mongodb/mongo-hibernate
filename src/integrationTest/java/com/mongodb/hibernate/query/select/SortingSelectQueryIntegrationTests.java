@@ -168,13 +168,14 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                     MONGO_DBMS_NAME);
         }
 
-        @Test
-        void testQueryNullPrecedenceFeatureNotSupported() {
+        @ParameterizedTest
+        @ValueSource(strings = {"FIRST", "LAST"})
+        void testQueryNullPrecedenceFeatureNotSupported(String nullPrecedence) {
             assertSelectQueryFailure(
-                    "from Book ORDER BY publishYear NULLS LAST",
+                    "from Book ORDER BY publishYear NULLS " + nullPrecedence,
                     Book.class,
                     FeatureNotSupportedException.class,
-                    "%s does not support null precedence: NULLS LAST",
+                    "%s does not support null precedence: NULLS " + nullPrecedence,
                     MONGO_DBMS_NAME);
         }
 
