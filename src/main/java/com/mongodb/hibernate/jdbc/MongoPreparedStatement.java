@@ -212,7 +212,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException();
+        setParameter(parameterIndex, toBsonValue(x.getArray()));
     }
 
     @Override

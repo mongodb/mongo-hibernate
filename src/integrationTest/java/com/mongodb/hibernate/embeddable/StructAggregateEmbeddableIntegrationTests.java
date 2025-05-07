@@ -30,6 +30,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Collection;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
@@ -47,12 +49,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             StructAggregateEmbeddableIntegrationTests.ItemWithNestedValues.class,
             StructAggregateEmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class,
+            StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingCollections.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingAllNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class
         })
 @ExtendWith(MongoExtension.class)
-class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -155,6 +158,47 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         assertEquals(updatedItem, loadedItem);
     }
 
+    @Test
+    void testNestedValueHavingCollections() {
+        var item = new ItemWithNestedValueHavingCollections();
+        {
+            item.id = 1;
+            item.nested = new MultiValueWithCollections();
+            item.nested.intsCollection = List.of(2, 3);
+        }
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    nested: {
+                        intsCollection: [2, 3]
+                    }
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValueHavingCollections.class, item.id));
+        assertEquals(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithNestedValueHavingCollections.class, item.id);
+            result.nested.intsCollection.remove(3);
+            result.nested.intsCollection.add(-3);
+            return result;
+        });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    nested: {
+                        intsCollection: [2, -3]
+                    }
+                }
+                """);
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValueHavingCollections.class, updatedItem.id));
+        assertEquals(updatedItem, loadedItem);
+    }
+
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
@@ -177,7 +221,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Embeddable
     @Struct(name = "SingleValue")
-    static class SingleValue {
+    public static class SingleValue {
         int a;
     }
 
@@ -222,6 +266,21 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Embeddable
     @Struct(name = "EmptyValue")
     static class EmptyValue {}
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithNestedValueHavingCollections {
+        @Id
+        int id;
+
+        MultiValueWithCollections nested;
+    }
+
+    @Embeddable
+    @Struct(name = "MultiValueWithArraysAndCollections")
+    static class MultiValueWithCollections {
+        Collection<Integer> intsCollection;
+    }
 
     @Nested
     class Unsupported {

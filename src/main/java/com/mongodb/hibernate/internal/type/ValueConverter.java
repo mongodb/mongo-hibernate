@@ -23,6 +23,10 @@ import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
@@ -34,6 +38,7 @@ import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}
@@ -60,6 +65,10 @@ public final class ValueConverter {
         } else if (value instanceof byte[] v) {
             return toBsonValue(v);
         } else if (value instanceof ObjectId v) {
+            return toBsonValue(v);
+        } else if (value instanceof Object[] v) {
+            return toBsonValue(v);
+        } else if (value instanceof Collection<?> v) {
             return toBsonValue(v);
         } else {
             throw new SQLFeatureNotSupportedException(format(
@@ -100,6 +109,22 @@ public final class ValueConverter {
         return new BsonObjectId(value);
     }
 
+    public static BsonArray toBsonValue(Object[] value) throws SQLFeatureNotSupportedException {
+        var elements = new ArrayList<BsonValue>(value.length);
+        for (var e : value) {
+            elements.add(toBsonValue(e));
+        }
+        return new BsonArray(elements);
+    }
+
+    public static BsonArray toBsonValue(Collection<?> value) throws SQLFeatureNotSupportedException {
+        var elements = new ArrayList<BsonValue>(value.size());
+        for (var e : value) {
+            elements.add(toBsonValue(e));
+        }
+        return new BsonArray(elements);
+    }
+
     static Object toDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
         if (value instanceof BsonBoolean v) {
@@ -118,6 +143,8 @@ public final class ValueConverter {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
             return toDomainValue(v);
+        } else if (value instanceof BsonArray v) {
+            return toDomainValue(v).domainValue();
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",
@@ -188,4 +215,36 @@ public final class ValueConverter {
     private static ObjectId toDomainValue(BsonObjectId value) {
         return value.getValue();
     }
+
+    public static ArrayWithBaseType toObjectArrayDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
+        return toDomainValue(value.asArray());
+    }
+
+    private static ArrayWithBaseType toDomainValue(BsonArray value) throws SQLFeatureNotSupportedException {
+        var domainValue = new ArrayList<>(value.size());
+        Class<?> baseDomainType = null;
+        for (int i = 0; i < value.size(); i++) {
+            var element = toDomainValue(value.get(i));
+            domainValue.add(i, element);
+            // VAKOTODO should we simply decide the base type by looking at the first element?
+            var elementType = element.getClass();
+            if (baseDomainType == null) {
+                baseDomainType = elementType;
+            } else {
+                if (baseDomainType.isAssignableFrom(elementType)) {
+                    // do nothing
+                } else if (elementType.isAssignableFrom(baseDomainType)) {
+                    baseDomainType = elementType;
+                } else {
+                    throw new SQLFeatureNotSupportedException(format(
+                            "[%s] contains elements of incompatible types: baseDomainType [%s], elementType [%s], element index [%d]",
+                            value, baseDomainType, elementType, i));
+                }
+            }
+        }
+        return new ArrayWithBaseType(domainValue, baseDomainType); // VAKOTODO do we actually need `ArrayWithBaseType`?
+    }
+
+    @SuppressWarnings("ArrayRecordComponent")
+    public record ArrayWithBaseType(List<?> domainValue, @Nullable Class<?> baseDomainType) {}
 }

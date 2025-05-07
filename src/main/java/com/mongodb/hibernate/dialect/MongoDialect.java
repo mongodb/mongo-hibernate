@@ -105,4 +105,9 @@ public final class MongoDialect extends Dialect {
     public AggregateSupport getAggregateSupport() {
         return MongoAggregateSupport.INSTANCE;
     }
+
+    @Override
+    public boolean supportsStandardArrays() {
+        return true;
+    }
 }

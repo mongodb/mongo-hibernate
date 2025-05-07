@@ -31,6 +31,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Collection;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
 import org.hibernate.boot.MetadataSources;
@@ -46,10 +48,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(
         annotatedClasses = {
             EmbeddableIntegrationTests.ItemWithFlattenedValues.class,
-            EmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class
+            EmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class,
+            EmbeddableIntegrationTests.ItemWithFlattenedValueHavingArraysAndCollections.class
         })
 @ExtendWith(MongoExtension.class)
-class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -139,6 +142,47 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         assertEquals(updatedItem, loadedItem);
     }
 
+    @Test
+    void testFlattenedValueHavingArraysAndCollections() {
+        var item = new ItemWithFlattenedValueHavingArraysAndCollections();
+        {
+            item.id = 1;
+            item.flattened = new MultiValueWithArraysAndCollections();
+            item.flattened.ints = new int[] {2, 3};
+            item.flattened.intsCollection = List.of(4, 5);
+        }
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    flattened_ints: [2, 3]
+                    flattened_intsCollection: [4, 5]
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id));
+        assertEquals(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id);
+            result.flattened.ints[0] = -result.flattened.ints[0];
+            result.flattened.intsCollection.remove(5);
+            result.flattened.intsCollection.add(-5);
+            return result;
+        });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    flattened_ints: [-2, 3]
+                    flattened_intsCollection: [4, -5]
+                }
+                """);
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, updatedItem.id));
+        assertEquals(updatedItem, loadedItem);
+    }
+
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
@@ -164,7 +208,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    static class SingleValue {
+    public static class SingleValue {
         int a;
     }
 
@@ -206,6 +250,23 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Embeddable
     static class EmptyValue {}
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithFlattenedValueHavingArraysAndCollections {
+        @Id
+        int id;
+
+        @AttributeOverride(name = "ints", column = @Column(name = "flattened_ints"))
+        @AttributeOverride(name = "intsCollection", column = @Column(name = "flattened_intsCollection"))
+        MultiValueWithArraysAndCollections flattened;
+    }
+
+    @Embeddable
+    static class MultiValueWithArraysAndCollections {
+        int[] ints;
+        Collection<Integer> intsCollection;
+    }
 
     @Nested
     class Unsupported {
