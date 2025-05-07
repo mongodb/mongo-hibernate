@@ -25,24 +25,28 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import org.bson.BsonDocument;
-import org.hibernate.annotations.DynamicUpdate;
+import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
-        annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookDynamicallyUpdated.class
+        annotatedClasses = {
+            BasicCrudIntegrationTests.Item.class,
+            BasicCrudIntegrationTests.ItemDynamicallyUpdated.class,
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    @InjectMongoCollection("books")
+    @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -56,50 +60,79 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     class InsertTests {
         @Test
         void testSimpleEntityInsertion() {
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            var expectedDocument = BsonDocument.parse(
+            sessionFactoryScope.inTransaction(session -> session.persist(new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    "str",
+                    BigDecimal.valueOf(10.1),
+                    new ObjectId("000000000000000000000001"))));
+            assertCollectionContainsExactly(
                     """
                     {
                         _id: 1,
-                        title: "War and Peace",
-                        author: "Leo Tolstoy",
-                        publishYear: 1867
-                    }""");
-            assertCollectionContainsExactly(expectedDocument);
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: true,
+                        boxedChar: "c",
+                        boxedInt: 1,
+                        boxedLong: {$numberLong: "9223372036854775807"},
+                        boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                        boxedBoolean: true,
+                        string: "str",
+                        bigDecimal: {$numberDecimal: "10.1"},
+                        objectId: {$oid: "000000000000000000000001"}
+                    }
+                    """);
         }
 
         @Test
-        void testEntityWithNullFieldValueInsertion() {
-            var author =
-                    """
-                    TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74,
-                    TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 Make sure `book.author`
-                    is set to `null` when we implement `MongoPreparedStatement.setNull` properly.""";
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = author;
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            var expectedDocument = BsonDocument.parse(
+        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        void testEntityWithNullFieldValuesInsertion() {
+            sessionFactoryScope.inTransaction(session -> session.persist(new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null)));
+            assertCollectionContainsExactly(
                     """
                     {
                         _id: 1,
-                        title: "War and Peace",
-                        author: "%s",
-                        publishYear: 1867
-                    }"""
-                            .formatted(author));
-            assertCollectionContainsExactly(expectedDocument);
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: true,
+                        boxedChar: null,
+                        boxedInt: null,
+                        boxedLong: null,
+                        boxedDouble: null,
+                        boxedBoolean: null,
+                        string: null,
+                        bigDecimal: null,
+                        objectId: null
+                    }
+                    """);
         }
     }
 
@@ -110,19 +143,26 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         void testSimpleDeletion() {
 
             var id = 1;
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = id;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
-            });
+            sessionFactoryScope.inTransaction(session -> session.persist(new Item(
+                    id,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    "str",
+                    BigDecimal.valueOf(10.1),
+                    new ObjectId("000000000000000000000001"))));
             assertThat(mongoCollection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
-                var book = session.getReference(Book.class, id);
-                session.remove(book);
+                var item = session.getReference(Item.class, id);
+                session.remove(item);
             });
 
             assertThat(mongoCollection.find()).isEmpty();
@@ -135,44 +175,138 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testSimpleUpdate() {
             sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
+                var item = new Item(
+                        1,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        "str",
+                        BigDecimal.valueOf(10.1),
+                        new ObjectId("000000000000000000000001"));
+                session.persist(item);
                 session.flush();
-
-                book.title = "Resurrection";
-                book.publishYear = 1899;
+                item.primitiveBoolean = false;
+                item.boxedBoolean = false;
             });
 
             assertCollectionContainsExactly(
-                    BsonDocument.parse(
-                            """
-                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
-                            """));
+                    """
+                    {
+                        _id: 1,
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: false,
+                        boxedChar: "c",
+                        boxedInt: 1,
+                        boxedLong: {$numberLong: "9223372036854775807"},
+                        boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                        boxedBoolean: false,
+                        string: "str",
+                        bigDecimal: {$numberDecimal: "10.1"},
+                        objectId: {$oid: "000000000000000000000001"}
+                    }
+                    """);
+        }
+
+        @Test
+        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        void testSimpleUpdateWithNullFieldValues() {
+            sessionFactoryScope.inTransaction(session -> {
+                var item = new Item(
+                        1,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        "str",
+                        BigDecimal.valueOf(10.1),
+                        new ObjectId("000000000000000000000001"));
+                session.persist(item);
+                session.flush();
+                item.boxedChar = null;
+                item.boxedInt = null;
+                item.boxedLong = null;
+                item.boxedDouble = null;
+                item.boxedBoolean = null;
+                item.string = null;
+                item.bigDecimal = null;
+                item.objectId = null;
+            });
+
+            assertCollectionContainsExactly(
+                    """
+                    {
+                        _id: 1,
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: true,
+                        boxedChar: null,
+                        boxedInt: null,
+                        boxedLong: null,
+                        boxedDouble: null,
+                        boxedBoolean: null,
+                        string: null,
+                        bigDecimal: null,
+                        objectId: null
+                    }
+                    """);
         }
 
         @Test
         void testDynamicUpdate() {
             sessionFactoryScope.inTransaction(session -> {
-                var book = new BookDynamicallyUpdated();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1899;
-                session.persist(book);
+                var item = new ItemDynamicallyUpdated(1, true, true);
+                session.persist(item);
                 session.flush();
-
-                book.publishYear = 1867;
+                item.primitiveBoolean = false;
+                item.boxedBoolean = false;
             });
 
             assertCollectionContainsExactly(
-                    BsonDocument.parse(
-                            """
-                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
-                            """));
+                    """
+                    {
+                        _id: 1,
+                        primitiveBoolean: false,
+                        boxedBoolean: false
+                    }
+                    """);
+        }
+
+        @Test
+        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        void testDynamicUpdateWithNullFieldValues() {
+            sessionFactoryScope.inTransaction(session -> {
+                var item = new ItemDynamicallyUpdated(1, false, true);
+                session.persist(item);
+                session.flush();
+                item.boxedBoolean = null;
+            });
+
+            assertCollectionContainsExactly(
+                    """
+                    {
+                        _id: 1,
+                        primitiveBoolean: false,
+                        boxedBoolean: null
+                    }
+                    """);
         }
     }
 
@@ -180,64 +314,113 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     class SelectTests {
 
         @Test
-        void testFindByPrimaryKeyWithoutNullValueField() {
-            var book = new Book();
-            book.id = 1;
-            book.author = "Marcel Proust";
-            book.title = "In Search of Lost Time";
-            book.publishYear = 1913;
+        void testFindByPrimaryKey() {
+            var item = new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    "str",
+                    BigDecimal.valueOf(10.1),
+                    new ObjectId("000000000000000000000001"));
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
 
-            sessionFactoryScope.inTransaction(session -> session.persist(book));
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.find(Book.class, 1));
-            assertEq(book, loadedBook);
+            var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
+            assertEq(item, loadedItem);
         }
 
         @Test
-        void testFindByPrimaryKeyWithNullValueField() {
-            var book = new Book();
-            book.id = 1;
-            book.title = "Brave New World";
-            book.author =
-                    """
-                    TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74,
-                    TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 Make sure `book.author`
-                    is set to `null` when we implement `MongoPreparedStatement.setNull` properly.""";
-            book.publishYear = 1932;
+        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        void testFindByPrimaryKeyWithNullFieldValues() {
+            var item = new Item(
+                    1, 'c', 1, Long.MAX_VALUE, Double.MAX_VALUE, true, null, null, null, null, null, null, null, null);
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
 
-            sessionFactoryScope.inTransaction(session -> session.persist(book));
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.find(Book.class, 1));
-            assertEq(book, loadedBook);
+            var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
+            assertEq(item, loadedItem);
         }
     }
 
-    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(mongoCollection.find()).containsExactly(expectedDoc);
+    private static void assertCollectionContainsExactly(String json) {
+        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(json));
     }
 
     @Entity
-    @Table(name = "books")
-    static class Book {
+    @Table(name = "items")
+    static class Item {
         @Id
         int id;
 
-        String title;
+        char primitiveChar;
+        int primitiveInt;
+        long primitiveLong;
+        double primitiveDouble;
+        boolean primitiveBoolean;
+        Character boxedChar;
+        Integer boxedInt;
+        Long boxedLong;
+        Double boxedDouble;
+        Boolean boxedBoolean;
+        String string;
+        BigDecimal bigDecimal;
+        ObjectId objectId;
 
-        String author;
+        Item() {}
 
-        int publishYear;
+        Item(
+                int id,
+                char primitiveChar,
+                int primitiveInt,
+                long primitiveLong,
+                double primitiveDouble,
+                boolean primitiveBoolean,
+                Character boxedChar,
+                Integer boxedInt,
+                Long boxedLong,
+                Double boxedDouble,
+                Boolean boxedBoolean,
+                String string,
+                BigDecimal bigDecimal,
+                ObjectId objectId) {
+            this.id = id;
+            this.primitiveChar = primitiveChar;
+            this.primitiveInt = primitiveInt;
+            this.primitiveLong = primitiveLong;
+            this.primitiveDouble = primitiveDouble;
+            this.primitiveBoolean = primitiveBoolean;
+            this.boxedChar = boxedChar;
+            this.boxedInt = boxedInt;
+            this.boxedLong = boxedLong;
+            this.boxedDouble = boxedDouble;
+            this.boxedBoolean = boxedBoolean;
+            this.string = string;
+            this.bigDecimal = bigDecimal;
+            this.objectId = objectId;
+        }
     }
 
     @Entity
-    @Table(name = "books")
-    @DynamicUpdate
-    static class BookDynamicallyUpdated {
+    @Table(name = "items")
+    static class ItemDynamicallyUpdated {
         @Id
         int id;
 
-        String title;
+        boolean primitiveBoolean;
+        Boolean boxedBoolean;
 
-        String author;
+        ItemDynamicallyUpdated() {}
 
-        int publishYear;
+        ItemDynamicallyUpdated(int id, boolean primitiveBoolean, Boolean boxedBoolean) {
+            this.id = id;
+            this.primitiveBoolean = primitiveBoolean;
+            this.boxedBoolean = boxedBoolean;
+        }
     }
 }

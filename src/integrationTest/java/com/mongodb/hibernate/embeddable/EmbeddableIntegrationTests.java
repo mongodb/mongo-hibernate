@@ -17,11 +17,11 @@
 package com.mongodb.hibernate.embeddable;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.AccessType;
@@ -31,14 +31,21 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.bson.BsonDocument;
+import org.bson.types.ObjectId;
+import org.hibernate.HibernateException;
 import org.hibernate.annotations.Parent;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,10 +54,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(
         annotatedClasses = {
             EmbeddableIntegrationTests.ItemWithFlattenedValues.class,
-            EmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class
+            EmbeddableIntegrationTests.ItemWithFlattenedValueHavingArraysAndCollections.class,
+            EmbeddableIntegrationTests.Unsupported.ItemWithFlattenedValueHavingStructAggregateEmbeddable.class
         })
 @ExtendWith(MongoExtension.class)
-class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -58,7 +66,25 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Test
     void testFlattenedValues() {
-        var item = new ItemWithFlattenedValues(new Single(1), new Single(2), new PairWithParent(3, new Pair(4, 5)));
+        var item = new ItemWithFlattenedValues(
+                new Single(1),
+                new Single(2),
+                new PairWithParent(
+                        3,
+                        new Plural(
+                                'c',
+                                1,
+                                Long.MAX_VALUE,
+                                Double.MAX_VALUE,
+                                true,
+                                'c',
+                                1,
+                                Long.MAX_VALUE,
+                                Double.MAX_VALUE,
+                                true,
+                                "str",
+                                BigDecimal.valueOf(10.1),
+                                new ObjectId("000000000000000000000001"))));
         item.flattened2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -67,8 +93,19 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     _id: 1,
                     flattened1_a: 2,
                     flattened2_a: 3,
-                    flattened2_flattened_a: 4,
-                    flattened2_flattened_b: 5
+                    primitiveChar: "c",
+                    primitiveInt: 1,
+                    primitiveLong: {$numberLong: "9223372036854775807"},
+                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                    primitiveBoolean: true,
+                    boxedChar: "c",
+                    boxedInt: 1,
+                    boxedLong: {$numberLong: "9223372036854775807"},
+                    boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                    boxedBoolean: true,
+                    string: "str",
+                    bigDecimal: {$numberDecimal: "10.1"},
+                    objectId: {$oid: "000000000000000000000001"}
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -85,8 +122,19 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     _id: 1,
                     flattened1_a: -2,
                     flattened2_a: 3,
-                    flattened2_flattened_a: 4,
-                    flattened2_flattened_b: 5
+                    primitiveChar: "c",
+                    primitiveInt: 1,
+                    primitiveLong: {$numberLong: "9223372036854775807"},
+                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                    primitiveBoolean: true,
+                    boxedChar: "c",
+                    boxedInt: 1,
+                    boxedLong: {$numberLong: "9223372036854775807"},
+                    boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                    boxedBoolean: true,
+                    string: "str",
+                    bigDecimal: {$numberDecimal: "10.1"},
+                    objectId: {$oid: "000000000000000000000001"}
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -95,36 +143,288 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void testFlattenedEmptyValue() {
-        var item = new ItemWithOmittedEmptyValue(1, new Empty());
+    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    void testFlattenedNullValueOrHavingNulls() {
+        var item = new ItemWithFlattenedValues(
+                new Single(1),
+                null,
+                new PairWithParent(
+                        3,
+                        new Plural(
+                                'c',
+                                1,
+                                Long.MAX_VALUE,
+                                Double.MAX_VALUE,
+                                true,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null)));
+        item.flattened2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
-                // Hibernate ORM does not store/read the empty `item.omitted` value.
-                // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
                 """
                 {
-                    _id: 1
+                    _id: 1,
+                    flattened1_a: null,
+                    flattened2_a: 3,
+                    primitiveChar: "c",
+                    primitiveInt: 1,
+                    primitiveLong: {$numberLong: "9223372036854775807"},
+                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                    primitiveBoolean: true,
+                    boxedChar: null,
+                    boxedInt: null,
+                    boxedLong: null,
+                    boxedDouble: null,
+                    boxedBoolean: null,
+                    string: null,
+                    bigDecimal: null,
+                    objectId: null
                 }
                 """);
-        var loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
-        assertUsingRecursiveComparison(item, loadedItem, (assertion, actual) -> assertion
-                .ignoringFields("omitted")
-                .isEqualTo(actual));
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValues.class, item.flattenedId));
+        assertEq(item, loadedItem);
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
-            var result = session.find(ItemWithOmittedEmptyValue.class, item.id);
-            result.omitted = null;
+            var result = session.find(ItemWithFlattenedValues.class, item.flattenedId);
+            result.flattened2.flattened = null;
             return result;
         });
         assertCollectionContainsExactly(
                 """
                 {
-                    _id: 1
+                    _id: 1,
+                    flattened1_a: null,
+                    flattened2_a: 3
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
-                session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
+                session -> session.find(ItemWithFlattenedValues.class, updatedItem.flattenedId));
         assertEq(updatedItem, loadedItem);
+    }
+
+    @Test
+    void testFlattenedValueHavingArraysAndCollections() {
+        var item = new ItemWithFlattenedValueHavingArraysAndCollections(
+                1,
+                new ArraysAndCollections(
+                        // TODO-HIBERNATE-48 sprinkle on `null` array/collection elements
+                        new byte[] {2, 3},
+                        new char[] {'s', 't', 'r'},
+                        new int[] {5},
+                        new long[] {Long.MAX_VALUE, 6},
+                        new double[] {Double.MAX_VALUE},
+                        new boolean[] {true},
+                        new Character[] {'s', 't', 'r'},
+                        new Integer[] {7},
+                        new Long[] {8L},
+                        new Double[] {9.1d},
+                        new Boolean[] {true},
+                        new String[] {"str"},
+                        new BigDecimal[] {BigDecimal.valueOf(10.1)},
+                        new ObjectId[] {new ObjectId("000000000000000000000001")},
+                        new StructAggregateEmbeddableIntegrationTests.Single[] {
+                            new StructAggregateEmbeddableIntegrationTests.Single(1)
+                        },
+                        List.of('s', 't', 'r'),
+                        Set.of(5),
+                        List.of(Long.MAX_VALUE, 6L),
+                        List.of(Double.MAX_VALUE),
+                        List.of(true),
+                        List.of("str"),
+                        List.of(BigDecimal.valueOf(10.1)),
+                        List.of(new ObjectId("000000000000000000000001")),
+                        List.of(new StructAggregateEmbeddableIntegrationTests.Single(1))));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    bytes: {$binary: {base64: "AgM=", subType: "0"}},
+                    chars: "str",
+                    ints: [5],
+                    longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
+                    doubles: [{$numberDouble: "1.7976931348623157E308"}],
+                    booleans: [true],
+                    boxedChars: ["s", "t", "r"],
+                    boxedInts: [7],
+                    boxedLongs: [{$numberLong: "8"}],
+                    boxedDoubles: [{$numberDouble: "9.1"}],
+                    boxedBooleans: [true],
+                    strings: ["str"],
+                    bigDecimals: [{$numberDecimal: "10.1"}],
+                    objectIds: [{$oid: "000000000000000000000001"}],
+                    structAggregateEmbeddables: [{a: 1}],
+                    charsCollection: ["s", "t", "r"],
+                    intsCollection: [5],
+                    longsCollection: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
+                    doublesCollection: [{$numberDouble: "1.7976931348623157E308"}],
+                    booleansCollection: [true],
+                    stringsCollection: ["str"],
+                    bigDecimalsCollection: [{$numberDecimal: "10.1"}],
+                    objectIdsCollection: [{$oid: "000000000000000000000001"}],
+                    structAggregateEmbeddablesCollection: [{a: 1}]
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id));
+        assertEq(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id);
+            result.flattened.bytes[0] = (byte) -result.flattened.bytes[0];
+            result.flattened.longs[1] = -result.flattened.longs[1];
+            result.flattened.objectIds[0] = new ObjectId("000000000000000000000002");
+            result.flattened.longsCollection.remove(6L);
+            result.flattened.longsCollection.add(-6L);
+            return result;
+        });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    bytes: {$binary: {base64: "/gM=", subType: "0"}},
+                    chars: "str",
+                    ints: [5],
+                    longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
+                    doubles: [{$numberDouble: "1.7976931348623157E308"}],
+                    booleans: [true],
+                    boxedChars: ["s", "t", "r"],
+                    boxedInts: [7],
+                    boxedLongs: [{$numberLong: "8"}],
+                    boxedDoubles: [{$numberDouble: "9.1"}],
+                    boxedBooleans: [true],
+                    strings: ["str"],
+                    bigDecimals: [{$numberDecimal: "10.1"}],
+                    objectIds: [{$oid: "000000000000000000000002"}],
+                    structAggregateEmbeddables: [{a: 1}],
+                    charsCollection: ["s", "t", "r"],
+                    intsCollection: [5],
+                    longsCollection: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
+                    doublesCollection: [{$numberDouble: "1.7976931348623157E308"}],
+                    booleansCollection: [true],
+                    stringsCollection: ["str"],
+                    bigDecimalsCollection: [{$numberDecimal: "10.1"}],
+                    objectIdsCollection: [{$oid: "000000000000000000000001"}],
+                    structAggregateEmbeddablesCollection: [{a: 1}]
+                }
+                """);
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, updatedItem.id));
+        assertEq(updatedItem, loadedItem);
+    }
+
+    @Test
+    void testFlattenedValueHavingEmptyArraysAndCollections() {
+        var item = new ItemWithFlattenedValueHavingArraysAndCollections(
+                1,
+                new ArraysAndCollections(
+                        new byte[0],
+                        new char[0],
+                        new int[0],
+                        new long[0],
+                        new double[0],
+                        new boolean[0],
+                        new Character[0],
+                        new Integer[0],
+                        new Long[0],
+                        new Double[0],
+                        new Boolean[0],
+                        new String[0],
+                        new BigDecimal[0],
+                        new ObjectId[0],
+                        new StructAggregateEmbeddableIntegrationTests.Single[0],
+                        List.of(),
+                        Set.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of()));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    bytes: {$binary: {base64: "", subType: "0"}},
+                    chars: "",
+                    ints: [],
+                    longs: [],
+                    doubles: [],
+                    booleans: [],
+                    boxedChars: [],
+                    boxedInts: [],
+                    boxedLongs: [],
+                    boxedDoubles: [],
+                    boxedBooleans: [],
+                    strings: [],
+                    bigDecimals: [],
+                    objectIds: [],
+                    structAggregateEmbeddables: [],
+                    charsCollection: [],
+                    intsCollection: [],
+                    longsCollection: [],
+                    doublesCollection: [],
+                    booleansCollection: [],
+                    stringsCollection: [],
+                    bigDecimalsCollection: [],
+                    objectIdsCollection: [],
+                    structAggregateEmbeddablesCollection: []
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id));
+        assertEq(item, loadedItem);
+    }
+
+    @Test
+    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    void testFlattenedValueHavingNullArraysAndCollections() {
+        var item = new ItemWithFlattenedValueHavingArraysAndCollections(
+                1,
+                new ArraysAndCollections(
+                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null, null));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    bytes: null,
+                    chars: null,
+                    ints: null,
+                    longs: null,
+                    doubles: null,
+                    booleans: null,
+                    boxedChars: null,
+                    boxedInts: null,
+                    boxedLongs: null,
+                    boxedDoubles: null,
+                    boxedBooleans: null,
+                    strings: null,
+                    bigDecimals: null,
+                    objectIds: null,
+                    structAggregateEmbeddables: null,
+                    charsCollection: null,
+                    intsCollection: null,
+                    longsCollection: null,
+                    doublesCollection: null,
+                    booleansCollection: null,
+                    stringsCollection: null,
+                    bigDecimalsCollection: null,
+                    objectIdsCollection: null,
+                    structAggregateEmbeddablesCollection: null
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id));
+        assertEq(item, loadedItem);
     }
 
     @Override
@@ -146,8 +446,6 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         Single flattened1;
 
         @AttributeOverride(name = "a", column = @Column(name = "flattened2_a"))
-        @AttributeOverride(name = "flattened.a", column = @Column(name = "flattened2_flattened_a"))
-        @AttributeOverride(name = "flattened.b", column = @Column(name = "flattened2_flattened_b"))
         PairWithParent flattened2;
 
         ItemWithFlattenedValues() {}
@@ -160,7 +458,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    static class Single {
+    public static class Single {
         int a;
 
         Single() {}
@@ -187,13 +485,13 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Embeddable
     static class PairWithParent {
         int a;
-        Pair flattened;
+        Plural flattened;
 
         @Parent ItemWithFlattenedValues parent;
 
         PairWithParent() {}
 
-        PairWithParent(int a, Pair flattened) {
+        PairWithParent(int a, Plural flattened) {
             this.a = a;
             this.flattened = flattened;
         }
@@ -216,42 +514,183 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    record Pair(int a, int b) {}
+    record Plural(
+            char primitiveChar,
+            int primitiveInt,
+            long primitiveLong,
+            double primitiveDouble,
+            boolean primitiveBoolean,
+            Character boxedChar,
+            Integer boxedInt,
+            Long boxedLong,
+            Double boxedDouble,
+            Boolean boxedBoolean,
+            String string,
+            BigDecimal bigDecimal,
+            ObjectId objectId) {}
 
     @Entity
     @Table(name = "items")
-    static class ItemWithOmittedEmptyValue {
+    static class ItemWithFlattenedValueHavingArraysAndCollections {
         @Id
         int id;
 
-        Empty omitted;
+        ArraysAndCollections flattened;
 
-        ItemWithOmittedEmptyValue() {}
+        ItemWithFlattenedValueHavingArraysAndCollections() {}
 
-        ItemWithOmittedEmptyValue(int id, Empty omitted) {
+        ItemWithFlattenedValueHavingArraysAndCollections(int id, ArraysAndCollections flattened) {
             this.id = id;
-            this.omitted = omitted;
+            this.flattened = flattened;
         }
     }
 
     @Embeddable
-    static class Empty {}
+    static class ArraysAndCollections {
+        byte[] bytes;
+        char[] chars;
+        int[] ints;
+        long[] longs;
+        double[] doubles;
+        boolean[] booleans;
+        Character[] boxedChars;
+        Integer[] boxedInts;
+        Long[] boxedLongs;
+        Double[] boxedDoubles;
+        Boolean[] boxedBooleans;
+        String[] strings;
+        BigDecimal[] bigDecimals;
+        ObjectId[] objectIds;
+        StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables;
+        List<Character> charsCollection;
+        Set<Integer> intsCollection;
+        Collection<Long> longsCollection;
+        Collection<Double> doublesCollection;
+        Collection<Boolean> booleansCollection;
+        Collection<String> stringsCollection;
+        Collection<BigDecimal> bigDecimalsCollection;
+        Collection<ObjectId> objectIdsCollection;
+        Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
+
+        ArraysAndCollections() {}
+
+        ArraysAndCollections(
+                byte[] bytes,
+                char[] chars,
+                int[] ints,
+                long[] longs,
+                double[] doubles,
+                boolean[] booleans,
+                Character[] boxedChars,
+                Integer[] boxedInts,
+                Long[] boxedLongs,
+                Double[] boxedDoubles,
+                Boolean[] boxedBooleans,
+                String[] strings,
+                BigDecimal[] bigDecimals,
+                ObjectId[] objectIds,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
+                List<Character> charsCollection,
+                Set<Integer> intsCollection,
+                Collection<Long> longsCollection,
+                Collection<Double> doublesCollection,
+                Collection<Boolean> booleansCollection,
+                Collection<String> stringsCollection,
+                Collection<BigDecimal> bigDecimalsCollection,
+                Collection<ObjectId> objectIdsCollection,
+                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
+            this.bytes = bytes;
+            this.chars = chars;
+            this.ints = ints;
+            this.longs = longs;
+            this.doubles = doubles;
+            this.booleans = booleans;
+            this.boxedChars = boxedChars;
+            this.boxedInts = boxedInts;
+            this.boxedLongs = boxedLongs;
+            this.boxedDoubles = boxedDoubles;
+            this.boxedBooleans = boxedBooleans;
+            this.strings = strings;
+            this.bigDecimals = bigDecimals;
+            this.objectIds = objectIds;
+            this.structAggregateEmbeddables = structAggregateEmbeddables;
+            this.charsCollection = charsCollection;
+            this.intsCollection = intsCollection;
+            this.longsCollection = longsCollection;
+            this.doublesCollection = doublesCollection;
+            this.booleansCollection = booleansCollection;
+            this.stringsCollection = stringsCollection;
+            this.bigDecimalsCollection = bigDecimalsCollection;
+            this.objectIdsCollection = objectIdsCollection;
+            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+        }
+    }
 
     @Nested
     class Unsupported {
         @Test
         void testPrimaryKeySpanningMultipleFields() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithPairAsId.class)
+                            .addAnnotatedClass(ItemWithPluralAsId.class)
                             .buildMetadata())
                     .hasMessageContaining("does not support primary key spanning multiple columns");
         }
 
+        @Test
+        void testStructAggregateEmbeddable() {
+            var item = new ItemWithFlattenedValueHavingStructAggregateEmbeddable(
+                    1,
+                    new SingleHavingStructAggregateEmbeddable(new StructAggregateEmbeddableIntegrationTests.Single(2)));
+            assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
+                    .isInstanceOf(HibernateException.class);
+        }
+
+        @Test
+        void testNoPersistentAttributes() {
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(ItemWithFlattenedValueHavingNoPersistentAttributes.class)
+                            .buildMetadata()
+                            .buildSessionFactory()
+                            .close())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("must have at least one persistent attribute");
+        }
+
         @Entity
         @Table(name = "items")
-        static class ItemWithPairAsId {
+        static class ItemWithPluralAsId {
             @Id
-            Pair id;
+            Plural id;
         }
+
+        @Entity
+        @Table(name = "items")
+        static class ItemWithFlattenedValueHavingStructAggregateEmbeddable {
+            @Id
+            int id;
+
+            SingleHavingStructAggregateEmbeddable flattened;
+
+            ItemWithFlattenedValueHavingStructAggregateEmbeddable(
+                    int id, SingleHavingStructAggregateEmbeddable flattened) {
+                this.id = id;
+                this.flattened = flattened;
+            }
+        }
+
+        @Embeddable
+        record SingleHavingStructAggregateEmbeddable(StructAggregateEmbeddableIntegrationTests.Single nested) {}
+
+        @Entity
+        @Table(name = "items")
+        static class ItemWithFlattenedValueHavingNoPersistentAttributes {
+            @Id
+            int id;
+
+            NoPersistentAttributes flattened;
+        }
+
+        @Embeddable
+        static class NoPersistentAttributes {}
     }
 }

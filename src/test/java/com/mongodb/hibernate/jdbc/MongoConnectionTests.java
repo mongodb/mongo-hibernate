@@ -141,8 +141,6 @@ class MongoConnectionTests {
                         () -> mongoConnection.prepareStatement(exampleQueryMql, TYPE_FORWARD_ONLY, CONCUR_READ_ONLY)),
                 () -> assertThrowsClosedException(
                         () -> mongoConnection.createArrayOf("myArrayType", new String[] {"value1", "value2"})),
-                () -> assertThrowsClosedException(
-                        () -> mongoConnection.createStruct("myStructType", new Object[] {1, "Toronto"})),
                 () -> assertThrowsClosedException(mongoConnection::getMetaData),
                 () -> assertThrowsClosedException(mongoConnection::getCatalog),
                 () -> assertThrowsClosedException(mongoConnection::getSchema),

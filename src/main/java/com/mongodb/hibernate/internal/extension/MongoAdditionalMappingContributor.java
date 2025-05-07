@@ -61,13 +61,15 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             forbidDynamicInsert(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
+            forbidEmbeddablesWithoutPersistentAttributes(metadata);
             setIdentifierColumnName(persistentClass);
         });
     }
 
     private static void forbidDynamicInsert(PersistentClass persistentClass) {
         if (persistentClass.useDynamicInsert()) {
-            throw new FeatureNotSupportedException(format("%s is not supported", DynamicInsert.class.getSimpleName()));
+            throw new FeatureNotSupportedException(
+                    format("%s: %s is not supported", persistentClass, DynamicInsert.class.getSimpleName()));
         }
     }
 
@@ -98,6 +100,15 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                     Embeddable.class.getSimpleName(),
                     Struct.class.getSimpleName()));
         }
+    }
+
+    private static void forbidEmbeddablesWithoutPersistentAttributes(InFlightMetadataCollector metadata) {
+        metadata.visitRegisteredComponents(component -> {
+            if (component.getProperties().isEmpty()) {
+                throw new FeatureNotSupportedException(
+                        format("%s: must have at least one persistent attribute", component));
+            }
+        });
     }
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {

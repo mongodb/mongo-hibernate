@@ -16,14 +16,18 @@
 
 package com.mongodb.hibernate.internal.type;
 
+import static com.mongodb.hibernate.internal.type.ValueConversions.toObjectIdDomainValue;
+
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.Serial;
 import java.util.concurrent.ThreadLocalRandom;
+import org.bson.BsonValue;
 import org.bson.types.ObjectId;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.AbstractClassJavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
+import org.jspecify.annotations.Nullable;
 
 /** Thread-safe. */
 public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
@@ -44,20 +48,26 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     }
 
     @Override
-    public <X> X unwrap(ObjectId value, Class<X> type, WrapperOptions options) {
+    public <X> @Nullable X unwrap(@Nullable ObjectId value, Class<X> type, WrapperOptions options) {
+        if (type.equals(Object.class)) {
+            return type.cast(value);
+        } else {
+            throw new FeatureNotSupportedException();
+        }
+    }
+
+    @Override
+    public <X> @Nullable ObjectId wrap(@Nullable X value, WrapperOptions options) {
+        if (value instanceof ObjectId v) {
+            return v;
+        } else if (value instanceof BsonValue v) {
+            return toObjectIdDomainValue(v);
+        }
         throw new FeatureNotSupportedException();
     }
 
     @Override
-    public <X> ObjectId wrap(X value, WrapperOptions options) {
-        if (!(value instanceof ObjectId wrapped)) {
-            throw new FeatureNotSupportedException();
-        }
-        return wrapped;
-    }
-
-    @Override
-    public boolean equals(Object o) {
+    public boolean equals(@Nullable Object o) {
         return o != null && getClass() == o.getClass();
     }
 
