@@ -44,7 +44,7 @@ public final class ObjectIdJdbcType implements JdbcType {
     private ObjectIdJdbcType() {}
 
     @Override
-    public int getJdbcTypeCode() {
+    public int getJdbcTypeCode() { // VAKOTODO use instead of exposing MQL_TYPE?
         return MQL_TYPE.getVendorTypeNumber();
     }
 

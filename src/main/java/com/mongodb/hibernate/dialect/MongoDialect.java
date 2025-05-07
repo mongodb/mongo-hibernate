@@ -21,6 +21,7 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
+import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
@@ -31,6 +32,7 @@ import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -91,9 +93,25 @@ public final class MongoDialect extends Dialect {
     @Override
     public void contribute(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
         super.contribute(typeContributions, serviceRegistry);
+        contributeObjectIdType(typeContributions);
+        typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
+    }
+
+    private void contributeObjectIdType(TypeContributions typeContributions) {
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
         typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
-        typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
+        var objectIdTypeCode = MqlType.OBJECT_ID.getVendorTypeNumber();
+        typeContributions
+                .getTypeConfiguration()
+                .getDdlTypeRegistry()
+                .addDescriptorIfAbsent(
+                        objectIdTypeCode,
+                        new DdlTypeImpl(
+                                objectIdTypeCode,
+                                format(
+                                        "unused from %s.contribute for SQL type code [%d]",
+                                        MongoDialect.class.getSimpleName(), objectIdTypeCode),
+                                this));
     }
 
     @Override
@@ -104,5 +122,10 @@ public final class MongoDialect extends Dialect {
     @Override
     public AggregateSupport getAggregateSupport() {
         return MongoAggregateSupport.INSTANCE;
+    }
+
+    @Override
+    public boolean supportsStandardArrays() {
+        return true;
     }
 }

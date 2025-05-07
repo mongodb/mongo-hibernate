@@ -17,15 +17,24 @@
 package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.jdbc.MongoArray;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
+import java.util.Collection;
+import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
+import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
@@ -34,6 +43,7 @@ import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}
@@ -45,8 +55,12 @@ public final class ValueConversions {
 
     public static BsonValue toBsonValue(Object value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
-        if (value instanceof Boolean v) {
+        if (value instanceof BsonDocument v) {
+            return v;
+        } else if (value instanceof Boolean v) {
             return toBsonValue(v.booleanValue());
+        } else if (value instanceof Character v) {
+            return toBsonValue(v.charValue());
         } else if (value instanceof Integer v) {
             return toBsonValue(v.intValue());
         } else if (value instanceof Long v) {
@@ -59,7 +73,15 @@ public final class ValueConversions {
             return toBsonValue(v);
         } else if (value instanceof byte[] v) {
             return toBsonValue(v);
+        } else if (value instanceof char[] v) {
+            return toBsonValue(v);
         } else if (value instanceof ObjectId v) {
+            return toBsonValue(v);
+        } else if (value instanceof MongoArray v) {
+            return toBsonValue(v);
+        } else if (value.getClass().isArray()) {
+            return arrayToBsonValue(value);
+        } else if (value instanceof Collection<?> v) {
             return toBsonValue(v);
         } else {
             throw new SQLFeatureNotSupportedException(format(
@@ -70,6 +92,17 @@ public final class ValueConversions {
 
     public static BsonBoolean toBsonValue(boolean value) {
         return BsonBoolean.valueOf(value);
+    }
+
+    /**
+     * <a
+     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-character">
+     * Hibernate ORM maps {@code char}/{@link Character} to {@link JDBCType#CHAR} by default</a>.
+     *
+     * @see #toDomainArrayElement(Object, Class, Class)
+     */
+    private static BsonString toBsonValue(char value) {
+        return new BsonString(Character.toString(value));
     }
 
     public static BsonInt32 toBsonValue(int value) {
@@ -92,17 +125,64 @@ public final class ValueConversions {
         return new BsonString(value);
     }
 
+    /**
+     * <a
+     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-bytearray">
+     * Hibernate ORM maps {@code byte[]} to {@link java.sql.JDBCType#VARBINARY} by default</a>.
+     *
+     * @see #toDomainValue(BsonBinary)
+     */
     public static BsonBinary toBsonValue(byte[] value) {
         return new BsonBinary(value);
+    }
+
+    /**
+     * <a
+     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-chararray">
+     * Hibernate ORM maps {@code char[]} to {@link java.sql.JDBCType#VARCHAR} by default</a>.
+     *
+     * @see #toDomainValue(BsonString, Class)
+     */
+    private static BsonString toBsonValue(char[] value) {
+        return new BsonString(String.valueOf(value));
     }
 
     public static BsonObjectId toBsonValue(ObjectId value) {
         return new BsonObjectId(value);
     }
 
-    static Object toDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
+    public static BsonArray toBsonValue(java.sql.Array value) throws SQLFeatureNotSupportedException {
+        Object contents;
+        try {
+            contents = value.getArray();
+        } catch (SQLException e) {
+            throw fail(e.toString());
+        }
+        return arrayToBsonValue(contents);
+    }
+
+    private static BsonArray arrayToBsonValue(Object value) throws SQLFeatureNotSupportedException {
+        var length = Array.getLength(value);
+        var elements = new ArrayList<BsonValue>(length);
+        for (int i = 0; i < length; i++) {
+            elements.add(toBsonValue(Array.get(value, i)));
+        }
+        return new BsonArray(elements);
+    }
+
+    private static BsonArray toBsonValue(Collection<?> value) throws SQLFeatureNotSupportedException {
+        var elements = new ArrayList<BsonValue>(value.size());
+        for (var e : value) {
+            elements.add(toBsonValue(e));
+        }
+        return new BsonArray(elements);
+    }
+
+    static Object toDomainValue(BsonValue value, Class<?> domainType) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
-        if (value instanceof BsonBoolean v) {
+        if (value instanceof BsonDocument v) {
+            return v;
+        } else if (value instanceof BsonBoolean v) {
             return toDomainValue(v);
         } else if (value instanceof BsonInt32 v) {
             return toDomainValue(v);
@@ -113,11 +193,19 @@ public final class ValueConversions {
         } else if (value instanceof BsonDecimal128 v) {
             return toDomainValue(v);
         } else if (value instanceof BsonString v) {
-            return toDomainValue(v);
+            var r = toDomainValue(v);
+            // VAKOTODO move to a method that will replace `toDomainArrayElement`
+            if (domainType.equals(char.class) || domainType.equals(Character.class)) {
+                return r.charAt(0);
+            }
+            return r;
         } else if (value instanceof BsonBinary v) {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
             return toDomainValue(v);
+        } else if (value instanceof BsonArray v) {
+            // VAKOTODO call toArrayDomainValue or the corresponding toDomainValue?
+            throw fail(v.toString());
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",
@@ -177,6 +265,7 @@ public final class ValueConversions {
         return toDomainValue(value.asBinary());
     }
 
+    /** @see #toBsonValue(byte[]) */
     private static byte[] toDomainValue(BsonBinary value) {
         return value.asBinary().getData();
     }
@@ -188,4 +277,70 @@ public final class ValueConversions {
     private static ObjectId toDomainValue(BsonObjectId value) {
         return value.getValue();
     }
+
+    // VAKOTODO combine arrayContentsType and arrayContentsCollectionElementType in a class?
+    public static MongoArray toArrayDomainValue(
+            BsonValue value, Class<?> arrayContentsType, @Nullable Class<?> arrayContentsCollectionElementType)
+            throws SQLFeatureNotSupportedException {
+        if (value instanceof BsonArray v) {
+            return toDomainValue(v, arrayContentsType, arrayContentsCollectionElementType);
+        } else if (value instanceof BsonString v) {
+            return toDomainValue(v, arrayContentsType);
+        } else {
+            throw new RuntimeException(format(
+                    "Invalid data: value [%s], arrayContentsType [%s], arrayContentsCollectionElementType [%s]",
+                    value, arrayContentsType, arrayContentsCollectionElementType));
+        }
+    }
+
+    private static MongoArray toDomainValue(
+            BsonArray value, Class<?> arrayContentsType, @Nullable Class<?> arrayContentsCollectionElementType)
+            throws SQLFeatureNotSupportedException {
+        var size = value.size();
+        var domainValueBuilder = MongoArray.builder(arrayContentsType, size);
+        for (int i = 0; i < size; i++) {
+            var elementDomainType = arrayContentsType.isArray()
+                    ? arrayContentsType.componentType()
+                    : arrayContentsCollectionElementType;
+            var element = toDomainValue(value.get(i), assertNotNull(elementDomainType));
+            domainValueBuilder.add(i, element);
+        }
+        return domainValueBuilder.build();
+    }
+
+    /** @see #toBsonValue(char[]) */
+    private static MongoArray toDomainValue(BsonString value, Class<?> arrayContentsType) {
+        var charsAsString = toDomainValue(value);
+        var size = charsAsString.length();
+        var domainValueBuilder = MongoArray.builder(arrayContentsType, size);
+        for (int i = 0; i < size; i++) {
+            var element = charsAsString.charAt(i);
+            domainValueBuilder.add(i, element);
+        }
+        return domainValueBuilder.build();
+    }
+
+    //    /** @see #toBsonValue(char) */
+    //    private static Object toDomainArrayElement(
+    //            Object arrayElementValue, Class<?> arrayContentsType, @Nullable Class<?>
+    // arrayContentsCollectionElementType) {
+    //        if (arrayContentsType.equals(Character[].class)
+    //                || Objects.equals(arrayContentsCollectionElementType, Character.class)) {
+    //            if (!(arrayElementValue instanceof String v)) {
+    //                throw new RuntimeException(format(
+    //                        "The data is invalid: [%s] is expected to be a value of s %s element, and must be of the
+    // %s type",
+    //                        arrayElementValue, Character[].class.getSimpleName(), String.class.getSimpleName()));
+    //            }
+    //            if (v.length() != 1) {
+    //                throw new RuntimeException(format(
+    //                        "The data is invalid: [%s] is expected to be a value of s %s element, and its length must
+    // be %d",
+    //                        v, Character[].class.getSimpleName(), 1));
+    //            }
+    //            return v.charAt(0);
+    //        } else {
+    //            return arrayElementValue;
+    //        }
+    //    }
 }
