@@ -31,6 +31,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
+import org.jspecify.annotations.Nullable;
 
 /** Thread-safe. */
 public final class ObjectIdJdbcType implements JdbcType {
@@ -105,18 +106,19 @@ public final class ObjectIdJdbcType implements JdbcType {
         }
 
         @Override
-        protected ObjectId doExtract(ResultSet rs, int paramIndex, WrapperOptions options) throws SQLException {
+        protected @Nullable ObjectId doExtract(ResultSet rs, int paramIndex, WrapperOptions options)
+                throws SQLException {
             return rs.getObject(paramIndex, getJavaType().getJavaTypeClass());
         }
 
         @Override
-        protected ObjectId doExtract(CallableStatement statement, int index, WrapperOptions options)
+        protected @Nullable ObjectId doExtract(CallableStatement statement, int index, WrapperOptions options)
                 throws SQLException {
             throw new SQLFeatureNotSupportedException();
         }
 
         @Override
-        protected ObjectId doExtract(CallableStatement statement, String name, WrapperOptions options)
+        protected @Nullable ObjectId doExtract(CallableStatement statement, String name, WrapperOptions options)
                 throws SQLException {
             throw new SQLFeatureNotSupportedException();
         }
