@@ -94,6 +94,7 @@ public final class MongoDialect extends Dialect {
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
         typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
         typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
+        // VAKOTODO remove typeContributions.getTypeConfiguration().getJdbcTypeRegistry().addTypeConstructor();
     }
 
     @Override
@@ -104,5 +105,10 @@ public final class MongoDialect extends Dialect {
     @Override
     public AggregateSupport getAggregateSupport() {
         return MongoAggregateSupport.INSTANCE;
+    }
+
+    @Override
+    public boolean supportsStandardArrays() {
+        return true;
     }
 }

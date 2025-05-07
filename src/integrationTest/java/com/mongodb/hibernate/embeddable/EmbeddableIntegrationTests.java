@@ -31,6 +31,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
@@ -47,10 +49,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @DomainModel(
         annotatedClasses = {
             EmbeddableIntegrationTests.ItemWithFlattenedValues.class,
-            EmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class
+            EmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class,
+            EmbeddableIntegrationTests.ItemWithFlattenedValueHavingArrayAndCollection.class
         })
 @ExtendWith(MongoExtension.class)
-class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -127,6 +130,42 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         assertEq(updatedItem, loadedItem);
     }
 
+    @Test
+    void testFlattenedValueHavingArrayAndCollection() {
+        var item = new ItemWithFlattenedValueHavingArrayAndCollection(
+                1, new PairOfArrayAndCollection(new int[] {2, 3}, List.of(4, 5)));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    flattened_ints: [2, 3]
+                    flattened_intsCollection: [4, 5]
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArrayAndCollection.class, item.id));
+        assertEq(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithFlattenedValueHavingArrayAndCollection.class, item.id);
+            result.flattened.ints[0] = -result.flattened.ints[0];
+            result.flattened.intsCollection.remove(5);
+            result.flattened.intsCollection.add(-5);
+            return result;
+        });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    flattened_ints: [-2, 3]
+                    flattened_intsCollection: [4, -5]
+                }
+                """);
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithFlattenedValueHavingArrayAndCollection.class, updatedItem.id));
+        assertEq(updatedItem, loadedItem);
+    }
+
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
@@ -160,7 +199,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    static class Single {
+    public static class Single {
         int a;
 
         Single() {}
@@ -236,6 +275,37 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Embeddable
     static class Empty {}
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithFlattenedValueHavingArrayAndCollection {
+        @Id
+        int id;
+
+        @AttributeOverride(name = "ints", column = @Column(name = "flattened_ints"))
+        @AttributeOverride(name = "intsCollection", column = @Column(name = "flattened_intsCollection"))
+        PairOfArrayAndCollection flattened;
+
+        ItemWithFlattenedValueHavingArrayAndCollection() {}
+
+        ItemWithFlattenedValueHavingArrayAndCollection(int id, PairOfArrayAndCollection flattened) {
+            this.id = id;
+            this.flattened = flattened;
+        }
+    }
+
+    @Embeddable
+    static class PairOfArrayAndCollection { // VAKOTODO use all types
+        int[] ints;
+        Collection<Integer> intsCollection;
+
+        PairOfArrayAndCollection() {}
+
+        PairOfArrayAndCollection(int[] ints, Collection<Integer> intsCollection) {
+            this.ints = ints;
+            this.intsCollection = intsCollection;
+        }
+    }
 
     @Nested
     class Unsupported {

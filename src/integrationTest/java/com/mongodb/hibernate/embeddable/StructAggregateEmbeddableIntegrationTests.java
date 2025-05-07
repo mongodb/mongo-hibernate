@@ -31,6 +31,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Collection;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
@@ -48,6 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             StructAggregateEmbeddableIntegrationTests.ItemWithNestedValues.class,
             StructAggregateEmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class,
+            StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingArrayAndCollection.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingAllNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class,
@@ -56,7 +59,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             StructAggregateEmbeddableIntegrationTests.Unsupported.Concrete.class
         })
 @ExtendWith(MongoExtension.class)
-class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -146,6 +149,46 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         assertEq(updatedItem, loadedItem);
     }
 
+    @Test
+    void testNestedValueHavingArrayAndCollection() {
+        var item = new ItemWithNestedValueHavingArrayAndCollection(
+                1, new PairOfArrayAndCollection(new int[] {2, 3}, List.of(4, 5)));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    nested: {
+                        ints: [2, 3],
+                        intsCollection: [4, 5]
+                    }
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValueHavingArrayAndCollection.class, item.id));
+        assertEq(item, loadedItem);
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(ItemWithNestedValueHavingArrayAndCollection.class, item.id);
+            result.nested.ints[0] = -2;
+            result.nested.intsCollection.remove(5);
+            result.nested.intsCollection.add(-5);
+            return result;
+        });
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    nested: {
+                        ints: [-2, 3],
+                        intsCollection: [4, -5]
+                    }
+                }
+                """);
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValueHavingArrayAndCollection.class, updatedItem.id));
+        assertEq(updatedItem, loadedItem);
+    }
+
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
@@ -177,7 +220,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Embeddable
     @Struct(name = "Single")
     static class Single {
-        int a;
+        public int a;
 
         Single() {}
 
@@ -241,6 +284,36 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Embeddable
     @Struct(name = "Empty")
     static class Empty {}
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithNestedValueHavingArrayAndCollection {
+        @Id
+        int id;
+
+        PairOfArrayAndCollection nested;
+
+        ItemWithNestedValueHavingArrayAndCollection() {}
+
+        ItemWithNestedValueHavingArrayAndCollection(int id, PairOfArrayAndCollection nested) {
+            this.id = id;
+            this.nested = nested;
+        }
+    }
+
+    @Embeddable
+    @Struct(name = "PairOfArrayAndCollection")
+    static class PairOfArrayAndCollection { // VAKOTODO use all types
+        int[] ints;
+        Collection<Integer> intsCollection;
+
+        PairOfArrayAndCollection() {}
+
+        PairOfArrayAndCollection(int[] ints, Collection<Integer> intsCollection) {
+            this.ints = ints;
+            this.intsCollection = intsCollection;
+        }
+    }
 
     @Nested
     class Unsupported {
