@@ -114,7 +114,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                 }
                 """);
         loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, item.nestedId));
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, updatedItem.nestedId));
         assertEquals(updatedItem, loadedItem);
     }
 
@@ -151,7 +151,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                 }
                 """);
         loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
         assertEquals(updatedItem, loadedItem);
     }
 

@@ -98,7 +98,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
-                session -> session.find(ItemWithFlattenedValues.class, item.flattenedId));
+                session -> session.find(ItemWithFlattenedValues.class, updatedItem.flattenedId));
         assertEquals(updatedItem, loadedItem);
     }
 
@@ -135,7 +135,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 }
                 """);
         loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, item.id));
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
         assertEquals(updatedItem, loadedItem);
     }
 
