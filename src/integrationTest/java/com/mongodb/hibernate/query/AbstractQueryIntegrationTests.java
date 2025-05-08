@@ -20,12 +20,14 @@ import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.List;
 import java.util.function.Consumer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
+import org.hibernate.query.MutationQuery;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
@@ -143,5 +145,32 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 .singleElement()
                 .asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsAllEntriesOf(expectedCommand);
+    }
+
+    protected <T> void assertMutateQuery(
+            String hql,
+            Consumer<MutationQuery> queryPostProcessor,
+            int expectedMutatedCount,
+            String expectedMql,
+            MongoCollection<BsonDocument> collection,
+            Iterable<BsonDocument> expectedDocuments) {
+        sessionFactoryScope.inTransaction(session -> {
+            var mutationQuery = session.createMutationQuery(hql);
+            if (queryPostProcessor != null) {
+                queryPostProcessor.accept(mutationQuery);
+            }
+            assertThat(mutationQuery.executeUpdate()).isEqualTo(expectedMutatedCount);
+            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
+        });
+    }
+
+    protected <T> void assertMutateQuery(
+            String hql,
+            int expectedMutatedCount,
+            String expectedMql,
+            MongoCollection<BsonDocument> collection,
+            Iterable<BsonDocument> expectedDocuments) {
+        assertMutateQuery(hql, null, expectedMutatedCount, expectedMql, collection, expectedDocuments);
     }
 }
