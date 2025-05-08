@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
@@ -102,8 +103,12 @@ import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlSelection;
+import org.hibernate.sql.ast.tree.AbstractMutationStatement;
+import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
+import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.Statement;
+import org.hibernate.sql.ast.tree.cte.CteContainer;
 import org.hibernate.sql.ast.tree.delete.DeleteStatement;
 import org.hibernate.sql.ast.tree.expression.AggregateColumnWriteExpression;
 import org.hibernate.sql.ast.tree.expression.Any;
@@ -148,6 +153,7 @@ import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
 import org.hibernate.sql.ast.tree.from.ValuesTableReference;
 import org.hibernate.sql.ast.tree.insert.InsertSelectStatement;
+import org.hibernate.sql.ast.tree.insert.Values;
 import org.hibernate.sql.ast.tree.predicate.BetweenPredicate;
 import org.hibernate.sql.ast.tree.predicate.BooleanExpressionPredicate;
 import org.hibernate.sql.ast.tree.predicate.ComparisonPredicate;
@@ -266,7 +272,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         astVisitorValueHolder.yield(
                 COLLECTION_MUTATION,
-                new AstInsertCommand(tableInsert.getMutatingTable().getTableName(), new AstDocument(astElements)));
+                new AstInsertCommand(
+                        tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements))));
     }
 
     @Override
@@ -336,10 +343,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (!selectStatement.getQueryPart().isRoot()) {
             throw new FeatureNotSupportedException("Subquery not supported");
         }
-        if (!selectStatement.getCteStatements().isEmpty()
-                || !selectStatement.getCteObjects().isEmpty()) {
-            throw new FeatureNotSupportedException("CTE not supported");
-        }
+        checkCteContainer(selectStatement);
         selectStatement.getQueryPart().accept(this);
     }
 
@@ -392,16 +396,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitFromClause(FromClause fromClause) {
-        if (fromClause.getRoots().size() != 1) {
-            throw new FeatureNotSupportedException();
-        }
+        checkFromClauseSupportability(fromClause);
         var tableGroup = fromClause.getRoots().get(0);
-
-        if (!(tableGroup.getModelPart() instanceof EntityPersister entityPersister)
-                || entityPersister.getQuerySpaces().length != 1) {
-            throw new FeatureNotSupportedException();
-        }
-
+        var entityPersister = (EntityPersister) tableGroup.getModelPart();
         affectedTableNames.add(((String[]) entityPersister.getQuerySpaces())[0]);
         tableGroup.getPrimaryTableReference().accept(this);
     }
@@ -580,17 +577,93 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
+        var pair = getCollectionAstFilterPair(deleteStatement);
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(pair.collection, pair.filter));
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
+        var collectionAndFilter = getCollectionAstFilterPair(updateStatement);
+        var fieldUpdates =
+                new ArrayList<AstFieldUpdate>(updateStatement.getAssignments().size());
+        for (var assignment : updateStatement.getAssignments()) {
+            var fieldReferences = assignment.getAssignable().getColumnReferences();
+            if (fieldReferences.size() != 1) {
+                throw new FeatureNotSupportedException();
+            }
+            var fieldPath = fieldReferences.get(0).getColumnReference().getColumnExpression();
+            var assignedValue = assignment.getAssignedValue();
+
+            var sqlTuple = SqlTupleContainer.getSqlTuple(assignedValue);
+            if (sqlTuple != null) {
+                throw new FeatureNotSupportedException();
+            }
+            if (!isValueExpression(assignedValue)) {
+                throw new FeatureNotSupportedException();
+            }
+            var fieldValue = acceptAndYield(assignedValue, FIELD_VALUE);
+            fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
+        }
+        astVisitorValueHolder.yield(
+                COLLECTION_MUTATION,
+                new AstUpdateCommand(collectionAndFilter.collection, collectionAndFilter.filter, fieldUpdates));
+    }
+
+    private CollectionAstFilterPair getCollectionAstFilterPair(
+            AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
+        checkMutationStatement(updateOrDeleteStatement);
+        var fromClause = updateOrDeleteStatement.getFromClause();
+        checkFromClauseSupportability(fromClause);
+        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(updateOrDeleteStatement);
+        var filter = acceptAndYield(updateOrDeleteStatement.getRestriction(), FILTER);
+        return new CollectionAstFilterPair(collection, filter);
     }
 
     @Override
-    public void visitInsertStatement(InsertSelectStatement insertSelectStatement) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
+    public void visitInsertStatement(InsertSelectStatement insertStatement) {
+        checkMutationStatement(insertStatement);
+        if (insertStatement.getConflictClause() != null) {
+            throw new FeatureNotSupportedException();
+        }
+        if (insertStatement.getSourceSelectStatement() != null) {
+            throw new FeatureNotSupportedException();
+        }
+
+        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(insertStatement);
+        var fieldReferences = insertStatement.getTargetColumns();
+        assertFalse(fieldReferences.isEmpty());
+
+        var fieldNames = new ArrayList<String>(fieldReferences.size());
+        for (var fieldReference : fieldReferences) {
+            fieldNames.add(fieldReference.getColumnExpression());
+        }
+
+        var valuesList = insertStatement.getValuesList();
+        assertFalse(valuesList.isEmpty());
+
+        var documents = new ArrayList<AstDocument>(valuesList.size());
+        for (Values values : valuesList) {
+            assertTrue(fieldNames.size() == values.getExpressions().size());
+            var astElements = new ArrayList<AstElement>(values.getExpressions().size());
+            for (var i = 0; i < fieldReferences.size(); i++) {
+                var fieldName = fieldNames.get(i);
+                var fieldValueExpression = values.getExpressions().get(i);
+                if (!isValueExpression(fieldValueExpression)) {
+                    throw new FeatureNotSupportedException();
+                }
+                var fieldValue = acceptAndYield(fieldValueExpression, FIELD_VALUE);
+                astElements.add(new AstElement(fieldName, fieldValue));
+            }
+            documents.add(new AstDocument(astElements));
+        }
+
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(collection, documents));
+    }
+
+    private String getMutationCollectionAfterRegisteredAsAffectedTable(MutationStatement mutationStatement) {
+        var collection = mutationStatement.getTargetTable().getTableExpression();
+        affectedTableNames.add(collection);
+        return collection;
     }
 
     @Override
@@ -977,4 +1050,30 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         throw new FeatureNotSupportedException("Unsupported Java type: " + queryLiteral.getClass());
     }
+
+    private static void checkCteContainer(CteContainer cteContainer) {
+        if (!cteContainer.getCteStatements().isEmpty()
+                || !cteContainer.getCteObjects().isEmpty()) {
+            throw new FeatureNotSupportedException("CTE not supported");
+        }
+    }
+
+    private static void checkMutationStatement(AbstractMutationStatement mutationStatement) {
+        checkCteContainer(mutationStatement);
+        if (!mutationStatement.getReturningColumns().isEmpty()) {
+            throw new FeatureNotSupportedException();
+        }
+    }
+
+    private static void checkFromClauseSupportability(FromClause fromClause) {
+        if (fromClause.getRoots().size() != 1) {
+            throw new FeatureNotSupportedException();
+        }
+        if (!(fromClause.getRoots().get(0).getModelPart() instanceof EntityPersister entityPersister)
+                || entityPersister.getQuerySpaces().length != 1) {
+            throw new FeatureNotSupportedException();
+        }
+    }
+
+    private record CollectionAstFilterPair(String collection, AstFilter filter) {}
 }

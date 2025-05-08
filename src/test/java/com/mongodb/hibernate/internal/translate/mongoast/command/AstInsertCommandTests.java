@@ -33,15 +33,24 @@ class AstInsertCommandTests {
     void testRendering() {
 
         var collection = "books";
-        var elements = List.of(
+
+        var elements1 = List.of(
                 new AstElement("title", new AstLiteralValue(new BsonString("War and Peace"))),
                 new AstElement("year", new AstLiteralValue(new BsonInt32(1867))),
                 new AstElement("_id", AstParameterMarker.INSTANCE));
-        var insertCommand = new AstInsertCommand(collection, new AstDocument(elements));
+        var document1 = new AstDocument(elements1);
+
+        var elements2 = List.of(
+                new AstElement("title", new AstLiteralValue(new BsonString("Crime and Punishment"))),
+                new AstElement("year", new AstLiteralValue(new BsonInt32(1868))),
+                new AstElement("_id", AstParameterMarker.INSTANCE));
+        var document2 = new AstDocument(elements2);
+
+        var insertCommand = new AstInsertCommand(collection, List.of(document1, document2));
 
         var expectedJson =
                 """
-                {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": {"$undefined": true}}]}\
+                {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": {"$undefined": true}}, {"title": "Crime and Punishment", "year": {"$numberInt": "1868"}, "_id": {"$undefined": true}}]}\
                 """;
         assertRendering(expectedJson, insertCommand);
     }

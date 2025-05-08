@@ -25,6 +25,8 @@ import static org.hibernate.query.NullPrecedence.NONE;
 import static org.hibernate.query.SortDirection.ASCENDING;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
 import java.util.List;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -37,7 +39,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
@@ -252,7 +254,7 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
     @Nested
     @DomainModel(annotatedClasses = Book.class)
     @ServiceRegistry(settings = @Setting(name = DEFAULT_NULL_ORDERING, value = "first"))
-    class DefaultNullPrecedenceTests extends AbstractSelectionQueryIntegrationTests {
+    class DefaultNullPrecedenceTests extends AbstractQueryIntegrationTests {
         @Test
         void testDefaultNullPrecedenceFeatureNotSupported() {
             assertSelectQueryFailure(

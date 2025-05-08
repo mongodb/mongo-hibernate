@@ -56,13 +56,11 @@ class AstVisitorValueHolderTests {
     void testRecursiveUsage() {
 
         Runnable tableInserter = () -> {
-            Runnable fieldValueYielder = () -> {
-                astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
-            };
+            Runnable fieldValueYielder = () -> astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
             var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(
-                    COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
+                    COLLECTION_MUTATION, new AstInsertCommand("city", List.of(new AstDocument(List.of(astElement)))));
         };
 
         astVisitorValueHolder.execute(COLLECTION_MUTATION, tableInserter);

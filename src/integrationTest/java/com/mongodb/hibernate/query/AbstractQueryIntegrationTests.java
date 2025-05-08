@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.select;
+package com.mongodb.hibernate.query;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.List;
 import java.util.function.Consumer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
+import org.hibernate.query.MutationQuery;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.testing.orm.junit.ServiceRegistryScope;
 import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
@@ -36,17 +38,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @SessionFactory(exportSchema = false)
 @ExtendWith(MongoExtension.class)
-abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
+public abstract class AbstractQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
 
     private TestCommandListener testCommandListener;
 
-    SessionFactoryScope getSessionFactoryScope() {
+    protected SessionFactoryScope getSessionFactoryScope() {
         return sessionFactoryScope;
     }
 
-    TestCommandListener getTestCommandListener() {
+    protected TestCommandListener getTestCommandListener() {
         return testCommandListener;
     }
 
@@ -60,7 +62,7 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
         this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
     }
 
-    <T> void assertSelectionQuery(
+    protected <T> void assertSelectionQuery(
             String hql,
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
@@ -74,11 +76,12 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 resultList -> assertIterableEq(expectedResultList, resultList));
     }
 
-    <T> void assertSelectionQuery(String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
+    protected <T> void assertSelectionQuery(
+            String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
         assertSelectionQuery(hql, resultType, null, expectedMql, expectedResultList);
     }
 
-    <T> void assertSelectionQuery(
+    protected <T> void assertSelectionQuery(
             String hql,
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
@@ -97,12 +100,12 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
         });
     }
 
-    <T> void assertSelectionQuery(
+    protected <T> void assertSelectionQuery(
             String hql, Class<T> resultType, String expectedMql, Consumer<List<T>> resultListVerifier) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
     }
 
-    <T> void assertSelectQueryFailure(
+    protected <T> void assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
@@ -120,7 +123,7 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
     }
 
-    <T> void assertSelectQueryFailure(
+    protected <T> void assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
             Class<? extends Exception> expectedExceptionType,
@@ -135,12 +138,39 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 expectedExceptionMessageParameters);
     }
 
-    void assertActualCommand(BsonDocument expectedCommand) {
+    protected void assertActualCommand(BsonDocument expectedCommand) {
         var capturedCommands = testCommandListener.getStartedCommands();
 
         assertThat(capturedCommands)
                 .singleElement()
                 .asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsAllEntriesOf(expectedCommand);
+    }
+
+    protected void assertMutateQuery(
+            String hql,
+            Consumer<MutationQuery> queryPostProcessor,
+            int expectedMutatedCount,
+            String expectedMql,
+            MongoCollection<BsonDocument> collection,
+            Iterable<BsonDocument> expectedDocuments) {
+        sessionFactoryScope.inTransaction(session -> {
+            var mutationQuery = session.createMutationQuery(hql);
+            if (queryPostProcessor != null) {
+                queryPostProcessor.accept(mutationQuery);
+            }
+            assertThat(mutationQuery.executeUpdate()).isEqualTo(expectedMutatedCount);
+            assertActualCommand(BsonDocument.parse(expectedMql));
+        });
+        assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
+    }
+
+    protected void assertMutateQuery(
+            String hql,
+            int expectedMutatedCount,
+            String expectedMql,
+            MongoCollection<BsonDocument> collection,
+            Iterable<BsonDocument> expectedDocuments) {
+        assertMutateQuery(hql, null, expectedMutatedCount, expectedMql, collection, expectedDocuments);
     }
 }

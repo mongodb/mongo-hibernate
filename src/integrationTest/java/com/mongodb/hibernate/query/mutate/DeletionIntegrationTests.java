@@ -1,0 +1,119 @@
+/*
+ * Copyright 2025-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.mongodb.hibernate.query.mutate;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.query.Book;
+import java.util.List;
+import org.bson.BsonDocument;
+import org.hibernate.testing.orm.junit.DomainModel;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+@DomainModel(annotatedClasses = Book.class)
+class DeletionIntegrationTests extends AbstractMutateQueryIntegrationTests {
+
+    @InjectMongoCollection(Book.COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollection;
+
+    private static final List<Book> testingBooks = List.of(
+            new Book(1, "War and Peace", 1869),
+            new Book(2, "Crime and Punishment", 1866),
+            new Book(3, "Anna Karenina", 1877),
+            new Book(4, "The Brothers Karamazov", 1880),
+            new Book(5, "War and Peace", 2025));
+
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
+
+    @Test
+    void testSimpleDeletion() {
+        getSessionFactoryScope()
+                .inTransaction(
+                        session -> assertMutateQuery(
+                                "delete from Book where title = :title",
+                                q -> q.setParameter("title", "War and Peace"),
+                                2,
+                                """
+                                {
+                                  "delete": "books",
+                                  "deletes": [
+                                    {
+                                      "limit": 0,
+                                      "q": {
+                                        "title": {
+                                          "$eq": "War and Peace"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                                """,
+                                mongoCollection,
+                                List.of(
+                                        BsonDocument.parse(
+                                                """
+                                                {
+                                                  "_id": 2,
+                                                  "title": "Crime and Punishment",
+                                                  "outOfStock": false,
+                                                  "publishYear": 1866,
+                                                  "isbn13": {"$numberLong": "0"},
+                                                  "discount": {"$numberDouble": "0"},
+                                                  "price": {"$numberDecimal": "0.0"}
+                                                }
+                                                """),
+                                        BsonDocument.parse(
+                                                """
+                                                {
+                                                  "_id": 3,
+                                                  "title": "Anna Karenina",
+                                                  "outOfStock": false,
+                                                  "publishYear": 1877,
+                                                  "isbn13": {"$numberLong": "0"},
+                                                  "discount": {"$numberDouble": "0"},
+                                                  "price": {"$numberDecimal": "0.0"}
+                                                }
+                                                """),
+                                        BsonDocument.parse(
+                                                """
+                                                {
+                                                  "_id": 4,
+                                                  "title": "The Brothers Karamazov",
+                                                  "outOfStock": false,
+                                                  "publishYear": 1880,
+                                                  "isbn13": {"$numberLong": "0"},
+                                                  "discount": {"$numberDouble": "0"},
+                                                  "price": {"$numberDecimal": "0.0"}
+                                                }
+                                                """))));
+    }
+
+    @Test
+    void testAffectedTableNames() {
+        assertAffectedTableNames(
+                """
+                delete from Book where title = :title
+                """,
+                q -> q.setParameter("title", "War and Peace"),
+                "books");
+    }
+}
