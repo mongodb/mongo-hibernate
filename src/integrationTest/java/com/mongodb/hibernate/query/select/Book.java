@@ -43,4 +43,9 @@ class Book {
         this.publishYear = publishYear;
         this.outOfStock = outOfStock;
     }
+
+    @Override
+    public String toString() {
+        return "Book{" + "id=" + id + '}';
+    }
 }
