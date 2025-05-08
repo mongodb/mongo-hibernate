@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.select;
+package com.mongodb.hibernate.query;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -23,9 +23,9 @@ import java.math.BigDecimal;
 
 @Entity(name = "Book")
 @Table(name = "books")
-class Book {
+public class Book {
     @Id
-    int id;
+    public int id;
 
     // TODO-HIBERNATE-48 dummy values are set for currently null value is not supported
     String title = "";

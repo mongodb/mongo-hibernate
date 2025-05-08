@@ -19,13 +19,15 @@ package com.mongodb.hibernate.query.select;
 import static java.util.Collections.singletonList;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrationTests {
 
     private Book bookOutOfStock;
     private Book bookInStock;
