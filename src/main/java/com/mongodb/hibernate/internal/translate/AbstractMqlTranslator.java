@@ -63,12 +63,15 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperatio
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
+import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
 import org.bson.json.JsonWriterSettings;
@@ -881,5 +884,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var rhs = comparisonPredicate.getRightHandExpression();
         return (isFieldPathExpression(lhs) && isValueExpression(rhs))
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
+    }
+
+    private static BsonValue toBsonValue(Object value) {
+        try {
+            return ValueConversions.toBsonValue(value);
+        } catch (SQLFeatureNotSupportedException e) {
+            throw new FeatureNotSupportedException(e);
+        }
     }
 }

@@ -24,7 +24,6 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.MongoAssertions;
 import java.io.Serial;
 import java.sql.CallableStatement;
 import java.sql.JDBCType;
@@ -91,7 +90,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
     }
 
     @Override
-    public BsonDocument createJdbcValue(Object domainValue, WrapperOptions options) {
+    public BsonDocument createJdbcValue(Object domainValue, WrapperOptions options) throws SQLException {
         var embeddableMappingType = assertNotNull(this.embeddableMappingType);
         if (embeddableMappingType.isPolymorphic()) {
             throw new FeatureNotSupportedException("Polymorphic mapping is not supported");
@@ -134,14 +133,18 @@ public final class MongoStructJdbcType implements StructJdbcType {
     }
 
     @Override
-    public Object[] extractJdbcValues(Object rawJdbcValue, WrapperOptions options) {
+    public Object[] extractJdbcValues(Object rawJdbcValue, WrapperOptions options) throws SQLException {
         if (!(rawJdbcValue instanceof BsonDocument bsonDocument)) {
             throw fail();
         }
-        return bsonDocument.values().stream()
-                .peek(MongoAssertions::assertNotNull)
-                .map(value -> value instanceof BsonDocument ? extractJdbcValues(value, options) : toDomainValue(value))
-                .toArray();
+        var result = new Object[bsonDocument.size()];
+        var elementIdx = 0;
+        for (var value : bsonDocument.values()) {
+            assertNotNull(value);
+            result[elementIdx++] =
+                    value instanceof BsonDocument ? extractJdbcValues(value, options) : toDomainValue(value);
+        }
+        return result;
     }
 
     @Override

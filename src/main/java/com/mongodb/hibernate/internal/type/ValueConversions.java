@@ -19,10 +19,10 @@ package com.mongodb.hibernate.internal.type;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLFeatureNotSupportedException;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
@@ -43,7 +43,7 @@ import org.bson.types.ObjectId;
 public final class ValueConversions {
     private ValueConversions() {}
 
-    public static BsonValue toBsonValue(Object value) {
+    public static BsonValue toBsonValue(Object value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
         if (value instanceof Boolean v) {
             return toBsonValue(v.booleanValue());
@@ -62,7 +62,7 @@ public final class ValueConversions {
         } else if (value instanceof ObjectId v) {
             return toBsonValue(v);
         } else {
-            throw new FeatureNotSupportedException(format(
+            throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",
                     value, value.getClass().getTypeName()));
         }
@@ -100,7 +100,7 @@ public final class ValueConversions {
         return new BsonObjectId(value);
     }
 
-    static Object toDomainValue(BsonValue value) {
+    static Object toDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
         if (value instanceof BsonBoolean v) {
             return toDomainValue(v);
@@ -119,7 +119,7 @@ public final class ValueConversions {
         } else if (value instanceof BsonObjectId v) {
             return toDomainValue(v);
         } else {
-            throw new FeatureNotSupportedException(format(
+            throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",
                     value, value.getClass().getTypeName()));
         }
