@@ -113,8 +113,8 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                     }
                 }
                 """);
-        loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, updatedItem.nestedId));
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValues.class, updatedItem.nestedId));
         assertEquals(updatedItem, loadedItem);
     }
 
@@ -150,8 +150,8 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                     _id: 1
                 }
                 """);
-        loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
         assertEquals(updatedItem, loadedItem);
     }
 

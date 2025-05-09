@@ -134,8 +134,8 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     _id: 1
                 }
                 """);
-        loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
+        loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
         assertEquals(updatedItem, loadedItem);
     }
 
