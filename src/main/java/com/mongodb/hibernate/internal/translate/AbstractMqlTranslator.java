@@ -37,7 +37,6 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
-import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -63,7 +62,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperatio
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
-import com.mongodb.hibernate.internal.type.ValueConversions;
+import com.mongodb.hibernate.internal.type.ValueConverter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.sql.SQLFeatureNotSupportedException;
@@ -888,7 +887,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static BsonValue toBsonValue(Object value) {
         try {
-            return ValueConversions.toBsonValue(value);
+            return ValueConverter.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {
             throw new FeatureNotSupportedException(e);
         }

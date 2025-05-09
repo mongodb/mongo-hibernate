@@ -41,13 +41,13 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
         assertNull(jdbcParameterBindings);
         checkQueryOptionsSupportability(queryOptions);
 
-        String sql;
+        String mql;
         if ((TableMutation<?>) tableMutation instanceof TableUpdateNoSet) {
-            sql = "";
+            mql = "";
         } else {
             var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
-            sql = renderMongoAstNode(mutationCommand);
+            mql = renderMongoAstNode(mutationCommand);
         }
-        return tableMutation.createMutationOperation(sql, getParameterBinders());
+        return tableMutation.createMutationOperation(mql, getParameterBinders());
     }
 }

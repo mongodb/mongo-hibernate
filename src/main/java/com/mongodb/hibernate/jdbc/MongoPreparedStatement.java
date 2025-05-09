@@ -17,7 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
+import static com.mongodb.hibernate.internal.type.ValueConverter.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
