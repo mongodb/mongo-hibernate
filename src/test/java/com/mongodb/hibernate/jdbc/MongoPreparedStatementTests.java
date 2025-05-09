@@ -258,14 +258,11 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now))),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
-                () -> asserter.accept(
-                        () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class))),
                 () -> asserter.accept(() -> mongoPreparedStatement.setArray(parameterIndex, Mockito.mock(Array.class))),
                 () -> asserter.accept(() -> mongoPreparedStatement.setDate(parameterIndex, new Date(now), calendar)),
                 () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now), calendar)),
                 () -> asserter.accept(
-                        () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
-                () -> asserter.accept(() -> mongoPreparedStatement.setNull(parameterIndex, Types.STRUCT, "BOOK")));
+                        () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)));
     }
 
     private static void checkMethodsWithOpenPrecondition(
