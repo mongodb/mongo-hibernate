@@ -80,7 +80,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    void getById() {
+    void findById() {
         var item = new Item();
         item.id = 1;
         item.v = new ObjectId(2, 0);
@@ -90,7 +90,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         item.vNull = new ObjectId();
         item.vExplicitlyAnnotatedNotForThePublic = new ObjectId(3, 4);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        var loadedItem = sessionFactoryScope.fromTransaction(session -> session.get(Item.class, item.id));
+        var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
         assertEquals(item, loadedItem);
     }
 

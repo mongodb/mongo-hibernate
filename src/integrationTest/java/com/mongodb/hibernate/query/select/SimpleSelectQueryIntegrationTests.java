@@ -17,54 +17,25 @@
 package com.mongodb.hibernate.query.select;
 
 import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
-import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.bson.BsonDocument;
-import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.hibernate.testing.orm.junit.ServiceRegistryScope;
-import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
-import org.hibernate.testing.orm.junit.SessionFactory;
-import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {SimpleSelectQueryIntegrationTests.Contact.class, Book.class})
-@ExtendWith(MongoExtension.class)
-class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
-
-    private SessionFactoryScope sessionFactoryScope;
-
-    private TestCommandListener testCommandListener;
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
-    }
-
-    @Override
-    public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
-        this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
-    }
+class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
 
     @Nested
     class QueryTests {
@@ -81,14 +52,14 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     .mapToObj(id -> testingContacts.stream()
                             .filter(c -> c.id == id)
                             .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("id not exists: " + id)))
+                            .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                     .toList();
         }
 
         @BeforeEach
         void beforeEach() {
-            sessionFactoryScope.inTransaction(session -> testingContacts.forEach(session::persist));
-            testCommandListener.clear();
+            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
+            getTestCommandListener().clear();
         }
 
         @ParameterizedTest
@@ -182,7 +153,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Contact where age > 18 and not (country = 'USA')",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'country': {'$eq': 'USA'}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4));
         }
@@ -192,7 +162,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Contact where not (country = 'USA' and age > 18)",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$and': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(1, 2, 3, 4));
         }
@@ -202,7 +171,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Contact where not (country = 'USA' or age > 18)",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$or': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(3));
         }
@@ -212,7 +180,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Contact where not (country = 'USA' and age > 18 or age < 25)",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$nor': [{'$or': [{'$and': [{'country': {'$eq': 'USA'}}, {'age': {'$gt': {'$numberInt': '18'}}}]},"
                             + " {'age': {'$lt': {'$numberInt': '25'}}}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(2, 4));
@@ -223,7 +190,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Contact where age > 18 and not ( not (country = 'USA') )",
                     Contact.class,
-                    null,
                     "{'aggregate': 'contacts', 'pipeline': [{'$match': {'$and': [{'age': {'$gt': 18}}, {'$nor': [{'$nor': [{'country': {'$eq': 'USA'}}]}]}]}}, {'$project': {'_id': true, 'age': true, 'country': true, 'name': true}}]}",
                     getTestingContacts(5));
         }
@@ -253,7 +219,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectQueryFailure(
                     "select k.name, c.age from Contact as c where c.country = :country",
                     Contact.class,
-                    null,
                     SemanticException.class,
                     "Could not interpret path expression '%s'",
                     "k.name");
@@ -267,7 +232,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectQueryFailure(
                     "from Contact as c where c.age = c.id + 1",
                     Contact.class,
-                    null,
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
@@ -277,7 +241,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectQueryFailure(
                     "from Contact where 1 = 1",
                     Contact.class,
-                    null,
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
@@ -287,7 +250,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectQueryFailure(
                     "from Contact where age = id",
                     Contact.class,
-                    null,
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
         }
@@ -321,6 +283,15 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
                     FeatureNotSupportedException.class,
                     "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
         }
+
+        @Test
+        void testQueryPlanCacheIsSupported() {
+            getSessionFactoryScope().inTransaction(session -> assertThatCode(
+                            () -> session.createSelectionQuery("from Contact", Contact.class)
+                                    .setQueryPlanCacheable(true)
+                                    .getResultList())
+                    .doesNotThrowAnyException());
+        }
     }
 
     @Nested
@@ -337,9 +308,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             testingBook.isbn13 = 9780310904168L;
             testingBook.discount = 0.25;
             testingBook.price = new BigDecimal("123.50");
-            sessionFactoryScope.inTransaction(session -> session.persist(testingBook));
+            getSessionFactoryScope().inTransaction(session -> session.persist(testingBook));
 
-            testCommandListener.clear();
+            getTestCommandListener().clear();
         }
 
         @Test
@@ -347,7 +318,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Book where outOfStock = true",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': true}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -357,7 +327,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Book where publishYear = 1995",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'publishYear': {'$eq': 1995}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -367,7 +336,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Book where isbn13 = 9780310904168L",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'isbn13': {'$eq': 9780310904168}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -377,7 +345,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Book where discount = 0.25D",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'discount': {'$eq': 0.25}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -387,7 +354,6 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Book where title = 'Holy Bible'",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'title': {'$eq': 'Holy Bible'}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
@@ -397,58 +363,9 @@ class SimpleSelectQueryIntegrationTests implements SessionFactoryScopeAware, Ser
             assertSelectionQuery(
                     "from Book where price = 123.50BD",
                     Book.class,
-                    null,
                     "{'aggregate': 'books', 'pipeline': [{'$match': {'price': {'$eq': {'$numberDecimal': '123.50'}}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
                     singletonList(testingBook));
         }
-    }
-
-    private <T> void assertSelectionQuery(
-            String hql,
-            Class<T> resultType,
-            Consumer<SelectionQuery<T>> queryPostProcessor,
-            String expectedMql,
-            List<T> expectedResultList) {
-        sessionFactoryScope.inTransaction(session -> {
-            var selectionQuery = session.createSelectionQuery(hql, resultType);
-            if (queryPostProcessor != null) {
-                queryPostProcessor.accept(selectionQuery);
-            }
-            var resultList = selectionQuery.getResultList();
-
-            assertActualCommand(BsonDocument.parse(expectedMql));
-
-            assertThat(resultList)
-                    .usingRecursiveFieldByFieldElementComparator()
-                    .containsExactlyElementsOf(expectedResultList);
-        });
-    }
-
-    private <T> void assertSelectQueryFailure(
-            String hql,
-            Class<T> resultType,
-            Consumer<SelectionQuery<T>> queryPostProcessor,
-            Class<? extends Exception> expectedExceptionType,
-            String expectedExceptionMessage,
-            Object... expectedExceptionMessageParameters) {
-        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
-                    var selectionQuery = session.createSelectionQuery(hql, resultType);
-                    if (queryPostProcessor != null) {
-                        queryPostProcessor.accept(selectionQuery);
-                    }
-                    selectionQuery.getResultList();
-                })
-                .isInstanceOf(expectedExceptionType)
-                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
-    }
-
-    private void assertActualCommand(BsonDocument expectedCommand) {
-        var capturedCommands = testCommandListener.getStartedCommands();
-
-        assertThat(capturedCommands)
-                .singleElement()
-                .asInstanceOf(InstanceOfAssertFactories.MAP)
-                .containsAllEntriesOf(expectedCommand);
     }
 
     @Entity(name = "Contact")

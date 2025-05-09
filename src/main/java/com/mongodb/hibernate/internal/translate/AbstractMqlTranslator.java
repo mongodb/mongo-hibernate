@@ -26,6 +26,8 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.FALSE;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.TRUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.GTE;
@@ -493,6 +495,18 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
+    public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
+        if (!isFieldPathExpression(booleanExpressionPredicate.getExpression())) {
+            throw new FeatureNotSupportedException("Expression not of field path not supported");
+        }
+        var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
+        var astFilterOperation =
+                new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
+        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        astVisitorValueHolder.yield(FILTER, filter);
+    }
+
+    @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         throw new FeatureNotSupportedException("TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46");
     }
@@ -688,11 +702,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
-    public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
     public void visitBetweenPredicate(BetweenPredicate betweenPredicate) {
         throw new FeatureNotSupportedException();
     }
@@ -828,9 +837,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (queryOptions.getEnabledFetchProfiles() != null
                 && !queryOptions.getEnabledFetchProfiles().isEmpty()) {
             throw new FeatureNotSupportedException("'enabledFetchProfiles' in QueryOptions not supported");
-        }
-        if (Boolean.TRUE.equals(queryOptions.getQueryPlanCachingEnabled())) {
-            throw new FeatureNotSupportedException("'queryPlanCaching' in QueryOptions not supported");
         }
         if (queryOptions.getLockOptions() != null
                 && !queryOptions.getLockOptions().isEmpty()) {
