@@ -23,6 +23,7 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.ast.TableMutation;
+import org.hibernate.sql.model.internal.TableUpdateNoSet;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.jspecify.annotations.Nullable;
 
@@ -40,7 +41,13 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
         assertNull(jdbcParameterBindings);
         checkQueryOptionsSupportability(queryOptions);
 
-        var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
-        return tableMutation.createMutationOperation(renderMongoAstNode(mutationCommand), getParameterBinders());
+        String mql;
+        if ((TableMutation<?>) tableMutation instanceof TableUpdateNoSet) {
+            mql = "";
+        } else {
+            var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
+            mql = renderMongoAstNode(mutationCommand);
+        }
+        return tableMutation.createMutationOperation(mql, getParameterBinders());
     }
 }
