@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
+import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -62,7 +63,8 @@ class AstVisitorValueHolderTests {
             var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(
-                    COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
+                    COLLECTION_MUTATION,
+                    new AstInsertCommand("city", singletonList(new AstDocument(List.of(astElement)))));
         };
 
         astVisitorValueHolder.execute(COLLECTION_MUTATION, tableInserter);

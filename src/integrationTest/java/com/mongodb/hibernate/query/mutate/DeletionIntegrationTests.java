@@ -16,9 +16,95 @@
 
 package com.mongodb.hibernate.query.mutate;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import java.util.List;
+import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class DeletionIntegrationTests extends AbstractQueryIntegrationTests {}
+class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
+
+    @InjectMongoCollection(Book.COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> mongoCollection;
+
+    private static final List<Book> testingBooks = List.of(
+            new Book(1, "War and Peace", 1869),
+            new Book(2, "Crime and Punishment", 1866),
+            new Book(3, "Anna Karenina", 1877),
+            new Book(4, "The Brothers Karamazov", 1880),
+            new Book(5, "War and Peace", 2025));
+
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
+
+    @Test
+    void testDeleteBySingleFieldComparison() {
+        getSessionFactoryScope().inTransaction(session -> {
+            assertMutateQuery(
+                    "delete from Book where title = :title",
+                    q -> q.setParameter("title", "War and Peace"),
+                    2,
+                    """
+                    {
+                      "delete": "books",
+                      "deletes": [
+                        {
+                          "limit": 0,
+                          "q": {
+                            "title": {
+                              "$eq": "War and Peace"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    mongoCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                      "_id": 2,
+                                      "title": "Crime and Punishment",
+                                      "outOfStock": false,
+                                      "publishYear": 1866,
+                                      "isbn13": {"$numberLong": "0"},
+                                      "discount": {"$numberDouble": "0"},
+                                      "price": {"$numberDecimal": "0.0"}
+                                    }
+                                    """),
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                      "_id": 3,
+                                      "title": "Anna Karenina",
+                                      "outOfStock": false,
+                                      "publishYear": 1877,
+                                      "isbn13": {"$numberLong": "0"},
+                                      "discount": {"$numberDouble": "0"},
+                                      "price": {"$numberDecimal": "0.0"}
+                                    }
+                                    """),
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                      "_id": 4,
+                                      "title": "The Brothers Karamazov",
+                                      "outOfStock": false,
+                                      "publishYear": 1880,
+                                      "isbn13": {"$numberLong": "0"},
+                                      "discount": {"$numberDouble": "0"},
+                                      "price": {"$numberDecimal": "0.0"}
+                                    }
+                                    """)));
+        });
+    }
+}

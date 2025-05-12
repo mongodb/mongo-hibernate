@@ -161,8 +161,8 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             }
             assertThat(mutationQuery.executeUpdate()).isEqualTo(expectedMutatedCount);
             assertActualCommand(BsonDocument.parse(expectedMql));
-            assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
         });
+        assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
     }
 
     protected <T> void assertMutateQuery(
@@ -172,5 +172,31 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             MongoCollection<BsonDocument> collection,
             Iterable<BsonDocument> expectedDocuments) {
         assertMutateQuery(hql, null, expectedMutatedCount, expectedMql, collection, expectedDocuments);
+    }
+
+    protected void assertMutationQueryFailure(
+            String hql,
+            Consumer<MutationQuery> queryPostProcessor,
+            Class<? extends Exception> expectedExceptionType,
+            String expectedExceptionMessage,
+            Object... expectedExceptionMessageParameters) {
+        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
+                    var mutationQuery = session.createMutationQuery(hql);
+                    if (queryPostProcessor != null) {
+                        queryPostProcessor.accept(mutationQuery);
+                    }
+                    mutationQuery.executeUpdate();
+                })
+                .isInstanceOf(expectedExceptionType)
+                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+    }
+
+    protected void assertMutationQueryFailure(
+            String hql,
+            Class<? extends Exception> expectedExceptionType,
+            String expectedExceptionMessage,
+            Object... expectedExceptionMessageParameters) {
+        assertMutationQueryFailure(
+                hql, null, expectedExceptionType, expectedExceptionMessage, expectedExceptionMessageParameters);
     }
 }
