@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
@@ -26,17 +27,17 @@ public final class AstNodeAssertions {
 
     private AstNodeAssertions() {}
 
-    public static void assertRender(String expectedJson, AstNode node) {
-        doAssertRender(expectedJson, node, false);
+    public static void assertRendering(String expectedJson, AstNode node) {
+        doAssertRendering(expectedJson, node, false);
     }
 
-    public static void assertElementRender(String expectedJson, AstNode node) {
-        doAssertRender(expectedJson, node, true);
+    public static void assertElementRendering(String expectedJson, AstNode node) {
+        doAssertRendering(expectedJson, node, true);
     }
 
-    private static void doAssertRender(String expectedJson, AstNode node, boolean isElement) {
+    private static void doAssertRendering(String expectedJson, AstNode node, boolean isElement) {
         try (var stringWriter = new StringWriter();
-                var jsonWriter = new JsonWriter(stringWriter)) {
+                var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
             if (isElement) {
                 jsonWriter.writeStartDocument();
             }

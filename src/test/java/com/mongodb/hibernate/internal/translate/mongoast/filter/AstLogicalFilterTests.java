@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.FilterTestUtils.createFieldOperationFilter;
 
@@ -38,9 +38,9 @@ class AstLogicalFilterTests {
 
         var expectedJson =
                 """
-                {"%s": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
+                {"%s": [{"field1": {"$eq": {"$numberInt": "1"}}}, {"field2": {"$eq": "1"}}]}\
                 """
                         .formatted(operator.getOperatorName());
-        assertRender(expectedJson, astLogicalFilter);
+        assertRendering(expectedJson, astLogicalFilter);
     }
 }

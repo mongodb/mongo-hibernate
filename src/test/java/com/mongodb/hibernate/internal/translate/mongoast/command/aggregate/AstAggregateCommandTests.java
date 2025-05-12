@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
@@ -39,8 +39,8 @@ class AstAggregateCommandTests {
         var aggregateCommand = new AstAggregateCommand("books", List.of(matchStage, projectStage));
         var expectedJson =
                 """
-                {"aggregate": "books", "pipeline": [{"$match": {"_id": {"$eq": 1}}}, {"$project": {"title": true}}]}\
+                {"aggregate": "books", "pipeline": [{"$match": {"_id": {"$eq": {"$numberInt": "1"}}}}, {"$project": {"title": true}}]}\
                 """;
-        assertRender(expectedJson, aggregateCommand);
+        assertRendering(expectedJson, aggregateCommand);
     }
 }
