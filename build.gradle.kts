@@ -73,21 +73,8 @@ idea {
 // Static Analysis
 
 spotless {
-    java {
-        importOrder()
 
-        removeUnusedImports()
-
-        palantirJavaFormat(libs.versions.plugin.palantir.get()).formatJavadoc(true)
-
-        formatAnnotations()
-
-        // need to add license header manually to package-info.java and module-info.java
-        // due to the bug: https://github.com/diffplug/spotless/issues/532
-        licenseHeaderFile(file("spotless.license.java")) // contains '$YEAR' placeholder
-
-        targetExclude("build/generated/sources/buildConfig/**/*.java")
-    }
+    // java config is centralized at buildSrc/spotless-java-extension.gradle.kts
 
     kotlinGradle {
         ktfmt(libs.versions.plugin.ktfmt.get()).configure {

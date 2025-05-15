@@ -24,6 +24,19 @@ plugins {
 
 spotless {
     java {
+        importOrder()
+
+        removeUnusedImports()
+
+        palantirJavaFormat("2.58.0").formatJavadoc(true)
+
+        formatAnnotations()
+
+        // need to add license header manually to package-info.java and module-info.java
+        // due to the bug: https://github.com/diffplug/spotless/issues/532
+        licenseHeaderFile(file("spotless.license.java")) // contains '$YEAR' placeholder
+
+        targetExclude("build/generated/sources/buildConfig/**/*.java")
         addStep(
             FormatterStep.create(
                 "multilineFormatter",
