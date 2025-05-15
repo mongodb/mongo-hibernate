@@ -39,8 +39,7 @@ class AstLogicalFilterTests {
         var expectedJson =
                 """
                 {"%s": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
-                """
-                        .formatted(operator.getOperatorName());
+                """.formatted(operator.getOperatorName());
         assertRender(expectedJson, astLogicalFilter);
     }
 }

@@ -32,8 +32,7 @@ class AstComparisonFilterOperationTests {
 
         var expectedJson = """
                            {"%s": 1}\
-                           """
-                .formatted(operator.getOperatorName());
+                           """.formatted(operator.getOperatorName());
         assertRender(expectedJson, operation);
     }
 }

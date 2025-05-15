@@ -18,7 +18,10 @@ plugins {
     `kotlin-dsl`
 }
 
-repositories { mavenCentral() }
+repositories {
+    gradlePluginPortal()
+    mavenCentral()
+}
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 

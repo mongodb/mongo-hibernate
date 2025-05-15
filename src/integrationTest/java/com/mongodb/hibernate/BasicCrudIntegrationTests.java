@@ -102,8 +102,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         title: "War and Peace",
                         author: "%s",
                         publishYear: 1867
-                    }"""
-                            .formatted(author));
+                    }""".formatted(author));
             assertCollectionContainsExactly(expectedDocument);
         }
 
