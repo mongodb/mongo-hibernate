@@ -30,7 +30,7 @@ public final class MongoTestAssertions {
      * {@link org.junit.jupiter.api.Assertions#assertEquals(Object, Object)}. It should work even if
      * {@code expected}/{@code actual} does not override {@link Object#equals(Object)}.
      */
-    public static void assertEquals(@Nullable Object expected, @Nullable Object actual) {
+    public static void assertEq(@Nullable Object expected, @Nullable Object actual) {
         assertUsingRecursiveComparison(expected, actual, RecursiveComparisonAssert::isEqualTo);
     }
 

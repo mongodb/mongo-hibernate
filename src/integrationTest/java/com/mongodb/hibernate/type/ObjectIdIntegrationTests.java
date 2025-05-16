@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.type;
 
-import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -91,7 +91,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
         item.vExplicitlyAnnotatedNotForThePublic = new ObjectId(3, 4);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
-        assertEquals(item, loadedItem);
+        assertEq(item, loadedItem);
     }
 
     @Override
@@ -131,7 +131,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
             item.id = 1;
             item.v = v;
             sessionFactoryScope.inTransaction(session -> session.persist(item));
-            assertEquals(v, item.v);
+            assertEq(v, item.v);
         }
     }
 

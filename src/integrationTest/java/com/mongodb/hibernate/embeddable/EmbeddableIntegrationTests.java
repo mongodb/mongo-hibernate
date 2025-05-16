@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.embeddable;
 
-import static com.mongodb.hibernate.MongoTestAssertions.assertEquals;
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -81,7 +81,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithFlattenedValues.class, item.flattenedId));
-        assertEquals(item, loadedItem);
+        assertEq(item, loadedItem);
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
             var result = session.find(ItemWithFlattenedValues.class, item.flattenedId);
             result.flattened1.a = -result.flattened1.a;
@@ -99,7 +99,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithFlattenedValues.class, updatedItem.flattenedId));
-        assertEquals(updatedItem, loadedItem);
+        assertEq(updatedItem, loadedItem);
     }
 
     @Test
@@ -136,7 +136,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithOmittedEmptyValue.class, updatedItem.id));
-        assertEquals(updatedItem, loadedItem);
+        assertEq(updatedItem, loadedItem);
     }
 
     @Override
