@@ -60,17 +60,9 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testNestedValues() {
-        var item = new ItemWithNestedValues();
-        {
-            item.nestedId = new SingleValue();
-            item.nestedId.a = 1;
-            item.nested1 = new SingleValue();
-            item.nested1.a = 2;
-            item.nested2 = new MultiValueWithParent();
-            item.nested2.a = 3;
-            item.nested2.nested = new MultiValue(4, 5);
-            item.nested2.parent = item;
-        }
+        var item = new ItemWithNestedValues(
+                new SingleValue(1), new SingleValue(2), new MultiValueWithParent(3, new MultiValue(4, 5)));
+        item.nested2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 // Hibernate ORM flattens `item.id` despite it being of an aggregate type
@@ -120,11 +112,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testNestedEmptyValue() {
-        var item = new ItemWithOmittedEmptyValue();
-        {
-            item.id = 1;
-            item.omitted = new EmptyValue();
-        }
+        var item = new ItemWithOmittedEmptyValue(1, new EmptyValue());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 // Hibernate ORM does not store/read the empty `item.omitted` value.
@@ -173,12 +161,26 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         SingleValue nested1;
 
         MultiValueWithParent nested2;
+
+        ItemWithNestedValues() {}
+
+        ItemWithNestedValues(SingleValue nestedId, SingleValue nested1, MultiValueWithParent nested2) {
+            this.nestedId = nestedId;
+            this.nested1 = nested1;
+            this.nested2 = nested2;
+        }
     }
 
     @Embeddable
     @Struct(name = "SingleValue")
     static class SingleValue {
         int a;
+
+        SingleValue() {}
+
+        SingleValue(int a) {
+            this.a = a;
+        }
     }
 
     @Embeddable
@@ -188,6 +190,13 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         MultiValue nested;
 
         @Parent ItemWithNestedValues parent;
+
+        MultiValueWithParent() {}
+
+        MultiValueWithParent(int a, MultiValue nested) {
+            this.a = a;
+            this.nested = nested;
+        }
 
         /**
          * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
@@ -217,6 +226,13 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         int id;
 
         EmptyValue omitted;
+
+        ItemWithOmittedEmptyValue() {}
+
+        ItemWithOmittedEmptyValue(int id, EmptyValue omitted) {
+            this.id = id;
+            this.omitted = omitted;
+        }
     }
 
     @Embeddable
@@ -242,11 +258,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
         @Test
         void testAllNonInsertable() {
-            var item = new ItemWithNestedValueHavingAllNonInsertable();
-            {
-                item.id = 1;
-                item.omitted = new MultiValueAllNonInsertable(2, 3);
-            }
+            var item = new ItemWithNestedValueHavingAllNonInsertable(1, new MultiValueAllNonInsertable(2, 3));
             sessionFactoryScope.inTransaction(session -> session.persist(item));
             assertCollectionContainsExactly(
                     // `item.omitted` is considered empty because all its persistent attributes are non-insertable.
@@ -265,12 +277,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         @Test
         void testNonUpdatable() {
             sessionFactoryScope.inTransaction(session -> {
-                var nested = new MultiValueHavingNonUpdatable();
-                {
-                    nested.a = 2;
-                    nested.b = 3;
-                }
-                var item = new ItemWithNestedValueHavingNonUpdatable(1, nested);
+                var item = new ItemWithNestedValueHavingNonUpdatable(1, new MultiValueHavingNonUpdatable(2, 3));
                 session.persist(item);
                 assertThatThrownBy(session::flush).hasMessageContaining("must be updatable");
             });
@@ -302,6 +309,13 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             int a;
 
             int b;
+
+            MultiValueHavingNonUpdatable() {}
+
+            MultiValueHavingNonUpdatable(int a, int b) {
+                this.a = a;
+                this.b = b;
+            }
         }
 
         @Entity
@@ -311,6 +325,13 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             int id;
 
             MultiValueAllNonInsertable omitted;
+
+            ItemWithNestedValueHavingAllNonInsertable() {}
+
+            ItemWithNestedValueHavingAllNonInsertable(int id, MultiValueAllNonInsertable omitted) {
+                this.id = id;
+                this.omitted = omitted;
+            }
         }
 
         @Embeddable

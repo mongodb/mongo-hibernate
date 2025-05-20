@@ -57,17 +57,9 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Test
     void testFlattenedValues() {
-        var item = new ItemWithFlattenedValues();
-        {
-            item.flattenedId = new SingleValue();
-            item.flattenedId.a = 1;
-            item.flattened1 = new SingleValue();
-            item.flattened1.a = 2;
-            item.flattened2 = new MultiValueWithParent();
-            item.flattened2.a = 3;
-            item.flattened2.flattened = new MultiValue(4, 5);
-            item.flattened2.parent = item;
-        }
+        var item = new ItemWithFlattenedValues(
+                new SingleValue(1), new SingleValue(2), new MultiValueWithParent(3, new MultiValue(4, 5)));
+        item.flattened2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -104,11 +96,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Test
     void testFlattenedEmptyValue() {
-        var item = new ItemWithOmittedEmptyValue();
-        {
-            item.id = 1;
-            item.omitted = new EmptyValue();
-        }
+        var item = new ItemWithOmittedEmptyValue(1, new EmptyValue());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 // Hibernate ORM does not store/read the empty `item.omitted` value.
@@ -161,11 +149,25 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @AttributeOverride(name = "flattened.a", column = @Column(name = "flattened2_flattened_a"))
         @AttributeOverride(name = "flattened.b", column = @Column(name = "flattened2_flattened_b"))
         MultiValueWithParent flattened2;
+
+        ItemWithFlattenedValues() {}
+
+        ItemWithFlattenedValues(SingleValue flattenedId, SingleValue flattened1, MultiValueWithParent flattened2) {
+            this.flattenedId = flattenedId;
+            this.flattened1 = flattened1;
+            this.flattened2 = flattened2;
+        }
     }
 
     @Embeddable
     static class SingleValue {
         int a;
+
+        SingleValue() {}
+
+        SingleValue(int a) {
+            this.a = a;
+        }
     }
 
     @Embeddable
@@ -174,6 +176,13 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         MultiValue flattened;
 
         @Parent ItemWithFlattenedValues parent;
+
+        MultiValueWithParent() {}
+
+        MultiValueWithParent(int a, MultiValue flattened) {
+            this.a = a;
+            this.flattened = flattened;
+        }
 
         /**
          * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
@@ -202,6 +211,13 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         int id;
 
         EmptyValue omitted;
+
+        ItemWithOmittedEmptyValue() {}
+
+        ItemWithOmittedEmptyValue(int id, EmptyValue omitted) {
+            this.id = id;
+            this.omitted = omitted;
+        }
     }
 
     @Embeddable
