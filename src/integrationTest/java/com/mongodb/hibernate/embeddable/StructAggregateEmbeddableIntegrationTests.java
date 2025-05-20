@@ -60,8 +60,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testNestedValues() {
-        var item = new ItemWithNestedValues(
-                new SingleValue(1), new SingleValue(2), new MultiValueWithParent(3, new MultiValue(4, 5)));
+        var item = new ItemWithNestedValues(new Single(1), new Single(2), new PairWithParent(3, new Pair(4, 5)));
         item.nested2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -112,7 +111,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testNestedEmptyValue() {
-        var item = new ItemWithOmittedEmptyValue(1, new EmptyValue());
+        var item = new ItemWithOmittedEmptyValue(1, new Empty());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 // Hibernate ORM does not store/read the empty `item.omitted` value.
@@ -156,15 +155,15 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Table(name = "items")
     static class ItemWithNestedValues {
         @Id
-        SingleValue nestedId;
+        Single nestedId;
 
-        SingleValue nested1;
+        Single nested1;
 
-        MultiValueWithParent nested2;
+        PairWithParent nested2;
 
         ItemWithNestedValues() {}
 
-        ItemWithNestedValues(SingleValue nestedId, SingleValue nested1, MultiValueWithParent nested2) {
+        ItemWithNestedValues(Single nestedId, Single nested1, PairWithParent nested2) {
             this.nestedId = nestedId;
             this.nested1 = nested1;
             this.nested2 = nested2;
@@ -172,28 +171,28 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     }
 
     @Embeddable
-    @Struct(name = "SingleValue")
-    static class SingleValue {
+    @Struct(name = "Single")
+    static class Single {
         int a;
 
-        SingleValue() {}
+        Single() {}
 
-        SingleValue(int a) {
+        Single(int a) {
             this.a = a;
         }
     }
 
     @Embeddable
-    @Struct(name = "MultiValueWithParent")
-    static class MultiValueWithParent {
+    @Struct(name = "PairWithParent")
+    static class PairWithParent {
         int a;
-        MultiValue nested;
+        Pair nested;
 
         @Parent ItemWithNestedValues parent;
 
-        MultiValueWithParent() {}
+        PairWithParent() {}
 
-        MultiValueWithParent(int a, MultiValue nested) {
+        PairWithParent(int a, Pair nested) {
             this.a = a;
             this.nested = nested;
         }
@@ -216,8 +215,8 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     }
 
     @Embeddable
-    @Struct(name = "MultiValue")
-    record MultiValue(int a, int b) {}
+    @Struct(name = "Pair")
+    record Pair(int a, int b) {}
 
     @Entity
     @Table(name = "items")
@@ -225,40 +224,40 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         @Id
         int id;
 
-        EmptyValue omitted;
+        Empty omitted;
 
         ItemWithOmittedEmptyValue() {}
 
-        ItemWithOmittedEmptyValue(int id, EmptyValue omitted) {
+        ItemWithOmittedEmptyValue(int id, Empty omitted) {
             this.id = id;
             this.omitted = omitted;
         }
     }
 
     @Embeddable
-    @Struct(name = "EmptyValue")
-    static class EmptyValue {}
+    @Struct(name = "Empty")
+    static class Empty {}
 
     @Nested
     class Unsupported {
         @Test
         void testPrimaryKeySpanningMultipleFields() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithMultiValueAsId.class)
+                            .addAnnotatedClass(ItemWithPairAsId.class)
                             .buildMetadata())
                     .hasMessageContaining("does not support primary key spanning multiple columns");
         }
 
         @Test
         void testNonInsertable() {
-            var item = new ItemWithNestedValueHavingNonInsertable(1, new MultiValueHavingNonInsertable(2, 3));
+            var item = new ItemWithNestedValueHavingNonInsertable(1, new PairHavingNonInsertable(2, 3));
             assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
                     .hasMessageContaining("must be insertable");
         }
 
         @Test
         void testAllNonInsertable() {
-            var item = new ItemWithNestedValueHavingAllNonInsertable(1, new MultiValueAllNonInsertable(2, 3));
+            var item = new ItemWithNestedValueHavingAllNonInsertable(1, new PairAllNonInsertable(2, 3));
             sessionFactoryScope.inTransaction(session -> session.persist(item));
             assertCollectionContainsExactly(
                     // `item.omitted` is considered empty because all its persistent attributes are non-insertable.
@@ -277,7 +276,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         @Test
         void testNonUpdatable() {
             sessionFactoryScope.inTransaction(session -> {
-                var item = new ItemWithNestedValueHavingNonUpdatable(1, new MultiValueHavingNonUpdatable(2, 3));
+                var item = new ItemWithNestedValueHavingNonUpdatable(1, new PairHavingNonUpdatable(2, 3));
                 session.persist(item);
                 assertThatThrownBy(session::flush).hasMessageContaining("must be updatable");
             });
@@ -285,34 +284,34 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
         @Entity
         @Table(name = "items")
-        static class ItemWithMultiValueAsId {
+        static class ItemWithPairAsId {
             @Id
-            MultiValue id;
+            Pair id;
         }
 
         @Entity
         @Table(name = "items")
-        record ItemWithNestedValueHavingNonInsertable(@Id int id, MultiValueHavingNonInsertable nested) {}
+        record ItemWithNestedValueHavingNonInsertable(@Id int id, PairHavingNonInsertable nested) {}
 
         @Embeddable
-        @Struct(name = "MultiValueHavingNonInsertable")
-        record MultiValueHavingNonInsertable(@Column(insertable = false) int a, int b) {}
+        @Struct(name = "PairHavingNonInsertable")
+        record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
 
         @Entity
         @Table(name = "items")
-        record ItemWithNestedValueHavingNonUpdatable(@Id int id, MultiValueHavingNonUpdatable nested) {}
+        record ItemWithNestedValueHavingNonUpdatable(@Id int id, PairHavingNonUpdatable nested) {}
 
         @Embeddable
-        @Struct(name = "MultiValueHavingNonUpdatable")
-        static class MultiValueHavingNonUpdatable {
+        @Struct(name = "PairHavingNonUpdatable")
+        static class PairHavingNonUpdatable {
             @Column(updatable = false)
             int a;
 
             int b;
 
-            MultiValueHavingNonUpdatable() {}
+            PairHavingNonUpdatable() {}
 
-            MultiValueHavingNonUpdatable(int a, int b) {
+            PairHavingNonUpdatable(int a, int b) {
                 this.a = a;
                 this.b = b;
             }
@@ -324,18 +323,18 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             @Id
             int id;
 
-            MultiValueAllNonInsertable omitted;
+            PairAllNonInsertable omitted;
 
             ItemWithNestedValueHavingAllNonInsertable() {}
 
-            ItemWithNestedValueHavingAllNonInsertable(int id, MultiValueAllNonInsertable omitted) {
+            ItemWithNestedValueHavingAllNonInsertable(int id, PairAllNonInsertable omitted) {
                 this.id = id;
                 this.omitted = omitted;
             }
         }
 
         @Embeddable
-        @Struct(name = "MultiValueAllNonInsertable")
-        record MultiValueAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
+        @Struct(name = "PairAllNonInsertable")
+        record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
     }
 }

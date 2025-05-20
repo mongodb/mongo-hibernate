@@ -57,8 +57,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Test
     void testFlattenedValues() {
-        var item = new ItemWithFlattenedValues(
-                new SingleValue(1), new SingleValue(2), new MultiValueWithParent(3, new MultiValue(4, 5)));
+        var item = new ItemWithFlattenedValues(new Single(1), new Single(2), new PairWithParent(3, new Pair(4, 5)));
         item.flattened2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -96,7 +95,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Test
     void testFlattenedEmptyValue() {
-        var item = new ItemWithOmittedEmptyValue(1, new EmptyValue());
+        var item = new ItemWithOmittedEmptyValue(1, new Empty());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 // Hibernate ORM does not store/read the empty `item.omitted` value.
@@ -140,19 +139,19 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Table(name = "items")
     static class ItemWithFlattenedValues {
         @Id
-        SingleValue flattenedId;
+        Single flattenedId;
 
         @AttributeOverride(name = "a", column = @Column(name = "flattened1_a"))
-        SingleValue flattened1;
+        Single flattened1;
 
         @AttributeOverride(name = "a", column = @Column(name = "flattened2_a"))
         @AttributeOverride(name = "flattened.a", column = @Column(name = "flattened2_flattened_a"))
         @AttributeOverride(name = "flattened.b", column = @Column(name = "flattened2_flattened_b"))
-        MultiValueWithParent flattened2;
+        PairWithParent flattened2;
 
         ItemWithFlattenedValues() {}
 
-        ItemWithFlattenedValues(SingleValue flattenedId, SingleValue flattened1, MultiValueWithParent flattened2) {
+        ItemWithFlattenedValues(Single flattenedId, Single flattened1, PairWithParent flattened2) {
             this.flattenedId = flattenedId;
             this.flattened1 = flattened1;
             this.flattened2 = flattened2;
@@ -160,26 +159,26 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    static class SingleValue {
+    static class Single {
         int a;
 
-        SingleValue() {}
+        Single() {}
 
-        SingleValue(int a) {
+        Single(int a) {
             this.a = a;
         }
     }
 
     @Embeddable
-    static class MultiValueWithParent {
+    static class PairWithParent {
         int a;
-        MultiValue flattened;
+        Pair flattened;
 
         @Parent ItemWithFlattenedValues parent;
 
-        MultiValueWithParent() {}
+        PairWithParent() {}
 
-        MultiValueWithParent(int a, MultiValue flattened) {
+        PairWithParent(int a, Pair flattened) {
             this.a = a;
             this.flattened = flattened;
         }
@@ -202,7 +201,7 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Embeddable
-    record MultiValue(int a, int b) {}
+    record Pair(int a, int b) {}
 
     @Entity
     @Table(name = "items")
@@ -210,34 +209,34 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @Id
         int id;
 
-        EmptyValue omitted;
+        Empty omitted;
 
         ItemWithOmittedEmptyValue() {}
 
-        ItemWithOmittedEmptyValue(int id, EmptyValue omitted) {
+        ItemWithOmittedEmptyValue(int id, Empty omitted) {
             this.id = id;
             this.omitted = omitted;
         }
     }
 
     @Embeddable
-    static class EmptyValue {}
+    static class Empty {}
 
     @Nested
     class Unsupported {
         @Test
         void testPrimaryKeySpanningMultipleFields() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithMultiValueAsId.class)
+                            .addAnnotatedClass(ItemWithPairAsId.class)
                             .buildMetadata())
                     .hasMessageContaining("does not support primary key spanning multiple columns");
         }
 
         @Entity
         @Table(name = "items")
-        static class ItemWithMultiValueAsId {
+        static class ItemWithPairAsId {
             @Id
-            MultiValue id;
+            Pair id;
         }
     }
 }
