@@ -272,8 +272,7 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                     "from Book ORDER BY length(title)",
                     Book.class,
                     FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-%1$d https://jira.mongodb.org/browse/HIBERNATE-%1$d",
-                    79);
+                    "TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
         }
 
         @ParameterizedTest
@@ -297,7 +296,7 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 criteria.orderBy(cb.sort(root.get("title"), ASCENDING, NONE, true));
                 assertThatThrownBy(() -> session.createSelectionQuery(criteria).getResultList())
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage("TODO-HIBERNATE-%1$d https://jira.mongodb.org/browse/HIBERNATE-%1$d", 79);
+                        .hasMessage("TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
             });
         }
     }
