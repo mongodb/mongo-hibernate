@@ -61,7 +61,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -333,8 +332,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
 
-        var astFilterFieldPath =
-                new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
+        var astFilterFieldPath = keyBinding.getColumnReference().getColumnExpression();
         var fieldValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
@@ -429,7 +427,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -508,7 +506,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
                 new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
