@@ -37,6 +37,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
+import com.mongodb.hibernate.internal.type.ValueConverter;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -111,43 +112,42 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable String getString(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asString().getValue());
+        return getValue(columnIndex, ValueConverter::toStringDomainValue);
     }
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asBoolean().getValue(), false);
+        return getValue(columnIndex, ValueConverter::toBooleanDomainValue, false);
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asInt32().intValue(), 0);
+        return getValue(columnIndex, ValueConverter::toIntDomainValue, 0);
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asInt64().longValue(), 0L);
+        return getValue(columnIndex, ValueConverter::toLongDomainValue, 0L);
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asDouble().getValue(), 0)
-                .doubleValue();
+        return getValue(columnIndex, ValueConverter::toDoubleDomainValue, 0d);
     }
 
     @Override
     public byte @Nullable [] getBytes(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, bsonValue -> bsonValue.asBinary().getData());
+        return getValue(columnIndex, ValueConverter::toByteArrayDomainValue);
     }
 
     @Override
@@ -189,9 +189,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable BigDecimal getBigDecimal(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(
-                columnIndex,
-                bsonValue -> bsonValue.asDecimal128().decimal128Value().bigDecimalValue());
+        return getValue(columnIndex, ValueConverter::toBigDecimalDomainValue);
     }
 
     @Override
@@ -207,9 +205,12 @@ final class MongoResultSet implements ResultSetAdapter {
         checkColumnIndex(columnIndex);
         Object value;
         if (type.equals(ObjectId.class)) {
-            value = getValue(columnIndex, bsonValue -> bsonValue.asObjectId().getValue());
+            value = getValue(columnIndex, ValueConverter::toObjectIdDomainValue);
+        } else if (type.equals(BsonDocument.class)) {
+            value = getValue(columnIndex, BsonValue::asDocument);
         } else {
-            throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+            throw new SQLFeatureNotSupportedException(
+                    format("Type [%s] for a column with index [%d] is not supported", type, columnIndex));
         }
         return type.cast(value);
     }
