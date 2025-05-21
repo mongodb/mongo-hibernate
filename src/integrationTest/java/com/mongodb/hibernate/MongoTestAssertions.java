@@ -18,6 +18,8 @@ package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.function.BiConsumer;
+import org.assertj.core.api.RecursiveComparisonAssert;
 import org.jspecify.annotations.Nullable;
 
 public final class MongoTestAssertions {
@@ -28,11 +30,19 @@ public final class MongoTestAssertions {
      * {@link org.junit.jupiter.api.Assertions#assertEquals(Object, Object)}. It should work even if
      * {@code expected}/{@code actual} does not override {@link Object#equals(Object)}.
      */
-    public static void assertEquals(@Nullable Object expected, @Nullable Object actual) {
-        assertThat(actual)
-                .usingRecursiveComparison()
-                .usingOverriddenEquals()
-                .withStrictTypeChecking()
-                .isEqualTo(expected);
+    public static void assertEq(@Nullable Object expected, @Nullable Object actual) {
+        assertUsingRecursiveComparison(expected, actual, RecursiveComparisonAssert::isEqualTo);
+    }
+
+    public static void assertUsingRecursiveComparison(
+            @Nullable Object expected,
+            @Nullable Object actual,
+            BiConsumer<RecursiveComparisonAssert<?>, Object> assertion) {
+        assertion.accept(
+                assertThat(expected)
+                        .usingRecursiveComparison()
+                        .usingOverriddenEquals()
+                        .withStrictTypeChecking(),
+                actual);
     }
 }
