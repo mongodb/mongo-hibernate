@@ -253,9 +253,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: insert
-
     @Override
     public void visitStandardTableInsert(TableInsertStandard tableInsert) {
         if (tableInsert.getNumberOfReturningColumns() > 0) {
@@ -284,9 +281,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         columnWriteFragment.getParameters().iterator().next().accept(this);
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: delete
-
     @Override
     public void visitStandardTableDelete(TableDeleteStandard tableDelete) {
         if (tableDelete.getWhereFragment() != null) {
@@ -297,9 +291,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 COLLECTION_MUTATION,
                 new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter));
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: update
 
     @Override
     public void visitStandardTableUpdate(TableUpdateStandard tableUpdate) {
@@ -536,9 +527,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
         sqlSelectionExpression.getSelection().getExpression().accept(this);
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // ORDER BY clause
 
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
