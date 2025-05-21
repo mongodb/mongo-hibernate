@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -126,12 +127,12 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 sortDirection.equals("ASC")
                         ? resultList -> assertThat(resultList)
                                 .satisfiesAnyOf(
-                                        list -> assertResultListEquals(getBooksByIds(3, 2, 4, 1, 5), list),
-                                        list -> assertResultListEquals(getBooksByIds(3, 2, 4, 5, 1), list))
+                                        list -> assertIterableEq(getBooksByIds(3, 2, 4, 1, 5), list),
+                                        list -> assertIterableEq(getBooksByIds(3, 2, 4, 5, 1), list))
                         : resultList -> assertThat(resultList)
                                 .satisfiesAnyOf(
-                                        list -> assertResultListEquals(getBooksByIds(1, 5, 4, 2, 3), list),
-                                        list -> assertResultListEquals(getBooksByIds(5, 1, 4, 2, 3), list)));
+                                        list -> assertIterableEq(getBooksByIds(1, 5, 4, 2, 3), list),
+                                        list -> assertIterableEq(getBooksByIds(5, 1, 4, 2, 3), list)));
     }
 
     @Test
@@ -181,8 +182,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
                 resultList -> assertThat(resultList)
                         .satisfiesAnyOf(
-                                list -> assertResultListEquals(getBooksByIds(3, 2, 4, 1, 5), list),
-                                list -> assertResultListEquals(getBooksByIds(3, 2, 4, 5, 1), list)));
+                                list -> assertIterableEq(getBooksByIds(3, 2, 4, 1, 5), list),
+                                list -> assertIterableEq(getBooksByIds(3, 2, 4, 5, 1), list)));
     }
 
     @Test

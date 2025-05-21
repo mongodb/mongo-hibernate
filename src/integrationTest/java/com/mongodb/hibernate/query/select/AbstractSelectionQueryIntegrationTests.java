@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -65,9 +66,12 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
             Consumer<SelectionQuery<T>> queryPostProcessor,
             String expectedMql,
             List<T> expectedResultList) {
-        assertSelectionQuery(hql, resultType, queryPostProcessor, expectedMql, resultList -> assertThat(resultList)
-                .usingRecursiveFieldByFieldElementComparator()
-                .containsExactlyElementsOf(expectedResultList));
+        assertSelectionQuery(
+                hql,
+                resultType,
+                queryPostProcessor,
+                expectedMql,
+                resultList -> assertIterableEq(expectedResultList, resultList));
     }
 
     <T> void assertSelectionQuery(String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
@@ -138,12 +142,5 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
                 .singleElement()
                 .asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsAllEntriesOf(expectedCommand);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> void assertResultListEquals(List<T> expectedResultList, List<? extends T> actualResultList) {
-        assertThat((List<T>) actualResultList)
-                .usingRecursiveFieldByFieldElementComparator()
-                .containsExactlyElementsOf(expectedResultList);
     }
 }
