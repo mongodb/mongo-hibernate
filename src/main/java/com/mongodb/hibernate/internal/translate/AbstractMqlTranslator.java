@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
@@ -69,7 +70,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -86,9 +86,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
-import org.bson.json.JsonWriterSettings;
 import org.bson.types.Decimal128;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -190,8 +188,6 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.jspecify.annotations.Nullable;
 
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
-    private static final JsonWriterSettings JSON_WRITER_SETTINGS =
-            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final SessionFactoryImplementor sessionFactory;
 
@@ -324,8 +320,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
 
-        var astFilterFieldPath =
-                new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
+        var astFilterFieldPath = keyBinding.getColumnReference().getColumnExpression();
         var fieldValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
@@ -440,7 +435,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -519,7 +514,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
                 new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
