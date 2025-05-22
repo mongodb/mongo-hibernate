@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
@@ -36,6 +36,6 @@ class AstMatchStageTests {
         var expectedJson = """
                 {"$match": {"title": {"$eq": "Jane Eyre"}}}\
                 """;
-        assertRender(expectedJson, astMatchStage);
+        assertRendering(expectedJson, astMatchStage);
     }
 }

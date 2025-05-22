@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
@@ -76,9 +77,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
-import org.bson.json.JsonWriterSettings;
 import org.bson.types.Decimal128;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -178,8 +177,6 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.jspecify.annotations.Nullable;
 
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
-    private static final JsonWriterSettings JSON_WRITER_SETTINGS =
-            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final SessionFactoryImplementor sessionFactory;
 
@@ -233,7 +230,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     static String renderMongoAstNode(AstNode rootAstNode) {
         try (var stringWriter = new StringWriter();
-                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
+                var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
             rootAstNode.render(jsonWriter);
             jsonWriter.flush();
             return stringWriter.toString();

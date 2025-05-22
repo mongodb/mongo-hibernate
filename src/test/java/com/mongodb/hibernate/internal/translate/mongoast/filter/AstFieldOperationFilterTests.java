@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
@@ -32,8 +32,8 @@ class AstFieldOperationFilterTests {
                 "fieldName", new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1))));
 
         var expectedJson = """
-                           {"fieldName": {"$eq": 1}}\
-                           """;
-        assertRender(expectedJson, astFieldOperationFilter);
+                {"fieldName": {"$eq": {"$numberInt": "1"}}}\
+                """;
+        assertRendering(expectedJson, astFieldOperationFilter);
     }
 }
