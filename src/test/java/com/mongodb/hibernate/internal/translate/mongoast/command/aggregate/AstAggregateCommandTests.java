@@ -22,7 +22,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.util.List;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,7 @@ class AstAggregateCommandTests {
     @Test
     void testRendering() {
         var matchStage = new AstMatchStage(new AstFieldOperationFilter(
-                new AstFilterFieldPath("_id"),
+                "_id",
                 new AstComparisonFilterOperation(
                         AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt32(1)))));
         var projectStage = new AstProjectStage(List.of(new AstProjectStageIncludeSpecification("title")));
