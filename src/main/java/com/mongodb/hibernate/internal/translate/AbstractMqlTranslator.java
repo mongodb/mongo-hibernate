@@ -855,7 +855,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     static String renderMongoAstNode(AstNode rootAstNode) {
         try (var stringWriter = new StringWriter();
-                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
+                var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
             rootAstNode.render(jsonWriter);
             jsonWriter.flush();
             return stringWriter.toString();
