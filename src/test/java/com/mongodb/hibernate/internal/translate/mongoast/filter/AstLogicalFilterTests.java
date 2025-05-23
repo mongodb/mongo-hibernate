@@ -16,10 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.FilterTestUtils.createFieldOperationFilter;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import java.util.List;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
@@ -33,14 +33,17 @@ class AstLogicalFilterTests {
         var astLogicalFilter = new AstLogicalFilter(
                 operator,
                 List.of(
-                        createFieldOperationFilter("field1", EQ, new BsonInt32(1)),
-                        createFieldOperationFilter("field2", EQ, new BsonString("1"))));
+                        new AstFieldOperationFilter(
+                                "field1", new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)))),
+                        new AstFieldOperationFilter(
+                                "field2",
+                                new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("1"))))));
 
         var expectedJson =
                 """
-                {"%s": [{"field1": {"$eq": 1}}, {"field2": {"$eq": "1"}}]}\
+                {"%s": [{"field1": {"$eq": {"$numberInt": "1"}}}, {"field2": {"$eq": "1"}}]}\
                 """
                         .formatted(operator.getOperatorName());
-        assertRender(expectedJson, astLogicalFilter);
+        assertRendering(expectedJson, astLogicalFilter);
     }
 }

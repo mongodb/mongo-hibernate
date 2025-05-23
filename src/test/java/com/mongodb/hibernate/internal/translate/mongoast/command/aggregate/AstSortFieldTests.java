@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,9 +29,9 @@ class AstSortFieldTests {
     void testRendering(AstSortOrder sortOrder) {
         var sortField = new AstSortField("field", sortOrder);
         var expectedJson = """
-                           {"field": %d}\
-                           """
+                {"field": {"$numberInt": "%d"}}\
+                """
                 .formatted(sortOrder == ASC ? 1 : -1);
-        assertElementRender(expectedJson, sortField);
+        assertElementRendering(expectedJson, sortField);
     }
 }

@@ -27,7 +27,7 @@ class Book {
     @Id
     int id;
 
-    // dummy values are set for currently null value is not supported
+    // TODO-HIBERNATE-48 dummy values are set for currently null value is not supported
     String title = "";
     Boolean outOfStock = false;
     Integer publishYear = 0;
@@ -42,10 +42,5 @@ class Book {
         this.title = title;
         this.publishYear = publishYear;
         this.outOfStock = outOfStock;
-    }
-
-    @Override
-    public String toString() {
-        return "Book{" + "id=" + id + '}';
     }
 }

@@ -16,13 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
 
@@ -31,13 +30,12 @@ class AstMatchStageTests {
     @Test
     void testRendering() {
         var astFilter = new AstFieldOperationFilter(
-                new AstFilterFieldPath("title"),
-                new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("Jane Eyre"))));
+                "title", new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("Jane Eyre"))));
         var astMatchStage = new AstMatchStage(astFilter);
 
         var expectedJson = """
                 {"$match": {"title": {"$eq": "Jane Eyre"}}}\
                 """;
-        assertRender(expectedJson, astMatchStage);
+        assertRendering(expectedJson, astMatchStage);
     }
 }

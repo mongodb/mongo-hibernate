@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -29,9 +29,10 @@ class AstSortStageTests {
         var astSortField2 = new AstSortField("field2", AstSortOrder.DESC);
         var astSortStage = new AstSortStage(List.of(astSortField1, astSortField2));
 
-        var expectedJson = """
-                {"$sort": {"field1": 1, "field2": -1}}\
+        var expectedJson =
+                """
+                {"$sort": {"field1": {"$numberInt": "1"}, "field2": {"$numberInt": "-1"}}}\
                 """;
-        assertRender(expectedJson, astSortStage);
+        assertRendering(expectedJson, astSortStage);
     }
 }

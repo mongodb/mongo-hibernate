@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import org.bson.BsonInt32;
@@ -29,9 +29,10 @@ class AstLimitStageTests {
         var limitValue = 10;
         var astLimitStage = new AstLimitStage(new AstLiteralValue(new BsonInt32(limitValue)));
 
-        var expectedJson = """
-                {"$limit": %d}\
+        var expectedJson =
+                """
+                {"$limit": {"$numberInt": "%d"}}\
                 """.formatted(limitValue);
-        assertRender(expectedJson, astLimitStage);
+        assertRendering(expectedJson, astLimitStage);
     }
 }

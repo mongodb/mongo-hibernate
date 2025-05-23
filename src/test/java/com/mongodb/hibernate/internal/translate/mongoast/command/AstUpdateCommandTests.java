@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
@@ -24,7 +24,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.util.List;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
@@ -41,7 +40,7 @@ class AstUpdateCommandTests {
 
         final AstFilter filter;
         filter = new AstFieldOperationFilter(
-                new AstFilterFieldPath("_id"),
+                "_id",
                 new AstComparisonFilterOperation(
                         AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt64(12345L))));
 
@@ -49,8 +48,8 @@ class AstUpdateCommandTests {
 
         final String expectedJson =
                 """
-                {"update": "books", "updates": [{"q": {"_id": {"$eq": 12345}}, "u": {"$set": {"title": "War and Peace", "author": "Leo Tolstoy"}}, "multi": true}]}\
+                {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$numberLong": "12345"}}}, "u": {"$set": {"title": "War and Peace", "author": "Leo Tolstoy"}}, "multi": true}]}\
                 """;
-        assertRender(expectedJson, updateCommand);
+        assertRendering(expectedJson, updateCommand);
     }
 }

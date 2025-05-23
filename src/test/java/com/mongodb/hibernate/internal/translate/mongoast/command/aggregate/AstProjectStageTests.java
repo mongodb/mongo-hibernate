@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static java.util.Collections.singletonList;
 
 import org.junit.jupiter.api.Test;
@@ -29,6 +29,6 @@ class AstProjectStageTests {
         var expectedJson = """
                            {"$project": {"title": true}}\
                            """;
-        assertRender(expectedJson, astProjectStage);
+        assertRendering(expectedJson, astProjectStage);
     }
 }

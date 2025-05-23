@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
@@ -73,7 +74,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -93,9 +93,7 @@ import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.bson.json.JsonMode;
 import org.bson.json.JsonWriter;
-import org.bson.json.JsonWriterSettings;
 import org.bson.types.Decimal128;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -201,8 +199,6 @@ import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
-    private static final JsonWriterSettings JSON_WRITER_SETTINGS =
-            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final SessionFactoryImplementor sessionFactory;
 
@@ -280,9 +276,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: insert
-
     @Override
     public void visitStandardTableInsert(TableInsertStandard tableInsert) {
         if (tableInsert.getNumberOfReturningColumns() > 0) {
@@ -311,9 +304,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         columnWriteFragment.getParameters().iterator().next().accept(this);
     }
 
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: delete
-
     @Override
     public void visitStandardTableDelete(TableDeleteStandard tableDelete) {
         if (tableDelete.getWhereFragment() != null) {
@@ -324,9 +314,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 COLLECTION_MUTATION,
                 new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter));
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // Table Mutation: update
 
     @Override
     public void visitStandardTableUpdate(TableUpdateStandard tableUpdate) {
@@ -360,8 +347,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
 
-        var astFilterFieldPath =
-                new AstFilterFieldPath(keyBinding.getColumnReference().getColumnExpression());
+        var astFilterFieldPath = keyBinding.getColumnReference().getColumnExpression();
         var fieldValue = acceptAndYield(keyBinding.getValueExpression(), FIELD_VALUE);
         return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
@@ -398,7 +384,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         createSortStage(querySpec).ifPresent(stages::add);
 
         stages.addAll(createSkipOrLimitStages(querySpec));
-
         stages.add(createProjectStage(querySpec.getSelectClause()));
 
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
@@ -480,7 +465,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -559,7 +544,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
                 new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(new AstFilterFieldPath(fieldPath), astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -567,9 +552,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitSqlSelectionExpression(SqlSelectionExpression sqlSelectionExpression) {
         sqlSelectionExpression.getSelection().getExpression().accept(this);
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // ORDER BY clause
 
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
@@ -612,9 +594,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(sortExpression, FIELD_PATH);
         return new AstSortField(fieldPath, astSortOrder);
     }
-
-    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    // LIMIT/OFFSET/FETCH clause
 
     @Override
     public void visitOffsetFetchClause(QueryPart queryPart) {
@@ -940,7 +919,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     static String renderMongoAstNode(AstNode rootAstNode) {
         try (var stringWriter = new StringWriter();
-                var jsonWriter = new JsonWriter(stringWriter, JSON_WRITER_SETTINGS)) {
+                var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
             rootAstNode.render(jsonWriter);
             jsonWriter.flush();
             return stringWriter.toString();

@@ -18,6 +18,7 @@ package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 import org.jspecify.annotations.Nullable;
 
 public final class MongoTestAssertions {
@@ -34,5 +35,20 @@ public final class MongoTestAssertions {
                 .usingOverriddenEquals()
                 .withStrictTypeChecking()
                 .isEqualTo(expected);
+    }
+
+    /**
+     * This method is intended to be a drop-in replacement for
+     * {@link org.junit.jupiter.api.Assertions#assertIterableEquals(Iterable, Iterable)}. It should work even if
+     * elements in {@code expected}/{@code actual} do not override {@link Object#equals(Object)}.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> void assertIterableEq(Iterable<T> expectedResultList, Iterable<? extends T> actualResultList) {
+        assertThat((Iterable<T>) actualResultList)
+                .usingRecursiveFieldByFieldElementComparator(RecursiveComparisonConfiguration.builder()
+                        .withIgnoreAllOverriddenEquals(false)
+                        .withStrictTypeChecking(true)
+                        .build())
+                .containsExactlyElementsOf(expectedResultList);
     }
 }
