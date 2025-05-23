@@ -19,6 +19,9 @@ package com.mongodb.hibernate.query.select;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.hibernate.cfg.JdbcSettings.DIALECT;
+import static org.hibernate.cfg.QuerySettings.QUERY_PLAN_CACHE_ENABLED;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -26,7 +29,6 @@ import com.mongodb.hibernate.internal.MongoConstants;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -379,7 +381,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                             }
                         },
                         """
-                                {
+                        {
                           "aggregate": "books",
                           "pipeline": [
                             {
@@ -404,8 +406,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                         }
                         """
                                 .formatted(
-                                        (isFirstResultSet ? "{'$skip': " + firstResult + "}" : ""),
-                                        (isMaxResultsSet ? " {'$limit': " + maxResults + "}" : "")),
+                                        (isFirstResultSet ? "{\"$skip\": " + firstResult + "}," : ""),
+                                        (isMaxResultsSet ? "{\"$limit\": " + maxResults + "}," : "")),
                         expectedBooks);
             }
         }
@@ -415,9 +417,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
     class FeatureNotSupportedTests {
 
         @ParameterizedTest
-        @EnumSource(
-                value = FetchClauseType.class,
-                names = {"ROWS_WITH_TIES", "PERCENT_ONLY", "PERCENT_WITH_TIES"})
+        @EnumSource(value = FetchClauseType.class, mode = EXCLUDE, names = "ROWS_ONLY")
         void testUnsupportedFetchClauseType(FetchClauseType fetchClauseType) {
             var hqlSuffix =
                     switch (fetchClauseType) {
@@ -442,21 +442,21 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
     @DomainModel(annotatedClasses = Book.class)
     @ServiceRegistry(
             settings = {
-                @Setting(name = AvailableSettings.QUERY_PLAN_CACHE_ENABLED, value = "true"),
+                @Setting(name = QUERY_PLAN_CACHE_ENABLED, value = "true"),
                 @Setting(
-                        name = AvailableSettings.DIALECT,
+                        name = DIALECT,
                         value =
-                                "com.mongodb.hibernate.query.select.LimitOffsetFetchClauseIntegrationTests$MqlTranslateCacheTestingDialect"),
+                                "com.mongodb.hibernate.query.select.LimitOffsetFetchClauseIntegrationTests$TranslatingCacheTestingDialect"),
             })
     class QueryPlanCacheTests extends AbstractSelectionQueryIntegrationTests {
 
         private static final String HQL = "from Book order by id";
 
-        private MqlTranslateCacheTestingDialect mqlTranslateCacheTestingDialect;
+        private TranslatingCacheTestingDialect translatingCacheTestingDialect;
 
         @BeforeEach
         void beforeEach() {
-            mqlTranslateCacheTestingDialect = (MqlTranslateCacheTestingDialect) getSessionFactoryScope()
+            translatingCacheTestingDialect = (TranslatingCacheTestingDialect) getSessionFactoryScope()
                     .getSessionFactory()
                     .getJdbcServices()
                     .getDialect();
@@ -466,18 +466,21 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @CsvSource({"true,false", "false,true", "true,true"})
         void testQueryOptionsLimitCached(boolean isFirstResultSet, boolean isMaxResultsSet) {
             getSessionFactoryScope().inTransaction(session -> {
-                var query = session.createSelectionQuery(HQL, Book.class);
-                setQueryOptionsAndQuery(query, isFirstResultSet ? 5 : null, isMaxResultsSet ? 10 : null);
-                var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
+                var firstQuery = session.createSelectionQuery(HQL, Book.class);
+                setQueryOptionsAndQuery(firstQuery, isFirstResultSet ? 5 : null, isMaxResultsSet ? 10 : null);
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
-                query = session.createSelectionQuery(HQL, Book.class);
-                setQueryOptionsAndQuery(query, isFirstResultSet ? 3 : null, isMaxResultsSet ? 6 : null);
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(initialSelectTranslatingCount).isPositive();
+
+                var secondQuery = session.createSelectionQuery(HQL, Book.class);
+                setQueryOptionsAndQuery(secondQuery, isFirstResultSet ? 3 : null, isMaxResultsSet ? 6 : null);
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount);
             });
         }
 
-        private void setQueryOptionsAndQuery(SelectionQuery<Book> query, Integer firstResult, Integer maxResults) {
+        private static void setQueryOptionsAndQuery(
+                SelectionQuery<Book> query, Integer firstResult, Integer maxResults) {
             if (firstResult != null) {
                 query.setFirstResult(firstResult);
             }
@@ -491,17 +494,19 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         void testCacheInvalidatedDueToQueryOptionsAdded() {
             getSessionFactoryScope().inTransaction(session -> {
                 session.createSelectionQuery(HQL, Book.class).getResultList();
-                var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
+
+                assertThat(initialSelectTranslatingCount).isPositive();
 
                 session.createSelectionQuery(HQL, Book.class).setFirstResult(1).getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
 
                 session.createSelectionQuery(HQL, Book.class)
                         .setFirstResult(1)
                         .setMaxResults(5)
                         .getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 2);
             });
         }
@@ -510,10 +515,12 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         void testCacheInvalidatedDueToQueryOptionsRemoved() {
             getSessionFactoryScope().inTransaction(session -> {
                 session.createSelectionQuery(HQL, Book.class).setFirstResult(10).getResultList();
-                var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
+
+                assertThat(initialSelectTranslatingCount).isPositive();
 
                 session.createSelectionQuery(HQL, Book.class).getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
             });
         }
@@ -522,20 +529,22 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         void testCacheInvalidatedDueToDifferentQueryOptions() {
             getSessionFactoryScope().inTransaction(session -> {
                 session.createSelectionQuery(HQL, Book.class).setFirstResult(10).getResultList();
-                var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
+
+                assertThat(initialSelectTranslatingCount).isPositive();
 
                 session.createSelectionQuery(HQL, Book.class).setMaxResults(20).getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
             });
         }
     }
 
-    public static final class MqlTranslateCacheTestingDialect extends Dialect {
+    public static final class TranslatingCacheTestingDialect extends Dialect {
         private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
         private final Dialect delegate;
 
-        public MqlTranslateCacheTestingDialect(DialectResolutionInfo info) {
+        public TranslatingCacheTestingDialect(DialectResolutionInfo info) {
             super(info);
             delegate = new MongoDialect(info);
         }
@@ -553,7 +562,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                 @Override
                 public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
                         SessionFactoryImplementor sessionFactory, MutationStatement statement) {
-                    return delegate.getSqlAstTranslatorFactory().buildMutationTranslator(sessionFactory, statement);
+                    throw new IllegalStateException("mutation translator not expected");
                 }
 
                 @Override

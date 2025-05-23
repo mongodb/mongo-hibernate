@@ -209,7 +209,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private final Set<String> affectedTableNames = new HashSet<>();
 
     @Nullable Limit limit;
+
     @Nullable JdbcParameter firstRowJdbcParameter;
+
     @Nullable JdbcParameter maxRowsJdbcParameter;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
