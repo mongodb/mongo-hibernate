@@ -20,14 +20,26 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-import com.mongodb.hibernate.TestDialect;
+import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.dialect.Dialect;
+import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.sqm.FetchClauseType;
+import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.tree.MutationStatement;
+import org.hibernate.sql.ast.tree.select.SelectStatement;
+import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
+import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.model.ast.TableMutation;
+import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
@@ -431,7 +443,10 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
     @ServiceRegistry(
             settings = {
                 @Setting(name = AvailableSettings.QUERY_PLAN_CACHE_ENABLED, value = "true"),
-                @Setting(name = AvailableSettings.DIALECT, value = "com.mongodb.hibernate.TestDialect")
+                @Setting(
+                        name = AvailableSettings.DIALECT,
+                        value =
+                                "com.mongodb.hibernate.query.select.LimitOffsetFetchClauseIntegrationTests$TestDialect"),
             })
     class QueryPlanCacheTests extends AbstractSelectionQueryIntegrationTests {
 
@@ -508,6 +523,44 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                 session.createSelectionQuery(HQL, Book.class).setMaxResults(20).getResultList();
                 assertThat(testDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
             });
+        }
+    }
+
+    public static final class TestDialect extends Dialect {
+        private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
+        private final Dialect delegate;
+
+        public TestDialect(DialectResolutionInfo info) {
+            super(info);
+            delegate = new MongoDialect(info);
+        }
+
+        @Override
+        public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
+            return new SqlAstTranslatorFactory() {
+                @Override
+                public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
+                        SessionFactoryImplementor sessionFactory, SelectStatement statement) {
+                    selectTranslatingCounter.incrementAndGet();
+                    return delegate.getSqlAstTranslatorFactory().buildSelectTranslator(sessionFactory, statement);
+                }
+
+                @Override
+                public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
+                        SessionFactoryImplementor sessionFactory, MutationStatement statement) {
+                    return delegate.getSqlAstTranslatorFactory().buildMutationTranslator(sessionFactory, statement);
+                }
+
+                @Override
+                public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
+                        TableMutation<O> mutation, SessionFactoryImplementor sessionFactory) {
+                    return delegate.getSqlAstTranslatorFactory().buildModelMutationTranslator(mutation, sessionFactory);
+                }
+            };
+        }
+
+        public int getSelectTranslatingCounter() {
+            return selectTranslatingCounter.get();
         }
     }
 }
