@@ -472,7 +472,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
 
                 query = session.createSelectionQuery(HQL, Book.class);
                 setQueryOptionsAndQuery(query, isFirstResultSet ? 3 : null, isMaxResultsSet ? 6 : null);
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount);
+                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                        .isEqualTo(initialSelectTranslatingCount);
             });
         }
 
@@ -493,13 +494,15 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                 var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
 
                 session.createSelectionQuery(HQL, Book.class).setFirstResult(1).getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
+                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                        .isEqualTo(initialSelectTranslatingCount + 1);
 
                 session.createSelectionQuery(HQL, Book.class)
                         .setFirstResult(1)
                         .setMaxResults(5)
                         .getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 2);
+                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                        .isEqualTo(initialSelectTranslatingCount + 2);
             });
         }
 
@@ -510,7 +513,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                 var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
 
                 session.createSelectionQuery(HQL, Book.class).getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
+                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                        .isEqualTo(initialSelectTranslatingCount + 1);
             });
         }
 
@@ -521,7 +525,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                 var initialSelectTranslatingCount = mqlTranslateCacheTestingDialect.getSelectTranslatingCounter();
 
                 session.createSelectionQuery(HQL, Book.class).setMaxResults(20).getResultList();
-                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter()).isEqualTo(initialSelectTranslatingCount + 1);
+                assertThat(mqlTranslateCacheTestingDialect.getSelectTranslatingCounter())
+                        .isEqualTo(initialSelectTranslatingCount + 1);
             });
         }
     }

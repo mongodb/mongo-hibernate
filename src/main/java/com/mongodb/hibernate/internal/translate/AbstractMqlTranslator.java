@@ -208,9 +208,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private final Set<String> affectedTableNames = new HashSet<>();
 
-    private @Nullable Limit limit;
-    private @Nullable JdbcParameter firstRowParameter;
-    private @Nullable JdbcParameter maxRowsParameter;
+    @Nullable Limit limit;
+    @Nullable JdbcParameter firstRowJdbcParameter;
+    @Nullable JdbcParameter maxRowsJdbcParameter;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -252,18 +252,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     List<JdbcParameterBinder> getParameterBinders() {
         return parameterBinders;
-    }
-
-    @Nullable JdbcParameter getFirstRowParameter() {
-        return firstRowParameter;
-    }
-
-    @Nullable JdbcParameter getMaxRowsParameter() {
-        return maxRowsParameter;
-    }
-
-    void setLimit(@Nullable Limit limit) {
-        this.limit = limit;
     }
 
     @SuppressWarnings("overloads")
@@ -383,7 +371,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
 
-        stages.addAll(createSkipOrLimitStages(querySpec));
+        stages.addAll(createSkipLimitStages(querySpec));
         stages.add(createProjectStage(querySpec.getSelectClause()));
 
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
@@ -411,7 +399,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         return Optional.empty();
     }
 
-    private List<AstStage> createSkipOrLimitStages(QuerySpec querySpec) {
+    private List<AstStage> createSkipLimitStages(QuerySpec querySpec) {
         return astVisitorValueHolder.execute(SKIP_LIMIT_STAGES, () -> visitOffsetFetchClause(querySpec));
     }
 
@@ -597,24 +585,24 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitOffsetFetchClause(QueryPart queryPart) {
-        var stages = createSkipAndLimitStages(queryPart);
-        astVisitorValueHolder.yield(SKIP_LIMIT_STAGES, stages);
+        var skipLimitStages = createSkipLimitStages(queryPart);
+        astVisitorValueHolder.yield(SKIP_LIMIT_STAGES, skipLimitStages);
     }
 
-    private List<AstStage> createSkipAndLimitStages(QueryPart queryPart) {
-        var stages = new ArrayList<AstStage>(2);
+    private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
+        var skipLimitStages = new ArrayList<AstStage>(2);
         final Expression skipExpression;
         final Expression limitExpression;
         if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
-            var basicType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
+            var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
             if (limit.getFirstRow() != null) {
-                firstRowParameter = new LimitJdbcParameter(basicType, Limit::getFirstRow);
+                firstRowJdbcParameter = new LimitJdbcParameter(basicIntegerType, Limit::getFirstRow);
             }
             if (limit.getMaxRows() != null) {
-                maxRowsParameter = new LimitJdbcParameter(basicType, Limit::getMaxRows);
+                maxRowsJdbcParameter = new LimitJdbcParameter(basicIntegerType, Limit::getMaxRows);
             }
-            skipExpression = firstRowParameter;
-            limitExpression = maxRowsParameter;
+            skipExpression = firstRowJdbcParameter;
+            limitExpression = maxRowsJdbcParameter;
         } else {
             if (queryPart.getFetchClauseType() != ROWS_ONLY) {
                 throw new FeatureNotSupportedException(format(
@@ -624,14 +612,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             limitExpression = queryPart.getFetchClauseExpression();
         }
         if (skipExpression != null) {
-            var offsetStage = new AstSkipStage(acceptAndYield(skipExpression, FIELD_VALUE));
-            stages.add(offsetStage);
+            var skipValue = acceptAndYield(skipExpression, FIELD_VALUE);
+            skipLimitStages.add(new AstSkipStage(skipValue));
         }
         if (limitExpression != null) {
-            var limitStage = new AstLimitStage(acceptAndYield(limitExpression, FIELD_VALUE));
-            stages.add(limitStage);
+            var limitValue = acceptAndYield(limitExpression, FIELD_VALUE);
+            skipLimitStages.add(new AstLimitStage(limitValue));
         }
-        return stages;
+        return skipLimitStages;
     }
 
     @Override
@@ -1038,11 +1026,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static final class LimitJdbcParameter extends AbstractJdbcParameter {
 
-        private final Function<Limit, Integer> parameterValueAccess;
+        private final Function<Limit, Integer> limitValueAccess;
 
-        public LimitJdbcParameter(BasicType<Integer> type, Function<Limit, Integer> parameterValueAccess) {
+        public LimitJdbcParameter(BasicType<Integer> type, Function<Limit, Integer> limitValueAccess) {
             super(type);
-            this.parameterValueAccess = parameterValueAccess;
+            this.limitValueAccess = limitValueAccess;
         }
 
         @SuppressWarnings("unchecked")
@@ -1057,7 +1045,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                     .getJdbcValueBinder()
                     .bind(
                             statement,
-                            parameterValueAccess.apply(
+                            limitValueAccess.apply(
                                     executionContext.getQueryOptions().getLimit()),
                             startPosition,
                             executionContext.getSession());
