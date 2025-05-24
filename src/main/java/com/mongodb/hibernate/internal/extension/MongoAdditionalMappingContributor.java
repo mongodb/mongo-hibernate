@@ -26,13 +26,22 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.util.Collection;
 import java.util.Set;
 import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.PersistentClass;
 
+/**
+ * The instance methods like {@link #getContributorName()}, {@link #contribute(AdditionalMappingContributions,
+ * InFlightMetadataCollector, ResourceStreamLocator, MetadataBuildingContext)} are called multiple times if multiple
+ * {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
+ * {@link BootstrapServiceRegistry}.
+ */
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
