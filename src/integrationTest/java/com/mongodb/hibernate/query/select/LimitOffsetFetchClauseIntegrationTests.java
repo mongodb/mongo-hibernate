@@ -610,6 +610,12 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         }
     }
 
+    /**
+     * A dialect that counts how many times the select translator is created. This is used to test the query plan cache.
+     * Note that {@code QueryStatistics#getQueryCacheCount()} or {@code QueryStatistics#getPlanCacheMissCount()} is not
+     * used here, because it counts the number of times the query cache is hit, not whether new translator is created
+     * (e.g., incompatible {@code QueryOptions} might end up with new translation.
+     */
     public static final class TranslatingCacheTestingDialect extends Dialect {
         private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
         private final Dialect delegate;
