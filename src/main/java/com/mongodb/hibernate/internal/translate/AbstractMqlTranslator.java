@@ -85,7 +85,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDouble;
@@ -210,9 +209,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Nullable Limit limit;
 
-    @Nullable JdbcParameter firstRowJdbcParameter;
+    @Nullable JdbcParameter offsetParameter;
 
-    @Nullable JdbcParameter maxRowsJdbcParameter;
+    @Nullable JdbcParameter limitParameter;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -598,13 +597,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
             var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
             if (limit.getFirstRow() != null) {
-                firstRowJdbcParameter = new LimitJdbcParameter(basicIntegerType, Limit::getFirstRow);
+                offsetParameter = new OffsetJdbcParameter(basicIntegerType);
             }
             if (limit.getMaxRows() != null) {
-                maxRowsJdbcParameter = new LimitJdbcParameter(basicIntegerType, Limit::getMaxRows);
+                limitParameter = new LimitJdbcParameter(basicIntegerType);
             }
-            skipExpression = firstRowJdbcParameter;
-            limitExpression = maxRowsJdbcParameter;
+            skipExpression = offsetParameter;
+            limitExpression = limitParameter;
         } else {
             if (queryPart.getFetchClauseType() != ROWS_ONLY) {
                 throw new FeatureNotSupportedException(format(
@@ -1026,17 +1025,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         throw new FeatureNotSupportedException("Unsupported Java type: " + queryLiteral.getClass());
     }
 
-    private static final class LimitJdbcParameter extends AbstractJdbcParameter {
+    private static class OffsetJdbcParameter extends AbstractJdbcParameter {
 
-        private final Function<Limit, Integer> limitValueAccess;
-
-        public LimitJdbcParameter(BasicType<Integer> type, Function<Limit, Integer> limitValueAccess) {
+        public OffsetJdbcParameter(BasicType<Integer> type) {
             super(type);
-            this.limitValueAccess = limitValueAccess;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
+        @SuppressWarnings("unchecked")
         public void bindParameterValue(
                 PreparedStatement statement,
                 int startPosition,
@@ -1047,8 +1043,31 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                     .getJdbcValueBinder()
                     .bind(
                             statement,
-                            limitValueAccess.apply(
-                                    executionContext.getQueryOptions().getLimit()),
+                            executionContext.getQueryOptions().getLimit().getFirstRow(),
+                            startPosition,
+                            executionContext.getSession());
+        }
+    }
+
+    private static class LimitJdbcParameter extends AbstractJdbcParameter {
+
+        public LimitJdbcParameter(BasicType<Integer> type) {
+            super(type);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void bindParameterValue(
+                PreparedStatement statement,
+                int startPosition,
+                JdbcParameterBindings jdbcParamBindings,
+                ExecutionContext executionContext)
+                throws SQLException {
+            getJdbcMapping()
+                    .getJdbcValueBinder()
+                    .bind(
+                            statement,
+                            executionContext.getQueryOptions().getLimit().getMaxRows(),
                             startPosition,
                             executionContext.getSession());
         }
