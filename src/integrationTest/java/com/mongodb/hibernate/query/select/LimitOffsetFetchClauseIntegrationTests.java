@@ -18,6 +18,7 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static java.lang.String.format;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hibernate.cfg.JdbcSettings.DIALECT;
 import static org.hibernate.cfg.QuerySettings.QUERY_PLAN_CACHE_ENABLED;
@@ -29,6 +30,7 @@ import com.mongodb.hibernate.internal.MongoConstants;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.bson.BsonDocument;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -451,6 +453,32 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
     class QueryPlanCacheTests extends AbstractSelectionQueryIntegrationTests {
 
         private static final String HQL = "from Book order by id";
+        private static final String expectedMqlTemplate =
+                """
+                {
+                  "aggregate": "books",
+                  "pipeline": [
+                    {
+                      "$sort": {
+                        "_id": 1
+                      }
+                    },
+                    %s
+                    %s
+                    {
+                      "$project": {
+                        "_id": true,
+                        "discount": true,
+                        "isbn13": true,
+                        "outOfStock": true,
+                        "price": true,
+                        "publishYear": true,
+                        "title": true
+                      }
+                    }
+                  ]
+                }
+                """;
 
         private TranslatingCacheTestingDialect translatingCacheTestingDialect;
 
@@ -460,6 +488,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     .getSessionFactory()
                     .getJdbcServices()
                     .getDialect();
+            getTestCommandListener().clear();
         }
 
         @ParameterizedTest
@@ -467,45 +496,56 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         void testQueryOptionsLimitCached(boolean isFirstResultSet, boolean isMaxResultsSet) {
             getSessionFactoryScope().inTransaction(session -> {
                 var firstQuery = session.createSelectionQuery(HQL, Book.class);
-                setQueryOptionsAndQuery(firstQuery, isFirstResultSet ? 5 : null, isMaxResultsSet ? 10 : null);
+                setQueryOptionsAndQuery(
+                        firstQuery,
+                        isFirstResultSet ? 5 : null,
+                        isMaxResultsSet ? 10 : null,
+                        format(
+                                expectedMqlTemplate,
+                                (isFirstResultSet ? "{\"$skip\": 5}," : ""),
+                                (isMaxResultsSet ? "{\"$limit\": 10}," : "")));
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
                 var secondQuery = session.createSelectionQuery(HQL, Book.class);
-                setQueryOptionsAndQuery(secondQuery, isFirstResultSet ? 3 : null, isMaxResultsSet ? 6 : null);
+                setQueryOptionsAndQuery(
+                        secondQuery,
+                        isFirstResultSet ? 3 : null,
+                        isMaxResultsSet ? 6 : null,
+                        format(
+                                expectedMqlTemplate,
+                                (isFirstResultSet ? "{\"$skip\": 3}," : ""),
+                                (isMaxResultsSet ? "{\"$limit\": 6}," : "")));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount);
             });
         }
 
-        private static void setQueryOptionsAndQuery(
-                SelectionQuery<Book> query, Integer firstResult, Integer maxResults) {
-            if (firstResult != null) {
-                query.setFirstResult(firstResult);
-            }
-            if (maxResults != null) {
-                query.setMaxResults(maxResults);
-            }
-            query.getResultList();
-        }
-
         @Test
         void testCacheInvalidatedDueToQueryOptionsAdded() {
             getSessionFactoryScope().inTransaction(session -> {
-                session.createSelectionQuery(HQL, Book.class).getResultList();
+                var query = session.createSelectionQuery(HQL, Book.class);
+                setQueryOptionsAndQuery(query, null, null, format(expectedMqlTemplate, "", ""));
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                session.createSelectionQuery(HQL, Book.class).setFirstResult(1).getResultList();
+                var queryWithOffsetQueryOption =
+                        session.createSelectionQuery(HQL, Book.class).setFirstResult(1);
+                setQueryOptionsAndQuery(
+                        queryWithOffsetQueryOption, 1, null, format(expectedMqlTemplate, "{\"$skip\": 1},", ""));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
 
-                session.createSelectionQuery(HQL, Book.class)
+                var queryWithBothOffsetAndLimitQueryOptions = session.createSelectionQuery(HQL, Book.class)
                         .setFirstResult(1)
-                        .setMaxResults(5)
-                        .getResultList();
+                        .setMaxResults(5);
+                setQueryOptionsAndQuery(
+                        queryWithBothOffsetAndLimitQueryOptions,
+                        1,
+                        5,
+                        format(expectedMqlTemplate, "{\"$skip\": 1},", "{\"$limit\": 5},"));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 2);
             });
@@ -514,12 +554,18 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Test
         void testCacheInvalidatedDueToQueryOptionsRemoved() {
             getSessionFactoryScope().inTransaction(session -> {
-                session.createSelectionQuery(HQL, Book.class).setFirstResult(10).getResultList();
+                var queryWithOffsetQueryOption =
+                        session.createSelectionQuery(HQL, Book.class).setFirstResult(10);
+                setQueryOptionsAndQuery(
+                        queryWithOffsetQueryOption, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
+
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                session.createSelectionQuery(HQL, Book.class).getResultList();
+                var queryWithoutOffsetQueryOption = session.createSelectionQuery(HQL, Book.class);
+                setQueryOptionsAndQuery(queryWithoutOffsetQueryOption, null, null, format(expectedMqlTemplate, "", ""));
+
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
             });
@@ -528,15 +574,39 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Test
         void testCacheInvalidatedDueToDifferentQueryOptions() {
             getSessionFactoryScope().inTransaction(session -> {
-                session.createSelectionQuery(HQL, Book.class).setFirstResult(10).getResultList();
+                var queryWithOffsetQueryOption =
+                        session.createSelectionQuery(HQL, Book.class).setFirstResult(10);
+                setQueryOptionsAndQuery(
+                        queryWithOffsetQueryOption, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
+
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                session.createSelectionQuery(HQL, Book.class).setMaxResults(20).getResultList();
+                var queryWithLimitQueryOption =
+                        session.createSelectionQuery(HQL, Book.class).setMaxResults(20);
+                setQueryOptionsAndQuery(
+                        queryWithLimitQueryOption, null, 20, format(expectedMqlTemplate, "", "{\"$limit\": 20},"));
+
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
             });
+        }
+
+        private void setQueryOptionsAndQuery(
+                SelectionQuery<Book> query, Integer firstResult, Integer maxResults, String expectedMql) {
+            if (firstResult != null) {
+                query.setFirstResult(firstResult);
+            }
+            if (maxResults != null) {
+                query.setMaxResults(maxResults);
+            }
+            getTestCommandListener().clear();
+            query.getResultList();
+            if (expectedMql != null) {
+                var expectedCommand = BsonDocument.parse(expectedMql);
+                assertActualCommand(expectedCommand);
+            }
         }
     }
 
