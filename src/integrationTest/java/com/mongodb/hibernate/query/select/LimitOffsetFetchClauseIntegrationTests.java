@@ -44,6 +44,7 @@ import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
+import org.hibernate.stat.QueryStatistics;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
@@ -572,7 +573,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         }
 
         @Test
-        void testCacheInvalidatedDueToDifferentQueryOptions() {
+        void testCacheInvalidatedDueToQueryOptionsChanged() {
             getSessionFactoryScope().inTransaction(session -> {
                 var queryWithOffsetQueryOption =
                         session.createSelectionQuery(HQL, Book.class).setFirstResult(10);
@@ -611,10 +612,11 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
     }
 
     /**
-     * A dialect that counts how many times the select translator is created. This is used to test the query plan cache.
-     * Note that {@code QueryStatistics#getQueryCacheCount()} or {@code QueryStatistics#getPlanCacheMissCount()} is not
-     * used here, because it counts the number of times the query cache is hit, not whether new translator is created
-     * (e.g., incompatible {@code QueryOptions} might end up with new translation.
+     * A dialect that counts how many times the select translator is created.
+     *
+     * <p>Note that {@link QueryStatistics#getPlanCacheHitCount()} is not used, because it counts the number of times
+     * the query plan cache is hit, not whether {@link SqlAstTranslator} is reused afterwards (e.g., incompatible
+     * {@link org.hibernate.query.spi.QueryOptions QueryOptions}s will end up with new translator bing created).
      */
     public static final class TranslatingCacheTestingDialect extends Dialect {
         private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
