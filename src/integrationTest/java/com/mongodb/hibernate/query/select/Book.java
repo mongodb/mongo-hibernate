@@ -16,26 +16,31 @@
 
 package com.mongodb.hibernate.query.select;
 
-import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import org.bson.types.ObjectId;
 
 @Entity(name = "Book")
 @Table(name = "books")
-public class Book {
+class Book {
     @Id
-    @ObjectIdGenerator
-    ObjectId id;
+    int id;
 
-    Book() {}
-
+    // TODO-HIBERNATE-48 dummy values are set for currently null value is not supported
     String title = "";
     Boolean outOfStock = false;
     Integer publishYear = 0;
     Long isbn13 = 0L;
-    Double discount = 0.0D;
+    Double discount = 0.0;
     BigDecimal price = new BigDecimal("0.0");
+
+    Book() {}
+
+    Book(int id, String title, Integer publishYear, Boolean outOfStock) {
+        this.id = id;
+        this.title = title;
+        this.publishYear = publishYear;
+        this.outOfStock = outOfStock;
+    }
 }

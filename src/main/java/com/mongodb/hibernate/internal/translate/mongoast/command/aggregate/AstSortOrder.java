@@ -16,19 +16,21 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
-import static java.util.Collections.singletonList;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import org.bson.BsonWriter;
 
-import org.junit.jupiter.api.Test;
+public enum AstSortOrder implements AstNode {
+    ASC(1),
+    DESC(-1);
 
-class AstProjectStageTests {
+    private final int renderedValue;
 
-    @Test
-    void testRendering() {
-        var astProjectStage = new AstProjectStage(singletonList(new AstProjectStageIncludeSpecification("title")));
-        var expectedJson = """
-                           {"$project": {"title": true}}\
-                           """;
-        assertRendering(expectedJson, astProjectStage);
+    AstSortOrder(int renderedValue) {
+        this.renderedValue = renderedValue;
+    }
+
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeInt32(renderedValue);
     }
 }

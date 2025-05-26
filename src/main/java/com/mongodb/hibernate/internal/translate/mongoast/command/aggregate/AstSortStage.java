@@ -14,14 +14,30 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
+import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstFilterFieldPath(String path) implements AstNode {
+public record AstSortStage(List<? extends AstSortField> sortFields) implements AstStage {
+
+    public AstSortStage {
+        assertFalse(sortFields.isEmpty());
+    }
+
     @Override
     public void render(BsonWriter writer) {
-        writer.writeName(path);
+        writer.writeStartDocument();
+        {
+            writer.writeName("$sort");
+            writer.writeStartDocument();
+            {
+                sortFields.forEach(sortField -> sortField.render(writer));
+            }
+            writer.writeEndDocument();
+        }
+        writer.writeEndDocument();
     }
 }

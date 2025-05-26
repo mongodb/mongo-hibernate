@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -41,8 +41,8 @@ class AstInsertCommandTests {
 
         var expectedJson =
                 """
-                {"insert": "books", "documents": [{"title": "War and Peace", "year": 1867, "_id": {"$undefined": true}}]}\
+                {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": {"$undefined": true}}]}\
                 """;
-        assertRender(expectedJson, insertCommand);
+        assertRendering(expectedJson, insertCommand);
     }
 }

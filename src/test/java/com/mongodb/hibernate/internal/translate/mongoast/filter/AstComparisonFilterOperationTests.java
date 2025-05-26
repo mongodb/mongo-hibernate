@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import org.bson.BsonInt32;
@@ -31,9 +31,9 @@ class AstComparisonFilterOperationTests {
         var operation = new AstComparisonFilterOperation(operator, new AstLiteralValue(new BsonInt32(1)));
 
         var expectedJson = """
-                           {"%s": 1}\
+                           {"%s": {"$numberInt": "1"}}\
                            """
                 .formatted(operator.getOperatorName());
-        assertRender(expectedJson, operation);
+        assertRendering(expectedJson, operation);
     }
 }

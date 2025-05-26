@@ -16,19 +16,22 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
-import static java.util.Collections.singletonList;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-class AstProjectStageTests {
+class AstSortFieldTests {
 
-    @Test
-    void testRendering() {
-        var astProjectStage = new AstProjectStage(singletonList(new AstProjectStageIncludeSpecification("title")));
+    @ParameterizedTest
+    @EnumSource(AstSortOrder.class)
+    void testRendering(AstSortOrder sortOrder) {
+        var sortField = new AstSortField("field", sortOrder);
         var expectedJson = """
-                           {"$project": {"title": true}}\
-                           """;
-        assertRendering(expectedJson, astProjectStage);
+                {"field": {"$numberInt": "%d"}}\
+                """
+                .formatted(sortOrder == ASC ? 1 : -1);
+        assertElementRendering(expectedJson, sortField);
     }
 }
