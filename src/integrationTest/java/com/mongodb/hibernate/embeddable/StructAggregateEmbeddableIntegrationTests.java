@@ -60,11 +60,11 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testNestedValues() {
-        var item = new ItemWithNestedValues(new Single(1), new Single(2), new PairWithParent(3, new Pair(4, 5)));
+        var item = new ItemWithNestedValues(
+                new EmbeddableIntegrationTests.Single(1), new Single(2), new PairWithParent(3, new Pair(4, 5)));
         item.nested2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
-                // Hibernate ORM flattens `item.id` despite it being of an aggregate type
                 """
                 {
                     _id: 1,
@@ -80,11 +80,11 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                     }
                 }
                 """);
-        var loadedItem =
-                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, item.nestedId));
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValues.class, item.flattenedId));
         assertEq(item, loadedItem);
         var updatedItem = sessionFactoryScope.fromTransaction(session -> {
-            var result = session.find(ItemWithNestedValues.class, item.nestedId);
+            var result = session.find(ItemWithNestedValues.class, item.flattenedId);
             result.nested1.a = -result.nested1.a;
             return result;
         });
@@ -105,7 +105,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
-                session -> session.find(ItemWithNestedValues.class, updatedItem.nestedId));
+                session -> session.find(ItemWithNestedValues.class, updatedItem.flattenedId));
         assertEq(updatedItem, loadedItem);
     }
 
@@ -155,7 +155,7 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Table(name = "items")
     static class ItemWithNestedValues {
         @Id
-        Single nestedId;
+        EmbeddableIntegrationTests.Single flattenedId;
 
         Single nested1;
 
@@ -163,8 +163,8 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
         ItemWithNestedValues() {}
 
-        ItemWithNestedValues(Single nestedId, Single nested1, PairWithParent nested2) {
-            this.nestedId = nestedId;
+        ItemWithNestedValues(EmbeddableIntegrationTests.Single flattenedId, Single nested1, PairWithParent nested2) {
+            this.flattenedId = flattenedId;
             this.nested1 = nested1;
             this.nested2 = nested2;
         }
@@ -241,11 +241,11 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
     @Nested
     class Unsupported {
         @Test
-        void testPrimaryKeySpanningMultipleFields() {
+        void testStructPrimaryKey() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithPairAsId.class)
+                            .addAnnotatedClass(ItemWithSingleAsId.class)
                             .buildMetadata())
-                    .hasMessageContaining("does not support primary key spanning multiple columns");
+                    .hasMessageContaining("aggregate embeddable primary keys are not supported");
         }
 
         @Test
@@ -284,9 +284,9 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
         @Entity
         @Table(name = "items")
-        static class ItemWithPairAsId {
+        static class ItemWithSingleAsId {
             @Id
-            Pair id;
+            Single id;
         }
 
         @Entity
