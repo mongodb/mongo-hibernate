@@ -19,7 +19,7 @@ package com.mongodb.hibernate.dialect;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import java.sql.JDBCType;
+import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import org.hibernate.dialect.aggregate.AggregateSupportImpl;
 import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Column;
@@ -38,7 +38,7 @@ final class MongoAggregateSupport extends AggregateSupportImpl {
             AggregateColumn aggregateColumn,
             Column column) {
         var aggregateColumnType = aggregateColumn.getTypeCode();
-        if (aggregateColumnType == JDBCType.STRUCT.getVendorTypeNumber()) {
+        if (aggregateColumnType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             return format(
                     "unused from %s.aggregateComponentCustomReadExpression",
                     MongoAggregateSupport.class.getSimpleName());
@@ -53,7 +53,7 @@ final class MongoAggregateSupport extends AggregateSupportImpl {
             AggregateColumn aggregateColumn,
             Column column) {
         var aggregateColumnType = aggregateColumn.getTypeCode();
-        if (aggregateColumnType == JDBCType.STRUCT.getVendorTypeNumber()) {
+        if (aggregateColumnType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             return format(
                     "unused from %s.aggregateComponentAssignmentExpression",
                     MongoAggregateSupport.class.getSimpleName());
@@ -63,7 +63,7 @@ final class MongoAggregateSupport extends AggregateSupportImpl {
 
     @Override
     public boolean requiresAggregateCustomWriteExpressionRenderer(int aggregateSqlTypeCode) {
-        if (aggregateSqlTypeCode == JDBCType.STRUCT.getVendorTypeNumber()) {
+        if (aggregateSqlTypeCode == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             return false;
         }
         throw new FeatureNotSupportedException(format("The SQL type code [%d] is not supported", aggregateSqlTypeCode));

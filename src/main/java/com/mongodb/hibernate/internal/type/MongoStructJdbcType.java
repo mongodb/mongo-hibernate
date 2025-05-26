@@ -52,7 +52,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
     private static final long serialVersionUID = 1L;
 
     public static final MongoStructJdbcType INSTANCE = new MongoStructJdbcType();
-    private static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
+    public static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
 
     private final @Nullable EmbeddableMappingType embeddableMappingType;
 

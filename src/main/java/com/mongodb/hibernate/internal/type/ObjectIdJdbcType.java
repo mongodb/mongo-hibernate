@@ -38,7 +38,7 @@ public final class ObjectIdJdbcType implements JdbcType {
     private static final long serialVersionUID = 1L;
 
     public static final ObjectIdJdbcType INSTANCE = new ObjectIdJdbcType();
-    private static final MqlType MQL_TYPE = MqlType.OBJECT_ID;
+    public static final MqlType MQL_TYPE = MqlType.OBJECT_ID;
     private static final ObjectIdJavaType JAVA_TYPE = ObjectIdJavaType.INSTANCE;
 
     private ObjectIdJdbcType() {}

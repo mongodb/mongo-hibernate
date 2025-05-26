@@ -22,7 +22,8 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.type.MqlType;
+import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
+import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -184,12 +185,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         BsonValue value;
-        if (targetSqlType == MqlType.OBJECT_ID.getVendorTypeNumber()) {
+        if (targetSqlType == ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber()) {
             if (!(x instanceof ObjectId v)) {
                 throw fail();
             }
             value = toBsonValue(v);
-        } else if (targetSqlType == JDBCType.STRUCT.getVendorTypeNumber()) {
+        } else if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             if (!(x instanceof BsonDocument v)) {
                 throw fail();
             }
