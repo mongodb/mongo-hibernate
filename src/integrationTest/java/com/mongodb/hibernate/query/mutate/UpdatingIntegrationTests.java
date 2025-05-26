@@ -16,9 +16,10 @@
 
 package com.mongodb.hibernate.query.mutate;
 
+import static java.util.Collections.singleton;
+
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
-import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.List;
 import org.bson.BsonDocument;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
+class UpdatingIntegrationTests extends AbstractMutateQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -135,5 +136,13 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                     }
                                     """)));
         });
+    }
+
+    @Test
+    void testAffectedTableNames() {
+        assertAffectedTableNames(
+                "update Book set title = :newTitle where title = :oldTitle",
+                q -> q.setParameter("oldTitle", "War & Peace").setParameter("newTitle", "War and Peace"),
+                singleton("books"));
     }
 }

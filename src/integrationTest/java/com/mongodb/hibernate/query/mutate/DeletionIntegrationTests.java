@@ -18,7 +18,6 @@ package com.mongodb.hibernate.query.mutate;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
-import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.List;
 import org.bson.BsonDocument;
@@ -27,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
+class DeletionIntegrationTests extends AbstractMutateQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -106,5 +105,15 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                     }
                                     """)));
         });
+    }
+
+    @Test
+    void testAffectedTableNames() {
+        assertAffectedTableNames(
+                """
+                delete from Book where title = :title
+                """,
+                q -> q.setParameter("title", "War and Peace"),
+                "books");
     }
 }

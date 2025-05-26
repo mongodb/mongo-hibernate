@@ -18,7 +18,6 @@ package com.mongodb.hibernate.query.mutate;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
-import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.List;
 import org.bson.BsonDocument;
@@ -27,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
+class InsertionIntegrationTests extends AbstractMutateQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -139,5 +138,15 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                                     }
                                     """)));
         });
+    }
+
+    @Test
+    void testAffectedTableNames() {
+        assertAffectedTableNames(
+                """
+                insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price)
+                    values
+                        (1, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD)""",
+                "books");
     }
 }
