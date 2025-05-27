@@ -153,7 +153,6 @@ import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
 import org.hibernate.sql.ast.tree.from.ValuesTableReference;
 import org.hibernate.sql.ast.tree.insert.InsertSelectStatement;
-import org.hibernate.sql.ast.tree.insert.Values;
 import org.hibernate.sql.ast.tree.predicate.BetweenPredicate;
 import org.hibernate.sql.ast.tree.predicate.BooleanExpressionPredicate;
 import org.hibernate.sql.ast.tree.predicate.ComparisonPredicate;
@@ -642,10 +641,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         assertFalse(valuesList.isEmpty());
 
         var documents = new ArrayList<AstDocument>(valuesList.size());
-        for (Values values : valuesList) {
+        for (var values : valuesList) {
             assertTrue(fieldNames.size() == values.getExpressions().size());
             var astElements = new ArrayList<AstElement>(values.getExpressions().size());
-            for (var i = 0; i < fieldReferences.size(); i++) {
+            for (var i = 0; i < fieldNames.size(); i++) {
                 var fieldName = fieldNames.get(i);
                 var fieldValueExpression = values.getExpressions().get(i);
                 if (!isValueExpression(fieldValueExpression)) {
