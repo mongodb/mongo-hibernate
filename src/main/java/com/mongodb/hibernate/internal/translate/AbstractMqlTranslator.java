@@ -104,7 +104,6 @@ import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
-import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
 import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.Statement;
@@ -576,13 +575,23 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
-        var pair = getCollectionAstFilterPair(deleteStatement);
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(pair.collection, pair.filter));
+        checkMutationStatement(deleteStatement);
+        checkFromClauseSupportability(deleteStatement.getFromClause());
+
+        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(deleteStatement);
+        var astFilter = acceptAndYield(deleteStatement.getRestriction(), FILTER);
+
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(collection, astFilter));
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
-        var collectionAndFilter = getCollectionAstFilterPair(updateStatement);
+        checkMutationStatement(updateStatement);
+        checkFromClauseSupportability(updateStatement.getFromClause());
+
+        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(updateStatement);
+        var astFilter = acceptAndYield(updateStatement.getRestriction(), FILTER);
+
         var fieldUpdates =
                 new ArrayList<AstFieldUpdate>(updateStatement.getAssignments().size());
         for (var assignment : updateStatement.getAssignments()) {
@@ -603,19 +612,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             var fieldValue = acceptAndYield(assignedValue, FIELD_VALUE);
             fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
         }
-        astVisitorValueHolder.yield(
-                COLLECTION_MUTATION,
-                new AstUpdateCommand(collectionAndFilter.collection, collectionAndFilter.filter, fieldUpdates));
-    }
-
-    private CollectionAstFilterPair getCollectionAstFilterPair(
-            AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
-        checkMutationStatement(updateOrDeleteStatement);
-        var fromClause = updateOrDeleteStatement.getFromClause();
-        checkFromClauseSupportability(fromClause);
-        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(updateOrDeleteStatement);
-        var filter = acceptAndYield(updateOrDeleteStatement.getRestriction(), FILTER);
-        return new CollectionAstFilterPair(collection, filter);
+        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstUpdateCommand(collection, astFilter, fieldUpdates));
     }
 
     @Override
@@ -1073,6 +1070,4 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException();
         }
     }
-
-    private record CollectionAstFilterPair(String collection, AstFilter filter) {}
 }
