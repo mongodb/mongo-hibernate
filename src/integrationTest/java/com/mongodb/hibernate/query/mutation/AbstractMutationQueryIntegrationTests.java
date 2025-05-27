@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.mutate;
+package com.mongodb.hibernate.query.mutation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.JdbcSettings.DIALECT;
@@ -43,38 +43,40 @@ import org.hibernate.testing.orm.junit.Setting;
             @Setting(
                     name = DIALECT,
                     value =
-                            "com.mongodb.hibernate.query.mutate.AbstractMutateQueryIntegrationTests$MutateTranslatorAwareDialect"),
+                            "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslatorAwareDialect"),
         })
-class AbstractMutateQueryIntegrationTests extends AbstractQueryIntegrationTests {
+class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
-    void assertAffectedTableNames(String mutateHql, String expectedAffectedTableName) {
-        assertAffectedTableNames(mutateHql, null, Set.of(expectedAffectedTableName));
+    void assertAffectedTableNames(String hql, String expectedAffectedTableName) {
+        assertAffectedTableNames(hql, null, Set.of(expectedAffectedTableName));
     }
 
     void assertAffectedTableNames(
-            String mutateHql, Consumer<MutationQuery> queryPostProcessor, String expectedAffectedTableName) {
-        assertAffectedTableNames(mutateHql, queryPostProcessor, Set.of(expectedAffectedTableName));
+            String hql, Consumer<MutationQuery> queryPostProcessor, String expectedAffectedTableName) {
+        assertAffectedTableNames(hql, queryPostProcessor, Set.of(expectedAffectedTableName));
     }
 
     void assertAffectedTableNames(
-            String mutateHql, Consumer<MutationQuery> queryPostProcessor, Set<String> expectedAffectedTableNames) {
+            String hql, Consumer<MutationQuery> queryPostProcessor, Set<String> expectedAffectedTableNames) {
         getSessionFactoryScope().inTransaction(session -> {
-            var query = session.createMutationQuery(mutateHql);
+            var query = session.createMutationQuery(hql);
             if (queryPostProcessor != null) {
                 queryPostProcessor.accept(query);
             }
             query.executeUpdate();
-            var mutateTranslator =
-                    ((MutateTranslatorAwareDialect) session.getJdbcServices().getDialect()).getMutateSqlAstTranslator();
-            assertThat(mutateTranslator.getAffectedTableNames()).isEqualTo(expectedAffectedTableNames);
+            var mutationTranslator = ((MutationTranslatorAwareDialect)
+                            session.getJdbcServices().getDialect())
+                    .getMutationSqlAstTranslator();
+            assertThat(mutationTranslator.getAffectedTableNames())
+                    .containsExactlyInAnyOrderElementsOf(expectedAffectedTableNames);
         });
     }
 
-    public static final class MutateTranslatorAwareDialect extends Dialect {
+    public static final class MutationTranslatorAwareDialect extends Dialect {
         private final Dialect delegate;
-        private SqlAstTranslator<? extends JdbcOperationQueryMutation> mutateSqlAstTranslator;
+        private SqlAstTranslator<? extends JdbcOperationQueryMutation> mutationSqlAstTranslator;
 
-        public MutateTranslatorAwareDialect(DialectResolutionInfo info) {
+        public MutationTranslatorAwareDialect(DialectResolutionInfo info) {
             super(info);
             delegate = new MongoDialect(info);
         }
@@ -91,9 +93,9 @@ class AbstractMutateQueryIntegrationTests extends AbstractQueryIntegrationTests 
                 @Override
                 public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
                         SessionFactoryImplementor sessionFactory, MutationStatement statement) {
-                    mutateSqlAstTranslator =
+                    mutationSqlAstTranslator =
                             delegate.getSqlAstTranslatorFactory().buildMutationTranslator(sessionFactory, statement);
-                    return mutateSqlAstTranslator;
+                    return mutationSqlAstTranslator;
                 }
 
                 @Override
@@ -104,8 +106,8 @@ class AbstractMutateQueryIntegrationTests extends AbstractQueryIntegrationTests 
             };
         }
 
-        SqlAstTranslator<? extends JdbcOperationQueryMutation> getMutateSqlAstTranslator() {
-            return mutateSqlAstTranslator;
+        SqlAstTranslator<? extends JdbcOperationQueryMutation> getMutationSqlAstTranslator() {
+            return mutationSqlAstTranslator;
         }
     }
 }

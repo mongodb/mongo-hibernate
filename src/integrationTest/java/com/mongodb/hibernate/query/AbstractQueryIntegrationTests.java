@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.junit.MongoExtension;
-import java.util.List;
 import java.util.function.Consumer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
@@ -67,7 +66,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
             String expectedMql,
-            List<T> expectedResultList) {
+            Iterable<T> expectedResultList) {
         assertSelectionQuery(
                 hql,
                 resultType,
@@ -77,7 +76,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
     }
 
     protected <T> void assertSelectionQuery(
-            String hql, Class<T> resultType, String expectedMql, List<T> expectedResultList) {
+            String hql, Class<T> resultType, String expectedMql, Iterable<T> expectedResultList) {
         assertSelectionQuery(hql, resultType, null, expectedMql, expectedResultList);
     }
 
@@ -86,7 +85,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
             String expectedMql,
-            Consumer<List<T>> resultListVerifier) {
+            Consumer<Iterable<T>> resultListVerifier) {
         sessionFactoryScope.inTransaction(session -> {
             var selectionQuery = session.createSelectionQuery(hql, resultType);
             if (queryPostProcessor != null) {
@@ -101,7 +100,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
     }
 
     protected <T> void assertSelectionQuery(
-            String hql, Class<T> resultType, String expectedMql, Consumer<List<T>> resultListVerifier) {
+            String hql, Class<T> resultType, String expectedMql, Consumer<Iterable<T>> resultListVerifier) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
     }
 
@@ -147,30 +146,30 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 .containsAllEntriesOf(expectedCommand);
     }
 
-    protected void assertMutateQuery(
+    protected void assertMutationQuery(
             String hql,
             Consumer<MutationQuery> queryPostProcessor,
-            int expectedMutatedCount,
+            int expectedMutationCount,
             String expectedMql,
             MongoCollection<BsonDocument> collection,
-            Iterable<BsonDocument> expectedDocuments) {
+            Iterable<? extends BsonDocument> expectedDocuments) {
         sessionFactoryScope.inTransaction(session -> {
-            var mutationQuery = session.createMutationQuery(hql);
+            var query = session.createMutationQuery(hql);
             if (queryPostProcessor != null) {
-                queryPostProcessor.accept(mutationQuery);
+                queryPostProcessor.accept(query);
             }
-            assertThat(mutationQuery.executeUpdate()).isEqualTo(expectedMutatedCount);
+            assertThat(query.executeUpdate()).isEqualTo(expectedMutationCount);
             assertActualCommand(BsonDocument.parse(expectedMql));
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
     }
 
-    protected void assertMutateQuery(
+    protected void assertMutationQuery(
             String hql,
-            int expectedMutatedCount,
+            int expectedMutationCount,
             String expectedMql,
             MongoCollection<BsonDocument> collection,
-            Iterable<BsonDocument> expectedDocuments) {
-        assertMutateQuery(hql, null, expectedMutatedCount, expectedMql, collection, expectedDocuments);
+            Iterable<? extends BsonDocument> expectedDocuments) {
+        assertMutationQuery(hql, null, expectedMutationCount, expectedMql, collection, expectedDocuments);
     }
 }

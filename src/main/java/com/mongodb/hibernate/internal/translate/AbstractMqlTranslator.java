@@ -341,7 +341,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (!selectStatement.getQueryPart().isRoot()) {
             throw new FeatureNotSupportedException("Subquery not supported");
         }
-        checkCteContainer(selectStatement);
+        checkCteContainerSupportability(selectStatement);
         selectStatement.getQueryPart().accept(this);
     }
 
@@ -575,7 +575,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
-        checkMutationStatement(deleteStatement);
+        checkMutationStatementSupportability(deleteStatement);
         checkFromClauseSupportability(deleteStatement.getFromClause());
 
         var collection = getMutationCollectionAfterRegisteredAsAffectedTable(deleteStatement);
@@ -586,7 +586,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
-        checkMutationStatement(updateStatement);
+        checkMutationStatementSupportability(updateStatement);
         checkFromClauseSupportability(updateStatement.getFromClause());
 
         var collection = getMutationCollectionAfterRegisteredAsAffectedTable(updateStatement);
@@ -617,7 +617,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitInsertStatement(InsertSelectStatement insertStatement) {
-        checkMutationStatement(insertStatement);
+        checkMutationStatementSupportability(insertStatement);
         if (insertStatement.getConflictClause() != null) {
             throw new FeatureNotSupportedException();
         }
@@ -639,11 +639,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var documents = new ArrayList<AstDocument>(valuesList.size());
         for (var values : valuesList) {
-            assertTrue(fieldNames.size() == values.getExpressions().size());
-            var astElements = new ArrayList<AstElement>(values.getExpressions().size());
+            var fieldValueExpressions = values.getExpressions();
+            assertTrue(fieldNames.size() == fieldValueExpressions.size());
+            var astElements = new ArrayList<AstElement>(fieldValueExpressions.size());
             for (var i = 0; i < fieldNames.size(); i++) {
                 var fieldName = fieldNames.get(i);
-                var fieldValueExpression = values.getExpressions().get(i);
+                var fieldValueExpression = fieldValueExpressions.get(i);
                 if (!isValueExpression(fieldValueExpression)) {
                     throw new FeatureNotSupportedException();
                 }
@@ -1047,15 +1048,15 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         throw new FeatureNotSupportedException("Unsupported Java type: " + queryLiteral.getClass());
     }
 
-    private static void checkCteContainer(CteContainer cteContainer) {
+    private static void checkCteContainerSupportability(CteContainer cteContainer) {
         if (!cteContainer.getCteStatements().isEmpty()
                 || !cteContainer.getCteObjects().isEmpty()) {
             throw new FeatureNotSupportedException("CTE not supported");
         }
     }
 
-    private static void checkMutationStatement(AbstractMutationStatement mutationStatement) {
-        checkCteContainer(mutationStatement);
+    private static void checkMutationStatementSupportability(AbstractMutationStatement mutationStatement) {
+        checkCteContainerSupportability(mutationStatement);
         if (!mutationStatement.getReturningColumns().isEmpty()) {
             throw new FeatureNotSupportedException();
         }

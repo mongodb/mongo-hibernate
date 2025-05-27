@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.mutate;
+package com.mongodb.hibernate.query.mutation;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class InsertionIntegrationTests extends AbstractMutateQueryIntegrationTests {
+class InsertionIntegrationTests extends AbstractMutationQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -40,7 +40,7 @@ class InsertionIntegrationTests extends AbstractMutateQueryIntegrationTests {
     void testInsertSingleDocument() {
         getSessionFactoryScope()
                 .inTransaction(
-                        session -> assertMutateQuery(
+                        session -> assertMutationQuery(
                                 "insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price) values (1, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD)",
                                 1,
                                 """
@@ -79,7 +79,7 @@ class InsertionIntegrationTests extends AbstractMutateQueryIntegrationTests {
     void testInsertMultipleDocuments() {
         getSessionFactoryScope()
                 .inTransaction(
-                        session -> assertMutateQuery(
+                        session -> assertMutationQuery(
                                 """
                                 insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price)
                                 values

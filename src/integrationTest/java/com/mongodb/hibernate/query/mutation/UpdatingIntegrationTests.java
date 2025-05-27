@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.mutate;
+package com.mongodb.hibernate.query.mutation;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class UpdatingIntegrationTests extends AbstractMutateQueryIntegrationTests {
+class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -48,7 +48,7 @@ class UpdatingIntegrationTests extends AbstractMutateQueryIntegrationTests {
     void testSimpleUpdate() {
         getSessionFactoryScope()
                 .inTransaction(
-                        session -> assertMutateQuery(
+                        session -> assertMutationQuery(
                                 "update Book set title = :newTitle where title = :oldTitle",
                                 q -> q.setParameter("oldTitle", "War & Peace")
                                         .setParameter("newTitle", "War and Peace"),

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.mutate;
+package com.mongodb.hibernate.query.mutation;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class DeletionIntegrationTests extends AbstractMutateQueryIntegrationTests {
+class DeletionIntegrationTests extends AbstractMutationQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -48,7 +48,7 @@ class DeletionIntegrationTests extends AbstractMutateQueryIntegrationTests {
     void testSimpleDeletion() {
         getSessionFactoryScope()
                 .inTransaction(
-                        session -> assertMutateQuery(
+                        session -> assertMutationQuery(
                                 "delete from Book where title = :title",
                                 q -> q.setParameter("title", "War and Peace"),
                                 2,
