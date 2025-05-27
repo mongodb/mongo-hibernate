@@ -36,7 +36,7 @@ public record AstInsertCommand(String collection, List<? extends AstDocument> do
             writer.writeName("documents");
             writer.writeStartArray();
             {
-                documents.forEach(docuemnt -> docuemnt.render(writer));
+                documents.forEach(document -> document.render(writer));
             }
             writer.writeEndArray();
         }
