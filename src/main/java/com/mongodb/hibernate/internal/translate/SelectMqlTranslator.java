@@ -69,7 +69,8 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
                 MAX_VALUE,
                 emptyMap(),
                 NONE,
-                // the following parameters are provided for query plan cache purposes
+                // The following parameters are provided for query plan cache purposes.
+                // Not setting them could result in reusing the wrong query plan and subsequently the wrong MQL.
                 offsetParameter,
                 limitParameter);
     }
