@@ -31,6 +31,7 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
 import org.hibernate.boot.MetadataSources;
@@ -166,6 +167,20 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         Single(int a) {
             this.a = a;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Single single = (Single) o;
+            return a == single.a;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(a);
         }
     }
 
