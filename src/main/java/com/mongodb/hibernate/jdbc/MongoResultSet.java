@@ -37,7 +37,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
-import com.mongodb.hibernate.internal.type.ValueConverter;
+import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -112,42 +112,42 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable String getString(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toStringDomainValue);
+        return getValue(columnIndex, ValueConversions::toStringDomainValue);
     }
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toBooleanDomainValue, false);
+        return getValue(columnIndex, ValueConversions::toBooleanDomainValue, false);
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toIntDomainValue, 0);
+        return getValue(columnIndex, ValueConversions::toIntDomainValue, 0);
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toLongDomainValue, 0L);
+        return getValue(columnIndex, ValueConversions::toLongDomainValue, 0L);
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toDoubleDomainValue, 0d);
+        return getValue(columnIndex, ValueConversions::toDoubleDomainValue, 0d);
     }
 
     @Override
     public byte @Nullable [] getBytes(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toByteArrayDomainValue);
+        return getValue(columnIndex, ValueConversions::toByteArrayDomainValue);
     }
 
     @Override
@@ -189,7 +189,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable BigDecimal getBigDecimal(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(columnIndex, ValueConverter::toBigDecimalDomainValue);
+        return getValue(columnIndex, ValueConversions::toBigDecimalDomainValue);
     }
 
     @Override
@@ -205,7 +205,7 @@ final class MongoResultSet implements ResultSetAdapter {
         checkColumnIndex(columnIndex);
         Object value;
         if (type.equals(ObjectId.class)) {
-            value = getValue(columnIndex, ValueConverter::toObjectIdDomainValue);
+            value = getValue(columnIndex, ValueConversions::toObjectIdDomainValue);
         } else if (type.equals(BsonDocument.class)) {
             value = getValue(columnIndex, BsonValue::asDocument);
         } else {

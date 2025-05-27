@@ -20,8 +20,8 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static com.mongodb.hibernate.internal.type.ValueConverter.toBsonValue;
-import static com.mongodb.hibernate.internal.type.ValueConverter.toDomainValue;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.Serial;

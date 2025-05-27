@@ -40,8 +40,8 @@ import org.bson.types.ObjectId;
  * implementation uses under the hood and rarely exposes, and domain values we usually use when setting parameter values
  * on our {@link PreparedStatement}, or retrieving column values from a {@link ResultSet}.
  */
-public final class ValueConverter {
-    private ValueConverter() {}
+public final class ValueConversions {
+    private ValueConversions() {}
 
     public static BsonValue toBsonValue(Object value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
