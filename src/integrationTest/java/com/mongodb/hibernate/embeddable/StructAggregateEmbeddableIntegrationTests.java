@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.AccessType;
@@ -49,7 +50,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
             StructAggregateEmbeddableIntegrationTests.ItemWithOmittedEmptyValue.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingAllNonInsertable.class,
-            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class
+            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class,
+            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithPolymorphicPersistentAttribute.class,
+            StructAggregateEmbeddableIntegrationTests.Unsupported.Polymorphic.class,
+            StructAggregateEmbeddableIntegrationTests.Unsupported.Concrete.class
         })
 @ExtendWith(MongoExtension.class)
 class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
@@ -282,6 +286,14 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
             });
         }
 
+        @Test
+        void testPolymorphic() {
+            assertThatThrownBy(() -> sessionFactoryScope.inTransaction(
+                            session -> session.persist(new ItemWithPolymorphicPersistentAttribute(1, new Concrete(2)))))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage("Polymorphic mapping is not supported");
+        }
+
         @Entity
         @Table(name = "items")
         static class ItemWithSingleAsId {
@@ -336,5 +348,39 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         @Embeddable
         @Struct(name = "PairAllNonInsertable")
         record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
+
+        @Entity
+        @Table(name = "items")
+        static class ItemWithPolymorphicPersistentAttribute {
+            @Id
+            int id;
+
+            Polymorphic polymorphic;
+
+            ItemWithPolymorphicPersistentAttribute() {}
+
+            ItemWithPolymorphicPersistentAttribute(int id, Polymorphic polymorphic) {
+                this.id = id;
+                this.polymorphic = polymorphic;
+            }
+        }
+
+        @Embeddable
+        @Struct(name = "Polymorphic")
+        abstract static class Polymorphic {
+            Polymorphic() {}
+        }
+
+        @Embeddable
+        @Struct(name = "Concrete")
+        static class Concrete extends Polymorphic {
+            int a;
+
+            Concrete() {}
+
+            Concrete(int a) {
+                this.a = a;
+            }
+        }
     }
 }
