@@ -207,11 +207,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private final Set<String> affectedTableNames = new HashSet<>();
 
-    @Nullable Limit limit;
+    @Nullable Limit queryOptionsLimit;
 
-    @Nullable JdbcParameter offsetParameter;
+    @Nullable JdbcParameter queryOptionsOffsetParameter;
 
-    @Nullable JdbcParameter limitParameter;
+    @Nullable JdbcParameter queryOptionsLimitParameter;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -404,6 +404,45 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         return astVisitorValueHolder.execute(SKIP_LIMIT_STAGES, () -> visitOffsetFetchClause(querySpec));
     }
 
+    @Override
+    public void visitOffsetFetchClause(QueryPart queryPart) {
+        var skipLimitStages = createSkipLimitStages(queryPart);
+        astVisitorValueHolder.yield(SKIP_LIMIT_STAGES, skipLimitStages);
+    }
+
+    private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
+        var skipLimitStages = new ArrayList<AstStage>(2);
+        final Expression skipExpression;
+        final Expression limitExpression;
+        if (queryPart.isRoot() && queryOptionsLimit != null && !queryOptionsLimit.isEmpty()) {
+            var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
+            if (queryOptionsLimit.getFirstRow() != null) {
+                queryOptionsOffsetParameter = new OffsetJdbcParameter(basicIntegerType);
+            }
+            if (queryOptionsLimit.getMaxRows() != null) {
+                queryOptionsLimitParameter = new LimitJdbcParameter(basicIntegerType);
+            }
+            skipExpression = queryOptionsOffsetParameter;
+            limitExpression = queryOptionsLimitParameter;
+        } else {
+            if (queryPart.getFetchClauseType() != ROWS_ONLY) {
+                throw new FeatureNotSupportedException(format(
+                        "%s does not support '%s' fetch clause type", MONGO_DBMS_NAME, queryPart.getFetchClauseType()));
+            }
+            skipExpression = queryPart.getOffsetClauseExpression();
+            limitExpression = queryPart.getFetchClauseExpression();
+        }
+        if (skipExpression != null) {
+            var skipValue = acceptAndYield(skipExpression, FIELD_VALUE);
+            skipLimitStages.add(new AstSkipStage(skipValue));
+        }
+        if (limitExpression != null) {
+            var limitValue = acceptAndYield(limitExpression, FIELD_VALUE);
+            skipLimitStages.add(new AstLimitStage(limitValue));
+        }
+        return skipLimitStages;
+    }
+
     private AstProjectStage createProjectStage(SelectClause selectClause) {
         var projectStageSpecifications = acceptAndYield(selectClause, PROJECT_STAGE_SPECIFICATIONS);
         return new AstProjectStage(projectStageSpecifications);
@@ -582,45 +621,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         var fieldPath = acceptAndYield(sortExpression, FIELD_PATH);
         return new AstSortField(fieldPath, astSortOrder);
-    }
-
-    @Override
-    public void visitOffsetFetchClause(QueryPart queryPart) {
-        var skipLimitStages = createSkipLimitStages(queryPart);
-        astVisitorValueHolder.yield(SKIP_LIMIT_STAGES, skipLimitStages);
-    }
-
-    private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
-        var skipLimitStages = new ArrayList<AstStage>(2);
-        final Expression skipExpression;
-        final Expression limitExpression;
-        if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
-            var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
-            if (limit.getFirstRow() != null) {
-                offsetParameter = new OffsetJdbcParameter(basicIntegerType);
-            }
-            if (limit.getMaxRows() != null) {
-                limitParameter = new LimitJdbcParameter(basicIntegerType);
-            }
-            skipExpression = offsetParameter;
-            limitExpression = limitParameter;
-        } else {
-            if (queryPart.getFetchClauseType() != ROWS_ONLY) {
-                throw new FeatureNotSupportedException(format(
-                        "%s does not support '%s' fetch clause type", MONGO_DBMS_NAME, queryPart.getFetchClauseType()));
-            }
-            skipExpression = queryPart.getOffsetClauseExpression();
-            limitExpression = queryPart.getFetchClauseExpression();
-        }
-        if (skipExpression != null) {
-            var skipValue = acceptAndYield(skipExpression, FIELD_VALUE);
-            skipLimitStages.add(new AstSkipStage(skipValue));
-        }
-        if (limitExpression != null) {
-            var limitValue = acceptAndYield(limitExpression, FIELD_VALUE);
-            skipLimitStages.add(new AstLimitStage(limitValue));
-        }
-        return skipLimitStages;
     }
 
     @Override

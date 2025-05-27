@@ -53,7 +53,7 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
         checkQueryOptionsSupportability(queryOptions);
 
         if (queryOptions.getLimit() != null) {
-            limit = queryOptions.getLimit().makeCopy();
+            queryOptionsLimit = queryOptions.getLimit().makeCopy();
         }
 
         var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
@@ -71,7 +71,7 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
                 NONE,
                 // The following parameters are provided for query plan cache purposes.
                 // Not setting them could result in reusing the wrong query plan and subsequently the wrong MQL.
-                offsetParameter,
-                limitParameter);
+                queryOptionsOffsetParameter,
+                queryOptionsLimitParameter);
     }
 }

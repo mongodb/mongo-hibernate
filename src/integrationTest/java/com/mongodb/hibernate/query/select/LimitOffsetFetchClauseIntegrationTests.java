@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.query.select;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -31,10 +30,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
+import org.hibernate.Session;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.sqm.FetchClauseType;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
@@ -54,6 +53,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
 class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryIntegrationTests {
@@ -199,10 +199,15 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     getBooksByIds(3, 4));
         }
 
-        @Test
-        void testHqlFetchClauseOnly() {
+        @ParameterizedTest
+        @ValueSource(
+                strings = {
+                    "FETCH FIRST :limit ROWS ONLY",
+                    "FETCH NEXT :limit ROWS ONLY",
+                })
+        void testHqlFetchClauseOnly(final String fetchClause) {
             assertSelectionQuery(
-                    "from Book order by id FETCH FIRST :limit ROWS ONLY",
+                    "from Book order by id " + fetchClause,
                     Book.class,
                     q -> q.setParameter("limit", 5),
                     """
@@ -356,61 +361,80 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Nested
         class WithHqlClauses {
 
-            @ParameterizedTest
-            @CsvSource({"true,false", "false,true", "true,true"})
-            void testWithDirectConflicts(boolean isFirstResultSet, boolean isMaxResultsSet) {
-                assertTrue(isFirstResultSet || isMaxResultsSet);
+            private static final String expectedMqlTemplate =
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$sort": {
+                            "_id": 1
+                          }
+                        },
+                        %s,
+                        {
+                          "$project": {
+                            "_id": true,
+                            "discount": true,
+                            "isbn13": true,
+                            "outOfStock": true,
+                            "price": true,
+                            "publishYear": true,
+                            "title": true
+                          }
+                        }
+                      ]
+                    }
+                    """;
+
+            @Test
+            void testFirstResultConflictingOnly() {
                 var firstResult = 5;
-                var maxResults = 3;
-                final List<Book> expectedBooks;
-                if (!isMaxResultsSet) {
-                    expectedBooks = getBooksByIds(5, 6, 7, 8, 9); // firstResult: 5
-                } else if (!isFirstResultSet) {
-                    expectedBooks = getBooksByIds(0, 1, 2); // maxResults: 3
-                } else {
-                    expectedBooks = getBooksByIds(5, 6, 7); // firstResult: 5 && maxResults: 3
-                }
+                var expectedBooks = getBooksByIds(5, 6, 7, 8, 9);
                 assertSelectionQuery(
                         "from Book order by id LIMIT :limit OFFSET :offset",
                         Book.class,
-                        q -> {
-                            q.setParameter("limit", 10)
-                                    .setParameter("offset", 0); // hql clauses will be ignored totally
-                            if (isFirstResultSet) {
-                                q.setFirstResult(firstResult);
-                            }
-                            if (isMaxResultsSet) {
-                                q.setMaxResults(maxResults);
-                            }
-                        },
-                        """
-                        {
-                          "aggregate": "books",
-                          "pipeline": [
-                            {
-                              "$sort": {
-                                "_id": 1
-                              }
-                            },
-                            %s
-                            %s
-                            {
-                              "$project": {
-                                "_id": true,
-                                "discount": true,
-                                "isbn13": true,
-                                "outOfStock": true,
-                                "price": true,
-                                "publishYear": true,
-                                "title": true
-                              }
-                            }
-                          ]
-                        }
-                        """
-                                .formatted(
-                                        (isFirstResultSet ? "{\"$skip\": " + firstResult + "}," : ""),
-                                        (isMaxResultsSet ? "{\"$limit\": " + maxResults + "}," : "")),
+                        q ->
+                                // hql clauses will be ignored totally
+                                q.setParameter("limit", 10)
+                                        .setParameter("offset", 0)
+                                        .setFirstResult(firstResult),
+                        expectedMqlTemplate.formatted("{\"$skip\": " + firstResult + "}"),
+                        expectedBooks);
+            }
+
+            @Test
+            void testMaxResultsConflictingOnly() {
+                var maxResults = 3;
+                var expectedBooks = getBooksByIds(0, 1, 2);
+                assertSelectionQuery(
+                        "from Book order by id LIMIT :limit OFFSET :offset",
+                        Book.class,
+                        q ->
+                                // hql clauses will be ignored totally
+                                q.setParameter("limit", 10)
+                                        .setParameter("offset", 0)
+                                        .setMaxResults(maxResults),
+                        expectedMqlTemplate.formatted("{\"$limit\": " + maxResults + "}"),
+                        expectedBooks);
+            }
+
+            @Test
+            void testBothFirstResultAndMaxResultsConflicting() {
+                var firstResult = 5;
+                var maxResults = 3;
+                var expectedBooks = getBooksByIds(5, 6, 7);
+                assertSelectionQuery(
+                        "from Book order by id LIMIT :limit OFFSET :offset",
+                        Book.class,
+                        q ->
+                                // hql clauses will be ignored totally
+                                q.setParameter("limit", 10)
+                                        .setParameter("offset", 0)
+                                        .setFirstResult(firstResult)
+                                        .setMaxResults(maxResults),
+                        expectedMqlTemplate.formatted(
+                                "{\"$skip\": " + firstResult + "}," + "{\"$limit\": " + maxResults + "}"),
                         expectedBooks);
             }
         }
@@ -496,9 +520,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @CsvSource({"true,false", "false,true", "true,true"})
         void testQueryOptionsLimitCached(boolean isFirstResultSet, boolean isMaxResultsSet) {
             getSessionFactoryScope().inTransaction(session -> {
-                var firstQuery = session.createSelectionQuery(HQL, Book.class);
                 setQueryOptionsAndQuery(
-                        firstQuery,
+                        session,
                         isFirstResultSet ? 5 : null,
                         isMaxResultsSet ? 10 : null,
                         format(
@@ -509,9 +532,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                var secondQuery = session.createSelectionQuery(HQL, Book.class);
                 setQueryOptionsAndQuery(
-                        secondQuery,
+                        session,
                         isFirstResultSet ? 3 : null,
                         isMaxResultsSet ? 6 : null,
                         format(
@@ -526,27 +548,17 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Test
         void testCacheInvalidatedDueToQueryOptionsAdded() {
             getSessionFactoryScope().inTransaction(session -> {
-                var query = session.createSelectionQuery(HQL, Book.class);
-                setQueryOptionsAndQuery(query, null, null, format(expectedMqlTemplate, "", ""));
+                setQueryOptionsAndQuery(session, null, null, format(expectedMqlTemplate, "", ""));
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                var queryWithOffsetQueryOption =
-                        session.createSelectionQuery(HQL, Book.class).setFirstResult(1);
-                setQueryOptionsAndQuery(
-                        queryWithOffsetQueryOption, 1, null, format(expectedMqlTemplate, "{\"$skip\": 1},", ""));
+                setQueryOptionsAndQuery(session, 1, null, format(expectedMqlTemplate, "{\"$skip\": 1},", ""));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
 
-                var queryWithBothOffsetAndLimitQueryOptions = session.createSelectionQuery(HQL, Book.class)
-                        .setFirstResult(1)
-                        .setMaxResults(5);
                 setQueryOptionsAndQuery(
-                        queryWithBothOffsetAndLimitQueryOptions,
-                        1,
-                        5,
-                        format(expectedMqlTemplate, "{\"$skip\": 1},", "{\"$limit\": 5},"));
+                        session, 1, 5, format(expectedMqlTemplate, "{\"$skip\": 1},", "{\"$limit\": 5},"));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 2);
             });
@@ -555,17 +567,13 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Test
         void testCacheInvalidatedDueToQueryOptionsRemoved() {
             getSessionFactoryScope().inTransaction(session -> {
-                var queryWithOffsetQueryOption =
-                        session.createSelectionQuery(HQL, Book.class).setFirstResult(10);
-                setQueryOptionsAndQuery(
-                        queryWithOffsetQueryOption, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
+                setQueryOptionsAndQuery(session, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
 
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                var queryWithoutOffsetQueryOption = session.createSelectionQuery(HQL, Book.class);
-                setQueryOptionsAndQuery(queryWithoutOffsetQueryOption, null, null, format(expectedMqlTemplate, "", ""));
+                setQueryOptionsAndQuery(session, null, null, format(expectedMqlTemplate, "", ""));
 
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
@@ -575,19 +583,13 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Test
         void testCacheInvalidatedDueToQueryOptionsChanged() {
             getSessionFactoryScope().inTransaction(session -> {
-                var queryWithOffsetQueryOption =
-                        session.createSelectionQuery(HQL, Book.class).setFirstResult(10);
-                setQueryOptionsAndQuery(
-                        queryWithOffsetQueryOption, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
+                setQueryOptionsAndQuery(session, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
 
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                var queryWithLimitQueryOption =
-                        session.createSelectionQuery(HQL, Book.class).setMaxResults(20);
-                setQueryOptionsAndQuery(
-                        queryWithLimitQueryOption, null, 20, format(expectedMqlTemplate, "", "{\"$limit\": 20},"));
+                setQueryOptionsAndQuery(session, null, 20, format(expectedMqlTemplate, "", "{\"$limit\": 20},"));
 
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
                         .isEqualTo(initialSelectTranslatingCount + 1);
@@ -595,7 +597,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         }
 
         private void setQueryOptionsAndQuery(
-                SelectionQuery<Book> query, Integer firstResult, Integer maxResults, String expectedMql) {
+                Session session, Integer firstResult, Integer maxResults, String expectedMql) {
+            var query = session.createSelectionQuery(HQL, Book.class);
             if (firstResult != null) {
                 query.setFirstResult(firstResult);
             }
