@@ -35,7 +35,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.type.MqlType;
+import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -125,8 +125,8 @@ class MongoPreparedStatementTests {
                 preparedStatement.setInt(3, 1);
                 preparedStatement.setBoolean(4, true);
                 preparedStatement.setString(5, "array element");
-                preparedStatement.setObject(6, new ObjectId(1, 2), MqlType.OBJECT_ID.getVendorTypeNumber());
-                preparedStatement.setObject(7, new ObjectId(2, 0), MqlType.OBJECT_ID.getVendorTypeNumber());
+                preparedStatement.setObject(6, new ObjectId(1, 2), ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(7, new ObjectId(2, 0), ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber());
 
                 preparedStatement.executeUpdate();
 
@@ -258,14 +258,11 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now))),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
-                () -> asserter.accept(
-                        () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class))),
                 () -> asserter.accept(() -> mongoPreparedStatement.setArray(parameterIndex, Mockito.mock(Array.class))),
                 () -> asserter.accept(() -> mongoPreparedStatement.setDate(parameterIndex, new Date(now), calendar)),
                 () -> asserter.accept(() -> mongoPreparedStatement.setTime(parameterIndex, new Time(now), calendar)),
                 () -> asserter.accept(
-                        () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)),
-                () -> asserter.accept(() -> mongoPreparedStatement.setNull(parameterIndex, Types.STRUCT, "BOOK")));
+                        () -> mongoPreparedStatement.setTimestamp(parameterIndex, new Timestamp(now), calendar)));
     }
 
     private static void checkMethodsWithOpenPrecondition(
