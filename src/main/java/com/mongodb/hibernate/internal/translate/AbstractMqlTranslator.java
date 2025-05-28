@@ -97,6 +97,7 @@ import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
+import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
 import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.Statement;
@@ -571,37 +572,26 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
-        checkMutationStatementSupportability(deleteStatement);
-        checkFromClauseSupportability(deleteStatement.getFromClause());
-
+        checkUpdateOrDeleteStatementSupportability(deleteStatement);
         var collection = getMutationCollectionAfterRegisteredAsAffectedTable(deleteStatement);
         var astFilter = acceptAndYield(deleteStatement.getRestriction(), FILTER);
-
         astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(collection, astFilter));
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
-        checkMutationStatementSupportability(updateStatement);
-        checkFromClauseSupportability(updateStatement.getFromClause());
-
+        checkUpdateOrDeleteStatementSupportability(updateStatement);
         var collection = getMutationCollectionAfterRegisteredAsAffectedTable(updateStatement);
         var astFilter = acceptAndYield(updateStatement.getRestriction(), FILTER);
 
-        var fieldUpdates =
-                new ArrayList<AstFieldUpdate>(updateStatement.getAssignments().size());
-        for (var assignment : updateStatement.getAssignments()) {
+        var assignments = updateStatement.getAssignments();
+        var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
+        for (var assignment : assignments) {
             var fieldReferences = assignment.getAssignable().getColumnReferences();
-            if (fieldReferences.size() != 1) {
-                throw new FeatureNotSupportedException();
-            }
-            var fieldPath = fieldReferences.get(0).getColumnReference().getColumnExpression();
-            var assignedValue = assignment.getAssignedValue();
+            assertTrue(fieldReferences.size() == 1);
 
-            var sqlTuple = SqlTupleContainer.getSqlTuple(assignedValue);
-            if (sqlTuple != null) {
-                throw new FeatureNotSupportedException();
-            }
+            var fieldPath = acceptAndYield(fieldReferences.get(0), FIELD_PATH);
+            var assignedValue = assignment.getAssignedValue();
             if (!isValueExpression(assignedValue)) {
                 throw new FeatureNotSupportedException();
             }
@@ -1039,6 +1029,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (!mutationStatement.getReturningColumns().isEmpty()) {
             throw new FeatureNotSupportedException();
         }
+    }
+
+    private static void checkUpdateOrDeleteStatementSupportability(
+            AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
+        checkMutationStatementSupportability(updateOrDeleteStatement);
+        checkFromClauseSupportability(updateOrDeleteStatement.getFromClause());
     }
 
     private static void checkFromClauseSupportability(FromClause fromClause) {

@@ -39,24 +39,22 @@ import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
 
 @ServiceRegistry(
-        settings = {
-            @Setting(
-                    name = DIALECT,
-                    value =
-                            "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslatorAwareDialect"),
-        })
+        settings =
+                @Setting(
+                        name = DIALECT,
+                        value =
+                                "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslatorAwareDialect"))
 class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
-    void assertAffectedTableNames(String hql, String expectedAffectedTableName) {
-        assertAffectedTableNames(hql, null, Set.of(expectedAffectedTableName));
+    void assertAffectedTable(String hql, String expectedAffectedTableName) {
+        assertAffectedTables(hql, null, Set.of(expectedAffectedTableName));
     }
 
-    void assertAffectedTableNames(
-            String hql, Consumer<MutationQuery> queryPostProcessor, String expectedAffectedTableName) {
-        assertAffectedTableNames(hql, queryPostProcessor, Set.of(expectedAffectedTableName));
+    void assertAffectedTable(String hql, Consumer<MutationQuery> queryPostProcessor, String expectedAffectedTableName) {
+        assertAffectedTables(hql, queryPostProcessor, Set.of(expectedAffectedTableName));
     }
 
-    void assertAffectedTableNames(
+    void assertAffectedTables(
             String hql, Consumer<MutationQuery> queryPostProcessor, Set<String> expectedAffectedTableNames) {
         getSessionFactoryScope().inTransaction(session -> {
             var query = session.createMutationQuery(hql);

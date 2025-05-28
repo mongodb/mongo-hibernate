@@ -56,15 +56,38 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
         assertSelectionQuery(
                 "from Book where" + (negated ? " not " : " ") + "outOfStock",
                 Book.class,
-                "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': "
-                        + (negated ? "false" : "true")
-                        + "}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
+                """
+                {
+                  "aggregate": "books",
+                  "pipeline": [
+                    {
+                      "$match": {
+                        "outOfStock": {
+                          "$eq": %s
+                        }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id": true,
+                        "discount": true,
+                        "isbn13": true,
+                        "outOfStock": true,
+                        "price": true,
+                        "publishYear": true,
+                        "title": true
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(negated ? "false" : "true"),
                 negated ? singletonList(bookInStock) : singletonList(bookOutOfStock));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void testNonFieldPathExpressionNotSupported(final boolean booleanLiteral) {
+    void testNonFieldPathExpressionNotSupported(boolean booleanLiteral) {
         assertSelectQueryFailure(
                 "from Book where " + booleanLiteral,
                 Book.class,

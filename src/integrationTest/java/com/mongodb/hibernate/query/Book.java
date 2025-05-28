@@ -22,9 +22,9 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
 @Entity(name = "Book")
-@Table(name = Book.COLLECTION_NAME)
+@Table(name = Book.COLLECTION)
 public class Book {
-    public static final String COLLECTION_NAME = "books";
+    public static final String COLLECTION = "books";
 
     @Id
     public int id;
@@ -38,10 +38,6 @@ public class Book {
     public BigDecimal price = new BigDecimal("0.0");
 
     public Book() {}
-
-    public Book(int id, String title, Integer publishYear) {
-        this(id, title, publishYear, false);
-    }
 
     public Book(int id, String title, Integer publishYear, Boolean outOfStock) {
         this.id = id;

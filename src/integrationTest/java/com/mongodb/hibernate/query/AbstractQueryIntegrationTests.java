@@ -158,8 +158,9 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             if (queryPostProcessor != null) {
                 queryPostProcessor.accept(query);
             }
-            assertThat(query.executeUpdate()).isEqualTo(expectedMutationCount);
+            var mutationCount = query.executeUpdate();
             assertActualCommand(BsonDocument.parse(expectedMql));
+            assertThat(mutationCount).isEqualTo(expectedMutationCount);
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
     }
