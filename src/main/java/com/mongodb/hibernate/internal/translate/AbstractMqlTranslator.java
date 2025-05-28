@@ -77,9 +77,9 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
