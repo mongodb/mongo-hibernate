@@ -85,7 +85,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
             String expectedMql,
-            Consumer<Iterable<T>> resultListVerifier) {
+            Consumer<Iterable<? extends T>> resultListVerifier) {
         sessionFactoryScope.inTransaction(session -> {
             var selectionQuery = session.createSelectionQuery(hql, resultType);
             if (queryPostProcessor != null) {
@@ -100,7 +100,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
     }
 
     protected <T> void assertSelectionQuery(
-            String hql, Class<T> resultType, String expectedMql, Consumer<Iterable<T>> resultListVerifier) {
+            String hql, Class<T> resultType, String expectedMql, Consumer<Iterable<? extends T>> resultListVerifier) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier);
     }
 
@@ -158,18 +158,10 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             if (queryPostProcessor != null) {
                 queryPostProcessor.accept(query);
             }
-            assertThat(query.executeUpdate()).isEqualTo(expectedMutationCount);
+            var mutationCount = query.executeUpdate();
             assertActualCommand(BsonDocument.parse(expectedMql));
+            assertThat(mutationCount).isEqualTo(expectedMutationCount);
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
-    }
-
-    protected void assertMutationQuery(
-            String hql,
-            int expectedMutationCount,
-            String expectedMql,
-            MongoCollection<BsonDocument> collection,
-            Iterable<? extends BsonDocument> expectedDocuments) {
-        assertMutationQuery(hql, null, expectedMutationCount, expectedMql, collection, expectedDocuments);
     }
 }

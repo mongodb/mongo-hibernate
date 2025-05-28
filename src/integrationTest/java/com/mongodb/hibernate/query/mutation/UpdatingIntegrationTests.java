@@ -28,15 +28,15 @@ import org.junit.jupiter.api.Test;
 @DomainModel(annotatedClasses = Book.class)
 class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
 
-    @InjectMongoCollection(Book.COLLECTION_NAME)
+    @InjectMongoCollection(Book.COLLECTION)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private static final List<Book> testingBooks = List.of(
-            new Book(1, "War & Peace", 1869),
-            new Book(2, "Crime and Punishment", 1866),
-            new Book(3, "Anna Karenina", 1877),
-            new Book(4, "The Brothers Karamazov", 1880),
-            new Book(5, "War & Peace", 2025));
+            new Book(1, "War & Peace", 1869, true),
+            new Book(2, "Crime and Punishment", 1866, false),
+            new Book(3, "Anna Karenina", 1877, false),
+            new Book(4, "The Brothers Karamazov", 1880, false),
+            new Book(5, "War & Peace", 2025, false));
 
     @BeforeEach
     void beforeEach() {
@@ -45,103 +45,185 @@ class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
     }
 
     @Test
-    void testSimpleUpdate() {
-        getSessionFactoryScope()
-                .inTransaction(
-                        session -> assertMutationQuery(
-                                "update Book set title = :newTitle where title = :oldTitle",
-                                q -> q.setParameter("oldTitle", "War & Peace")
-                                        .setParameter("newTitle", "War and Peace"),
-                                2,
+    void testUpdateWithNonZeroMutationCount() {
+        assertMutationQuery(
+                "update Book set title = :newTitle, outOfStock = false where title = :oldTitle",
+                q -> q.setParameter("oldTitle", "War & Peace").setParameter("newTitle", "War and Peace"),
+                2,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {
+                         "title": {
+                           "$eq": "War & Peace"
+                         }
+                       },
+                       "u": {
+                         "$set": {
+                           "title": "War and Peace",
+                           "outOfStock": false
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                mongoCollection,
+                List.of(
+                        BsonDocument.parse(
                                 """
                                 {
-                                   "update": "books",
-                                   "updates": [
-                                     {
-                                       "multi": true,
-                                       "q": {
-                                         "title": {
-                                           "$eq": "War & Peace"
-                                         }
-                                       },
-                                       "u": {
-                                         "$set": {
-                                           "title": "War and Peace"
-                                         }
-                                       }
-                                     }
-                                   ]
+                                  "_id": 1,
+                                  "title": "War and Peace",
+                                  "outOfStock": false,
+                                  "publishYear": 1869,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
                                 }
-                                """,
-                                mongoCollection,
-                                List.of(
-                                        BsonDocument.parse(
-                                                """
-                                                {
-                                                  "_id": 1,
-                                                  "title": "War and Peace",
-                                                  "outOfStock": false,
-                                                  "publishYear": 1869,
-                                                  "isbn13": {"$numberLong": "0"},
-                                                  "discount": {"$numberDouble": "0"},
-                                                  "price": {"$numberDecimal": "0.0"}
-                                                }
-                                                """),
-                                        BsonDocument.parse(
-                                                """
-                                                {
-                                                  "_id": 2,
-                                                  "title": "Crime and Punishment",
-                                                  "outOfStock": false,
-                                                  "publishYear": 1866,
-                                                  "isbn13": {"$numberLong": "0"},
-                                                  "discount": {"$numberDouble": "0"},
-                                                  "price": {"$numberDecimal": "0.0"}
-                                                }
-                                                """),
-                                        BsonDocument.parse(
-                                                """
-                                                {
-                                                  "_id": 3,
-                                                  "title": "Anna Karenina",
-                                                  "outOfStock": false,
-                                                  "publishYear": 1877,
-                                                  "isbn13": {"$numberLong": "0"},
-                                                  "discount": {"$numberDouble": "0"},
-                                                  "price": {"$numberDecimal": "0.0"}
-                                                }
-                                                """),
-                                        BsonDocument.parse(
-                                                """
-                                                {
-                                                  "_id": 4,
-                                                  "title": "The Brothers Karamazov",
-                                                  "outOfStock": false,
-                                                  "publishYear": 1880,
-                                                  "isbn13": {"$numberLong": "0"},
-                                                  "discount": {"$numberDouble": "0"},
-                                                  "price": {"$numberDecimal": "0.0"}
-                                                }
-                                                """),
-                                        BsonDocument.parse(
-                                                """
-                                                {
-                                                  "_id": 5,
-                                                  "title": "War and Peace",
-                                                  "outOfStock": false,
-                                                  "publishYear": 2025,
-                                                  "isbn13": {"$numberLong": "0"},
-                                                  "discount": {"$numberDouble": "0"},
-                                                  "price": {"$numberDecimal": "0.0"}
-                                                }
-                                                """))));
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Crime and Punishment",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Anna Karenina",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "The Brothers Karamazov",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "War and Peace",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """)));
+        assertExpectedAffectedCollections(Book.COLLECTION);
     }
 
     @Test
-    void testAffectedTableNames() {
-        assertAffectedTableNames(
-                "update Book set title = :newTitle where title = :oldTitle",
-                q -> q.setParameter("oldTitle", "War & Peace").setParameter("newTitle", "War and Peace"),
-                "books");
+    void testUpdateWithZeroMutationCount() {
+        assertMutationQuery(
+                "update Book set outOfStock = false where publishYear < :year",
+                q -> q.setParameter("year", 1850),
+                0,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {
+                         "publishYear": {
+                           "$lt": 1850
+                         }
+                       },
+                       "u": {
+                         "$set": {
+                           "outOfStock": false
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                mongoCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "War & Peace",
+                                  "outOfStock": true,
+                                  "publishYear": 1869,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Crime and Punishment",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Anna Karenina",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "The Brothers Karamazov",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "War & Peace",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": {"$numberLong": "0"},
+                                  "discount": {"$numberDouble": "0"},
+                                  "price": {"$numberDecimal": "0.0"}
+                                }
+                                """)));
+        assertExpectedAffectedCollections(Book.COLLECTION);
     }
 }

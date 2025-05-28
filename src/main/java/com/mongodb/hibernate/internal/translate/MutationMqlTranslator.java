@@ -16,11 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
+import static java.lang.String.format;
 import static java.util.Collections.emptyMap;
 import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.MutationStatement;
@@ -55,17 +56,19 @@ final class MutationMqlTranslator extends AbstractMqlTranslator<JdbcOperationQue
         var mutationCommand = acceptAndYield(mutationStatement, COLLECTION_MUTATION);
         var mql = renderMongoAstNode(mutationCommand);
         var parameterBinders = getParameterBinders();
-        var affectedCollectionNames = getAffectedTableNames();
+        var affectedCollections = getAffectedTableNames();
 
+        // switch to Switch Pattern Matching when JDK is upgraded to 21+
         if (mutationStatement instanceof InsertStatement) {
-            return new JdbcOperationQueryInsertImpl(mql, parameterBinders, affectedCollectionNames);
+            return new JdbcOperationQueryInsertImpl(mql, parameterBinders, affectedCollections);
         } else if (mutationStatement instanceof UpdateStatement) {
-            return new JdbcOperationQueryUpdate(mql, parameterBinders, affectedCollectionNames, emptyMap());
+            return new JdbcOperationQueryUpdate(mql, parameterBinders, affectedCollections, emptyMap());
         } else if (mutationStatement instanceof DeleteStatement) {
-            return new JdbcOperationQueryDelete(mql, parameterBinders, affectedCollectionNames, emptyMap());
+            return new JdbcOperationQueryDelete(mql, parameterBinders, affectedCollections, emptyMap());
         } else {
-            throw new FeatureNotSupportedException("Unsupported mutation statement type: "
-                    + mutationStatement.getClass().getName());
+            throw fail(format(
+                    "Unexpected mutation statement type: %s",
+                    mutationStatement.getClass().getName()));
         }
     }
 }

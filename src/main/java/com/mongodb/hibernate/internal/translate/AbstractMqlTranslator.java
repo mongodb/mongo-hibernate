@@ -97,7 +97,7 @@ import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
-import org.hibernate.sql.ast.tree.MutationStatement;
+import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.cte.CteContainer;
@@ -572,43 +572,42 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         checkMutationStatementSupportability(deleteStatement);
-        checkFromClauseSupportability(deleteStatement.getFromClause());
-
-        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(deleteStatement);
-        var astFilter = acceptAndYield(deleteStatement.getRestriction(), FILTER);
-
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstDeleteCommand(collection, astFilter));
+        var collectionAndAstFilter = getCollectionAndFilter(deleteStatement);
+        affectedTableNames.add(collectionAndAstFilter.collection);
+        astVisitorValueHolder.yield(
+                COLLECTION_MUTATION,
+                new AstDeleteCommand(collectionAndAstFilter.collection, collectionAndAstFilter.filter));
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
         checkMutationStatementSupportability(updateStatement);
-        checkFromClauseSupportability(updateStatement.getFromClause());
+        var collectionAndAstFilter = getCollectionAndFilter(updateStatement);
+        affectedTableNames.add(collectionAndAstFilter.collection);
 
-        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(updateStatement);
-        var astFilter = acceptAndYield(updateStatement.getRestriction(), FILTER);
-
-        var fieldUpdates =
-                new ArrayList<AstFieldUpdate>(updateStatement.getAssignments().size());
-        for (var assignment : updateStatement.getAssignments()) {
+        var assignments = updateStatement.getAssignments();
+        var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
+        for (var assignment : assignments) {
             var fieldReferences = assignment.getAssignable().getColumnReferences();
-            if (fieldReferences.size() != 1) {
-                throw new FeatureNotSupportedException();
-            }
-            var fieldPath = fieldReferences.get(0).getColumnReference().getColumnExpression();
-            var assignedValue = assignment.getAssignedValue();
+            assertTrue(fieldReferences.size() == 1);
 
-            var sqlTuple = SqlTupleContainer.getSqlTuple(assignedValue);
-            if (sqlTuple != null) {
-                throw new FeatureNotSupportedException();
-            }
+            var fieldPath = acceptAndYield(fieldReferences.get(0), FIELD_PATH);
+            var assignedValue = assignment.getAssignedValue();
             if (!isValueExpression(assignedValue)) {
                 throw new FeatureNotSupportedException();
             }
             var fieldValue = acceptAndYield(assignedValue, FIELD_VALUE);
             fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
         }
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstUpdateCommand(collection, astFilter, fieldUpdates));
+        astVisitorValueHolder.yield(
+                COLLECTION_MUTATION,
+                new AstUpdateCommand(collectionAndAstFilter.collection, collectionAndAstFilter.filter, fieldUpdates));
+    }
+
+    private CollectionAndFilter getCollectionAndFilter(AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
+        var collection = updateOrDeleteStatement.getTargetTable().getTableExpression();
+        var astFilter = acceptAndYield(updateOrDeleteStatement.getRestriction(), FILTER);
+        return new CollectionAndFilter(collection, astFilter);
     }
 
     @Override
@@ -621,7 +620,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException();
         }
 
-        var collection = getMutationCollectionAfterRegisteredAsAffectedTable(insertStatement);
+        var collection = insertStatement.getTargetTable().getTableExpression();
+        affectedTableNames.add(collection);
+
         var fieldReferences = insertStatement.getTargetColumns();
         assertFalse(fieldReferences.isEmpty());
 
@@ -651,12 +652,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
 
         astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(collection, documents));
-    }
-
-    private String getMutationCollectionAfterRegisteredAsAffectedTable(MutationStatement mutationStatement) {
-        var collection = mutationStatement.getTargetTable().getTableExpression();
-        affectedTableNames.add(collection);
-        return collection;
     }
 
     @Override
@@ -1039,15 +1034,21 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (!mutationStatement.getReturningColumns().isEmpty()) {
             throw new FeatureNotSupportedException();
         }
+        if (mutationStatement instanceof AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
+            checkFromClauseSupportability(updateOrDeleteStatement.getFromClause());
+        }
     }
 
     private static void checkFromClauseSupportability(FromClause fromClause) {
         if (fromClause.getRoots().size() != 1) {
-            throw new FeatureNotSupportedException();
+            throw new FeatureNotSupportedException("Only single root from clause is supported");
         }
-        if (!(fromClause.getRoots().get(0).getModelPart() instanceof EntityPersister entityPersister)
+        var root = fromClause.getRoots().get(0);
+        if (!(root.getModelPart() instanceof EntityPersister entityPersister)
                 || entityPersister.getQuerySpaces().length != 1) {
-            throw new FeatureNotSupportedException();
+            throw new FeatureNotSupportedException("Only single table from clause is supported");
         }
     }
+
+    private record CollectionAndFilter(String collection, AstFilter filter) {}
 }

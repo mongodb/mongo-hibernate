@@ -21,12 +21,9 @@ import static org.hibernate.cfg.JdbcSettings.DIALECT;
 
 import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
-import java.util.Set;
-import java.util.function.Consumer;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.query.MutationQuery;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.tree.MutationStatement;
@@ -39,37 +36,21 @@ import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
 
 @ServiceRegistry(
-        settings = {
-            @Setting(
-                    name = DIALECT,
-                    value =
-                            "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslatorAwareDialect"),
-        })
-class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
+        settings =
+                @Setting(
+                        name = DIALECT,
+                        value =
+                                "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslatorAwareDialect"))
+public class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
-    void assertAffectedTableNames(String hql, String expectedAffectedTableName) {
-        assertAffectedTableNames(hql, null, Set.of(expectedAffectedTableName));
-    }
-
-    void assertAffectedTableNames(
-            String hql, Consumer<MutationQuery> queryPostProcessor, String expectedAffectedTableName) {
-        assertAffectedTableNames(hql, queryPostProcessor, Set.of(expectedAffectedTableName));
-    }
-
-    void assertAffectedTableNames(
-            String hql, Consumer<MutationQuery> queryPostProcessor, Set<String> expectedAffectedTableNames) {
-        getSessionFactoryScope().inTransaction(session -> {
-            var query = session.createMutationQuery(hql);
-            if (queryPostProcessor != null) {
-                queryPostProcessor.accept(query);
-            }
-            query.executeUpdate();
-            var mutationTranslator = ((MutationTranslatorAwareDialect)
-                            session.getJdbcServices().getDialect())
-                    .getMutationSqlAstTranslator();
-            assertThat(mutationTranslator.getAffectedTableNames())
-                    .containsExactlyInAnyOrderElementsOf(expectedAffectedTableNames);
-        });
+    protected void assertExpectedAffectedCollections(String... expectedAffectedfCollections) {
+        assertThat(((MutationTranslatorAwareDialect) getSessionFactoryScope()
+                                .getSessionFactory()
+                                .getJdbcServices()
+                                .getDialect())
+                        .getMutationSqlAstTranslator()
+                        .getAffectedTableNames())
+                .containsExactlyInAnyOrder(expectedAffectedfCollections);
     }
 
     public static final class MutationTranslatorAwareDialect extends Dialect {
