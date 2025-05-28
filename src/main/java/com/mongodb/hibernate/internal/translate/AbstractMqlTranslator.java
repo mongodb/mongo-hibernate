@@ -27,6 +27,7 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SKIP_LIMIT_STAGES;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.FALSE;
@@ -43,6 +44,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogica
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
+import static org.hibernate.query.sqm.FetchClauseType.ROWS_ONLY;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -57,10 +59,12 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSkipStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
@@ -73,6 +77,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -86,6 +92,7 @@ import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.NullPrecedence;
+import org.hibernate.query.spi.Limit;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
@@ -165,6 +172,8 @@ import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.ast.tree.select.SortSpecification;
 import org.hibernate.sql.ast.tree.update.Assignment;
 import org.hibernate.sql.ast.tree.update.UpdateStatement;
+import org.hibernate.sql.exec.internal.AbstractJdbcParameter;
+import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
@@ -178,6 +187,7 @@ import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
+import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
 abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
@@ -189,6 +199,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
     private final Set<String> affectedTableNames = new HashSet<>();
+
+    @Nullable Limit queryOptionsLimit;
+
+    @Nullable JdbcParameter queryOptionsOffsetParameter;
+
+    @Nullable JdbcParameter queryOptionsLimitParameter;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -341,9 +357,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (!querySpec.getGroupByClauseExpressions().isEmpty()) {
             throw new FeatureNotSupportedException("GroupBy not supported");
         }
-        if (querySpec.hasOffsetOrFetchClause()) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
-        }
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
 
@@ -351,6 +364,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
+
+        stages.addAll(createSkipLimitStages(querySpec));
         stages.add(createProjectStage(querySpec.getSelectClause()));
 
         astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
@@ -376,6 +391,49 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             return Optional.of(new AstSortStage(sortFields));
         }
         return Optional.empty();
+    }
+
+    private List<AstStage> createSkipLimitStages(QuerySpec querySpec) {
+        return astVisitorValueHolder.execute(SKIP_LIMIT_STAGES, () -> visitOffsetFetchClause(querySpec));
+    }
+
+    @Override
+    public void visitOffsetFetchClause(QueryPart queryPart) {
+        var skipLimitStages = createSkipLimitStages(queryPart);
+        astVisitorValueHolder.yield(SKIP_LIMIT_STAGES, skipLimitStages);
+    }
+
+    private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
+        var skipLimitStages = new ArrayList<AstStage>(2);
+        final Expression skipExpression;
+        final Expression limitExpression;
+        if (queryPart.isRoot() && queryOptionsLimit != null && !queryOptionsLimit.isEmpty()) {
+            var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
+            if (queryOptionsLimit.getFirstRow() != null) {
+                queryOptionsOffsetParameter = new OffsetJdbcParameter(basicIntegerType);
+            }
+            if (queryOptionsLimit.getMaxRows() != null) {
+                queryOptionsLimitParameter = new LimitJdbcParameter(basicIntegerType);
+            }
+            skipExpression = queryOptionsOffsetParameter;
+            limitExpression = queryOptionsLimitParameter;
+        } else {
+            if (queryPart.getFetchClauseType() != ROWS_ONLY) {
+                throw new FeatureNotSupportedException(format(
+                        "%s does not support '%s' fetch clause type", MONGO_DBMS_NAME, queryPart.getFetchClauseType()));
+            }
+            skipExpression = queryPart.getOffsetClauseExpression();
+            limitExpression = queryPart.getFetchClauseExpression();
+        }
+        if (skipExpression != null) {
+            var skipValue = acceptAndYield(skipExpression, FIELD_VALUE);
+            skipLimitStages.add(new AstSkipStage(skipValue));
+        }
+        if (limitExpression != null) {
+            var limitValue = acceptAndYield(limitExpression, FIELD_VALUE);
+            skipLimitStages.add(new AstLimitStage(limitValue));
+        }
+        return skipLimitStages;
     }
 
     private AstProjectStage createProjectStage(SelectClause selectClause) {
@@ -596,11 +654,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitQueryGroup(QueryGroup queryGroup) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitOffsetFetchClause(QueryPart queryPart) {
         throw new FeatureNotSupportedException();
     }
 
@@ -910,12 +963,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 && !queryOptions.getDatabaseHints().isEmpty()) {
             throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
         }
-        if (queryOptions.getFetchSize() != null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
-        }
-        if (queryOptions.getLimit() != null && !queryOptions.getLimit().isEmpty()) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-70 https://jira.mongodb.org/browse/HIBERNATE-70");
-        }
     }
 
     private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
@@ -954,6 +1001,54 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {
             throw new FeatureNotSupportedException(e);
+        }
+    }
+
+    private static class OffsetJdbcParameter extends AbstractJdbcParameter {
+
+        public OffsetJdbcParameter(BasicType<Integer> type) {
+            super(type);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void bindParameterValue(
+                PreparedStatement statement,
+                int startPosition,
+                JdbcParameterBindings jdbcParamBindings,
+                ExecutionContext executionContext)
+                throws SQLException {
+            getJdbcMapping()
+                    .getJdbcValueBinder()
+                    .bind(
+                            statement,
+                            executionContext.getQueryOptions().getLimit().getFirstRow(),
+                            startPosition,
+                            executionContext.getSession());
+        }
+    }
+
+    private static class LimitJdbcParameter extends AbstractJdbcParameter {
+
+        public LimitJdbcParameter(BasicType<Integer> type) {
+            super(type);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void bindParameterValue(
+                PreparedStatement statement,
+                int startPosition,
+                JdbcParameterBindings jdbcParamBindings,
+                ExecutionContext executionContext)
+                throws SQLException {
+            getJdbcMapping()
+                    .getJdbcValueBinder()
+                    .bind(
+                            statement,
+                            executionContext.getQueryOptions().getLimit().getMaxRows(),
+                            startPosition,
+                            executionContext.getSession());
         }
     }
 }
