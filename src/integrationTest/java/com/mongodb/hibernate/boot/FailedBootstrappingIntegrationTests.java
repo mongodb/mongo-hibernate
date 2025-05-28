@@ -23,7 +23,7 @@ import com.mongodb.hibernate.junit.InjectMongoClient;
 import com.mongodb.hibernate.junit.MongoExtension;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.boot.MetadataSources;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -50,7 +50,7 @@ class FailedBootstrappingIntegrationTests {
                                         }
                                     }
                                     """))) {
-                        new Configuration().buildSessionFactory().close();
+                        new MetadataSources().buildMetadata();
                     }
                 })
                 .hasRootCause(
