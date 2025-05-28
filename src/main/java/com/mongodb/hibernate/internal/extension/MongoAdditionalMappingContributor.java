@@ -23,14 +23,17 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import jakarta.persistence.Embeddable;
 import java.util.Collection;
 import java.util.Set;
 import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
@@ -55,26 +58,46 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             ResourceStreamLocator resourceStreamLocator,
             MetadataBuildingContext buildingContext) {
         metadata.getEntityBindings().forEach(persistentClass -> {
-            if (persistentClass.useDynamicInsert()) {
-                throw new FeatureNotSupportedException(
-                        format("%s is not supported", DynamicInsert.class.getSimpleName()));
-            }
+            forbidDynamicInsert(persistentClass);
             checkColumnNames(persistentClass);
+            forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
     }
 
+    private static void forbidDynamicInsert(PersistentClass persistentClass) {
+        if (persistentClass.useDynamicInsert()) {
+            throw new FeatureNotSupportedException(format("%s is not supported", DynamicInsert.class.getSimpleName()));
+        }
+    }
+
     private static void checkColumnNames(PersistentClass persistentClass) {
-        persistentClass.getTable().getColumns().forEach(column -> {
-            var columnName = column.getName();
-            UNSUPPORTED_FIELD_NAME_CHARACTERS.forEach(unsupportedCharacter -> {
-                if (columnName.contains(unsupportedCharacter)) {
-                    throw new FeatureNotSupportedException(format(
-                            "%s: the character [%s] in field names is not supported, but is present in the field name [%s]",
-                            persistentClass, unsupportedCharacter, columnName));
-                }
-            });
+        persistentClass
+                .getTable()
+                .getColumns()
+                .forEach(column -> forbidUnsupportedFieldNameCharacters(column.getName(), persistentClass));
+    }
+
+    private static void forbidUnsupportedFieldNameCharacters(String fieldName, PersistentClass persistentClass) {
+        UNSUPPORTED_FIELD_NAME_CHARACTERS.forEach(unsupportedCharacter -> {
+            if (fieldName.contains(unsupportedCharacter)) {
+                throw new FeatureNotSupportedException(format(
+                        "%s: the character [%s] in field names is not supported, but is present in the field name [%s]",
+                        persistentClass, unsupportedCharacter, fieldName));
+            }
         });
+    }
+
+    private static void forbidStructIdentifier(PersistentClass persistentClass) {
+        if (persistentClass.getIdentifier() instanceof Component aggregateEmbeddableIdentifier
+                && aggregateEmbeddableIdentifier.getStructName() != null) {
+            throw new FeatureNotSupportedException(format(
+                    "%s: aggregate embeddable primary keys are not supported, you may want to use [@%s] instead of [@%s @%s]",
+                    persistentClass,
+                    Embeddable.class.getSimpleName(),
+                    Embeddable.class.getSimpleName(),
+                    Struct.class.getSimpleName()));
+        }
     }
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {
@@ -83,8 +106,8 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         var idColumns = identifier.getColumns();
         if (idColumns.size() > 1) {
             throw new FeatureNotSupportedException(format(
-                    "%s: %s does not support [%s] field spanning multiple columns %s",
-                    persistentClass, MONGO_DBMS_NAME, ID_FIELD_NAME, idColumns));
+                    "%s: %s does not support primary key spanning multiple columns %s",
+                    persistentClass, MONGO_DBMS_NAME, idColumns));
         }
         assertTrue(idColumns.size() == 1);
         var idColumn = idColumns.get(0);

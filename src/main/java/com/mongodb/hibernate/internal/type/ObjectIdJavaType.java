@@ -25,6 +25,7 @@ import org.hibernate.type.descriptor.java.AbstractClassJavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 
+/** Thread-safe. */
 public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -49,10 +50,10 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
 
     @Override
     public <X> ObjectId wrap(X value, WrapperOptions options) {
-        if (value instanceof ObjectId wrapped) {
-            return wrapped;
+        if (!(value instanceof ObjectId wrapped)) {
+            throw new FeatureNotSupportedException();
         }
-        throw new FeatureNotSupportedException();
+        return wrapped;
     }
 
     @Override

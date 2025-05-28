@@ -32,12 +32,13 @@ import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 
+/** Thread-safe. */
 public final class ObjectIdJdbcType implements JdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
 
     public static final ObjectIdJdbcType INSTANCE = new ObjectIdJdbcType();
-    private static final MqlType MQL_TYPE = MqlType.OBJECT_ID;
+    public static final MqlType MQL_TYPE = MqlType.OBJECT_ID;
     private static final ObjectIdJavaType JAVA_TYPE = ObjectIdJavaType.INSTANCE;
 
     private ObjectIdJdbcType() {}
@@ -58,7 +59,7 @@ public final class ObjectIdJdbcType implements JdbcType {
             throw new FeatureNotSupportedException();
         }
         @SuppressWarnings("unchecked")
-        var result = (ValueBinder<X>) Binder.INSTANCE;
+        var result = (ValueBinder<X>) new Binder(JAVA_TYPE);
         return result;
     }
 
@@ -68,19 +69,17 @@ public final class ObjectIdJdbcType implements JdbcType {
             throw new FeatureNotSupportedException();
         }
         @SuppressWarnings("unchecked")
-        var result = (ValueExtractor<X>) Extractor.INSTANCE;
+        var result = (ValueExtractor<X>) new Extractor(JAVA_TYPE);
         return result;
     }
 
     /** Thread-safe. */
-    private static final class Binder extends BasicBinder<ObjectId> {
+    private final class Binder extends BasicBinder<ObjectId> {
         @Serial
         private static final long serialVersionUID = 1L;
 
-        static final Binder INSTANCE = new Binder();
-
-        private Binder() {
-            super(JAVA_TYPE, ObjectIdJdbcType.INSTANCE);
+        private Binder(JavaType<ObjectId> javaType) {
+            super(javaType, ObjectIdJdbcType.this);
         }
 
         @Override
@@ -97,14 +96,12 @@ public final class ObjectIdJdbcType implements JdbcType {
     }
 
     /** Thread-safe. */
-    private static final class Extractor extends BasicExtractor<ObjectId> {
+    private final class Extractor extends BasicExtractor<ObjectId> {
         @Serial
         private static final long serialVersionUID = 1L;
 
-        static final Extractor INSTANCE = new Extractor();
-
-        private Extractor() {
-            super(JAVA_TYPE, ObjectIdJdbcType.INSTANCE);
+        private Extractor(JavaType<ObjectId> javaType) {
+            super(javaType, ObjectIdJdbcType.this);
         }
 
         @Override

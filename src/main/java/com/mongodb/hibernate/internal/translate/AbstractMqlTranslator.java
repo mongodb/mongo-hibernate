@@ -20,7 +20,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
@@ -72,23 +71,17 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
+import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.bson.BsonBoolean;
-import org.bson.BsonDecimal128;
-import org.bson.BsonDouble;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
-import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
-import org.bson.types.Decimal128;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
@@ -320,7 +313,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         if (tableMutation.getNumberOfKeyBindings() > 1) {
             throw new FeatureNotSupportedException(
-                    format("%s does not support '%s' spanning multiple columns", MONGO_DBMS_NAME, ID_FIELD_NAME));
+                    format("%s does not support primary key spanning multiple columns", MONGO_DBMS_NAME));
         }
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
         var keyBinding = tableMutation.getKeyBindings().get(0);
@@ -470,15 +463,18 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitColumnReference(ColumnReference columnReference) {
         if (columnReference.isColumnExpressionFormula()) {
-            throw new FeatureNotSupportedException();
+            throw new FeatureNotSupportedException("Formulas are not supported");
         }
         astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
     }
 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(bsonValue));
+        var literalValue = queryLiteral.getLiteralValue();
+        if (literalValue == null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+        }
+        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
@@ -497,8 +493,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
-        astVisitorValueHolder.yield(
-                FIELD_VALUE, new AstLiteralValue(toBsonValue(unparsedNumericLiteral.getLiteralValue())));
+        var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
+        astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
@@ -1023,29 +1019,12 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toBsonValue(@Nullable Object queryLiteral) {
-        if (queryLiteral == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+    private static BsonValue toBsonValue(Object value) {
+        try {
+            return ValueConversions.toBsonValue(value);
+        } catch (SQLFeatureNotSupportedException e) {
+            throw new FeatureNotSupportedException(e);
         }
-        if (queryLiteral instanceof Boolean boolValue) {
-            return BsonBoolean.valueOf(boolValue);
-        }
-        if (queryLiteral instanceof Integer intValue) {
-            return new BsonInt32(intValue);
-        }
-        if (queryLiteral instanceof Long longValue) {
-            return new BsonInt64(longValue);
-        }
-        if (queryLiteral instanceof Double doubleValue) {
-            return new BsonDouble(doubleValue);
-        }
-        if (queryLiteral instanceof BigDecimal bigDecimalValue) {
-            return new BsonDecimal128(new Decimal128(bigDecimalValue));
-        }
-        if (queryLiteral instanceof String stringValue) {
-            return new BsonString(stringValue);
-        }
-        throw new FeatureNotSupportedException("Unsupported Java type: " + queryLiteral.getClass());
     }
 
     private static void checkCteContainerSupportability(CteContainer cteContainer) {
