@@ -131,15 +131,14 @@ buildConfig {
 dependencies {
     testImplementation(libs.bundles.test.common)
     testImplementation(libs.mockito.junit.jupiter)
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly(libs.junit.platform.launcher)
     testCompileOnly(libs.checker.qual)
 
     integrationTestImplementation(libs.bundles.test.common)
-    @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
-    integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    integrationTestRuntimeOnly(libs.junit.platform.launcher)
 
     api(libs.jspecify)
 

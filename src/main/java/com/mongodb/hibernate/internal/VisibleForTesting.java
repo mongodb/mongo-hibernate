@@ -36,6 +36,6 @@ public @interface VisibleForTesting {
     enum AccessModifier {
         PRIVATE,
         PACKAGE,
-        PROTECTED;
+        PROTECTED
     }
 }
