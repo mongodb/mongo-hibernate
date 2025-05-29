@@ -81,7 +81,6 @@ import java.util.Optional;
 import java.util.Set;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
-import org.bson.types.ObjectId;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;
@@ -950,12 +949,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toBsonValue(Object literalValue) {
-        if (literalValue instanceof ObjectId) {
-            throw new FeatureNotSupportedException();
-        }
+    private static BsonValue toBsonValue(Object value) {
         try {
-            return ValueConversions.toBsonValue(literalValue);
+            return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {
             throw new FeatureNotSupportedException(e);
         }
