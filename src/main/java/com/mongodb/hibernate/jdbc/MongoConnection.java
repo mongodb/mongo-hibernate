@@ -152,12 +152,13 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        return new MongoArray(elements);
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         checkClosed();
+        // VAKOTODO remove?
         throw new SQLFeatureNotSupportedException();
     }
 

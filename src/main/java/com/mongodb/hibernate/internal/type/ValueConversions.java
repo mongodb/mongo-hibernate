@@ -17,15 +17,23 @@
 package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.jdbc.MongoArray;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
+import java.util.Collection;
+import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDecimal128;
+import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
@@ -45,7 +53,9 @@ public final class ValueConversions {
 
     public static BsonValue toBsonValue(Object value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
-        if (value instanceof Boolean v) {
+        if (value instanceof BsonDocument v) {
+            return v;
+        } else if (value instanceof Boolean v) {
             return toBsonValue(v.booleanValue());
         } else if (value instanceof Integer v) {
             return toBsonValue(v.intValue());
@@ -60,6 +70,12 @@ public final class ValueConversions {
         } else if (value instanceof byte[] v) {
             return toBsonValue(v);
         } else if (value instanceof ObjectId v) {
+            return toBsonValue(v);
+        } else if (value instanceof MongoArray v) {
+            return toBsonValue(v);
+        } else if (value.getClass().isArray()) {
+            return arrayToBsonValue(value);
+        } else if (value instanceof Collection<?> v) {
             return toBsonValue(v);
         } else {
             throw new SQLFeatureNotSupportedException(format(
@@ -100,9 +116,38 @@ public final class ValueConversions {
         return new BsonObjectId(value);
     }
 
+    public static BsonArray toBsonValue(java.sql.Array value) throws SQLFeatureNotSupportedException {
+        Object contents;
+        try {
+            contents = value.getArray();
+        } catch (SQLException e) {
+            throw fail(e.toString());
+        }
+        return arrayToBsonValue(contents);
+    }
+
+    private static BsonArray arrayToBsonValue(Object value) throws SQLFeatureNotSupportedException {
+        var length = Array.getLength(value);
+        var elements = new ArrayList<BsonValue>(length);
+        for (int i = 0; i < length; i++) {
+            elements.add(toBsonValue(Array.get(value, i)));
+        }
+        return new BsonArray(elements);
+    }
+
+    private static BsonArray toBsonValue(Collection<?> value) throws SQLFeatureNotSupportedException {
+        var elements = new ArrayList<BsonValue>(value.size());
+        for (var e : value) {
+            elements.add(toBsonValue(e));
+        }
+        return new BsonArray(elements);
+    }
+
     static Object toDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
-        if (value instanceof BsonBoolean v) {
+        if (value instanceof BsonDocument v) {
+            return v;
+        } else if (value instanceof BsonBoolean v) {
             return toDomainValue(v);
         } else if (value instanceof BsonInt32 v) {
             return toDomainValue(v);
@@ -118,6 +163,8 @@ public final class ValueConversions {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
             return toDomainValue(v);
+        } else if (value instanceof BsonArray v) {
+            throw fail(v.toString());
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",
@@ -187,5 +234,20 @@ public final class ValueConversions {
 
     private static ObjectId toDomainValue(BsonObjectId value) {
         return value.getValue();
+    }
+
+    public static MongoArray toArrayDomainValue(BsonValue value, Class<?> arrayContentsType)
+            throws SQLFeatureNotSupportedException {
+        return toDomainValue(value.asArray(), arrayContentsType);
+    }
+
+    private static MongoArray toDomainValue(BsonArray value, Class<?> arrayContentsType)
+            throws SQLFeatureNotSupportedException {
+        var domainValueBuilder = MongoArray.builder(arrayContentsType, value.size());
+        for (int i = 0; i < value.size(); i++) {
+            var element = toDomainValue(value.get(i));
+            domainValueBuilder.add(i, element);
+        }
+        return domainValueBuilder.build();
     }
 }

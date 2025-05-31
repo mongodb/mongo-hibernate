@@ -23,6 +23,7 @@ import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import org.hibernate.dialect.aggregate.AggregateSupportImpl;
 import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Column;
+import org.hibernate.type.SqlTypes;
 
 final class MongoAggregateSupport extends AggregateSupportImpl {
     static final MongoAggregateSupport INSTANCE = new MongoAggregateSupport();
@@ -38,10 +39,12 @@ final class MongoAggregateSupport extends AggregateSupportImpl {
             AggregateColumn aggregateColumn,
             Column column) {
         var aggregateColumnType = aggregateColumn.getTypeCode();
-        if (aggregateColumnType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+        if (aggregateColumnType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()
+                // VAKOTODO use MongoArrayJdbcType.getJdbcTypeCode?
+                || aggregateColumnType == SqlTypes.STRUCT_ARRAY) {
             return format(
-                    "unused from %s.aggregateComponentCustomReadExpression",
-                    MongoAggregateSupport.class.getSimpleName());
+                    "unused from %s.aggregateComponentCustomReadExpression for SQL type code [%d]",
+                    MongoAggregateSupport.class.getSimpleName(), aggregateColumnType);
         }
         throw new FeatureNotSupportedException(format("The SQL type code [%d] is not supported", aggregateColumnType));
     }
@@ -53,17 +56,21 @@ final class MongoAggregateSupport extends AggregateSupportImpl {
             AggregateColumn aggregateColumn,
             Column column) {
         var aggregateColumnType = aggregateColumn.getTypeCode();
-        if (aggregateColumnType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+        if (aggregateColumnType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()
+                // VAKOTODO use MongoArrayJdbcType.getJdbcTypeCode?
+                || aggregateColumnType == SqlTypes.STRUCT_ARRAY) {
             return format(
-                    "unused from %s.aggregateComponentAssignmentExpression",
-                    MongoAggregateSupport.class.getSimpleName());
+                    "unused from %s.aggregateComponentAssignmentExpression for SQL type code [%d]",
+                    MongoAggregateSupport.class.getSimpleName(), aggregateColumnType);
         }
         throw new FeatureNotSupportedException(format("The SQL type code [%d] is not supported", aggregateColumnType));
     }
 
     @Override
     public boolean requiresAggregateCustomWriteExpressionRenderer(int aggregateSqlTypeCode) {
-        if (aggregateSqlTypeCode == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+        if (aggregateSqlTypeCode == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()
+                // VAKOTODO use MongoArrayJdbcType.getJdbcTypeCode?
+                || aggregateSqlTypeCode == SqlTypes.STRUCT_ARRAY) {
             return false;
         }
         throw new FeatureNotSupportedException(format("The SQL type code [%d] is not supported", aggregateSqlTypeCode));
