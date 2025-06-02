@@ -20,17 +20,20 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.Serial;
+import java.lang.reflect.ParameterizedType;
 import java.sql.CallableStatement;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Collection;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.hibernate.annotations.Struct;
@@ -91,10 +94,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
     @Override
     public BsonDocument createJdbcValue(Object domainValue, WrapperOptions options) throws SQLException {
-        var embeddableMappingType = assertNotNull(this.embeddableMappingType);
-        if (embeddableMappingType.isPolymorphic()) {
-            throw new FeatureNotSupportedException("Polymorphic mapping is not supported");
-        }
+        var embeddableMappingType = getEmbeddableMappingType();
+        forbidPolymorphic(embeddableMappingType);
         var result = new BsonDocument();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
@@ -134,6 +135,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
     @Override
     public Object[] extractJdbcValues(Object rawJdbcValue, WrapperOptions options) throws SQLException {
+        var embeddableMappingType = getEmbeddableMappingType();
+        forbidPolymorphic(embeddableMappingType);
         if (!(rawJdbcValue instanceof BsonDocument bsonDocument)) {
             throw fail();
         }
@@ -141,14 +144,56 @@ public final class MongoStructJdbcType implements StructJdbcType {
         var elementIdx = 0;
         for (var value : bsonDocument.values()) {
             assertNotNull(value);
-            result[elementIdx++] =
-                    value instanceof BsonDocument ? extractJdbcValues(value, options) : toDomainValue(value);
+            var jdbcMapping =
+                    embeddableMappingType.getJdbcValueSelectable(elementIdx).getJdbcMapping();
+            var mappedJavaType = jdbcMapping.getMappedJavaType();
+            var mappedJavaTypeClass = mappedJavaType.getJavaTypeClass();
+            Object domainValue;
+            if (jdbcMapping.getJdbcType().getJdbcTypeCode() == JDBC_TYPE.getVendorTypeNumber()) {
+                if (!(jdbcMapping.getJdbcValueExtractor() instanceof Extractor<?> structValueExtractor)) {
+                    throw fail();
+                }
+                if (!(structValueExtractor.getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
+                    throw fail();
+                }
+                domainValue = structJdbcType.extractJdbcValues(value, options);
+            } else if (mappedJavaTypeClass.equals(byte[].class)) {
+                domainValue = toDomainValue(value, mappedJavaTypeClass);
+            } else if (mappedJavaTypeClass.equals(char[].class)) {
+                // VAKOTODO replace toArrayDomainValue with toDomainValue that accepts nullable arrayContentsType?
+                // this is to avoid checking for char[].class outside of ValueConversions
+                domainValue =
+                        toArrayDomainValue(value, mappedJavaTypeClass, null).getArray();
+            } else if (mappedJavaTypeClass.isArray()) {
+                domainValue =
+                        toArrayDomainValue(value, mappedJavaTypeClass, null).getArray();
+            } else if (Collection.class.isAssignableFrom(mappedJavaTypeClass)) { // VAKOTODO use equals?
+                if (!(mappedJavaType.getJavaType() instanceof ParameterizedType parameterizedCollection)) {
+                    throw fail();
+                }
+                var collectionTypeArguments = parameterizedCollection.getActualTypeArguments();
+                assertTrue(collectionTypeArguments.length == 1);
+                if (!(collectionTypeArguments[0] instanceof Class<?> collectionTypeArgument)) {
+                    throw fail();
+                }
+                domainValue = toArrayDomainValue(value, mappedJavaTypeClass, collectionTypeArgument)
+                        .getArray();
+            } else {
+                domainValue = toDomainValue(value, mappedJavaTypeClass);
+            }
+            result[elementIdx++] = domainValue;
         }
         return result;
     }
 
+    private static void forbidPolymorphic(EmbeddableMappingType embeddableMappingType) {
+        if (embeddableMappingType.isPolymorphic()) {
+            throw new FeatureNotSupportedException("Polymorphic mapping is not supported");
+        }
+    }
+
     @Override
-    public int getJdbcTypeCode() {
+    public int getJdbcTypeCode() { // VAKOTODO use instead of exposing JDBC_TYPE?
         return JDBC_TYPE.getVendorTypeNumber();
     }
 
@@ -172,11 +217,16 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
 
         @Override
-        protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options) throws SQLException {
+        public Object getBindValue(X value, WrapperOptions options) throws SQLException {
             if (!(getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
                 throw fail();
             }
-            st.setObject(index, structJdbcType.createJdbcValue(value, options), structJdbcType.getJdbcTypeCode());
+            return structJdbcType.createJdbcValue(value, options);
+        }
+
+        @Override
+        protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options) throws SQLException {
+            st.setObject(index, getBindValue(value, options), getJdbcType().getJdbcTypeCode());
         }
 
         @Override

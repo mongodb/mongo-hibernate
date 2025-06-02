@@ -45,7 +45,11 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
 
     @Override
     public <X> X unwrap(ObjectId value, Class<X> type, WrapperOptions options) {
-        throw new FeatureNotSupportedException();
+        if (type.equals(Object.class)) {
+            return type.cast(value);
+        } else {
+            throw new FeatureNotSupportedException();
+        }
     }
 
     @Override
