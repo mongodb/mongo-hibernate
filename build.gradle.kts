@@ -167,8 +167,8 @@ publishing {
             artifactId = "mongodb-hibernate"
             from(components["java"])
             pom {
-                name = "MongoDB Hibernate Dialect"
-                description = "A MongoDB Dialect for the Hibernate ORM"
+                name = "MongoDB Hibernate Extension"
+                description = "A MongoDB Extension of Hibernate ORM"
                 url = "https://www.mongodb.com/"
                 licenses {
                     license {
