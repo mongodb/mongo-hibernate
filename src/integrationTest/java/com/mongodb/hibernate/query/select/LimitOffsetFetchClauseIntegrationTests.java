@@ -535,7 +535,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                                 expectedMqlTemplate,
                                 (isFirstResultSet ? "{\"$skip\": 5}," : ""),
                                 (isMaxResultsSet ? "{\"$limit\": 10}," : "")));
-                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCount();
 
                 assertThat(initialSelectTranslatingCount).isPositive();
 
@@ -547,7 +547,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                                 expectedMqlTemplate,
                                 (isFirstResultSet ? "{\"$skip\": 3}," : ""),
                                 (isMaxResultsSet ? "{\"$limit\": 6}," : "")));
-                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount);
             });
         }
@@ -556,17 +556,16 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         void testCacheInvalidatedDueToQueryOptionsAdded() {
             getSessionFactoryScope().inTransaction(session -> {
                 setQueryOptionsAndQuery(session, null, null, format(expectedMqlTemplate, "", ""));
-                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
-
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCount();
                 assertThat(initialSelectTranslatingCount).isPositive();
 
                 setQueryOptionsAndQuery(session, 1, null, format(expectedMqlTemplate, "{\"$skip\": 1},", ""));
-                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount + 1);
 
                 setQueryOptionsAndQuery(
                         session, 1, 5, format(expectedMqlTemplate, "{\"$skip\": 1},", "{\"$limit\": 5},"));
-                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount + 2);
             });
         }
@@ -574,32 +573,18 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
         @Test
         void testCacheInvalidatedDueToQueryOptionsRemoved() {
             getSessionFactoryScope().inTransaction(session -> {
-                setQueryOptionsAndQuery(session, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
-
-                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
-
+                setQueryOptionsAndQuery(
+                        session, 10, 5, format(expectedMqlTemplate, "{\"$skip\": 10},", "{\"$limit\": 5},"));
+                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCount();
                 assertThat(initialSelectTranslatingCount).isPositive();
+
+                setQueryOptionsAndQuery(session, null, 5, format(expectedMqlTemplate, "", "{\"$limit\": 5},"));
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
+                        .isEqualTo(initialSelectTranslatingCount + 1);
 
                 setQueryOptionsAndQuery(session, null, null, format(expectedMqlTemplate, "", ""));
-
-                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
-                        .isEqualTo(initialSelectTranslatingCount + 1);
-            });
-        }
-
-        @Test
-        void testCacheInvalidatedDueToQueryOptionsChanged() {
-            getSessionFactoryScope().inTransaction(session -> {
-                setQueryOptionsAndQuery(session, 10, null, format(expectedMqlTemplate, "{\"$skip\": 10},", ""));
-
-                var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCounter();
-
-                assertThat(initialSelectTranslatingCount).isPositive();
-
-                setQueryOptionsAndQuery(session, null, 20, format(expectedMqlTemplate, "", "{\"$limit\": 20},"));
-
-                assertThat(translatingCacheTestingDialect.getSelectTranslatingCounter())
-                        .isEqualTo(initialSelectTranslatingCount + 1);
+                assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
+                        .isEqualTo(initialSelectTranslatingCount + 2);
             });
         }
 
@@ -661,7 +646,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
             };
         }
 
-        public int getSelectTranslatingCounter() {
+        public int getSelectTranslatingCount() {
             return selectTranslatingCounter.get();
         }
     }
