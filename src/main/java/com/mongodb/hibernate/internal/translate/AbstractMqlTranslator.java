@@ -958,6 +958,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 && !queryOptions.getDatabaseHints().isEmpty()) {
             throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
         }
+        if (queryOptions.getFetchSize() != null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
+        }
     }
 
     private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
