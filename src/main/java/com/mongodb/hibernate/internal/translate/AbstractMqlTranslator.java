@@ -1004,7 +1004,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    private static class OffsetJdbcParameter extends AbstractJdbcParameter {
+    private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
 
         public OffsetJdbcParameter(BasicType<Integer> type) {
             super(type);
