@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
@@ -26,7 +27,6 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SKIP_LIMIT_STAGES;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
@@ -393,14 +393,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         return Optional.empty();
     }
 
-    private List<AstStage> createSkipLimitStages(QuerySpec querySpec) {
-        return astVisitorValueHolder.execute(SKIP_LIMIT_STAGES, () -> visitOffsetFetchClause(querySpec));
-    }
-
     @Override
     public void visitOffsetFetchClause(QueryPart queryPart) {
-        var skipLimitStages = createSkipLimitStages(queryPart);
-        astVisitorValueHolder.yield(SKIP_LIMIT_STAGES, skipLimitStages);
+        fail("There is no code in Hibernate ORM that calls this method");
     }
 
     private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
