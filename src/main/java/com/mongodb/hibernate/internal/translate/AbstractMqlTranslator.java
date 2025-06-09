@@ -400,8 +400,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
         var skipLimitStages = new ArrayList<AstStage>(2);
-        final Expression skipExpression;
-        final Expression limitExpression;
+        Expression skipExpression;
+        Expression limitExpression;
         if (queryPart.isRoot() && queryOptionsLimit != null && !queryOptionsLimit.isEmpty()) {
             var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
             if (queryOptionsLimit.getFirstRow() != null) {
