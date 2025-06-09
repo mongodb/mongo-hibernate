@@ -41,7 +41,6 @@ final class AstVisitorValueDescriptor<T> {
     static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstValue> FIELD_VALUE = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
             new AstVisitorValueDescriptor<>();
@@ -52,6 +51,8 @@ final class AstVisitorValueDescriptor<T> {
     static final AstVisitorValueDescriptor<List<Expression>> TUPLE = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstStage>> SKIP_LIMIT_STAGES = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<AstValue> VALUE = new AstVisitorValueDescriptor<>();
 
     private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 
