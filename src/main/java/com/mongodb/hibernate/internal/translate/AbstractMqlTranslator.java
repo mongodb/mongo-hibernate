@@ -1028,7 +1028,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    private static class LimitJdbcParameter extends AbstractJdbcParameter {
+    private static final class LimitJdbcParameter extends AbstractJdbcParameter {
 
         public LimitJdbcParameter(BasicType<Integer> type) {
             super(type);
