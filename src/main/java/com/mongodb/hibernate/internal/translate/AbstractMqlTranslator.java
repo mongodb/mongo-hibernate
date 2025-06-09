@@ -403,6 +403,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         Expression skipExpression;
         Expression limitExpression;
         if (queryPart.isRoot() && queryOptionsLimit != null && !queryOptionsLimit.isEmpty()) {
+            // We check if `limits.getFirstRow`/`getMaxRows` is set,Add commentMore actions
+            // but ignore the actual values when creating `OffsetJdbcParameter`/`LimitJdbcParameter`.
+            // Hibernate ORM reuses the translation result for the same HQL/SQL queries
+            // with different values passed to `setFirstResult`/`setMaxResults`. Therefore, we cannot include the
+            // values available when translating in the translation result. The only thing we pay attention to is
+            // whether they are specified or not, because the translation results corresponding to
+            // `setFirstResult`/`setMaxResults` being present
+            // must be different from those with the limits being absent. Hibernate ORM also caches them separately.
             var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
             if (queryOptionsLimit.getFirstRow() != null) {
                 queryOptionsOffsetParameter = new OffsetJdbcParameter(basicIntegerType);
