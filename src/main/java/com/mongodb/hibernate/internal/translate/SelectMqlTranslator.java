@@ -52,8 +52,9 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
         checkJdbcParameterBindingsSupportability(jdbcParameterBindings);
         checkQueryOptionsSupportability(queryOptions);
 
-        if (queryOptions.getLimit() != null) {
-            queryOptionsLimit = queryOptions.getLimit().makeCopy();
+        var limit = queryOptions.getLimit();
+        if (limit != null) {
+            queryOptionsLimit = limit.makeCopy();
         }
 
         var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
