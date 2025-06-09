@@ -360,7 +360,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
 
-        var stages = new ArrayList<AstStage>(3);
+        var stages = new ArrayList<AstStage>();
 
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
