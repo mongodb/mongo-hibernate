@@ -88,12 +88,13 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
     @Nested
     class WithoutQueryOptionsLimit {
 
-        @Test
-        void testHqlLimitClauseOnly() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testHqlLimitClauseOnly(boolean useLiteralParameter) {
             assertSelectionQuery(
-                    "from Book order by id LIMIT :limit",
+                    useLiteralParameter ? "from Book order by id LIMIT 5" : "from Book order by id LIMIT :limit",
                     Book.class,
-                    q -> q.setParameter("limit", 5),
+                    useLiteralParameter ? null : q -> q.setParameter("limit", 5),
                     """
                     {
                       "aggregate": "books",
@@ -124,12 +125,13 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     getBooksByIds(0, 1, 2, 3, 4));
         }
 
-        @Test
-        void testHqlOffsetClauseOnly() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testHqlOffsetClauseOnly(boolean useLiteralParameter) {
             assertSelectionQuery(
-                    "from Book order by id OFFSET :offset",
+                    useLiteralParameter ? "from Book order by id OFFSET 7" : "from Book order by id OFFSET :offset",
                     Book.class,
-                    q -> q.setParameter("offset", 7),
+                    useLiteralParameter ? null : q -> q.setParameter("offset", 7),
                     """
                     {
                       "aggregate": "books",
@@ -160,12 +162,17 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     getBooksByIds(7, 8, 9));
         }
 
-        @Test
-        void testHqlLimitAndOffsetClauses() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void testHqlLimitAndOffsetClauses(boolean useLiteralParameters) {
             assertSelectionQuery(
-                    "from Book order by id LIMIT :limit OFFSET :offset",
+                    useLiteralParameters
+                            ? "from Book order by id LIMIT 2 OFFSET 3"
+                            : "from Book order by id LIMIT :limit OFFSET :offset",
                     Book.class,
-                    q -> q.setParameter("offset", 3).setParameter("limit", 2),
+                    useLiteralParameters
+                            ? null
+                            : q -> q.setParameter("offset", 3).setParameter("limit", 2),
                     """
                     {
                       "aggregate": "books",
@@ -205,7 +212,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     "FETCH FIRST :limit ROWS ONLY",
                     "FETCH NEXT :limit ROWS ONLY",
                 })
-        void testHqlFetchClauseOnly(final String fetchClause) {
+        void testHqlFetchClauseOnly(String fetchClause) {
             assertSelectionQuery(
                     "from Book order by id " + fetchClause,
                     Book.class,
