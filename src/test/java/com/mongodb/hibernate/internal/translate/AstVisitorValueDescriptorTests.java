@@ -24,6 +24,6 @@ class AstVisitorValueDescriptorTests {
 
     @Test
     void testToString() {
-        assertEquals("COLLECTION_MUTATION", AstVisitorValueDescriptor.COLLECTION_MUTATION.toString());
+        assertEquals("MUTATION_RESULT", AstVisitorValueDescriptor.MUTATION_RESULT.toString());
     }
 }

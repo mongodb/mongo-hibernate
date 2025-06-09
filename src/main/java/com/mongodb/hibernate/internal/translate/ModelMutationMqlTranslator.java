@@ -16,11 +16,16 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MUTATION_RESULT;
+import static java.util.Collections.emptyList;
 
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
+import java.util.List;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.internal.TableUpdateNoSet;
@@ -39,15 +44,38 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
     @Override
     public O translate(@Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
         assertNull(jdbcParameterBindings);
-        checkQueryOptionsSupportability(queryOptions);
+        applyQueryOptions(queryOptions);
 
-        String mql;
+        Result result;
         if ((TableMutation<?>) tableMutation instanceof TableUpdateNoSet) {
-            mql = "";
+            result = Result.empty();
         } else {
-            var mutationCommand = acceptAndYield(tableMutation, COLLECTION_MUTATION);
-            mql = renderMongoAstNode(mutationCommand);
+            result = acceptAndYield(tableMutation, MUTATION_RESULT);
         }
-        return tableMutation.createMutationOperation(mql, getParameterBinders());
+        return result.createJdbcMutationOperation(tableMutation);
+    }
+
+    static final class Result {
+        private final @Nullable AstCommand command;
+
+        private final List<JdbcParameterBinder> parameterBinders;
+
+        private Result(@Nullable AstCommand command, List<JdbcParameterBinder> parameterBinders) {
+            this.command = command;
+            this.parameterBinders = parameterBinders;
+        }
+
+        static Result create(AstCommand command, List<JdbcParameterBinder> parameterBinders) {
+            return new Result(assertNotNull(command), parameterBinders);
+        }
+
+        private static Result empty() {
+            return new Result(null, emptyList());
+        }
+
+        private <O extends JdbcMutationOperation> O createJdbcMutationOperation(TableMutation<O> tableMutation) {
+            var mql = command == null ? "" : renderMongoAstNode(command);
+            return tableMutation.createMutationOperation(mql, parameterBinders);
+        }
     }
 }

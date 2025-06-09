@@ -16,8 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -62,10 +63,12 @@ class AstVisitorValueHolderTests {
             var fieldValue = astVisitorValueHolder.execute(VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(
-                    COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
+                    MUTATION_RESULT,
+                    ModelMutationMqlTranslator.Result.create(
+                            new AstInsertCommand("city", new AstDocument(List.of(astElement))), emptyList()));
         };
 
-        astVisitorValueHolder.execute(COLLECTION_MUTATION, tableInserter);
+        astVisitorValueHolder.execute(MUTATION_RESULT, tableInserter);
     }
 
     @Test
@@ -87,7 +90,7 @@ class AstVisitorValueHolderTests {
         Runnable valueYielder =
                 () -> astVisitorValueHolder.yield(VALUE, new AstLiteralValue(new BsonString("some_value")));
 
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueYielder));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(MUTATION_RESULT, valueYielder));
     }
 
     @Test

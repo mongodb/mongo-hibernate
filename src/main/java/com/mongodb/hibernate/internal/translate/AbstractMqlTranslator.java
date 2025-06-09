@@ -17,16 +17,17 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
@@ -54,7 +55,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
@@ -200,11 +200,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private final Set<String> affectedTableNames = new HashSet<>();
 
-    @Nullable Limit queryOptionsLimit;
-
-    @Nullable JdbcParameter queryOptionsOffsetParameter;
-
-    @Nullable JdbcParameter queryOptionsLimitParameter;
+    private @Nullable QueryOptionsLimit queryOptionsLimit;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -244,12 +240,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         return affectedTableNames;
     }
 
-    List<JdbcParameterBinder> getParameterBinders() {
-        return parameterBinders;
-    }
-
     @SuppressWarnings("overloads")
-    <R extends AstCommand> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
+    <R> R acceptAndYield(Statement statement, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> statement.accept(this));
     }
 
@@ -274,8 +266,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             astElements.add(new AstElement(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
-                COLLECTION_MUTATION,
-                new AstInsertCommand(tableInsert.getMutatingTable().getTableName(), new AstDocument(astElements)));
+                MUTATION_RESULT,
+                ModelMutationMqlTranslator.Result.create(
+                        new AstInsertCommand(
+                                tableInsert.getMutatingTable().getTableName(), new AstDocument(astElements)),
+                        parameterBinders));
     }
 
     @Override
@@ -293,8 +288,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         var keyFilter = getKeyFilter(tableDelete);
         astVisitorValueHolder.yield(
-                COLLECTION_MUTATION,
-                new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter));
+                MUTATION_RESULT,
+                ModelMutationMqlTranslator.Result.create(
+                        new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter),
+                        parameterBinders));
     }
 
     @Override
@@ -313,8 +310,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
-                COLLECTION_MUTATION,
-                new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates));
+                MUTATION_RESULT,
+                ModelMutationMqlTranslator.Result.create(
+                        new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates),
+                        parameterBinders));
     }
 
     private AstFilter getKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
@@ -365,10 +364,20 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
 
-        stages.addAll(createSkipLimitStages(querySpec));
+        var offsetFetchStagesAndJdbcParameters =
+                assertNotNull(queryOptionsLimit).createStagesAndJdbcParameters(querySpec);
+        stages.addAll(offsetFetchStagesAndJdbcParameters.stages());
+
         stages.add(createProjectStage(querySpec.getSelectClause()));
 
-        astVisitorValueHolder.yield(COLLECTION_AGGREGATE, new AstAggregateCommand(collection, stages));
+        astVisitorValueHolder.yield(
+                SELECT_RESULT,
+                new SelectMqlTranslator.Result(
+                        new AstAggregateCommand(collection, stages),
+                        parameterBinders,
+                        affectedTableNames,
+                        offsetFetchStagesAndJdbcParameters.offset(),
+                        offsetFetchStagesAndJdbcParameters.limit()));
     }
 
     private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
@@ -395,48 +404,68 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitOffsetFetchClause(QueryPart queryPart) {
-        fail("There is no code in Hibernate ORM that calls this method");
+        fail();
     }
 
-    private List<AstStage> createSkipLimitStages(QueryPart queryPart) {
-        var skipLimitStages = new ArrayList<AstStage>(2);
-        Expression skipExpression;
-        Expression limitExpression;
-        if (queryPart.isRoot() && queryOptionsLimit != null && !queryOptionsLimit.isEmpty()) {
-            // We check if `limits.getFirstRow`/`getMaxRows` is set,Add commentMore actions
-            // but ignore the actual values when creating `OffsetJdbcParameter`/`LimitJdbcParameter`.
-            // Hibernate ORM reuses the translation result for the same HQL/SQL queries
-            // with different values passed to `setFirstResult`/`setMaxResults`. Therefore, we cannot include the
-            // values available when translating in the translation result. The only thing we pay attention to is
-            // whether they are specified or not, because the translation results corresponding to
-            // `setFirstResult`/`setMaxResults` being present
-            // must be different from those with the limits being absent. Hibernate ORM also caches them separately.
-            var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
-            if (queryOptionsLimit.getFirstRow() != null) {
-                queryOptionsOffsetParameter = new OffsetJdbcParameter(basicIntegerType);
-            }
-            if (queryOptionsLimit.getMaxRows() != null) {
-                queryOptionsLimitParameter = new LimitJdbcParameter(basicIntegerType);
-            }
-            skipExpression = queryOptionsOffsetParameter;
-            limitExpression = queryOptionsLimitParameter;
-        } else {
-            if (queryPart.getFetchClauseType() != ROWS_ONLY) {
-                throw new FeatureNotSupportedException(format(
-                        "%s does not support '%s' fetch clause type", MONGO_DBMS_NAME, queryPart.getFetchClauseType()));
-            }
-            skipExpression = queryPart.getOffsetClauseExpression();
-            limitExpression = queryPart.getFetchClauseExpression();
+    private final class QueryOptionsLimit {
+        private final @Nullable Limit limit;
+
+        QueryOptionsLimit(@Nullable Limit limit) {
+            this.limit = limit;
         }
-        if (skipExpression != null) {
-            var skipValue = acceptAndYield(skipExpression, VALUE);
-            skipLimitStages.add(new AstSkipStage(skipValue));
+
+        StagesAndJdbcParameters createStagesAndJdbcParameters(QueryPart queryPart) {
+            Expression skipExpression;
+            Expression limitExpression;
+            JdbcParameter offsetParameter = null;
+            JdbcParameter limitParameter = null;
+            if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
+                // We check if limit.getFirstRow/getMaxRows is set,
+                // but ignore the actual values when creating OffsetJdbcParameter/LimitJdbcParameter.
+                // Hibernate ORM reuses the translation result for the same HQL/SQL queries
+                // with different values passed to setFirstResult/setMaxResults. Therefore, we cannot include the
+                // values available when translating in the translation result. The only thing we pay attention to is
+                // whether they are specified or not, because the translation results corresponding to
+                // setFirstResult/setMaxResults being present
+                // must be different from those with the limits being absent. Hibernate ORM also caches them separately.
+                var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
+                if (limit.getFirstRow() != null) {
+                    offsetParameter = new OffsetJdbcParameter(basicIntegerType);
+                }
+                if (limit.getMaxRows() != null) {
+                    limitParameter = new LimitJdbcParameter(basicIntegerType);
+                }
+                skipExpression = offsetParameter;
+                limitExpression = limitParameter;
+            } else {
+                if (queryPart.getFetchClauseType() != ROWS_ONLY) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s does not support '%s' fetch clause type",
+                            MONGO_DBMS_NAME, queryPart.getFetchClauseType()));
+                }
+                skipExpression = queryPart.getOffsetClauseExpression();
+                limitExpression = queryPart.getFetchClauseExpression();
+            }
+            var pipelineStages = new ArrayList<AstStage>();
+            if (skipExpression != null) {
+                var skipValue = acceptAndYield(skipExpression, VALUE);
+                pipelineStages.add(new AstSkipStage(skipValue));
+            }
+            if (limitExpression != null) {
+                var limitValue = acceptAndYield(limitExpression, VALUE);
+                pipelineStages.add(new AstLimitStage(limitValue));
+            }
+            return new StagesAndJdbcParameters(pipelineStages, offsetParameter, limitParameter);
         }
-        if (limitExpression != null) {
-            var limitValue = acceptAndYield(limitExpression, VALUE);
-            skipLimitStages.add(new AstLimitStage(limitValue));
-        }
-        return skipLimitStages;
+
+        record StagesAndJdbcParameters(
+                List<AstStage> stages, @Nullable JdbcParameter offset, @Nullable JdbcParameter limit) {}
+    }
+
+    void applyQueryOptions(QueryOptions queryOptions) {
+        checkQueryOptionsSupportability(queryOptions);
+        assertNull(queryOptionsLimit);
+        queryOptionsLimit = new QueryOptionsLimit(queryOptions.getLimit());
     }
 
     private AstProjectStage createProjectStage(SelectClause selectClause) {
@@ -927,7 +956,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    static void checkQueryOptionsSupportability(QueryOptions queryOptions) {
+    private static void checkQueryOptionsSupportability(QueryOptions queryOptions) {
         if (queryOptions.getTimeout() != null) {
             throw new FeatureNotSupportedException("'timeout' inQueryOptions not supported");
         }
@@ -1012,7 +1041,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
 
-        OffsetJdbcParameter(BasicType<Integer> type) {
+        private OffsetJdbcParameter(BasicType<Integer> type) {
             super(type);
         }
 
@@ -1036,7 +1065,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static final class LimitJdbcParameter extends AbstractJdbcParameter {
 
-        LimitJdbcParameter(BasicType<Integer> type) {
+        private LimitJdbcParameter(BasicType<Integer> type) {
             super(type);
         }
 
