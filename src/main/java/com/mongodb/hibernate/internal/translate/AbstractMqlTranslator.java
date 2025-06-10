@@ -237,7 +237,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public Set<String> getAffectedTableNames() {
-        return affectedTableNames;
+        throw fail();
     }
 
     @SuppressWarnings("overloads")
