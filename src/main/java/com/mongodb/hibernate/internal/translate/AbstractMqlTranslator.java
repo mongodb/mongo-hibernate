@@ -364,9 +364,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
 
-        var offsetFetchStagesAndJdbcParameters =
-                assertNotNull(queryOptionsLimit).createStagesAndJdbcParameters(querySpec);
-        stages.addAll(offsetFetchStagesAndJdbcParameters.stages());
+        var skipLimitStagesAndJdbcParams =
+                assertNotNull(queryOptionsLimit).createSkipLimitStagesAndJdbcParams(querySpec);
+        stages.addAll(skipLimitStagesAndJdbcParams.stages());
 
         stages.add(createProjectStage(querySpec.getSelectClause()));
 
@@ -376,8 +376,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                         new AstAggregateCommand(collection, stages),
                         parameterBinders,
                         affectedTableNames,
-                        offsetFetchStagesAndJdbcParameters.offset(),
-                        offsetFetchStagesAndJdbcParameters.limit()));
+                        skipLimitStagesAndJdbcParams.offset(),
+                        skipLimitStagesAndJdbcParams.limit()));
     }
 
     private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
@@ -414,13 +414,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             this.limit = limit;
         }
 
-        StagesAndJdbcParameters createStagesAndJdbcParameters(QueryPart queryPart) {
+        StagesAndJdbcParameters createSkipLimitStagesAndJdbcParams(QueryPart queryPart) {
             Expression skipExpression;
             Expression limitExpression;
             JdbcParameter offsetParameter = null;
             JdbcParameter limitParameter = null;
             if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
-                // We check if limit.getFirstRow/getMaxRows is set,
+                // We check if limit's firstRow/maxRows is set,
                 // but ignore the actual values when creating OffsetJdbcParameter/LimitJdbcParameter.
                 // Hibernate ORM reuses the translation result for the same HQL/SQL queries
                 // with different values passed to setFirstResult/setMaxResults. Therefore, we cannot include the
@@ -446,16 +446,16 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 skipExpression = queryPart.getOffsetClauseExpression();
                 limitExpression = queryPart.getFetchClauseExpression();
             }
-            var pipelineStages = new ArrayList<AstStage>();
+            var skipAndLimitStages = new ArrayList<AstStage>();
             if (skipExpression != null) {
                 var skipValue = acceptAndYield(skipExpression, VALUE);
-                pipelineStages.add(new AstSkipStage(skipValue));
+                skipAndLimitStages.add(new AstSkipStage(skipValue));
             }
             if (limitExpression != null) {
                 var limitValue = acceptAndYield(limitExpression, VALUE);
-                pipelineStages.add(new AstLimitStage(limitValue));
+                skipAndLimitStages.add(new AstLimitStage(limitValue));
             }
-            return new StagesAndJdbcParameters(pipelineStages, offsetParameter, limitParameter);
+            return new StagesAndJdbcParameters(skipAndLimitStages, offsetParameter, limitParameter);
         }
 
         record StagesAndJdbcParameters(
@@ -1041,7 +1041,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
 
-        private OffsetJdbcParameter(BasicType<Integer> type) {
+        OffsetJdbcParameter(BasicType<Integer> type) {
             super(type);
         }
 
@@ -1065,7 +1065,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static final class LimitJdbcParameter extends AbstractJdbcParameter {
 
-        private LimitJdbcParameter(BasicType<Integer> type) {
+        LimitJdbcParameter(BasicType<Integer> type) {
             super(type);
         }
 
