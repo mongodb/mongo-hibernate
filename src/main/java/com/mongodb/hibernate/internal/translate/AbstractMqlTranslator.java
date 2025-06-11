@@ -79,8 +79,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import org.bson.BsonUndefined;
+import org.bson.json.Converter;
+import org.bson.json.JsonMode;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
+import org.bson.json.JsonWriterSettings;
+import org.bson.json.StrictJsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.persister.entity.EntityPersister;

@@ -41,7 +41,7 @@ class AstInsertCommandTests {
 
         var expectedJson =
                 """
-                {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": {"$undefined": true}}]}\
+                {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": ?}]}\
                 """;
         assertRendering(expectedJson, insertCommand);
     }
