@@ -110,10 +110,6 @@ public final class MongoStructJdbcType implements StructJdbcType {
             }
             var fieldName = jdbcValueSelectable.getSelectableName();
             var value = embeddableMappingType.getValue(domainValue, columnIndex);
-            if (value == null) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
-            }
             BsonValue bsonValue;
             var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
             if (jdbcMapping.getJdbcType().getJdbcTypeCode() == JDBC_TYPE.getVendorTypeNumber()) {
