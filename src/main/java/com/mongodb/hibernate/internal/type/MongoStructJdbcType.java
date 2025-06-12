@@ -24,16 +24,18 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.jdbc.MongoArray;
 import java.io.Serial;
 import java.sql.CallableStatement;
+import java.sql.Connection;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
-import org.hibernate.annotations.Struct;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.descriptor.ValueBinder;
@@ -55,7 +57,6 @@ public final class MongoStructJdbcType implements StructJdbcType {
     public static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
 
     private final @Nullable EmbeddableMappingType embeddableMappingType;
-
     private final @Nullable String structTypeName;
 
     private MongoStructJdbcType() {
@@ -64,8 +65,16 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
     private MongoStructJdbcType(
             @Nullable EmbeddableMappingType embeddableMappingType, @Nullable String structTypeName) {
+        if (embeddableMappingType != null && embeddableMappingType.isPolymorphic()) {
+            throw new FeatureNotSupportedException("Polymorphic mapping is not supported");
+        }
         this.embeddableMappingType = embeddableMappingType;
         this.structTypeName = structTypeName;
+    }
+
+    @Override
+    public int getJdbcTypeCode() {
+        return JDBC_TYPE.getVendorTypeNumber();
     }
 
     @Override
@@ -76,12 +85,12 @@ public final class MongoStructJdbcType implements StructJdbcType {
     /**
      * This method may be called multiple times with equal {@code sqlType} and different {@code mappingType}.
      *
-     * @param sqlType The {@link Struct#name()}.
+     * @param sqlType The {@link org.hibernate.annotations.Struct#name()}.
      */
     @Override
     public AggregateJdbcType resolveAggregateJdbcType(
             EmbeddableMappingType mappingType, String sqlType, RuntimeModelCreationContext creationContext) {
-        return new MongoStructJdbcType(mappingType, sqlType);
+        return new MongoStructJdbcType(assertNotNull(mappingType), assertNotNull(sqlType));
     }
 
     @Override
@@ -89,12 +98,21 @@ public final class MongoStructJdbcType implements StructJdbcType {
         return assertNotNull(embeddableMappingType);
     }
 
+    /**
+     * We replaced this method with {@link #createBsonValue(Object, WrapperOptions)} to make it clear that
+     * {@link #createJdbcValue(Object, WrapperOptions)} is not called by Hibernate ORM.
+     */
     @Override
-    public BsonDocument createJdbcValue(Object domainValue, WrapperOptions options) throws SQLException {
-        var embeddableMappingType = assertNotNull(this.embeddableMappingType);
-        if (embeddableMappingType.isPolymorphic()) {
-            throw new FeatureNotSupportedException("Polymorphic mapping is not supported");
+    public @Nullable BsonDocument createJdbcValue(@Nullable Object domainValue, WrapperOptions options) {
+        throw fail();
+    }
+
+    private @Nullable BsonDocument createBsonValue(@Nullable Object domainValue, WrapperOptions options)
+            throws SQLException {
+        if (domainValue == null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
         }
+        var embeddableMappingType = getEmbeddableMappingType();
         var result = new BsonDocument();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
@@ -116,14 +134,16 @@ public final class MongoStructJdbcType implements StructJdbcType {
             }
             BsonValue bsonValue;
             var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
-            if (jdbcMapping.getJdbcType().getJdbcTypeCode() == JDBC_TYPE.getVendorTypeNumber()) {
+            var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
+            if (jdbcTypeCode == getJdbcTypeCode()) {
                 if (!(jdbcMapping.getJdbcValueBinder() instanceof Binder<?> structValueBinder)) {
                     throw fail();
                 }
-                if (!(structValueBinder.getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
-                    throw fail();
-                }
-                bsonValue = structJdbcType.createJdbcValue(value, options);
+                bsonValue = structValueBinder.getJdbcType().createBsonValue(value, options);
+            } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+                @SuppressWarnings("unchecked")
+                ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
+                bsonValue = toBsonValue(valueBinder.getBindValue(value, options));
             } else {
                 bsonValue = toBsonValue(value);
             }
@@ -132,24 +152,58 @@ public final class MongoStructJdbcType implements StructJdbcType {
         return result;
     }
 
+    /**
+     * @return The {@linkplain Struct#getAttributes() struct attributes}. Though, the way we support {@link Struct} in
+     *     {@link MongoStructJdbcType} does not involve Hibernate ORM ever {@linkplain Connection#createStruct(String,
+     *     Object[]) creating} one. If we extended {@link org.hibernate.dialect.StructJdbcType}, this could have been
+     *     different.
+     */
     @Override
-    public Object[] extractJdbcValues(Object rawJdbcValue, WrapperOptions options) throws SQLException {
+    public Object[] extractJdbcValues(@Nullable Object rawJdbcValue, WrapperOptions options) throws SQLException {
+        if (rawJdbcValue == null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
+        }
         if (!(rawJdbcValue instanceof BsonDocument bsonDocument)) {
             throw fail();
         }
+        var embeddableMappingType = getEmbeddableMappingType();
         var result = new Object[bsonDocument.size()];
         var elementIdx = 0;
         for (var value : bsonDocument.values()) {
-            assertNotNull(value);
-            result[elementIdx++] =
-                    value instanceof BsonDocument ? extractJdbcValues(value, options) : toDomainValue(value);
+            if (value == null) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
+            }
+            var jdbcMapping =
+                    embeddableMappingType.getJdbcValueSelectable(elementIdx).getJdbcMapping();
+            var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
+            Object domainValue;
+            if (jdbcTypeCode == getJdbcTypeCode()) {
+                if (!(jdbcMapping.getJdbcValueExtractor() instanceof Extractor<?> structValueExtractor)) {
+                    throw fail();
+                }
+                domainValue = structValueExtractor.getJdbcType().extractJdbcValues(value, options);
+            } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+                if (!(jdbcMapping.getJdbcType() instanceof MongoArrayJdbcType arrayJdbcType)) {
+                    throw fail();
+                }
+                if (!(jdbcMapping.getJdbcValueExtractor() instanceof BasicExtractor<?> jdbcValueExtractor)) {
+                    throw fail();
+                }
+                domainValue = arrayJdbcType.getArray(
+                        jdbcValueExtractor,
+                        // `org.hibernate.type.descriptor.jdbc.ArrayJdbcType` expects `java.sql.Array.getArray`
+                        // to return `Object[]`, we cannot put a `BsonArray`, which is a `List<BsonValue>`, inside.
+                        new MongoArray(value.asArray().toArray()),
+                        options);
+            } else {
+                domainValue = toDomainValue(
+                        value,
+                        ValueConversions.Type.of(jdbcMapping.getMappedJavaType().getJavaType()));
+            }
+            result[elementIdx++] = domainValue;
         }
         return result;
-    }
-
-    @Override
-    public int getJdbcTypeCode() {
-        return JDBC_TYPE.getVendorTypeNumber();
     }
 
     @Override
@@ -172,11 +226,21 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
 
         @Override
-        protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options) throws SQLException {
-            if (!(getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
+        public MongoStructJdbcType getJdbcType() {
+            if (!(super.getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
                 throw fail();
             }
-            st.setObject(index, structJdbcType.createJdbcValue(value, options), structJdbcType.getJdbcTypeCode());
+            return structJdbcType;
+        }
+
+        @Override
+        public @Nullable Object getBindValue(@Nullable X value, WrapperOptions options) throws SQLException {
+            return getJdbcType().createBsonValue(value, options);
+        }
+
+        @Override
+        protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options) throws SQLException {
+            st.setObject(index, getBindValue(value, options), getJdbcType().getJdbcTypeCode());
         }
 
         @Override
@@ -195,14 +259,19 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
 
         @Override
-        protected X doExtract(ResultSet rs, int paramIndex, WrapperOptions options) throws SQLException {
-            if (!(getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
+        public MongoStructJdbcType getJdbcType() {
+            if (!(super.getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
                 throw fail();
             }
+            return structJdbcType;
+        }
+
+        @Override
+        protected X doExtract(ResultSet rs, int paramIndex, WrapperOptions options) throws SQLException {
             var classX = getJavaType().getJavaTypeClass();
             assertTrue(classX.equals(Object[].class));
             var bsonDocument = rs.getObject(paramIndex, BsonDocument.class);
-            return classX.cast(structJdbcType.extractJdbcValues(bsonDocument, options));
+            return classX.cast(getJdbcType().extractJdbcValues(bsonDocument, options));
         }
 
         @Override
