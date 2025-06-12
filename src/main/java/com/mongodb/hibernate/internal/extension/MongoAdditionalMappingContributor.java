@@ -63,6 +63,11 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
+        metadata.visitRegisteredComponents(component -> {
+            if (component.getStructName() != null && component.getProperties().isEmpty()) {
+                throw new FeatureNotSupportedException(format("empty struct: %s, are you kidding me?", component.getComponentClass().getName()));
+            }
+        });
     }
 
     private static void forbidDynamicInsert(PersistentClass persistentClass) {
