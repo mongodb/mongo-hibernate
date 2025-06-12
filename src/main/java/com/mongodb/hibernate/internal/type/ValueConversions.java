@@ -29,11 +29,13 @@ import org.bson.BsonDecimal128;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}
@@ -43,8 +45,10 @@ import org.bson.types.ObjectId;
 public final class ValueConversions {
     private ValueConversions() {}
 
-    public static BsonValue toBsonValue(Object value) throws SQLFeatureNotSupportedException {
-        assertNotNull(value);
+    public static BsonValue toBsonValue(@Nullable Object value) throws SQLFeatureNotSupportedException {
+        if (value == null) {
+            return BsonNull.VALUE;
+        }
         if (value instanceof Boolean v) {
             return toBsonValue(v.booleanValue());
         } else if (value instanceof Integer v) {
