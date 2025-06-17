@@ -35,9 +35,7 @@ java {
     withSourcesJar()
 }
 
-tasks.withType<Javadoc> {
-    exclude("/com/mongodb/hibernate/internal/**")
-}
+tasks.withType<Javadoc> { exclude("/com/mongodb/hibernate/internal/**") }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Integration Test
@@ -155,8 +153,8 @@ dependencies {
     errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
-    implementation(libs.hibernate.core)
-    implementation(libs.mongo.java.driver.sync)
+    api(libs.hibernate.core)
+    api(libs.mongo.java.driver.sync)
     implementation(libs.sl4j.api)
 }
 
