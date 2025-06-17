@@ -155,8 +155,8 @@ dependencies {
     errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
-    implementation(libs.hibernate.core)
-    implementation(libs.mongo.java.driver.sync)
+    api(libs.hibernate.core)
+    api(libs.mongo.java.driver.sync)
     implementation(libs.sl4j.api)
 }
 
