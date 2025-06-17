@@ -63,7 +63,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
-// TODO-HIBERNATE-48 verify that we support `null`s in arrays/collections
 class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;

@@ -34,7 +34,6 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
@@ -196,8 +195,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Array getArray(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        return getValue(
-                columnIndex, bsonValue -> toArrayDomainValue(bsonValue, ValueConversions.Type.array(Object[].class)));
+        return getValue(columnIndex, ValueConversions::toArrayDomainValue);
     }
 
     @Override

@@ -24,7 +24,6 @@ import static java.lang.String.format;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.jdbc.MongoArray;
 import java.lang.reflect.Array;
-import java.lang.reflect.ParameterizedType;
 import java.math.BigDecimal;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
@@ -32,7 +31,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
-import java.util.Collection;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
@@ -82,12 +80,8 @@ public final class ValueConversions {
             return toBsonValue(v);
         } else if (value instanceof ObjectId v) {
             return toBsonValue(v);
-        } else if (value instanceof MongoArray v) {
-            return toBsonValue(v);
-        } else if (value.getClass().isArray()) {
-            return arrayToBsonValue(value);
-        } else if (value instanceof Collection<?> v) {
-            return toBsonValue(v);
+        } else if (value instanceof Object[] v) {
+            return arrayToBsonValue(v);
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",
@@ -148,7 +142,7 @@ public final class ValueConversions {
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-chararray">
      * Hibernate ORM maps {@code char[]} to {@link java.sql.JDBCType#VARCHAR} by default</a>.
      *
-     * @see #toDomainValue(BsonString, Type.ArrayOrCollection)
+     * @see #toDomainValue(BsonString)
      */
     private static BsonString toBsonValue(char[] value) {
         return new BsonString(String.valueOf(value));
@@ -165,9 +159,6 @@ public final class ValueConversions {
         } catch (SQLException e) {
             throw fail(e.toString());
         }
-        // Hibernate ORM always passes an `java.sql.Array` with contents of the Java array type to
-        // `PreparedStatement.setArray`
-        assertTrue(contents.getClass().isArray());
         return arrayToBsonValue(contents);
     }
 
@@ -180,15 +171,7 @@ public final class ValueConversions {
         return new BsonArray(elements);
     }
 
-    private static BsonArray toBsonValue(Collection<?> value) throws SQLFeatureNotSupportedException {
-        var elements = new ArrayList<BsonValue>(value.size());
-        for (var e : value) {
-            elements.add(toBsonValue(e));
-        }
-        return new BsonArray(elements);
-    }
-
-    static Object toDomainValue(BsonValue value, Type domainType) throws SQLFeatureNotSupportedException {
+    static Object toDomainValue(BsonValue value, Class<?> domainType) throws SQLFeatureNotSupportedException {
         // TODO-HIBERNATE-48 decide if `value` is nullable and the method may return `null`
         assertNotNull(value);
         if (value instanceof BsonDocument v) {
@@ -204,26 +187,21 @@ public final class ValueConversions {
         } else if (value instanceof BsonDecimal128 v) {
             return toDomainValue(v);
         } else if (value instanceof BsonString v) {
-            if (domainType instanceof Type.Simple simpleType) {
-                return toDomainValue(v, simpleType.type());
-            } else if (domainType instanceof Type.ArrayOrCollection arrayOrCollectionType) {
-                return toDomainValue(v, arrayOrCollectionType).getArray();
+            if (domainType.isArray()) {
+                return toDomainValue(v);
             } else {
-                throw fail(domainType.toString());
+                return toDomainValue(v, domainType);
             }
         } else if (value instanceof BsonBinary v) {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
             return toDomainValue(v);
-        } else if (value instanceof BsonArray v) {
-            if (!(domainType instanceof Type.ArrayOrCollection arrayOrCollectionDomainType)) {
-                throw fail("VAKOTODO SQLException/RuntimeException about invalid data");
-            }
-            return toDomainValue(v, arrayOrCollectionDomainType).getArray();
+        } else if (value instanceof BsonArray v && domainType.isArray()) {
+            return toDomainValue(v, assertNotNull(domainType.getComponentType()));
         } else {
             throw new SQLFeatureNotSupportedException(format(
-                    "Value [%s] of type [%s] is not supported",
-                    value, value.getClass().getTypeName()));
+                    "Value [%s] of type [%s] is not supported for the domain type [%s]",
+                    value, value.getClass().getTypeName(), domainType));
         }
     }
 
@@ -313,109 +291,29 @@ public final class ValueConversions {
         return value.getValue();
     }
 
-    public static MongoArray toArrayDomainValue(BsonValue value, Type.ArrayOrCollection domainArrayContentsType)
-            throws SQLFeatureNotSupportedException {
-        if (value instanceof BsonArray v) {
-            return toDomainValue(v, domainArrayContentsType);
-        } else if (value instanceof BsonString v) {
-            return toDomainValue(v, domainArrayContentsType);
-        } else {
-            throw new RuntimeException(
-                    format("Invalid data: value [%s], domainArrayContentsType [%s]", value, domainArrayContentsType));
-        }
+    public static MongoArray toArrayDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
+        return new MongoArray(toDomainValue(value.asArray(), Object.class));
     }
 
-    private static MongoArray toDomainValue(BsonArray value, Type.ArrayOrCollection domainArrayContentsType)
-            throws SQLFeatureNotSupportedException {
+    private static Object toDomainValue(BsonArray value, Class<?> elementType) throws SQLFeatureNotSupportedException {
         var size = value.size();
-        var domainValueBuilder = MongoArray.builder(domainArrayContentsType, size);
+        var result = Array.newInstance(elementType, size);
         for (int i = 0; i < size; i++) {
-            var element = toDomainValue(value.get(i), domainArrayContentsType.elementType());
-            domainValueBuilder.add(i, element);
+            var element = toDomainValue(value.get(i), elementType);
+            Array.set(result, i, element);
         }
-        return domainValueBuilder.build();
+        return result;
     }
 
     /** @see #toBsonValue(char[]) */
-    private static MongoArray toDomainValue(BsonString value, Type.ArrayOrCollection domainArrayContentsType) {
+    private static char[] toDomainValue(BsonString value) {
         var charsAsString = toDomainValue(value, String.class);
         var size = charsAsString.length();
-        var domainValueBuilder = MongoArray.builder(domainArrayContentsType, size);
+        var result = new char[size];
         for (int i = 0; i < size; i++) {
             var element = charsAsString.charAt(i);
-            domainValueBuilder.add(i, element);
+            result[i] = element;
         }
-        return domainValueBuilder.build();
-    }
-
-    public sealed interface Type permits Type.Simple, Type.ArrayOrCollection {
-        sealed interface Simple extends Type permits SimpleType {}
-
-        // VAKOTODO rename to Plural
-        sealed interface ArrayOrCollection extends Type permits ArrayType, CollectionType {
-            Simple elementType();
-        }
-
-        static Type of(java.lang.reflect.Type type) {
-            if (type instanceof Class<?> klass) {
-                return of(klass);
-            } else if (type instanceof ParameterizedType parameterizedType) {
-                if (!(parameterizedType.getRawType() instanceof Class<?> rawKlass)) {
-                    throw fail(type.toString());
-                }
-                if (Collection.class.isAssignableFrom(rawKlass)) { // VAKOTODO equals?
-                    var collectionTypeArguments = parameterizedType.getActualTypeArguments();
-                    assertTrue(collectionTypeArguments.length == 1);
-                    return new CollectionType(rawKlass, collectionTypeArguments[0]);
-                } else {
-                    return of(rawKlass);
-                }
-            } else {
-                throw fail(type.toString());
-            }
-        }
-
-        private static Type of(Class<?> type) {
-            if (type.isArray() && !type.equals(byte[].class)) {
-                return array(type);
-            } else {
-                return simple(type);
-            }
-        }
-
-        private static Simple simple(Class<?> type) {
-            return new SimpleType(type);
-        }
-
-        static ArrayOrCollection array(Class<?> type) {
-            return new ArrayType(type);
-        }
-
-        Class<?> type();
-    }
-
-    private record SimpleType(Class<?> type) implements Type.Simple {}
-
-    private record ArrayType(Class<?> type, Simple elementType) implements Type.ArrayOrCollection {
-        ArrayType(Class<?> arrayType) {
-            this(arrayType, elementType(arrayType));
-        }
-
-        private static Simple elementType(Class<?> arrayType) {
-            return Type.simple(assertNotNull(arrayType.componentType()));
-        }
-    }
-
-    private record CollectionType(Class<?> type, Simple elementType) implements Type.ArrayOrCollection {
-        CollectionType(Class<?> rawCollectionType, java.lang.reflect.Type collectionTypeArgument) {
-            this(rawCollectionType, elementType(collectionTypeArgument));
-        }
-
-        private static Simple elementType(java.lang.reflect.Type collectionTypeArgument) {
-            if (!(collectionTypeArgument instanceof Class<?> collectionTypeArgumentClass)) {
-                throw fail(); // VAKOTODO try Collection<?>/Collection<? extends>/Collection<? super>
-            }
-            return Type.simple(collectionTypeArgumentClass);
-        }
+        return result;
     }
 }

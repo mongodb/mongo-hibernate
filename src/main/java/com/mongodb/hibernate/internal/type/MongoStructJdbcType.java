@@ -197,9 +197,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
                         new MongoArray(value.asArray().toArray()),
                         options);
             } else {
-                domainValue = toDomainValue(
-                        value,
-                        ValueConversions.Type.of(jdbcMapping.getMappedJavaType().getJavaType()));
+                domainValue =
+                        toDomainValue(value, jdbcMapping.getMappedJavaType().getJavaTypeClass());
             }
             result[elementIdx++] = domainValue;
         }
