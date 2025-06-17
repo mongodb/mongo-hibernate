@@ -26,7 +26,6 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import java.util.Collection;
 import java.util.Set;
-import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
@@ -58,17 +57,17 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             ResourceStreamLocator resourceStreamLocator,
             MetadataBuildingContext buildingContext) {
         metadata.getEntityBindings().forEach(persistentClass -> {
-            forbidDynamicInsert(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
-    }
-
-    private static void forbidDynamicInsert(PersistentClass persistentClass) {
-        if (persistentClass.useDynamicInsert()) {
-            throw new FeatureNotSupportedException(format("%s is not supported", DynamicInsert.class.getSimpleName()));
-        }
+        metadata.visitRegisteredComponents(component -> {
+            if (component.getStructName() != null && component.getProperties().isEmpty()) {
+                throw new FeatureNotSupportedException(format(
+                        "empty struct: %s, are you kidding me?",
+                        component.getComponentClass().getName()));
+            }
+        });
     }
 
     private static void checkColumnNames(PersistentClass persistentClass) {

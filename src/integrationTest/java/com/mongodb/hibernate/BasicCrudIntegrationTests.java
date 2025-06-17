@@ -25,12 +25,16 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.ServiceRegistryScope;
+import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,16 +44,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {BasicCrudIntegrationTests.Book.class, BasicCrudIntegrationTests.BookDynamicallyUpdated.class
         })
 @ExtendWith(MongoExtension.class)
-class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
+class BasicCrudIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
 
     @InjectMongoCollection("books")
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
+    private TestCommandListener testCommandListener;
+
+    @Override
+    public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
+        this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
+    }
+
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @BeforeEach
+    void beforeEach() {
+        testCommandListener.clear();
     }
 
     @Nested
@@ -99,6 +115,48 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         publishYear: 1867
                     }"""
                             .formatted(author));
+            assertCollectionContainsExactly(expectedDocument);
+        }
+
+        @Test
+        void testIgnoreFieldWhenNull() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new Book();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = null; // This field should be ignored when null
+                book.publishYear = 1867;
+                session.persist(book);
+
+                session.flush();
+
+                var capturedCommands = testCommandListener.getStartedCommands();
+
+                assertThat(capturedCommands)
+                        .singleElement()
+                        .asInstanceOf(InstanceOfAssertFactories.MAP)
+                        .containsAllEntriesOf(
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            "insert": "books",
+                                            "documents": [
+                                                {
+                                                    "_id": 1,
+                                                    "title": "War and Peace",
+                                                    "publishYear": 1867
+                                                }
+                                            ]
+                                        }
+                                        """));
+            });
+            var expectedDocument = BsonDocument.parse(
+                    """
+                    {
+                        _id: 1,
+                        title: "War and Peace",
+                        publishYear: 1867
+                    }""");
             assertCollectionContainsExactly(expectedDocument);
         }
     }
@@ -172,6 +230,55 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     BsonDocument.parse(
                             """
                             {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
+                            """));
+        }
+
+        @Test
+        void testDeleteFieldWhenSetToNull() {
+            sessionFactoryScope.inTransaction(session -> {
+                var book = new Book();
+                book.id = 1;
+                book.title = "War and Peace";
+                book.author = "Leo Tolstoy";
+                book.publishYear = 1869;
+                session.persist(book);
+                session.flush();
+
+                book.publishYear = 1867; // Ensure the field is set before deletion
+                book.author = null; // This field should be deleted when set to null
+
+                session.flush();
+
+                var capturedCommands = testCommandListener.getStartedCommands();
+
+                var lastCommand = capturedCommands.get(capturedCommands.size() - 1);
+                assertThat(lastCommand)
+                        .asInstanceOf(InstanceOfAssertFactories.MAP)
+                        .containsAllEntriesOf(
+                                BsonDocument.parse(
+                                        """
+                                        {
+                                            "update": "books",
+                                            "updates": [
+                                                {
+                                                    "q": {"_id": {"$eq": 1}},
+                                                    "u": {
+                                                        "$set": {
+                                                            "publishYear": 1867,
+                                                            "title": "War and Peace"
+                                                        }
+                                                        "$unset": {"author": ""}},
+                                                    "multi": true
+                                                }
+                                            ]
+                                        }
+                                        """));
+            });
+
+            assertCollectionContainsExactly(
+                    BsonDocument.parse(
+                            """
+                            {"_id": 1, "publishYear": 1867, "title": "War and Peace"}\
                             """));
         }
     }
