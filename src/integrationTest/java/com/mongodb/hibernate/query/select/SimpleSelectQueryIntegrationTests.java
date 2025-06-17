@@ -20,6 +20,8 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -35,7 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = {SimpleSelectQueryIntegrationTests.Contact.class, Book.class})
-class SimpleSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Nested
     class QueryTests {
