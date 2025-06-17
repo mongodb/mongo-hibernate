@@ -26,7 +26,6 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import java.util.Collection;
 import java.util.Set;
-import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
@@ -64,7 +63,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         });
         metadata.visitRegisteredComponents(component -> {
             if (component.getStructName() != null && component.getProperties().isEmpty()) {
-                throw new FeatureNotSupportedException(format("empty struct: %s, are you kidding me?", component.getComponentClass().getName()));
+                throw new FeatureNotSupportedException(format(
+                        "empty struct: %s, are you kidding me?",
+                        component.getComponentClass().getName()));
             }
         });
     }

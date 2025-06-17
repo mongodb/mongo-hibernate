@@ -1,4 +1,22 @@
+/*
+ * Copyright 2025-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.mongodb.hibernate.embeddable;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
@@ -16,13 +34,11 @@ import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SessionFactory(exportSchema = false)
 @DomainModel(
         annotatedClasses = {
-                DynamicInsertWithStructWithNullValuesIntegrationTests.Book.class,
-                DynamicInsertWithStructWithNullValuesIntegrationTests.Author.class
+            DynamicInsertWithStructWithNullValuesIntegrationTests.Book.class,
+            DynamicInsertWithStructWithNullValuesIntegrationTests.Author.class
         })
 @ExtendWith(MongoExtension.class)
 class DynamicInsertWithStructWithNullValuesIntegrationTests {
@@ -38,20 +54,19 @@ class DynamicInsertWithStructWithNullValuesIntegrationTests {
             book.author = new Author();
             session.persist(book);
         });
-        assertThat(mongoCollection.find()).containsExactly(
-                BsonDocument.parse(
-                        """
-                        {
-                            _id: 1,
-                            author: {
-                                firstName: null,
-                                lastName: null
-                            }
-                        }
-                        """)
-        );
+        assertThat(mongoCollection.find())
+                .containsExactly(
+                        BsonDocument.parse(
+                                """
+                                {
+                                    _id: 1,
+                                    author: {
+                                        firstName: null,
+                                        lastName: null
+                                    }
+                                }
+                                """));
     }
-
 
     @Entity
     @DynamicInsert
@@ -59,6 +74,7 @@ class DynamicInsertWithStructWithNullValuesIntegrationTests {
     static class Book {
         @Id
         int id;
+
         Author author;
     }
 

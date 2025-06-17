@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal;
 
+import org.bson.BsonString;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
@@ -29,4 +30,5 @@ public final class MongoConstants {
     public static final String MONGO_DBMS_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
     public static final String ID_FIELD_NAME = "_id";
+    public static final BsonString MONGO_EMPTY_STRING = new BsonString("");
 }

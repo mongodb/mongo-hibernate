@@ -35,9 +35,7 @@ java {
     withSourcesJar()
 }
 
-tasks.withType<Javadoc> {
-    exclude("/com/mongodb/hibernate/internal/**")
-}
+tasks.withType<Javadoc> { exclude("/com/mongodb/hibernate/internal/**") }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Integration Test
