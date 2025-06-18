@@ -48,6 +48,7 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -145,7 +146,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testFlattenedNullValueOrHavingNulls() {
         var item = new ItemWithFlattenedValues(
                 new Single(1),
@@ -406,7 +407,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
      * @see ArrayAndCollectionIntegrationTests#testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables()
      */
     @Test
-    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     public void testFlattenedValueHavingNullArraysAndCollections() {
         var emptyEmbeddable = new ArraysAndCollections(
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,

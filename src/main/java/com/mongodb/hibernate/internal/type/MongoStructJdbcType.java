@@ -23,7 +23,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.type.ValueConversions.isNull;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
-import static com.mongodb.hibernate.internal.type.ValueConversions.toNullDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.jdbc.MongoArray;
@@ -105,13 +104,14 @@ public final class MongoStructJdbcType implements StructJdbcType {
      * {@link #createJdbcValue(Object, WrapperOptions)} is not called by Hibernate ORM.
      */
     @Override
-    public @Nullable BsonValue createJdbcValue(@Nullable Object domainValue, WrapperOptions options) {
+    public BsonValue createJdbcValue(@Nullable Object domainValue, WrapperOptions options) {
         throw fail();
     }
 
     private BsonValue createBsonValue(@Nullable Object domainValue, WrapperOptions options) throws SQLException {
         if (domainValue == null) {
-            return toBsonValue(domainValue);
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return toBsonValue(domainValue)");
         }
         var embeddableMappingType = getEmbeddableMappingType();
         var result = new BsonDocument();
@@ -129,6 +129,10 @@ public final class MongoStructJdbcType implements StructJdbcType {
             }
             var fieldName = jdbcValueSelectable.getSelectableName();
             var value = embeddableMappingType.getValue(domainValue, columnIndex);
+            if (value == null) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
+            }
             BsonValue bsonValue;
             var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
@@ -140,7 +144,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
             } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
                 @SuppressWarnings("unchecked")
                 ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
-                bsonValue = toBsonValue(value == null ? null : valueBinder.getBindValue(value, options));
+                bsonValue = toBsonValue(valueBinder.getBindValue(value, options));
             } else {
                 bsonValue = toBsonValue(value);
             }
@@ -159,7 +163,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
     public Object @Nullable [] extractJdbcValues(@Nullable Object rawJdbcValue, WrapperOptions options)
             throws SQLException {
         if (isNull(rawJdbcValue)) {
-            return null;
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return null");
         }
         if (!(rawJdbcValue instanceof BsonDocument bsonDocument)) {
             throw fail();
@@ -171,10 +176,10 @@ public final class MongoStructJdbcType implements StructJdbcType {
             var jdbcMapping =
                     embeddableMappingType.getJdbcValueSelectable(elementIdx).getJdbcMapping();
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
-            var javaTypeClass = jdbcMapping.getMappedJavaType().getJavaTypeClass();
             Object domainValue;
             if (isNull(value)) {
-                domainValue = toNullDomainValue();
+                throw new FeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
+                        + " domainValue = ValueConversions.toNullDomainValue, where toNullDomainValue returns null");
             } else if (jdbcTypeCode == getJdbcTypeCode()) {
                 if (!(jdbcMapping.getJdbcValueExtractor() instanceof Extractor<?> structValueExtractor)) {
                     throw fail();
@@ -194,7 +199,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
                         new MongoArray(value.asArray().toArray()),
                         options);
             } else {
-                domainValue = toDomainValue(value, javaTypeClass);
+                domainValue =
+                        toDomainValue(value, jdbcMapping.getMappedJavaType().getJavaTypeClass());
             }
             result[elementIdx++] = domainValue;
         }

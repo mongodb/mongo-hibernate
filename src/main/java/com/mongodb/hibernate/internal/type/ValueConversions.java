@@ -56,7 +56,8 @@ public final class ValueConversions {
 
     public static BsonValue toBsonValue(@Nullable Object value) throws SQLFeatureNotSupportedException {
         if (value == null) {
-            return BsonNull.VALUE;
+            throw new SQLFeatureNotSupportedException(
+                    "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return BsonNull.VALUE");
         } else if (value instanceof BsonDocument v) {
             return v;
         } else if (value instanceof Boolean v) {
@@ -177,7 +178,8 @@ public final class ValueConversions {
     static @Nullable Object toDomainValue(@Nullable BsonValue value, Class<?> domainType)
             throws SQLFeatureNotSupportedException {
         if (isNull(value)) {
-            return toNullDomainValue();
+            throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
+                    + " return toNullDomainValue(), where toNullDomainValue returns null");
         } else if (value instanceof BsonDocument v) {
             return v;
         } else if (value instanceof BsonBoolean v) {

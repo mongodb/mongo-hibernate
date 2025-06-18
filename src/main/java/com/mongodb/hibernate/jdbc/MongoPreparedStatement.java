@@ -90,6 +90,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         switch (sqlType) {
+            case Types.ARRAY:
             case Types.BLOB:
             case Types.CLOB:
             case Types.DATALINK:
@@ -101,10 +102,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             case Types.REF:
             case Types.ROWID:
             case Types.SQLXML:
+            case Types.STRUCT:
                 throw new SQLFeatureNotSupportedException(
                         "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
-        setParameter(parameterIndex, toBsonValue((Object) null));
+        throw new SQLFeatureNotSupportedException(
+                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
+                        + " setParameter(parameterIndex, ValueConversions.toBsonValue((Object) null))");
     }
 
     @Override

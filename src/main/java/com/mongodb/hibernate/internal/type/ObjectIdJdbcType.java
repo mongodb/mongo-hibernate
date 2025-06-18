@@ -112,13 +112,13 @@ public final class ObjectIdJdbcType implements JdbcType {
         }
 
         @Override
-        protected @Nullable ObjectId doExtract(CallableStatement statement, int index, WrapperOptions options)
+        protected ObjectId doExtract(CallableStatement statement, int index, WrapperOptions options)
                 throws SQLException {
             throw new SQLFeatureNotSupportedException();
         }
 
         @Override
-        protected @Nullable ObjectId doExtract(CallableStatement statement, String name, WrapperOptions options)
+        protected ObjectId doExtract(CallableStatement statement, String name, WrapperOptions options)
                 throws SQLException {
             throw new SQLFeatureNotSupportedException();
         }
