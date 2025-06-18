@@ -21,7 +21,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.jdbc.MongoArray;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -39,6 +38,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
@@ -54,11 +54,10 @@ import org.jspecify.annotations.Nullable;
 public final class ValueConversions {
     private ValueConversions() {}
 
-    public static @Nullable BsonValue toBsonValue(@Nullable Object value) throws SQLFeatureNotSupportedException {
+    public static BsonValue toBsonValue(@Nullable Object value) throws SQLFeatureNotSupportedException {
         if (value == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
-        }
-        if (value instanceof BsonDocument v) {
+            return BsonNull.VALUE;
+        } else if (value instanceof BsonDocument v) {
             return v;
         } else if (value instanceof Boolean v) {
             return toBsonValue(v.booleanValue());
@@ -171,10 +170,15 @@ public final class ValueConversions {
         return new BsonArray(elements);
     }
 
-    static Object toDomainValue(BsonValue value, Class<?> domainType) throws SQLFeatureNotSupportedException {
-        // TODO-HIBERNATE-48 decide if `value` is nullable and the method may return `null`
-        assertNotNull(value);
-        if (value instanceof BsonDocument v) {
+    static boolean isNull(@Nullable Object value) {
+        return value == null || value instanceof BsonNull;
+    }
+
+    static @Nullable Object toDomainValue(@Nullable BsonValue value, Class<?> domainType)
+            throws SQLFeatureNotSupportedException {
+        if (isNull(value)) {
+            return toNullDomainValue();
+        } else if (value instanceof BsonDocument v) {
             return v;
         } else if (value instanceof BsonBoolean v) {
             return toDomainValue(v);
@@ -201,8 +205,12 @@ public final class ValueConversions {
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported for the domain type [%s]",
-                    value, value.getClass().getTypeName(), domainType));
+                    value, assertNotNull(value).getClass().getTypeName(), domainType));
         }
+    }
+
+    public static @Nullable Object toNullDomainValue() {
+        return null;
     }
 
     public static boolean toBooleanDomainValue(BsonValue value) {

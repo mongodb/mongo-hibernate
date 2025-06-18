@@ -17,10 +17,13 @@
 package com.mongodb.hibernate.embeddable;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -45,7 +48,6 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -143,7 +145,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testFlattenedNullValueOrHavingNulls() {
         var item = new ItemWithFlattenedValues(
                 new Single(1),
@@ -200,7 +202,20 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 {
                     _id: 1,
                     flattened1_a: null,
-                    flattened2_a: 3
+                    flattened2_a: 3,
+                    primitiveChar: null,
+                    primitiveInt: null,
+                    primitiveLong: null,
+                    primitiveDouble: null,
+                    primitiveBoolean: null,
+                    boxedChar: null,
+                    boxedInt: null,
+                    boxedLong: null,
+                    boxedDouble: null,
+                    boxedBoolean: null,
+                    string: null,
+                    bigDecimal: null,
+                    objectId: null
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -383,14 +398,20 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         assertEq(item, loadedItem);
     }
 
+    /**
+     * This test also covers the behavior of an empty {@linkplain Embeddable embeddable} value, that is one having
+     * {@code null} as the value of each of its persistent attributes.
+     *
+     * @see StructAggregateEmbeddableIntegrationTests#testNestedValueHavingNullArraysAndCollections()
+     * @see ArrayAndCollectionIntegrationTests#testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables()
+     */
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
-    void testFlattenedValueHavingNullArraysAndCollections() {
-        var item = new ItemWithFlattenedValueHavingArraysAndCollections(
-                1,
-                new ArraysAndCollections(
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                        null, null, null, null, null, null, null, null));
+    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    public void testFlattenedValueHavingNullArraysAndCollections() {
+        var emptyEmbeddable = new ArraysAndCollections(
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+        var item = new ItemWithFlattenedValueHavingArraysAndCollections(1, emptyEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -424,7 +445,12 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithFlattenedValueHavingArraysAndCollections.class, item.id));
-        assertEq(item, loadedItem);
+        // `loadedItem.flattened` is `null` despite `item.flattened` not being `null`.
+        // There is nothing we can do here, such is the Hibernate ORM behavior.
+        assertNull(loadedItem.flattened);
+        assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
+                .ignoringFields("flattened")
+                .isEqualTo(expected));
     }
 
     @Override

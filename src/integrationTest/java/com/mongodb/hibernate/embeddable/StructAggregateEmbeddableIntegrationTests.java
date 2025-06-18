@@ -17,10 +17,13 @@
 package com.mongodb.hibernate.embeddable;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -44,7 +47,6 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -157,7 +159,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     }
 
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testNestedNullValueOrHavingNulls() {
         var item = new ItemWithNestedValues(
                 new EmbeddableIntegrationTests.Single(1),
@@ -408,14 +410,20 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         assertEq(item, loadedItem);
     }
 
+    /**
+     * This test also covers the behavior of an empty {@linkplain Struct struct} aggregate {@linkplain Embeddable
+     * embeddable} value, that is one having {@code null} as the value of each of its persistent attributes.
+     *
+     * @see EmbeddableIntegrationTests#testFlattenedValueHavingNullArraysAndCollections()
+     * @see ArrayAndCollectionIntegrationTests#testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables()
+     */
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
-    void testNestedValueHavingNullArraysAndCollections() {
-        var item = new ItemWithNestedValueHavingArraysAndCollections(
-                1,
-                new ArraysAndCollections(
-                        null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                        null, null, null, null, null, null, null, null));
+    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    public void testNestedValueHavingNullArraysAndCollections() {
+        var emptyStructAggregateEmbeddable = new ArraysAndCollections(
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+        var item = new ItemWithNestedValueHavingArraysAndCollections(1, emptyStructAggregateEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -451,7 +459,12 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
-        assertEq(item, loadedItem);
+        // `loadedItem.nested` is `null` despite `item.nested` not being `null`.
+        // TODO-HIBERNATE-48 There is nothing we can do here, such is the Hibernate ORM behavior. - or can we?
+        assertNull(loadedItem.nested);
+        assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
+                .ignoringFields("nested")
+                .isEqualTo(expected));
     }
 
     @Override

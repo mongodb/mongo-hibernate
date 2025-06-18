@@ -32,7 +32,6 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -97,7 +96,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        //        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
         void testEntityWithNullFieldValuesInsertion() {
             sessionFactoryScope.inTransaction(session -> session.persist(new Item(
                     1,
@@ -218,7 +217,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        //        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
         void testSimpleUpdateWithNullFieldValues() {
             sessionFactoryScope.inTransaction(session -> {
                 var item = new Item(
@@ -290,7 +289,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        //        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
         void testDynamicUpdateWithNullFieldValues() {
             sessionFactoryScope.inTransaction(session -> {
                 var item = new ItemDynamicallyUpdated(1, false, true);
@@ -337,7 +336,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Test
-        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+        //        @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
         void testFindByPrimaryKeyWithNullFieldValues() {
             var item = new Item(
                     1, 'c', 1, Long.MAX_VALUE, Double.MAX_VALUE, true, null, null, null, null, null, null, null, null);

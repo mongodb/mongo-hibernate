@@ -47,7 +47,6 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,7 +62,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
-class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
+public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -243,7 +242,7 @@ class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testArrayAndCollectionNullValues() {
         var item = new ItemWithArrayAndCollectionValues(
                 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
@@ -400,6 +399,84 @@ class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
                 ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class,
                 updatedItem.id));
         assertEq(updatedItem, loadedItem);
+    }
+
+    /**
+     * @see EmbeddableIntegrationTests#testFlattenedValueHavingNullArraysAndCollections()
+     * @see StructAggregateEmbeddableIntegrationTests#testNestedValueHavingNullArraysAndCollections()
+     */
+    @Test
+    //    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    public void testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables() {
+        var emptyStructAggregateEmbeddable = new ArraysAndCollections(
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+        var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
+                1,
+                new ArraysAndCollections[] {emptyStructAggregateEmbeddable},
+                List.of(emptyStructAggregateEmbeddable));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly(
+                """
+                {
+                    _id: 1,
+                    structAggregateEmbeddables: [{
+                        bytes: null,
+                        chars: null,
+                        ints: null,
+                        longs: null,
+                        doubles: null,
+                        booleans: null,
+                        boxedChars: null,
+                        boxedInts: null,
+                        boxedLongs: null,
+                        boxedDoubles: null,
+                        boxedBooleans: null,
+                        strings: null,
+                        bigDecimals: null,
+                        objectIds: null,
+                        structAggregateEmbeddables: null,
+                        charsCollection: null,
+                        intsCollection: null,
+                        longsCollection: null,
+                        doublesCollection: null,
+                        booleansCollection: null,
+                        stringsCollection: null,
+                        bigDecimalsCollection: null,
+                        objectIdsCollection: null,
+                        structAggregateEmbeddablesCollection: null
+                    }],
+                    structAggregateEmbeddablesCollection: [{
+                        bytes: null,
+                        chars: null,
+                        ints: null,
+                        longs: null,
+                        doubles: null,
+                        booleans: null,
+                        boxedChars: null,
+                        boxedInts: null,
+                        boxedLongs: null,
+                        boxedDoubles: null,
+                        boxedBooleans: null,
+                        strings: null,
+                        bigDecimals: null,
+                        objectIds: null,
+                        structAggregateEmbeddables: null,
+                        charsCollection: null,
+                        intsCollection: null,
+                        longsCollection: null,
+                        doublesCollection: null,
+                        booleansCollection: null,
+                        stringsCollection: null,
+                        bigDecimalsCollection: null,
+                        objectIdsCollection: null,
+                        structAggregateEmbeddablesCollection: null
+                    }]
+                }
+                """);
+        var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(
+                ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class, item.id));
+        assertEq(item, loadedItem);
     }
 
     @Override
