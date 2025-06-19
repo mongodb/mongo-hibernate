@@ -171,15 +171,11 @@ public final class ValueConversions {
         return new BsonArray(elements);
     }
 
-    static boolean isNull(@Nullable Object value) {
-        return value == null || value instanceof BsonNull;
-    }
-
     static @Nullable Object toDomainValue(@Nullable BsonValue value, Class<?> domainType)
             throws SQLFeatureNotSupportedException {
         if (isNull(value)) {
-            throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
-                    + " return toNullDomainValue(), where toNullDomainValue returns null");
+            throw new SQLFeatureNotSupportedException(
+                    "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return null");
         } else if (value instanceof BsonDocument v) {
             return v;
         } else if (value instanceof BsonBoolean v) {
@@ -211,8 +207,12 @@ public final class ValueConversions {
         }
     }
 
-    public static @Nullable Object toNullDomainValue() {
-        return null;
+    public static boolean isNull(@Nullable Object value) {
+        return value == null || value instanceof BsonNull;
+    }
+
+    public static BsonDocument toBsonDocumentDomainValue(BsonValue value) {
+        return value.asDocument();
     }
 
     public static boolean toBooleanDomainValue(BsonValue value) {

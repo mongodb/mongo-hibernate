@@ -51,6 +51,7 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
         return result;
     }
 
+    /** This method is overridden to make it accessible from our code. */
     @Override
     protected <X> @Nullable X getArray(
             BasicExtractor<X> extractor, java.sql.@Nullable Array array, WrapperOptions options) throws SQLException {

@@ -206,7 +206,7 @@ final class MongoResultSet implements ResultSetAdapter {
         if (type.equals(ObjectId.class)) {
             value = getValue(columnIndex, ValueConversions::toObjectIdDomainValue);
         } else if (type.equals(BsonDocument.class)) {
-            value = getValue(columnIndex, BsonValue::asDocument);
+            value = getValue(columnIndex, ValueConversions::toBsonDocumentDomainValue);
         } else {
             throw new SQLFeatureNotSupportedException(
                     format("Type [%s] for a column with index [%d] is not supported", type, columnIndex));
@@ -254,7 +254,7 @@ final class MongoResultSet implements ResultSetAdapter {
             if (bsonValue == null) {
                 throw new RuntimeException(format("The BSON document field with the name [%s] is missing", key));
             }
-            T value = bsonValue.isNull() ? null : toJavaConverter.apply(bsonValue);
+            T value = ValueConversions.isNull(bsonValue) ? null : toJavaConverter.apply(bsonValue);
             lastReadColumnValueWasNull = value == null;
             return value;
         } catch (RuntimeException e) {

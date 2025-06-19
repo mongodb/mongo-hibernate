@@ -57,11 +57,11 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             InFlightMetadataCollector metadata,
             ResourceStreamLocator resourceStreamLocator,
             MetadataBuildingContext buildingContext) {
+        forbidEmbeddablesWithoutPersistentAttributes(metadata);
         metadata.getEntityBindings().forEach(persistentClass -> {
             forbidDynamicInsert(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
-            forbidEmbeddablesWithoutPersistentAttributes(metadata);
             setIdentifierColumnName(persistentClass);
         });
     }

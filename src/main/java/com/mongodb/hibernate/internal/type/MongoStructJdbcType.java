@@ -178,8 +178,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
             Object domainValue;
             if (isNull(value)) {
-                throw new FeatureNotSupportedException("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
-                        + " domainValue = ValueConversions.toNullDomainValue, where toNullDomainValue returns null");
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 domainValue = null");
             } else if (jdbcTypeCode == getJdbcTypeCode()) {
                 if (!(jdbcMapping.getJdbcValueExtractor() instanceof Extractor<?> structValueExtractor)) {
                     throw fail();
