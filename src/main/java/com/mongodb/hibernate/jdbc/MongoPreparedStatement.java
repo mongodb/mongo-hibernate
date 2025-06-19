@@ -107,7 +107,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                         "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
         throw new SQLFeatureNotSupportedException(
-                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
+                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
+                        + " setParameter(parameterIndex, ValueConversions.toBsonValue((Object) null))");
     }
 
     @Override
@@ -213,7 +214,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException();
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
