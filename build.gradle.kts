@@ -22,13 +22,20 @@ plugins {
     id("idea")
     id("java-library")
     id("spotless-java-extension")
+    id("maven-publish")
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
 }
 
 repositories { mavenCentral() }
 
-java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    withJavadocJar()
+    withSourcesJar()
+}
+
+tasks.withType<Javadoc> { exclude("/com/mongodb/hibernate/internal/**") }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Integration Test
@@ -146,7 +153,39 @@ dependencies {
     errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
-    implementation(libs.hibernate.core)
-    implementation(libs.mongo.java.driver.sync)
+    api(libs.hibernate.core)
+    api(libs.mongo.java.driver.sync)
     implementation(libs.sl4j.api)
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            groupId = "org.mongodb"
+            artifactId = "mongodb-hibernate"
+            from(components["java"])
+            pom {
+                name = "MongoDB Hibernate Extension"
+                description = "A MongoDB Extension of Hibernate ORM"
+                url = "https://www.mongodb.com/"
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("Various")
+                        organization.set("MongoDB")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/mongodb/mongo-hibernate")
+                    connection.set("scm:https://github.com/mongodb/mongo-hibernate.git")
+                    developerConnection.set("scm:https://github.com/mongodb/mongo-hibernate.git")
+                }
+            }
+        }
+    }
 }
