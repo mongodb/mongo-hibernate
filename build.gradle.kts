@@ -53,6 +53,10 @@ val integrationTestImplementation: Configuration by
     configurations.getting { extendsFrom(configurations.implementation.get()) }
 val integrationTestRuntimeOnly: Configuration by
     configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
+val integrationTestCompileOnly: Configuration by
+    configurations.getting { extendsFrom(configurations.compileOnly.get()) }
+val integrationTestAnnotationProcessor: Configuration by
+    configurations.getting { extendsFrom(configurations.annotationProcessor.get()) }
 
 val integrationTestTask =
     tasks.register<Test>("integrationTest") {
@@ -110,7 +114,7 @@ spotless {
 tasks.check { dependsOn(tasks.spotlessApply) }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
+    options.compilerArgs.addAll(listOf("-Xlint:all,-serial,-processing", "-Werror"))
     when (this) {
         tasks.compileJava.get() ->
             options.errorprone {
@@ -138,15 +142,18 @@ buildConfig {
 dependencies {
     testImplementation(libs.bundles.test.common)
     testImplementation(libs.mockito.junit.jupiter)
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly(libs.junit.platform.launcher)
     testCompileOnly(libs.checker.qual)
 
     integrationTestImplementation(libs.bundles.test.common)
-    @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
-    integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    integrationTestImplementation(libs.lombok)
+    integrationTestRuntimeOnly(libs.junit.platform.launcher)
+
+    integrationTestCompileOnly(libs.lombok)
+    integrationTestAnnotationProcessor(libs.lombok)
 
     api(libs.jspecify)
 
