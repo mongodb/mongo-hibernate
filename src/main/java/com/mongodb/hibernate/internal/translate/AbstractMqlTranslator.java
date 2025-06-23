@@ -237,7 +237,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public Set<String> getAffectedTableNames() {
-        throw fail();
+        return affectedTableNames;
     }
 
     @SuppressWarnings("overloads")
@@ -420,6 +420,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             JdbcParameter offsetParameter = null;
             JdbcParameter limitParameter = null;
             if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
+                var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
                 // We check if limit's firstRow/maxRows is set,
                 // but ignore the actual values when creating OffsetJdbcParameter/LimitJdbcParameter.
                 // Hibernate ORM reuses the translation result for the same HQL/SQL queries
@@ -428,7 +429,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 // whether they are specified or not, because the translation results corresponding to
                 // setFirstResult/setMaxResults being present
                 // must be different from those with the limits being absent. Hibernate ORM also caches them separately.
-                var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
                 if (limit.getFirstRow() != null) {
                     offsetParameter = new OffsetJdbcParameter(basicIntegerType);
                 }

@@ -16,87 +16,80 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
-import static java.lang.Integer.MAX_VALUE;
-import static java.util.Collections.emptyMap;
-import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
-import static org.hibernate.sql.exec.spi.JdbcLockStrategy.NONE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
-import java.util.List;
-import java.util.Set;
+import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
-import org.hibernate.sql.ast.tree.Statement;
-import org.hibernate.sql.ast.tree.expression.JdbcParameter;
+import org.hibernate.service.spi.ServiceRegistryImplementor;
+import org.hibernate.spi.NavigablePath;
+import org.hibernate.sql.ast.spi.SqlAliasBaseImpl;
+import org.hibernate.sql.ast.tree.expression.ColumnReference;
+import org.hibernate.sql.ast.tree.from.NamedTableReference;
+import org.hibernate.sql.ast.tree.from.StandardTableGroup;
+import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
-import org.hibernate.sql.exec.spi.JdbcParameterBinder;
-import org.hibernate.sql.exec.spi.JdbcParameterBindings;
+import org.hibernate.sql.results.internal.SqlSelectionImpl;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
-import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockMakers;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuerySelect> {
+@ExtendWith(MockitoExtension.class)
+class SelectMqlTranslatorTests {
 
-    private final SelectStatement selectStatement;
+    @Test
+    void testAffectedTableNames(
+            @Mock EntityPersister entityPersister,
+            @Mock(mockMaker = MockMakers.PROXY) SessionFactoryImplementor sessionFactory,
+            @Mock JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider,
+            @Mock(mockMaker = MockMakers.PROXY) ServiceRegistryImplementor serviceRegistry,
+            @Mock StandardServiceRegistryScopedState standardServiceRegistryScopedState,
+            @Mock SelectableMapping selectableMapping) {
 
-    SelectMqlTranslator(SessionFactoryImplementor sessionFactory, SelectStatement selectStatement) {
-        super(sessionFactory);
-        this.selectStatement = selectStatement;
-    }
+        var tableName = "books";
+        SelectStatement selectFromTableName;
+        { // prepare `selectFromTableName`
+            doReturn(new String[] {tableName}).when(entityPersister).getQuerySpaces();
 
-    @Override
-    public JdbcOperationQuerySelect translate(
-            @Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
+            var namedTableReference = new NamedTableReference(tableName, "b1_0");
 
-        logSqlAst(selectStatement);
-
-        checkJdbcParameterBindingsSupportability(jdbcParameterBindings);
-        applyQueryOptions(queryOptions);
-
-        var result = acceptAndYield((Statement) selectStatement, SELECT_RESULT);
-        return result.createJdbcOperationQuerySelect(selectStatement, getSessionFactory());
-    }
-
-    static final class Result {
-        private final AstCommand command;
-        private final List<JdbcParameterBinder> parameterBinders;
-        private final Set<String> affectedTableNames;
-        private final @Nullable JdbcParameter offsetParameter;
-        private final @Nullable JdbcParameter limitParameter;
-
-        Result(
-                AstCommand command,
-                List<JdbcParameterBinder> parameterBinders,
-                Set<String> affectedTableNames,
-                @Nullable JdbcParameter offsetParameter,
-                @Nullable JdbcParameter limitParameter) {
-            this.command = command;
-            this.parameterBinders = parameterBinders;
-            this.affectedTableNames = affectedTableNames;
-            this.offsetParameter = offsetParameter;
-            this.limitParameter = limitParameter;
+            var querySpec = new QuerySpec(true);
+            var tableGroup = new StandardTableGroup(
+                    false,
+                    new NavigablePath("Book"),
+                    entityPersister,
+                    null,
+                    namedTableReference,
+                    new SqlAliasBaseImpl("b1"),
+                    sessionFactory);
+            querySpec.getFromClause().addRoot(tableGroup);
+            querySpec
+                    .getSelectClause()
+                    .addSqlSelection(new SqlSelectionImpl(
+                            new ColumnReference(tableGroup.getPrimaryTableReference(), selectableMapping)));
+            selectFromTableName = new SelectStatement(querySpec);
+        }
+        { // prepare `sessionFactory`
+            doReturn(serviceRegistry).when(sessionFactory).getServiceRegistry();
+            doReturn(jdbcValuesMappingProducerProvider)
+                    .when(serviceRegistry)
+                    .requireService(eq(JdbcValuesMappingProducerProvider.class));
+            doReturn(standardServiceRegistryScopedState)
+                    .when(serviceRegistry)
+                    .requireService(eq(StandardServiceRegistryScopedState.class));
         }
 
-        private JdbcOperationQuerySelect createJdbcOperationQuerySelect(
-                SelectStatement selectStatement, SessionFactoryImplementor sessionFactory) {
-            var jdbcValuesMappingProducerProvider =
-                    sessionFactory.getServiceRegistry().requireService(JdbcValuesMappingProducerProvider.class);
-            var jdbcValuesMappingProducer =
-                    jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, sessionFactory);
-            return new JdbcOperationQuerySelect(
-                    renderMongoAstNode(command),
-                    parameterBinders,
-                    jdbcValuesMappingProducer,
-                    affectedTableNames,
-                    0,
-                    MAX_VALUE,
-                    emptyMap(),
-                    NONE,
-                    // The following parameters are provided for query plan cache purposes.
-                    // Not setting them could result in reusing the wrong query plan and subsequently the wrong MQL.
-                    offsetParameter,
-                    limitParameter);
-        }
+        var translator = new SelectMqlTranslator(sessionFactory, selectFromTableName);
+
+        translator.translate(null, QueryOptions.NONE);
+
+        assertThat(translator.getAffectedTableNames()).containsExactly(tableName);
     }
 }
