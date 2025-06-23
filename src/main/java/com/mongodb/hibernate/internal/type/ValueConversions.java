@@ -104,7 +104,7 @@ public final class ValueConversions {
         return new BsonObjectId(value);
     }
 
-    static Object toDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
+    static @Nullable Object toDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
         assertNotNull(value);
         if (value instanceof BsonBoolean v) {
             return toDomainValue(v);
@@ -122,6 +122,8 @@ public final class ValueConversions {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
             return toDomainValue(v);
+        } else if (value instanceof BsonNull) {
+            return null;
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Value [%s] of type [%s] is not supported",

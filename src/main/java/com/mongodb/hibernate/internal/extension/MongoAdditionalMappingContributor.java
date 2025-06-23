@@ -32,9 +32,12 @@ import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.cfg.MappingSettings;
+import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 
+@SuppressWarnings("deprecation")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
@@ -68,6 +71,14 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                         component.getComponentClass().getName()));
             }
         });
+        var serviceRegistry = buildingContext.getBootstrapContext().getServiceRegistry();
+        var configurationService = serviceRegistry.getService(ConfigurationService.class);
+        assertTrue(configurationService != null);
+        var emptyCompositesEnabled = Boolean.valueOf((String) configurationService.getSettings().getOrDefault(MappingSettings.CREATE_EMPTY_COMPOSITES_ENABLED, "false"));
+        if (!emptyCompositesEnabled) {
+            throw new FeatureNotSupportedException("empty composites are not supported, you may want to set "
+                    + MappingSettings.CREATE_EMPTY_COMPOSITES_ENABLED + " to true in your configuration");
+        }
     }
 
     private static void checkColumnNames(PersistentClass persistentClass) {
