@@ -21,7 +21,7 @@ import com.mongodb.hibernate.cfg.MongoConfigurator;
 import java.util.function.Consumer;
 
 /**
- * The configuration of the MongoDB extension of Hibernate ORM.
+ * The configuration of the MongoDB Hibernate Extension.
  *
  * @param mongoClientSettings {@link MongoConfigurator#applyToMongoClientSettings(Consumer)}.
  * @param databaseName {@link MongoConfigurator#databaseName(String)}.
