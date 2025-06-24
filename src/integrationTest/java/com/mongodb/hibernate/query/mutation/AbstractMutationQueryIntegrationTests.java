@@ -57,7 +57,7 @@ public abstract class AbstractMutationQueryIntegrationTests extends AbstractQuer
                 .containsExactlyInAnyOrder(expectedAffectedfCollections);
     }
 
-    public static final class MutationTranslateResultAwareDialect extends Dialect {
+    protected static final class MutationTranslateResultAwareDialect extends Dialect {
         private final Dialect delegate;
         private AbstractJdbcOperationQuery capturedTranslateResult;
 
