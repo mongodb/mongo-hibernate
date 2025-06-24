@@ -1044,6 +1044,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Only single root from clause is supported");
         }
         var root = fromClause.getRoots().get(0);
+        if (root.hasRealJoins()) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-65 https://jira.mongodb.org/browse/HIBERNATE-65");
+        }
         if (!(root.getModelPart() instanceof EntityPersister entityPersister)
                 || entityPersister.getQuerySpaces().length != 1) {
             throw new FeatureNotSupportedException("Only single table from clause is supported");
