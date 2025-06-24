@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 @DomainModel(annotatedClasses = Book.class)
 class DeletionIntegrationTests extends AbstractMutationQueryIntegrationTests {
 
-    @InjectMongoCollection(Book.COLLECTION)
+    @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private static final List<Book> testingBooks = List.of(
@@ -103,7 +103,7 @@ class DeletionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "price": {"$numberDecimal": "0.0"}
                                 }
                                 """)));
-        assertExpectedAffectedCollections(Book.COLLECTION);
+        assertExpectedAffectedCollections(Book.COLLECTION_NAME);
     }
 
     @Test
@@ -189,6 +189,6 @@ class DeletionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "price": {"$numberDecimal": "0.0"}
                                 }
                                 """)));
-        assertExpectedAffectedCollections(Book.COLLECTION);
+        assertExpectedAffectedCollections(Book.COLLECTION_NAME);
     }
 }
