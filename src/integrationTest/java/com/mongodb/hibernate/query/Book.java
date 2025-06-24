@@ -24,7 +24,7 @@ import java.math.BigDecimal;
 @Entity(name = "Book")
 @Table(name = Book.COLLECTION)
 public class Book {
-    public static final String COLLECTION = "books";
+    public static final String COLLECTION_NAME = "books";
 
     @Id
     public int id;
