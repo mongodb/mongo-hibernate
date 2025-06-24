@@ -46,7 +46,7 @@ import org.mockito.stubbing.Answer;
                         name = DIALECT,
                         value =
                                 "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslateResultAwareDialect"))
-public class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
+public abstract class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     protected void assertExpectedAffectedCollections(String... expectedAffectedfCollections) {
         assertThat(((MutationTranslateResultAwareDialect) getSessionFactoryScope()
