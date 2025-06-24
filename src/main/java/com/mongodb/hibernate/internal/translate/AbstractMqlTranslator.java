@@ -1032,7 +1032,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private static void checkMutationStatementSupportability(AbstractMutationStatement mutationStatement) {
         checkCteContainerSupportability(mutationStatement);
         if (!mutationStatement.getReturningColumns().isEmpty()) {
-            throw new FeatureNotSupportedException();
+            throw new FeatureNotSupportedException("Returning columns from mutation statements not supported");
         }
         if (mutationStatement instanceof AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
             checkFromClauseSupportability(updateOrDeleteStatement.getFromClause());
