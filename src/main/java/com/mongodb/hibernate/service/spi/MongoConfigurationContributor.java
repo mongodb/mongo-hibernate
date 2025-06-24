@@ -25,7 +25,7 @@ import org.hibernate.service.spi.Configurable;
 import org.hibernate.service.spi.ServiceContributor;
 
 /**
- * A {@link Service} an application may use for programmatically configuring the MongoDB extension of Hibernate ORM.
+ * A {@link Service} an application may use for programmatically configuring the MongoDB Hibernate Extension.
  *
  * <p>This {@link Service} may be contributed either via a {@link ServiceContributor}, which allows access to
  * {@link StandardServiceRegistryBuilder}, or via a {@link StandardServiceRegistryBuilder} directly, as shown below:
@@ -54,7 +54,7 @@ import org.hibernate.service.spi.ServiceContributor;
 public interface MongoConfigurationContributor extends Service {
 
     /**
-     * Configures the MongoDB extension of Hibernate ORM. This method is called once per instance of
+     * Configures the MongoDB Hibernate Extension. This method is called once per instance of
      * {@link StandardServiceRegistry} that has this {@link MongoConfigurationContributor}
      * {@linkplain StandardServiceRegistryBuilder#addService(Class, Service) added}.
      *
