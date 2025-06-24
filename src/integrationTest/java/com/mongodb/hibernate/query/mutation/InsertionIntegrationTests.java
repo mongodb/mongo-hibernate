@@ -72,7 +72,7 @@ class InsertionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "price": {"$numberDecimal": "23.55"}
                                 }
                                 """)));
-        assertExpectedAffectedCollections(Book.COLLECTION_NAME);
+        assertAffectedCollections(Book.COLLECTION_NAME);
     }
 
     @Test
@@ -137,6 +137,6 @@ class InsertionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "price": {"$numberDecimal": "19.99"}
                                 }
                                 """)));
-        assertExpectedAffectedCollections(Book.COLLECTION_NAME);
+        assertAffectedCollections(Book.COLLECTION_NAME);
     }
 }

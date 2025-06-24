@@ -103,7 +103,7 @@ class DeletionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "price": {"$numberDecimal": "0.0"}
                                 }
                                 """)));
-        assertExpectedAffectedCollections(Book.COLLECTION_NAME);
+        assertAffectedCollections(Book.COLLECTION_NAME);
     }
 
     @Test
@@ -189,6 +189,6 @@ class DeletionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "price": {"$numberDecimal": "0.0"}
                                 }
                                 """)));
-        assertExpectedAffectedCollections(Book.COLLECTION_NAME);
+        assertAffectedCollections(Book.COLLECTION_NAME);
     }
 }

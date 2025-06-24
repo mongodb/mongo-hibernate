@@ -48,13 +48,13 @@ import org.mockito.stubbing.Answer;
                                 "com.mongodb.hibernate.query.mutation.AbstractMutationQueryIntegrationTests$MutationTranslateResultAwareDialect"))
 public abstract class AbstractMutationQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
-    protected void assertExpectedAffectedCollections(String... expectedAffectedCollections) {
+    protected void assertAffectedCollections(String... expectedAffectedCollections) {
         assertThat(((MutationTranslateResultAwareDialect) getSessionFactoryScope()
                                 .getSessionFactory()
                                 .getJdbcServices()
                                 .getDialect())
                         .capturedTranslateResult.getAffectedTableNames())
-                .containsExactlyInAnyOrder(expectedAffectedfCollections);
+                .containsExactlyInAnyOrder(expectedAffectedCollections);
     }
 
     protected static final class MutationTranslateResultAwareDialect extends Dialect {
