@@ -164,4 +164,21 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
     }
+
+    protected void assertMutationQueryFailure(
+            String hql,
+            Consumer<MutationQuery> queryPostProcessor,
+            Class<? extends Exception> expectedExceptionType,
+            String expectedExceptionMessage,
+            Object... expectedExceptionMessageParameters) {
+        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
+                    var query = session.createMutationQuery(hql);
+                    if (queryPostProcessor != null) {
+                        queryPostProcessor.accept(query);
+                    }
+                    query.executeUpdate();
+                })
+                .isInstanceOf(expectedExceptionType)
+                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+    }
 }
