@@ -14,16 +14,25 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
-class AstVisitorValueDescriptorTests {
+class AstLimitStageTests {
 
     @Test
-    void testToString() {
-        assertEquals("MUTATION_RESULT", AstVisitorValueDescriptor.MUTATION_RESULT.toString());
+    void testRendering() {
+        var limitValue = 10;
+        var astLimitStage = new AstLimitStage(new AstLiteralValue(new BsonInt32(limitValue)));
+
+        var expectedJson =
+                """
+                {"$limit": {"$numberInt": "%d"}}\
+                """.formatted(limitValue);
+        assertRendering(expectedJson, astLimitStage);
     }
 }
