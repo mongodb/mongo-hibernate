@@ -26,16 +26,18 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import java.util.Collection;
 import java.util.Set;
-import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.cfg.MappingSettings;
+import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 
+@SuppressWarnings("deprecation")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
@@ -58,16 +60,24 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             ResourceStreamLocator resourceStreamLocator,
             MetadataBuildingContext buildingContext) {
         metadata.getEntityBindings().forEach(persistentClass -> {
-            forbidDynamicInsert(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
-    }
-
-    private static void forbidDynamicInsert(PersistentClass persistentClass) {
-        if (persistentClass.useDynamicInsert()) {
-            throw new FeatureNotSupportedException(format("%s is not supported", DynamicInsert.class.getSimpleName()));
+        metadata.visitRegisteredComponents(component -> {
+            if (component.getStructName() != null && component.getProperties().isEmpty()) {
+                throw new FeatureNotSupportedException(format(
+                        "empty struct: %s, are you kidding me?",
+                        component.getComponentClass().getName()));
+            }
+        });
+        var serviceRegistry = buildingContext.getBootstrapContext().getServiceRegistry();
+        var configurationService = serviceRegistry.getService(ConfigurationService.class);
+        assertTrue(configurationService != null);
+        var emptyCompositesEnabled = Boolean.valueOf((String) configurationService.getSettings().getOrDefault(MappingSettings.CREATE_EMPTY_COMPOSITES_ENABLED, "false"));
+        if (!emptyCompositesEnabled) {
+            throw new FeatureNotSupportedException("empty composites are not supported, you may want to set "
+                    + MappingSettings.CREATE_EMPTY_COMPOSITES_ENABLED + " to true in your configuration");
         }
     }
 

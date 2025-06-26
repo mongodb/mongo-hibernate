@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_EMPTY_STRING;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toCollection;
@@ -127,6 +128,7 @@ class MongoStatement implements StatementAdapter {
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
         try {
+            postProcessUpdateCommand(command);
             startTransactionIfNeeded();
             return mongoDatabase.runCommand(clientSession, command).getInteger("n");
         } catch (RuntimeException e) {
@@ -233,6 +235,45 @@ class MongoStatement implements StatementAdapter {
             return BsonDocument.parse(mql);
         } catch (RuntimeException e) {
             throw new SQLSyntaxErrorException("Invalid MQL: " + mql, e);
+        }
+    }
+
+    private static void postProcessUpdateCommand(BsonDocument command) {
+        switch (command.getFirstKey()) {
+            case "insert":
+                for (var document : command.getArray("documents")) {
+                    var doc = document.asDocument();
+                    doc.entrySet().removeIf(entry -> entry.getValue().isNull());
+                }
+                break;
+            case "update":
+                for (var update : command.getArray("updates")) {
+                    var u = update.asDocument().getDocument("u");
+                    var set = u.asDocument().getDocument("$set");
+                    var unsetFields = new ArrayList<String>();
+                    if (set != null) {
+                        var iterator = set.entrySet().iterator();
+                        while (iterator.hasNext()) {
+                            var entry = iterator.next();
+                            if (entry.getValue().isNull()) {
+                                unsetFields.add(entry.getKey());
+                                iterator.remove();
+                            }
+                        }
+                    }
+                    if (!unsetFields.isEmpty()) {
+                        var unset = u.asDocument().getDocument("$unset", new BsonDocument());
+                        for (var unsetField : unsetFields) {
+                            unset.put(unsetField, MONGO_EMPTY_STRING);
+                        }
+                        if (!u.asDocument().containsKey("$unset")) {
+                            u.asDocument().append("$unset", unset);
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
         }
     }
 
