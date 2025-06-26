@@ -58,7 +58,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
             StructAggregateEmbeddableIntegrationTests.ItemWithNestedValues.class,
             StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingArraysAndCollections.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
-            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingAllNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingEmbeddable.class
         })
@@ -674,20 +673,13 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Test
         void testAllNonInsertable() {
-            var item = new ItemWithNestedValueHavingAllNonInsertable(1, new PairAllNonInsertable(2, 3));
-            sessionFactoryScope.inTransaction(session -> session.persist(item));
-            assertCollectionContainsExactly(
-                    // `item.omitted` is considered empty because all its persistent attributes are non-insertable.
-                    // Hibernate ORM does not store/read the empty `item.omitted` value.
-                    // See https://hibernate.atlassian.net/browse/HHH-11936 for more details.
-                    """
-                    {
-                        _id: 1
-                    }
-                    """);
-            assertThatThrownBy(() -> sessionFactoryScope.fromTransaction(
-                            session -> session.find(ItemWithNestedValueHavingAllNonInsertable.class, item.id)))
-                    .isInstanceOf(Exception.class);
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(ItemWithNestedValueHavingAllNonInsertable.class)
+                            .buildMetadata()
+                            .buildSessionFactory()
+                            .close())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("must have at least one persistent attribute");
         }
 
         @Test
@@ -773,13 +765,6 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             int id;
 
             PairAllNonInsertable omitted;
-
-            ItemWithNestedValueHavingAllNonInsertable() {}
-
-            ItemWithNestedValueHavingAllNonInsertable(int id, PairAllNonInsertable omitted) {
-                this.id = id;
-                this.omitted = omitted;
-            }
         }
 
         @Embeddable

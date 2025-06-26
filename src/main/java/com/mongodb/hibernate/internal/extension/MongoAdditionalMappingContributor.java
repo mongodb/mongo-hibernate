@@ -104,7 +104,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
 
     private static void forbidEmbeddablesWithoutPersistentAttributes(InFlightMetadataCollector metadata) {
         metadata.visitRegisteredComponents(component -> {
-            if (component.getProperties().isEmpty()) {
+            if (!component.hasAnyInsertableColumns()) {
                 throw new FeatureNotSupportedException(
                         format("%s: must have at least one persistent attribute", component));
             }
