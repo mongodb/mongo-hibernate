@@ -353,16 +353,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(
                 ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class, item.id));
         assertEq(item, loadedItem);
-        var updatedItem =
-                sessionFactoryScope.fromTransaction(session -> {
-                    var result = session.find(
-                            ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections
-                                    .class,
-                            item.id);
-                    result.structAggregateEmbeddablesCollection.add(result.structAggregateEmbeddables[0]);
-                    result.structAggregateEmbeddables = new ArraysAndCollections[0];
-                    return result;
-                });
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
+            var result = session.find(
+                    ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class,
+                    item.id);
+            result.structAggregateEmbeddablesCollection.add(result.structAggregateEmbeddables[0]);
+            result.structAggregateEmbeddables = new ArraysAndCollections[0];
+            return result;
+        });
         assertCollectionContainsExactly(
                 """
                 {
