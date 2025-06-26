@@ -35,6 +35,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.hibernate.annotations.Struct;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
+import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.hibernate.type.descriptor.ValueExtractor;
@@ -110,6 +111,9 @@ public final class MongoStructJdbcType implements StructJdbcType {
             }
             var fieldName = jdbcValueSelectable.getSelectableName();
             var value = embeddableMappingType.getValue(domainValue, columnIndex);
+            if (value == null) {
+                continue;
+            }
             BsonValue bsonValue;
             var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
             if (jdbcMapping.getJdbcType().getJdbcTypeCode() == JDBC_TYPE.getVendorTypeNumber()) {
@@ -133,12 +137,27 @@ public final class MongoStructJdbcType implements StructJdbcType {
         if (!(rawJdbcValue instanceof BsonDocument bsonDocument)) {
             throw fail();
         }
-        var result = new Object[bsonDocument.size()];
-        var elementIdx = 0;
-        for (var value : bsonDocument.values()) {
-            assertNotNull(value);
-            result[elementIdx++] =
-                    value instanceof BsonDocument ? extractJdbcValues(value, options) : toDomainValue(value);
+        return doExtractJdbcValues(bsonDocument, getEmbeddableMappingType(), options);
+    }
+
+    private Object[] doExtractJdbcValues(
+            BsonDocument bsonDocument, EmbeddableMappingType embeddableMappingType, WrapperOptions options)
+            throws SQLException {
+        var attributeMappings = embeddableMappingType.getAttributeMappings();
+        var result = new Object[attributeMappings.size()];
+        for (int i = 0; i < attributeMappings.size(); i++) {
+            var attributeMapping = attributeMappings.get(i);
+            var attributeValue = bsonDocument.get(attributeMapping.getAttributeName());
+            if (attributeValue == null) {
+                result[i] = null;
+                continue;
+            }
+            if (attributeMapping instanceof EmbeddedAttributeMapping embeddedAttributeMapping) {
+                result[i] = doExtractJdbcValues(
+                        (BsonDocument) attributeValue, embeddedAttributeMapping.getMappedType(), options);
+            } else {
+                result[i] = toDomainValue(attributeValue);
+            }
         }
         return result;
     }
