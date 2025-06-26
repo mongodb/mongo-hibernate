@@ -483,8 +483,8 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         this.sessionFactoryScope = sessionFactoryScope;
     }
 
-    private static void assertCollectionContainsExactly(String json) {
-        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(json));
+    private static void assertCollectionContainsExactly(String documentAsJsonObject) {
+        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
 
     @Entity
