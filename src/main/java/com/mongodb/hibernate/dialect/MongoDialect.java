@@ -106,14 +106,12 @@ public final class MongoDialect extends Dialect {
         typeContributions
                 .getTypeConfiguration()
                 .getDdlTypeRegistry()
-                .addDescriptorIfAbsent(
+                .addDescriptorIfAbsent(new DdlTypeImpl(
                         objectIdTypeCode,
-                        new DdlTypeImpl(
-                                objectIdTypeCode,
-                                format(
-                                        "unused from %s.contributeObjectIdType for SQL type code [%d]",
-                                        MongoDialect.class.getSimpleName(), objectIdTypeCode),
-                                this));
+                        format(
+                                "unused from %s.contributeObjectIdType for SQL type code [%d]",
+                                MongoDialect.class.getSimpleName(), objectIdTypeCode),
+                        this));
     }
 
     @Override
