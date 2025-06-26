@@ -21,11 +21,11 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.type.ValueConversions.isNull;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.jdbc.MongoArray;
 import java.io.Serial;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -192,12 +192,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
                 if (!(jdbcMapping.getJdbcValueExtractor() instanceof BasicExtractor<?> jdbcValueExtractor)) {
                     throw fail();
                 }
-                domainValue = arrayJdbcType.getArray(
-                        jdbcValueExtractor,
-                        // `org.hibernate.type.descriptor.jdbc.ArrayJdbcType` expects `java.sql.Array.getArray`
-                        // to return `Object[]`, we cannot put a `BsonArray`, which is a `List<BsonValue>`, inside.
-                        new MongoArray(value.asArray().toArray()),
-                        options);
+                domainValue = arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(value), options);
             } else {
                 domainValue =
                         toDomainValue(value, jdbcMapping.getMappedJavaType().getJavaTypeClass());

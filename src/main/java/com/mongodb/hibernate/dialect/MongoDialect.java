@@ -21,17 +21,6 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
-import com.mongodb.hibernate.internal.type.MongoBigDecimalJavaType;
-import com.mongodb.hibernate.internal.type.MongoBooleanJavaType;
-import com.mongodb.hibernate.internal.type.MongoBooleanPrimitiveArrayJavaType;
-import com.mongodb.hibernate.internal.type.MongoCharacterJavaType;
-import com.mongodb.hibernate.internal.type.MongoDoubleJavaType;
-import com.mongodb.hibernate.internal.type.MongoDoublePrimitiveArrayJavaType;
-import com.mongodb.hibernate.internal.type.MongoIntegerJavaType;
-import com.mongodb.hibernate.internal.type.MongoIntegerPrimitiveArrayJavaType;
-import com.mongodb.hibernate.internal.type.MongoLongJavaType;
-import com.mongodb.hibernate.internal.type.MongoLongPrimitiveArrayJavaType;
-import com.mongodb.hibernate.internal.type.MongoStringJavaType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
@@ -105,17 +94,6 @@ public final class MongoDialect extends Dialect {
     @Override
     public void contribute(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
         super.contribute(typeContributions, serviceRegistry);
-        typeContributions.contributeJavaType(MongoCharacterJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoIntegerJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoIntegerPrimitiveArrayJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoLongJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoLongPrimitiveArrayJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoDoubleJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoDoublePrimitiveArrayJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoBooleanJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoBooleanPrimitiveArrayJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoStringJavaType.INSTANCE);
-        typeContributions.contributeJavaType(MongoBigDecimalJavaType.INSTANCE);
         contributeObjectIdType(typeContributions);
         typeContributions.contributeJdbcTypeConstructor(MongoArrayJdbcType.Constructor.INSTANCE);
         typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
