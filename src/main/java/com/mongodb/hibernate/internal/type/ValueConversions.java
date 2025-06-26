@@ -310,13 +310,6 @@ public final class ValueConversions {
 
     /** @see #toBsonValue(char[]) */
     private static char[] toDomainValue(BsonString value) {
-        var charsAsString = toDomainValue(value, String.class);
-        var size = charsAsString.length();
-        var result = new char[size];
-        for (int i = 0; i < size; i++) {
-            var element = charsAsString.charAt(i);
-            result[i] = element;
-        }
-        return result;
+        return toDomainValue(value, String.class).toCharArray();
     }
 }
