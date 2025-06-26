@@ -460,7 +460,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
         // `loadedItem.nested` is `null` despite `item.nested` not being `null`.
-        // TODO-HIBERNATE-48 There is nothing we can do here, such is the Hibernate ORM behavior. - or can we?
+        // There is nothing we can do here, such is the Hibernate ORM behavior.
         assertNull(loadedItem.nested);
         assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
                 .ignoringFields("nested")
