@@ -98,7 +98,6 @@ public final class ValueConversions {
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-character">
      * Hibernate ORM maps {@code char}/{@link Character} to {@link JDBCType#CHAR} by default</a>.
      *
-     * @see #toCharDomainValue(BsonValue)
      * @see #toDomainValue(String)
      */
     private static BsonString toBsonValue(char value) {
@@ -257,12 +256,6 @@ public final class ValueConversions {
 
     public static String toStringDomainValue(BsonValue value) {
         return toDomainValue(value.asString(), String.class);
-    }
-
-    /** @see #toBsonValue(char) */
-    @SuppressWarnings("MissingSummary")
-    public static char toCharDomainValue(BsonValue value) {
-        return toDomainValue(value.asString(), Character.class);
     }
 
     private static <T> T toDomainValue(BsonString value, Class<T> domainType) {
