@@ -134,7 +134,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithArrayAndCollectionValues.class, item.id));
         assertEq(item, loadedItem);
-        ItemWithArrayAndCollectionValues updatedItem = sessionFactoryScope.fromTransaction(session -> {
+        var updatedItem = sessionFactoryScope.fromTransaction(session -> {
             var result = session.find(ItemWithArrayAndCollectionValues.class, item.id);
             result.bytes[0] = (byte) -result.bytes[0];
             result.longs[1] = -result.longs[1];
@@ -353,7 +353,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(
                 ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class, item.id));
         assertEq(item, loadedItem);
-        ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections updatedItem =
+        var updatedItem =
                 sessionFactoryScope.fromTransaction(session -> {
                     var result = session.find(
                             ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections
