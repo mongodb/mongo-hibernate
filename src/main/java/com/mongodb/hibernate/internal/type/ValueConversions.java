@@ -169,8 +169,7 @@ public final class ValueConversions {
         return new BsonArray(elements);
     }
 
-    static @Nullable Object toDomainValue(@Nullable BsonValue value, Class<?> domainType)
-            throws SQLFeatureNotSupportedException {
+    static Object toDomainValue(BsonValue value, Class<?> domainType) throws SQLFeatureNotSupportedException {
         if (isNull(value)) {
             throw new SQLFeatureNotSupportedException(
                     "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return null");
