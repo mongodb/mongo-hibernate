@@ -38,6 +38,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
 class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
@@ -53,12 +58,6 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                         .findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                 .toList();
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @ParameterizedTest

@@ -67,6 +67,11 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
 
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
+
     @Test
     void testFlattenedValues() {
         var item = new ItemWithFlattenedValues(
@@ -452,11 +457,6 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
                 .ignoringFields("flattened")
                 .isEqualTo(expected));
-    }
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
     }
 
     private static void assertCollectionContainsExactly(String documentAsJsonObject) {

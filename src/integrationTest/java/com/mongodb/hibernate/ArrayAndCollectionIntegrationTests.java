@@ -69,6 +69,11 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     private SessionFactoryScope sessionFactoryScope;
 
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
+
     @Test
     void testArrayAndCollectionValues() {
         var item = new ItemWithArrayAndCollectionValues(
@@ -476,11 +481,6 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(
                 ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class, item.id));
         assertEq(item, loadedItem);
-    }
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
     }
 
     private static void assertCollectionContainsExactly(String documentAsJsonObject) {

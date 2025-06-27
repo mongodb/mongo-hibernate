@@ -53,6 +53,11 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
 
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
+
     @Test
     void insert() {
         var item = new Item();
@@ -68,11 +73,6 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
         assertEquals(item.id, loadedItem.id);
-    }
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
     }
 
     @Nested

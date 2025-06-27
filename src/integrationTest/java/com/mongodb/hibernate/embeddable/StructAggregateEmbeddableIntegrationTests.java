@@ -68,6 +68,11 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
     private SessionFactoryScope sessionFactoryScope;
 
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
+
     @Test
     void testNestedValues() {
         var item = new ItemWithNestedValues(
@@ -465,11 +470,6 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
                 .ignoringFields("nested")
                 .isEqualTo(expected));
-    }
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
     }
 
     private static void assertCollectionContainsExactly(String documentAsJsonObject) {
