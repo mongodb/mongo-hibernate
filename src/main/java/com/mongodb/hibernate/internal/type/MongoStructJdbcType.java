@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
@@ -137,9 +138,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
             var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
             if (jdbcTypeCode == getJdbcTypeCode()) {
-                if (!(jdbcMapping.getJdbcValueBinder() instanceof Binder<?> structValueBinder)) {
-                    throw fail();
-                }
+                var structValueBinder = assertInstanceOf(jdbcMapping.getJdbcValueBinder(), Binder.class);
                 bsonValue = structValueBinder.getJdbcType().createBsonValue(value, options);
             } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
                 @SuppressWarnings("unchecked")
@@ -166,9 +165,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
             throw new FeatureNotSupportedException(
                     "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return null");
         }
-        if (!(rawJdbcValue instanceof BsonDocument bsonDocument)) {
-            throw fail();
-        }
+        var bsonDocument = assertInstanceOf(rawJdbcValue, BsonDocument.class);
         var embeddableMappingType = getEmbeddableMappingType();
         var result = new Object[bsonDocument.size()];
         var elementIdx = 0;
@@ -181,17 +178,12 @@ public final class MongoStructJdbcType implements StructJdbcType {
                 throw new FeatureNotSupportedException(
                         "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 domainValue = null");
             } else if (jdbcTypeCode == getJdbcTypeCode()) {
-                if (!(jdbcMapping.getJdbcValueExtractor() instanceof Extractor<?> structValueExtractor)) {
-                    throw fail();
-                }
+                var structValueExtractor = assertInstanceOf(jdbcMapping.getJdbcValueExtractor(), Extractor.class);
                 domainValue = structValueExtractor.getJdbcType().extractJdbcValues(value, options);
             } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
-                if (!(jdbcMapping.getJdbcType() instanceof MongoArrayJdbcType arrayJdbcType)) {
-                    throw fail();
-                }
-                if (!(jdbcMapping.getJdbcValueExtractor() instanceof BasicExtractor<?> jdbcValueExtractor)) {
-                    throw fail();
-                }
+                var arrayJdbcType = assertInstanceOf(jdbcMapping.getJdbcType(), MongoArrayJdbcType.class);
+                BasicExtractor<?> jdbcValueExtractor =
+                        assertInstanceOf(jdbcMapping.getJdbcValueExtractor(), BasicExtractor.class);
                 domainValue = arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(value), options);
             } else {
                 domainValue =
@@ -223,10 +215,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
         @Override
         public MongoStructJdbcType getJdbcType() {
-            if (!(super.getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
-                throw fail();
-            }
-            return structJdbcType;
+            return assertInstanceOf(super.getJdbcType(), MongoStructJdbcType.class);
         }
 
         @Override
@@ -256,10 +245,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
         @Override
         public MongoStructJdbcType getJdbcType() {
-            if (!(super.getJdbcType() instanceof MongoStructJdbcType structJdbcType)) {
-                throw fail();
-            }
-            return structJdbcType;
+            return assertInstanceOf(super.getJdbcType(), MongoStructJdbcType.class);
         }
 
         @Override

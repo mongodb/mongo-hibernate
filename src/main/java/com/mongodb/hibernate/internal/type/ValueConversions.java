@@ -82,11 +82,10 @@ public final class ValueConversions {
             return toBsonValue(v);
         } else if (value instanceof Object[] v) {
             return arrayToBsonValue(v);
-        } else {
-            throw new SQLFeatureNotSupportedException(format(
-                    "Value [%s] of type [%s] is not supported",
-                    value, value.getClass().getTypeName()));
         }
+        throw new SQLFeatureNotSupportedException(format(
+                "Value [%s] of type [%s] is not supported",
+                value, value.getClass().getTypeName()));
     }
 
     public static BsonBoolean toBsonValue(boolean value) {
@@ -199,11 +198,10 @@ public final class ValueConversions {
             return toDomainValue(v);
         } else if (value instanceof BsonArray v && domainType.isArray()) {
             return toDomainValue(v, assertNotNull(domainType.getComponentType()));
-        } else {
-            throw new SQLFeatureNotSupportedException(format(
-                    "Value [%s] of type [%s] is not supported for the domain type [%s]",
-                    value, assertNotNull(value).getClass().getTypeName(), domainType));
         }
+        throw new SQLFeatureNotSupportedException(format(
+                "Value [%s] of type [%s] is not supported for the domain type [%s]",
+                value, assertNotNull(value).getClass().getTypeName(), domainType));
     }
 
     public static boolean isNull(@Nullable Object value) {
