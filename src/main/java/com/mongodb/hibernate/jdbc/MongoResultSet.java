@@ -37,6 +37,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -252,9 +253,14 @@ final class MongoResultSet implements ResultSetAdapter {
             var key = getKey(columnIndex);
             var bsonValue = assertNotNull(currentDocument).get(key);
             if (bsonValue == null) {
-                throw new RuntimeException(format("The BSON document field with the name [%s] is missing", key));
+                throw new FeatureNotSupportedException(
+                        """
+                        TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48
+                        simply remove this `null` check, as we support missing fields
+                        and they are equivalent to BSON `Null`, which is handled below
+                        """);
             }
-            T value = ValueConversions.isNull(bsonValue) ? null : toJavaConverter.apply(bsonValue);
+            T value = ValueConversions.isNull(bsonValue) ? null : toJavaConverter.apply(assertNotNull(bsonValue));
             lastReadColumnValueWasNull = value == null;
             return value;
         } catch (RuntimeException e) {

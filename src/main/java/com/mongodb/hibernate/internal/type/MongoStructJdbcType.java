@@ -167,11 +167,14 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
         var bsonDocument = assertInstanceOf(rawJdbcValue, BsonDocument.class);
         var embeddableMappingType = getEmbeddableMappingType();
-        var result = new Object[bsonDocument.size()];
-        var elementIdx = 0;
-        for (var value : bsonDocument.values()) {
-            var jdbcMapping =
-                    embeddableMappingType.getJdbcValueSelectable(elementIdx).getJdbcMapping();
+        var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
+        var result = new Object[jdbcValueCount];
+        for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
+            var jdbcValueSelectable = embeddableMappingType.getJdbcValueSelectable(columnIndex);
+            assertFalse(jdbcValueSelectable.isFormula());
+            var fieldName = jdbcValueSelectable.getSelectableName();
+            var value = bsonDocument.get(fieldName);
+            var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
             Object domainValue;
             if (isNull(value)) {
@@ -184,12 +187,13 @@ public final class MongoStructJdbcType implements StructJdbcType {
                 var arrayJdbcType = assertInstanceOf(jdbcMapping.getJdbcType(), MongoArrayJdbcType.class);
                 BasicExtractor<?> jdbcValueExtractor =
                         assertInstanceOf(jdbcMapping.getJdbcValueExtractor(), BasicExtractor.class);
-                domainValue = arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(value), options);
-            } else {
                 domainValue =
-                        toDomainValue(value, jdbcMapping.getMappedJavaType().getJavaTypeClass());
+                        arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(assertNotNull(value)), options);
+            } else {
+                domainValue = toDomainValue(
+                        assertNotNull(value), jdbcMapping.getMappedJavaType().getJavaTypeClass());
             }
-            result[elementIdx++] = domainValue;
+            result[columnIndex] = domainValue;
         }
         return result;
     }

@@ -459,6 +459,48 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 .isEqualTo(expected));
     }
 
+    @Test
+    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
+    void testReadNestedValuesMissingFields() {
+        var insertResult = mongoCollection.insertOne(
+                BsonDocument.parse(
+                        """
+                        {
+                            _id: 1,
+                            flattened2_a: 3,
+                            primitiveChar: "c",
+                            primitiveInt: 1,
+                            primitiveLong: {$numberLong: "9223372036854775807"},
+                            primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                            primitiveBoolean: true
+                        }
+                        """));
+        var id = new Single(insertResult.getInsertedId().asInt32().getValue());
+        var expectedItem = new ItemWithFlattenedValues(
+                id,
+                null,
+                new PairWithParent(
+                        3,
+                        new Plural(
+                                'c',
+                                1,
+                                Long.MAX_VALUE,
+                                Double.MAX_VALUE,
+                                true,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null)));
+        expectedItem.flattened2.parent = expectedItem;
+        var loadedItem =
+                sessionFactoryScope.fromTransaction(session -> session.find(ItemWithFlattenedValues.class, id));
+        assertEq(expectedItem, loadedItem);
+    }
+
     private static void assertCollectionContainsExactly(String documentAsJsonObject) {
         assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
