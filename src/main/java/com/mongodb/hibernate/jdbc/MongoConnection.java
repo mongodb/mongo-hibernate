@@ -32,7 +32,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
-import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
@@ -152,13 +151,7 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException();
-    }
-
-    @Override
-    public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        return new MongoArray(elements);
     }
 
     @Override

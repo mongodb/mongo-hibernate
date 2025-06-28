@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
@@ -107,7 +108,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                         "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
         throw new SQLFeatureNotSupportedException(
-                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
+                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
+                        + " setParameter(parameterIndex, ValueConversions.toBsonValue((Object) null))");
     }
 
     @Override
@@ -186,15 +188,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkParameterIndex(parameterIndex);
         BsonValue value;
         if (targetSqlType == ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber()) {
-            if (!(x instanceof ObjectId v)) {
-                throw fail();
-            }
-            value = toBsonValue(v);
+            value = toBsonValue(assertInstanceOf(x, ObjectId.class));
         } else if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
-            if (!(x instanceof BsonDocument v)) {
-                throw fail();
-            }
-            value = v;
+            value = assertInstanceOf(x, BsonDocument.class);
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Parameter value [%s] of SQL type [%d] with index [%d] is not supported",
@@ -213,7 +209,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException();
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override

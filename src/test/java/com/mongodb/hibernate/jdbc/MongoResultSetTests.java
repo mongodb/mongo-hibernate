@@ -101,7 +101,7 @@ class MongoResultSetTests {
 
         @Test
         void testGettersForNull() throws SQLException {
-            createResultSetWith(new BsonNull());
+            createResultSetWith(BsonNull.VALUE);
             assertAll(
                     () -> assertNull(mongoResultSet.getString(1)),
                     () -> assertFalse(mongoResultSet.getBoolean(1)),
