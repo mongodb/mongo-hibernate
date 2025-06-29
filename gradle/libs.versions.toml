@@ -24,6 +24,7 @@ slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
 mockito = "5.16.0"
 checker-qual = "3.49.1"
+lombok = "1.18.38"
 
 plugin-spotless = "7.0.2"
 plugin-errorprone = "4.1.0"
@@ -33,6 +34,7 @@ plugin-ktfmt = "0.54"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
@@ -44,6 +46,7 @@ sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
 checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "checker-qual" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 
 [bundles]
 test-common = ["junit-jupiter", "assertj", "logback-classic"]

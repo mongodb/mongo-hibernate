@@ -31,7 +31,9 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.Objects;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
 import org.hibernate.boot.MetadataSources;
@@ -138,6 +140,8 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithFlattenedValues {
         @Id
         Single flattenedId;
@@ -149,49 +153,23 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @AttributeOverride(name = "flattened.a", column = @Column(name = "flattened2_flattened_a"))
         @AttributeOverride(name = "flattened.b", column = @Column(name = "flattened2_flattened_b"))
         PairWithParent flattened2;
-
-        ItemWithFlattenedValues() {}
-
-        ItemWithFlattenedValues(Single flattenedId, Single flattened1, PairWithParent flattened2) {
-            this.flattenedId = flattenedId;
-            this.flattened1 = flattened1;
-            this.flattened2 = flattened2;
-        }
     }
 
     @Embeddable
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
     static class Single {
         int a;
-
-        Single() {}
-
-        Single(int a) {
-            this.a = a;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            Single single = (Single) o;
-            return a == single.a;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hashCode(a);
-        }
     }
 
     @Embeddable
+    @NoArgsConstructor
     static class PairWithParent {
         int a;
         Pair flattened;
 
         @Parent ItemWithFlattenedValues parent;
-
-        PairWithParent() {}
 
         PairWithParent(int a, Pair flattened) {
             this.a = a;
@@ -220,18 +198,13 @@ class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithOmittedEmptyValue {
         @Id
         int id;
 
         Empty omitted;
-
-        ItemWithOmittedEmptyValue() {}
-
-        ItemWithOmittedEmptyValue(int id, Empty omitted) {
-            this.id = id;
-            this.omitted = omitted;
-        }
     }
 
     @Embeddable

@@ -31,6 +31,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
@@ -157,6 +159,8 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithNestedValues {
         @Id
         EmbeddableIntegrationTests.Single flattenedId;
@@ -164,37 +168,24 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
         Single nested1;
 
         PairWithParent nested2;
-
-        ItemWithNestedValues() {}
-
-        ItemWithNestedValues(EmbeddableIntegrationTests.Single flattenedId, Single nested1, PairWithParent nested2) {
-            this.flattenedId = flattenedId;
-            this.nested1 = nested1;
-            this.nested2 = nested2;
-        }
     }
 
     @Embeddable
     @Struct(name = "Single")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class Single {
         int a;
-
-        Single() {}
-
-        Single(int a) {
-            this.a = a;
-        }
     }
 
     @Embeddable
     @Struct(name = "PairWithParent")
+    @NoArgsConstructor
     static class PairWithParent {
         int a;
         Pair nested;
 
         @Parent ItemWithNestedValues parent;
-
-        PairWithParent() {}
 
         PairWithParent(int a, Pair nested) {
             this.a = a;
@@ -224,18 +215,13 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithOmittedEmptyValue {
         @Id
         int id;
 
         Empty omitted;
-
-        ItemWithOmittedEmptyValue() {}
-
-        ItemWithOmittedEmptyValue(int id, Empty omitted) {
-            this.id = id;
-            this.omitted = omitted;
-        }
     }
 
     @Embeddable
@@ -315,34 +301,24 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
         @Embeddable
         @Struct(name = "PairHavingNonUpdatable")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class PairHavingNonUpdatable {
             @Column(updatable = false)
             int a;
 
             int b;
-
-            PairHavingNonUpdatable() {}
-
-            PairHavingNonUpdatable(int a, int b) {
-                this.a = a;
-                this.b = b;
-            }
         }
 
         @Entity
         @Table(name = "items")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class ItemWithNestedValueHavingAllNonInsertable {
             @Id
             int id;
 
             PairAllNonInsertable omitted;
-
-            ItemWithNestedValueHavingAllNonInsertable() {}
-
-            ItemWithNestedValueHavingAllNonInsertable(int id, PairAllNonInsertable omitted) {
-                this.id = id;
-                this.omitted = omitted;
-            }
         }
 
         @Embeddable
@@ -351,36 +327,26 @@ class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAw
 
         @Entity
         @Table(name = "items")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class ItemWithPolymorphicPersistentAttribute {
             @Id
             int id;
 
             Polymorphic polymorphic;
-
-            ItemWithPolymorphicPersistentAttribute() {}
-
-            ItemWithPolymorphicPersistentAttribute(int id, Polymorphic polymorphic) {
-                this.id = id;
-                this.polymorphic = polymorphic;
-            }
         }
 
         @Embeddable
         @Struct(name = "Polymorphic")
-        abstract static class Polymorphic {
-            Polymorphic() {}
-        }
+        @NoArgsConstructor
+        abstract static class Polymorphic {}
 
         @Embeddable
         @Struct(name = "Concrete")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class Concrete extends Polymorphic {
             int a;
-
-            Concrete() {}
-
-            Concrete(int a) {
-                this.a = a;
-            }
         }
     }
 }
