@@ -114,14 +114,15 @@ spotless {
 tasks.check { dependsOn(tasks.spotlessApply) }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.compilerArgs.addAll(listOf("-Xlint:all,-serial,-processing", "-Werror"))
     when (this) {
-        tasks.compileJava.get() ->
+        tasks.compileJava.get() -> {
+            options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
             options.errorprone {
                 disableWarningsInGeneratedCode = true
                 option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
                 error("NullAway")
             }
+        }
         else -> options.errorprone.isEnabled = false
     }
 }
