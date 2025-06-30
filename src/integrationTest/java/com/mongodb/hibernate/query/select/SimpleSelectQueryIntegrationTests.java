@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.query.select;
 
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -28,6 +27,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,7 +92,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(1, 5));
+                    getTestingContacts(1, 5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -123,7 +124,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 3, 4));
+                    getTestingContacts(2, 3, 4),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -154,7 +156,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(1, 3, 5));
+                    getTestingContacts(1, 3, 5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -185,7 +188,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(1, 2, 3, 5));
+                    getTestingContacts(1, 2, 3, 5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -216,7 +220,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 4, 5));
+                    getTestingContacts(2, 4, 5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -247,7 +252,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(1, 2, 4, 5));
+                    getTestingContacts(1, 2, 4, 5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -286,7 +292,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 4));
+                    getTestingContacts(2, 4),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -325,7 +332,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 3, 4, 5));
+                    getTestingContacts(2, 3, 4, 5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -367,7 +375,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 4));
+                    getTestingContacts(2, 4),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -411,7 +420,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(1, 2, 3, 4));
+                    getTestingContacts(1, 2, 3, 4),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -455,7 +465,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(3));
+                    getTestingContacts(3),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -510,7 +521,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 4));
+                    getTestingContacts(2, 4),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -556,7 +568,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(5));
+                    getTestingContacts(5),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -584,7 +597,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}));
+                    List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -612,7 +626,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}));
+                    List.of(new Object[] {"Mary", 35}, new Object[] {"Dylan", 7}, new Object[] {"Lucy", 78}),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @Test
@@ -743,7 +758,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    singletonList(testingBook));
+                    List.of(testingBook),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @Test
@@ -775,7 +791,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    singletonList(testingBook));
+                    List.of(testingBook),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @Test
@@ -807,7 +824,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    singletonList(testingBook));
+                    List.of(testingBook),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @Test
@@ -839,7 +857,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    singletonList(testingBook));
+                    List.of(testingBook),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @Test
@@ -871,7 +890,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    singletonList(testingBook));
+                    List.of(testingBook),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @Test
@@ -905,13 +925,17 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    singletonList(testingBook));
+                    List.of(testingBook),
+                    Set.of(Book.COLLECTION_NAME));
         }
     }
 
     @Entity(name = "Contact")
-    @Table(name = "contacts")
+    @Table(name = Contact.COLLECTION_NAME)
     static class Contact {
+
+        static final String COLLECTION_NAME = "contacts";
+
         @Id
         int id;
 

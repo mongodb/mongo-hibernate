@@ -18,15 +18,17 @@ package com.mongodb.hibernate.query.mutation;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.List;
+import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
+class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -39,7 +41,7 @@ class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
             new Book(5, "War & Peace", 2025, false));
 
     @BeforeEach
-    void beforeEach() {
+    protected void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
         getTestCommandListener().clear();
     }
@@ -132,8 +134,8 @@ class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "discount": {"$numberDouble": "0"},
                                   "price": {"$numberDecimal": "0.0"}
                                 }
-                                """)));
-        assertAffectedCollections(Book.COLLECTION_NAME);
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
@@ -223,7 +225,7 @@ class UpdatingIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "discount": {"$numberDouble": "0"},
                                   "price": {"$numberDecimal": "0.0"}
                                 }
-                                """)));
-        assertAffectedCollections(Book.COLLECTION_NAME);
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
     }
 }

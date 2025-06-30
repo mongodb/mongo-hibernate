@@ -21,6 +21,7 @@ import static java.util.Collections.singletonList;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import java.util.Set;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,7 +34,7 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
     private Book bookInStock;
 
     @BeforeEach
-    void beforeEach() {
+    protected void beforeEach() {
         bookOutOfStock = new Book();
         bookOutOfStock.id = 1;
         bookOutOfStock.outOfStock = true;
@@ -82,7 +83,8 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
                 }
                 """
                         .formatted(negated ? "false" : "true"),
-                negated ? singletonList(bookInStock) : singletonList(bookOutOfStock));
+                negated ? singletonList(bookInStock) : singletonList(bookOutOfStock),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @ParameterizedTest

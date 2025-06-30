@@ -18,8 +18,10 @@ package com.mongodb.hibernate.query.mutation;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.List;
+import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -28,7 +30,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
-class InsertionIntegrationTests extends AbstractMutationQueryIntegrationTests {
+class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -73,8 +75,8 @@ class InsertionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "discount": 0.2,
                                   "price": {"$numberDecimal": "23.55"}
                                 }
-                                """)));
-        assertAffectedCollections(Book.COLLECTION_NAME);
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
@@ -138,8 +140,8 @@ class InsertionIntegrationTests extends AbstractMutationQueryIntegrationTests {
                                   "discount": 0.1,
                                   "price": {"$numberDecimal": "19.99"}
                                 }
-                                """)));
-        assertAffectedCollections(Book.COLLECTION_NAME);
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
