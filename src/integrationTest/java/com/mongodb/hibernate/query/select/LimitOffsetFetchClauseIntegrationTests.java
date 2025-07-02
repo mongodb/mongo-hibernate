@@ -613,7 +613,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
      * the query plan cache is hit, not whether {@link SqlAstTranslator} is reused afterwards (e.g., incompatible
      * {@link org.hibernate.query.spi.QueryOptions QueryOptions}s will end up with new translator bing created).
      */
-    public static final class TranslatingCacheTestingDialect extends Dialect {
+    protected static final class TranslatingCacheTestingDialect extends Dialect {
         private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
         private final Dialect delegate;
 
