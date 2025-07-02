@@ -88,8 +88,7 @@ class SelectMqlTranslatorTests {
 
         var translator = new SelectMqlTranslator(sessionFactory, selectFromTableName);
 
-        translator.translate(null, QueryOptions.NONE).getAffectedTableNames();
-
-        assertThat(translator.getAffectedTableNames()).containsExactly(tableName);
+        assertThat(translator.translate(null, QueryOptions.NONE).getAffectedTableNames())
+                .containsExactly(tableName);
     }
 }
