@@ -26,6 +26,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MODEL_MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.PROJECT_STAGE_SPECIFICATIONS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
@@ -270,10 +271,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             astElements.add(new AstElement(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
-                MUTATION_RESULT,
+                MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(
                         new AstInsertCommand(
-                                tableInsert.getMutatingTable().getTableName(), new AstDocument(astElements)),
+                                tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements))),
                         parameterBinders));
     }
 
@@ -292,7 +293,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
         var keyFilter = getKeyFilter(tableDelete);
         astVisitorValueHolder.yield(
-                MUTATION_RESULT,
+                MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(
                         new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter),
                         parameterBinders));
@@ -314,7 +315,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
         astVisitorValueHolder.yield(
-                MUTATION_RESULT,
+                MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(
                         new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates),
                         parameterBinders));
@@ -664,8 +665,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var collectionAndAstFilter = getCollectionAndFilter(deleteStatement);
         affectedTableNames.add(collectionAndAstFilter.collection);
         astVisitorValueHolder.yield(
-                COLLECTION_MUTATION,
-                new AstDeleteCommand(collectionAndAstFilter.collection, collectionAndAstFilter.filter));
+                MUTATION_RESULT,
+                new MutationMqlTranslator.Result(
+                        new AstDeleteCommand(collectionAndAstFilter.collection, collectionAndAstFilter.filter),
+                        parameterBinders,
+                        affectedTableNames));
     }
 
     @Override
@@ -685,12 +689,16 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             if (!isValueExpression(assignedValue)) {
                 throw new FeatureNotSupportedException();
             }
-            var fieldValue = acceptAndYield(assignedValue, FIELD_VALUE);
+            var fieldValue = acceptAndYield(assignedValue, VALUE);
             fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
         }
         astVisitorValueHolder.yield(
-                COLLECTION_MUTATION,
-                new AstUpdateCommand(collectionAndAstFilter.collection, collectionAndAstFilter.filter, fieldUpdates));
+                MUTATION_RESULT,
+                new MutationMqlTranslator.Result(
+                        new AstUpdateCommand(
+                                collectionAndAstFilter.collection, collectionAndAstFilter.filter, fieldUpdates),
+                        parameterBinders,
+                        affectedTableNames));
     }
 
     private CollectionAndFilter getCollectionAndFilter(AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
@@ -734,13 +742,16 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 if (!isValueExpression(fieldValueExpression)) {
                     throw new FeatureNotSupportedException();
                 }
-                var fieldValue = acceptAndYield(fieldValueExpression, FIELD_VALUE);
+                var fieldValue = acceptAndYield(fieldValueExpression, VALUE);
                 astElements.add(new AstElement(fieldName, fieldValue));
             }
             documents.add(new AstDocument(astElements));
         }
 
-        astVisitorValueHolder.yield(COLLECTION_MUTATION, new AstInsertCommand(collection, documents));
+        astVisitorValueHolder.yield(
+                MUTATION_RESULT,
+                new MutationMqlTranslator.Result(
+                        new AstInsertCommand(collection, documents), parameterBinders, affectedTableNames));
     }
 
     @Override
