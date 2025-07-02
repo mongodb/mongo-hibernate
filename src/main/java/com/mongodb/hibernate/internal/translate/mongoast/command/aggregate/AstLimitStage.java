@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import org.bson.BsonWriter;
 
-import org.junit.jupiter.api.Test;
-
-class AstVisitorValueDescriptorTests {
-
-    @Test
-    void testToString() {
-        assertEquals("MUTATION_RESULT", AstVisitorValueDescriptor.MUTATION_RESULT.toString());
+public record AstLimitStage(AstValue value) implements AstStage {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        {
+            writer.writeName("$limit");
+            value.render(writer);
+        }
+        writer.writeEndDocument();
     }
 }

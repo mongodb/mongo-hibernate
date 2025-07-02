@@ -14,16 +14,25 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
-class AstVisitorValueDescriptorTests {
+class AstSkipStageTests {
 
     @Test
-    void testToString() {
-        assertEquals("MUTATION_RESULT", AstVisitorValueDescriptor.MUTATION_RESULT.toString());
+    void testRendering() {
+        var skipValue = 5;
+        var astSkipStage = new AstSkipStage(new AstLiteralValue(new BsonInt32(skipValue)));
+
+        var expectedJson =
+                """
+                {"$skip": {"$numberInt": "%d"}}\
+                """.formatted(skipValue);
+        assertRendering(expectedJson, astSkipStage);
     }
 }

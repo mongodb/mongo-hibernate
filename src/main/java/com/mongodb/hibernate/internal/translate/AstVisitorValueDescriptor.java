@@ -20,7 +20,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
@@ -34,13 +33,15 @@ import org.hibernate.sql.ast.tree.expression.Expression;
 @SuppressWarnings("UnusedTypeParameter")
 final class AstVisitorValueDescriptor<T> {
 
-    static final AstVisitorValueDescriptor<AstCommand> COLLECTION_MUTATION = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstCommand> COLLECTION_AGGREGATE = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MUTATION_RESULT =
+            new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<SelectMqlTranslator.Result> SELECT_RESULT =
+            new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstValue> FIELD_VALUE = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<AstValue> VALUE = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
             new AstVisitorValueDescriptor<>();
