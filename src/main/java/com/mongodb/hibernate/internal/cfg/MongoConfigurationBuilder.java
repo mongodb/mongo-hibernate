@@ -73,15 +73,13 @@ public final class MongoConfigurationBuilder implements MongoConfigurator {
             var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
             if (jdbcUrl == null) {
                 return null;
-            }
-            if (jdbcUrl instanceof String jdbcUrlText) {
+            } else if (jdbcUrl instanceof String jdbcUrlText) {
                 return parseConnectionString(JAKARTA_JDBC_URL, jdbcUrlText);
             } else if (jdbcUrl instanceof ConnectionString jdbcUrlConnectionString) {
                 return jdbcUrlConnectionString;
-            } else {
-                throw MongoConfigurationBuilder.ConfigPropertiesParser.Exceptions.unsupportedType(
-                        JAKARTA_JDBC_URL, jdbcUrl, String.class, ConnectionString.class);
             }
+            throw MongoConfigurationBuilder.ConfigPropertiesParser.Exceptions.unsupportedType(
+                    JAKARTA_JDBC_URL, jdbcUrl, String.class, ConnectionString.class);
         }
 
         private static ConnectionString parseConnectionString(String propertyName, String propertyValue) {

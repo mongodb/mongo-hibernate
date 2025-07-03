@@ -37,6 +37,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.math.BigDecimal;
 import java.sql.Array;
@@ -49,7 +50,6 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.types.ObjectId;
@@ -196,7 +196,7 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Array getArray(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException();
+        return getValue(columnIndex, ValueConversions::toArrayDomainValue);
     }
 
     @Override
@@ -207,7 +207,7 @@ final class MongoResultSet implements ResultSetAdapter {
         if (type.equals(ObjectId.class)) {
             value = getValue(columnIndex, ValueConversions::toObjectIdDomainValue);
         } else if (type.equals(BsonDocument.class)) {
-            value = getValue(columnIndex, BsonValue::asDocument);
+            value = getValue(columnIndex, ValueConversions::toBsonDocumentDomainValue);
         } else {
             throw new SQLFeatureNotSupportedException(
                     format("Type [%s] for a column with index [%d] is not supported", type, columnIndex));
@@ -243,19 +243,24 @@ final class MongoResultSet implements ResultSetAdapter {
         }
     }
 
-    private <T> T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter, T defaultValue)
+    private <T> T getValue(int columnIndex, SqlFunction<BsonValue, T> toJavaConverter, T defaultValue)
             throws SQLException {
         return Objects.requireNonNullElse(getValue(columnIndex, toJavaConverter), defaultValue);
     }
 
-    private <T> @Nullable T getValue(int columnIndex, Function<BsonValue, T> toJavaConverter) throws SQLException {
+    private <T> @Nullable T getValue(int columnIndex, SqlFunction<BsonValue, T> toJavaConverter) throws SQLException {
         try {
             var key = getKey(columnIndex);
             var bsonValue = assertNotNull(currentDocument).get(key);
             if (bsonValue == null) {
-                throw new RuntimeException(format("The BSON document field with the name [%s] is missing", key));
+                throw new FeatureNotSupportedException(
+                        """
+                        TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48
+                        simply remove this `null` check, as we support missing fields
+                        and they are equivalent to BSON `Null`, which is handled below
+                        """);
             }
-            T value = bsonValue.isNull() ? null : toJavaConverter.apply(bsonValue);
+            T value = ValueConversions.isNull(bsonValue) ? null : toJavaConverter.apply(assertNotNull(bsonValue));
             lastReadColumnValueWasNull = value == null;
             return value;
         } catch (RuntimeException e) {
@@ -272,4 +277,8 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     private static final class MongoResultSetMetadata implements ResultSetMetaDataAdapter {}
+
+    private interface SqlFunction<T, R> {
+        R apply(T t) throws SQLException;
+    }
 }

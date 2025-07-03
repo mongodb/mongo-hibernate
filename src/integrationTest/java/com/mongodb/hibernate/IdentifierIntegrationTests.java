@@ -87,6 +87,11 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
 
     private SessionFactoryScope sessionFactoryScope;
 
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
+    }
+
     @Test
     void withSpaceAndDotAndMixedCase() {
         var item = new WithSpaceAndDotAndMixedCase();
@@ -195,11 +200,6 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
                         .append(ID_FIELD_NAME, new BsonInt32(item.id))
                         .append(EndingWithRightSquareBracket.FIELD_NAME, new BsonInt32(item.v)));
         sessionFactoryScope.inTransaction(session -> session.find(EndingWithRightSquareBracket.class, item.id));
-    }
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
     }
 
     @Entity

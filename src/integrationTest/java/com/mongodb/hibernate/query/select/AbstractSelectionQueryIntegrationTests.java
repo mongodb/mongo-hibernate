@@ -42,14 +42,6 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
 
     private TestCommandListener testCommandListener;
 
-    SessionFactoryScope getSessionFactoryScope() {
-        return sessionFactoryScope;
-    }
-
-    TestCommandListener getTestCommandListener() {
-        return testCommandListener;
-    }
-
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
@@ -58,6 +50,14 @@ abstract class AbstractSelectionQueryIntegrationTests implements SessionFactoryS
     @Override
     public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
         this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
+    }
+
+    SessionFactoryScope getSessionFactoryScope() {
+        return sessionFactoryScope;
+    }
+
+    TestCommandListener getTestCommandListener() {
+        return testCommandListener;
     }
 
     <T> void assertSelectionQuery(
