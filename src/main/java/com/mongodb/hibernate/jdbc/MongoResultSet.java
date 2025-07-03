@@ -218,13 +218,18 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
-        return new MongoResultSetMetadata();
+        return new MongoResultSetMetadata(fieldNames);
     }
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of native query tickets");
+        for (int i = 0; i < fieldNames.size(); i++) {
+            if (fieldNames.get(i).equals(columnLabel)) {
+                return i + 1;
+            }
+        }
+        throw new SQLException("Unknown column label " + columnLabel);
     }
 
     @Override
@@ -271,5 +276,22 @@ final class MongoResultSet implements ResultSetAdapter {
         }
     }
 
-    private static final class MongoResultSetMetadata implements ResultSetMetaDataAdapter {}
+    private static final class MongoResultSetMetadata implements ResultSetMetaDataAdapter {
+        private final List<String> fieldNames;
+
+        public MongoResultSetMetadata(List<String> fieldNames) {
+            this.fieldNames = fieldNames;
+        }
+
+        @Override
+        public int getColumnCount() {
+            return fieldNames.size();
+        }
+
+
+        @Override
+        public String getColumnLabel(int column) {
+            return fieldNames.get(column - 1);
+        }
+    }
 }

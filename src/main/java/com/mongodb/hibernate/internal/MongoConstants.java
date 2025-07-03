@@ -24,7 +24,9 @@ public final class MongoConstants {
     private MongoConstants() {}
 
     public static final JsonWriterSettings EXTENDED_JSON_WRITER_SETTINGS =
-            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED)
+                    .undefinedConverter((bsonUndefined, strictJsonWriter) -> strictJsonWriter.writeRaw("?"))
+                    .build();
 
     public static final String MONGO_DBMS_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
