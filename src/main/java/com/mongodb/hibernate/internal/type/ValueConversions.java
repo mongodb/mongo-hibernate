@@ -163,7 +163,7 @@ public final class ValueConversions {
     private static BsonArray arrayToBsonValue(Object value) throws SQLFeatureNotSupportedException {
         var length = Array.getLength(value);
         var elements = new ArrayList<BsonValue>(length);
-        for (int i = 0; i < length; i++) {
+        for (var i = 0; i < length; i++) {
             elements.add(toBsonValue(Array.get(value, i)));
         }
         return new BsonArray(elements);
@@ -298,7 +298,7 @@ public final class ValueConversions {
     private static Object toDomainValue(BsonArray value, Class<?> elementType) throws SQLFeatureNotSupportedException {
         var size = value.size();
         var result = Array.newInstance(elementType, size);
-        for (int i = 0; i < size; i++) {
+        for (var i = 0; i < size; i++) {
             var element = toDomainValue(value.get(i), elementType);
             Array.set(result, i, element);
         }
