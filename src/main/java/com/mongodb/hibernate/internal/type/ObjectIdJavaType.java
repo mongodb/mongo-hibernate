@@ -58,7 +58,9 @@ public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
 
     @Override
     public <X> @Nullable ObjectId wrap(@Nullable X value, WrapperOptions options) {
-        if (value instanceof ObjectId v) {
+        if (value == null) {
+            return null;
+        } else if (value instanceof ObjectId v) {
             return v;
         } else if (value instanceof BsonValue v) {
             return toObjectIdDomainValue(v);

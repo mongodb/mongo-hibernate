@@ -37,6 +37,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Struct;
 import org.bson.BsonDocument;
+import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -105,19 +106,19 @@ public final class MongoStructJdbcType implements StructJdbcType {
      * {@link #createJdbcValue(Object, WrapperOptions)} is not called by Hibernate ORM.
      */
     @Override
-    public BsonValue createJdbcValue(@Nullable Object domainValue, WrapperOptions options) {
+    public BsonDocument createJdbcValue(@Nullable Object domainValue, WrapperOptions options) {
         throw fail();
     }
 
-    private BsonValue createBsonValue(@Nullable Object domainValue, WrapperOptions options) throws SQLException {
+    private @Nullable BsonDocument createBsonValue(@Nullable Object domainValue, WrapperOptions options)
+            throws SQLException {
         if (domainValue == null) {
-            throw new FeatureNotSupportedException(
-                    "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return toBsonValue(domainValue)");
+            return null;
         }
         var embeddableMappingType = getEmbeddableMappingType();
         var result = new BsonDocument();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
-        for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
+        for (var columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
             var jdbcValueSelectable = embeddableMappingType.getJdbcValueSelectable(columnIndex);
             assertFalse(jdbcValueSelectable.isFormula());
             if (!jdbcValueSelectable.isInsertable()) {
@@ -130,22 +131,22 @@ public final class MongoStructJdbcType implements StructJdbcType {
             }
             var fieldName = jdbcValueSelectable.getSelectableName();
             var value = embeddableMappingType.getValue(domainValue, columnIndex);
-            if (value == null) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48");
-            }
             BsonValue bsonValue;
-            var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
-            var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
-            if (jdbcTypeCode == getJdbcTypeCode()) {
-                var structValueBinder = assertInstanceOf(jdbcMapping.getJdbcValueBinder(), Binder.class);
-                bsonValue = structValueBinder.getJdbcType().createBsonValue(value, options);
-            } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
-                @SuppressWarnings("unchecked")
-                ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
-                bsonValue = toBsonValue(valueBinder.getBindValue(value, options));
+            if (value == null) {
+                bsonValue = BsonNull.VALUE;
             } else {
-                bsonValue = toBsonValue(value);
+                var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
+                var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
+                if (jdbcTypeCode == getJdbcTypeCode()) {
+                    var structValueBinder = assertInstanceOf(jdbcMapping.getJdbcValueBinder(), Binder.class);
+                    bsonValue = structValueBinder.getJdbcType().createBsonValue(value, options);
+                } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+                    @SuppressWarnings("unchecked")
+                    ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
+                    bsonValue = toBsonValue(valueBinder.getBindValue(value, options));
+                } else {
+                    bsonValue = toBsonValue(value);
+                }
             }
             result.append(fieldName, bsonValue);
         }
@@ -162,14 +163,13 @@ public final class MongoStructJdbcType implements StructJdbcType {
     public Object @Nullable [] extractJdbcValues(@Nullable Object rawJdbcValue, WrapperOptions options)
             throws SQLException {
         if (isNull(rawJdbcValue)) {
-            throw new FeatureNotSupportedException(
-                    "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 return null");
+            return null;
         }
         var bsonDocument = assertInstanceOf(rawJdbcValue, BsonDocument.class);
         var embeddableMappingType = getEmbeddableMappingType();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         var result = new Object[jdbcValueCount];
-        for (int columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
+        for (var columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
             var jdbcValueSelectable = embeddableMappingType.getJdbcValueSelectable(columnIndex);
             assertFalse(jdbcValueSelectable.isFormula());
             var fieldName = jdbcValueSelectable.getSelectableName();
@@ -178,8 +178,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
             Object domainValue;
             if (isNull(value)) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 domainValue = null");
+                domainValue = null;
             } else if (jdbcTypeCode == getJdbcTypeCode()) {
                 var structValueExtractor = assertInstanceOf(jdbcMapping.getJdbcValueExtractor(), Extractor.class);
                 domainValue = structValueExtractor.getJdbcType().extractJdbcValues(value, options);
@@ -223,7 +222,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
 
         @Override
-        public Object getBindValue(@Nullable X value, WrapperOptions options) throws SQLException {
+        public @Nullable Object getBindValue(@Nullable X value, WrapperOptions options) throws SQLException {
             return getJdbcType().createBsonValue(value, options);
         }
 

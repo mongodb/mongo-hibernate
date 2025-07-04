@@ -17,14 +17,18 @@
 package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 import java.io.Serial;
+import java.lang.reflect.Array;
 import java.sql.JDBCType;
 import java.sql.SQLException;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.StructHelper;
 import org.hibernate.tool.schema.extract.spi.ColumnTypeInformation;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.WrapperOptions;
+import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
@@ -55,7 +59,23 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
     @Override
     protected <X> @Nullable X getArray(
             BasicExtractor<X> extractor, java.sql.@Nullable Array array, WrapperOptions options) throws SQLException {
-        return super.getArray(extractor, array, options);
+        if (array != null && getElementJdbcType() instanceof AggregateJdbcType aggregateJdbcType) {
+            var embeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
+            var embeddableJavaType = embeddableMappingType.getMappedJavaType().getJavaTypeClass();
+            var rawArray = array.getArray();
+            var domainObjects = (Object[]) Array.newInstance(embeddableJavaType, Array.getLength(rawArray));
+            for (var i = 0; i < domainObjects.length; i++) {
+                var aggregateRawValues = aggregateJdbcType.extractJdbcValues(Array.get(rawArray, i), options);
+                if (aggregateRawValues != null) {
+                    var attributeValues =
+                            StructHelper.getAttributeValues(embeddableMappingType, aggregateRawValues, options);
+                    domainObjects[i] = instantiate(embeddableMappingType, attributeValues, options.getSessionFactory());
+                }
+            }
+            return extractor.getJavaType().wrap(domainObjects, options);
+        } else {
+            return extractor.getJavaType().wrap(array, options);
+        }
     }
 
     public static final class Constructor implements JdbcTypeConstructor {
