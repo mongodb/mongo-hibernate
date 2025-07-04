@@ -37,8 +37,12 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.HibernateException;
@@ -507,6 +511,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithFlattenedValues {
         @Id
         Single flattenedId;
@@ -516,69 +522,33 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         @AttributeOverride(name = "a", column = @Column(name = "flattened2_a"))
         PairWithParent flattened2;
-
-        ItemWithFlattenedValues() {}
-
-        ItemWithFlattenedValues(Single flattenedId, Single flattened1, PairWithParent flattened2) {
-            this.flattenedId = flattenedId;
-            this.flattened1 = flattened1;
-            this.flattened2 = flattened2;
-        }
     }
 
     @Embeddable
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
     public static class Single {
         int a;
-
-        Single() {}
-
-        Single(int a) {
-            this.a = a;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            Single single = (Single) o;
-            return a == single.a;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hashCode(a);
-        }
     }
 
     @Embeddable
+    @NoArgsConstructor
     static class PairWithParent {
         int a;
         Plural flattened;
 
+        /**
+         * Hibernate ORM requires getter/setter for a {@link Parent} field, despite us using
+         * {@linkplain AccessType#FIELD field-based access}.
+         */
+        @Getter
+        @Setter
         @Parent ItemWithFlattenedValues parent;
-
-        PairWithParent() {}
 
         PairWithParent(int a, Plural flattened) {
             this.a = a;
             this.flattened = flattened;
-        }
-
-        /**
-         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
-         * field-based access}.
-         */
-        void setParent(ItemWithFlattenedValues parent) {
-            this.parent = parent;
-        }
-
-        /**
-         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
-         * field-based access}.
-         */
-        ItemWithFlattenedValues getParent() {
-            return parent;
         }
     }
 
@@ -600,21 +570,18 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithFlattenedValueHavingArraysAndCollections {
         @Id
         int id;
 
         ArraysAndCollections flattened;
-
-        ItemWithFlattenedValueHavingArraysAndCollections() {}
-
-        ItemWithFlattenedValueHavingArraysAndCollections(int id, ArraysAndCollections flattened) {
-            this.id = id;
-            this.flattened = flattened;
-        }
     }
 
     @Embeddable
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ArraysAndCollections {
         byte[] bytes;
         char[] chars;
@@ -640,59 +607,6 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
-
-        ArraysAndCollections() {}
-
-        ArraysAndCollections(
-                byte[] bytes,
-                char[] chars,
-                int[] ints,
-                long[] longs,
-                double[] doubles,
-                boolean[] booleans,
-                Character[] boxedChars,
-                Integer[] boxedInts,
-                Long[] boxedLongs,
-                Double[] boxedDoubles,
-                Boolean[] boxedBooleans,
-                String[] strings,
-                BigDecimal[] bigDecimals,
-                ObjectId[] objectIds,
-                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
-                List<Character> charsCollection,
-                Set<Integer> intsCollection,
-                Collection<Long> longsCollection,
-                Collection<Double> doublesCollection,
-                Collection<Boolean> booleansCollection,
-                Collection<String> stringsCollection,
-                Collection<BigDecimal> bigDecimalsCollection,
-                Collection<ObjectId> objectIdsCollection,
-                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
-            this.bytes = bytes;
-            this.chars = chars;
-            this.ints = ints;
-            this.longs = longs;
-            this.doubles = doubles;
-            this.booleans = booleans;
-            this.boxedChars = boxedChars;
-            this.boxedInts = boxedInts;
-            this.boxedLongs = boxedLongs;
-            this.boxedDoubles = boxedDoubles;
-            this.boxedBooleans = boxedBooleans;
-            this.strings = strings;
-            this.bigDecimals = bigDecimals;
-            this.objectIds = objectIds;
-            this.structAggregateEmbeddables = structAggregateEmbeddables;
-            this.charsCollection = charsCollection;
-            this.intsCollection = intsCollection;
-            this.longsCollection = longsCollection;
-            this.doublesCollection = doublesCollection;
-            this.booleansCollection = booleansCollection;
-            this.stringsCollection = stringsCollection;
-            this.bigDecimalsCollection = bigDecimalsCollection;
-            this.objectIdsCollection = objectIdsCollection;
-            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
-        }
     }
 
     @Nested
@@ -734,17 +648,12 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         @Entity
         @Table(name = "items")
+        @AllArgsConstructor
         static class ItemWithFlattenedValueHavingStructAggregateEmbeddable {
             @Id
             int id;
 
             SingleHavingStructAggregateEmbeddable flattened;
-
-            ItemWithFlattenedValueHavingStructAggregateEmbeddable(
-                    int id, SingleHavingStructAggregateEmbeddable flattened) {
-                this.id = id;
-                this.flattened = flattened;
-            }
         }
 
         @Embeddable

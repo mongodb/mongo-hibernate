@@ -37,6 +37,9 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.MappingException;
@@ -76,35 +79,37 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testArrayAndCollectionValues() {
-        var item = new ItemWithArrayAndCollectionValues(
-                1,
+        var item = ItemWithArrayAndCollectionValues.builder()
+                .id(1)
                 // TODO-HIBERNATE-48 sprinkle on `null` array/collection elements
-                new byte[] {2, 3},
-                new char[] {'s', 't', 'r'},
-                new int[] {5},
-                new long[] {Long.MAX_VALUE, 6},
-                new double[] {Double.MAX_VALUE},
-                new boolean[] {true},
-                new Character[] {'s', 't', 'r'},
-                new Integer[] {7},
-                new Long[] {8L},
-                new Double[] {9.1d},
-                new Boolean[] {true},
-                new String[] {"str"},
-                new BigDecimal[] {BigDecimal.valueOf(10.1)},
-                new ObjectId[] {new ObjectId("000000000000000000000001")},
-                new StructAggregateEmbeddableIntegrationTests.Single[] {
+                .bytes(new byte[] {2, 3})
+                .chars(new char[] {'s', 't', 'r'})
+                .ints(new int[] {5})
+                .longs(new long[] {Long.MAX_VALUE, 6})
+                .doubles(new double[] {Double.MAX_VALUE})
+                .booleans(new boolean[] {true})
+                .boxedChars(new Character[] {'s', 't', 'r'})
+                .boxedInts(new Integer[] {7})
+                .boxedLongs(new Long[] {8L})
+                .boxedDoubles(new Double[] {9.1d})
+                .boxedBooleans(new Boolean[] {true})
+                .strings(new String[] {"str"})
+                .bigDecimals(new BigDecimal[] {BigDecimal.valueOf(10.1)})
+                .objectIds(new ObjectId[] {new ObjectId("000000000000000000000001")})
+                .structAggregateEmbeddables(new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1)
-                },
-                List.of('s', 't', 'r'),
-                List.of(5),
-                List.of(Long.MAX_VALUE, 6L),
-                List.of(Double.MAX_VALUE),
-                List.of(true),
-                List.of("str"),
-                List.of(BigDecimal.valueOf(10.1)),
-                List.of(new ObjectId("000000000000000000000001")),
-                List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)));
+                })
+                .charsCollection(List.of('s', 't', 'r'))
+                .intsCollection(List.of(5))
+                .longsCollection(List.of(Long.MAX_VALUE, 6L))
+                .doublesCollection(List.of(Double.MAX_VALUE))
+                .booleansCollection(List.of(true))
+                .stringsCollection(List.of("str"))
+                .bigDecimalsCollection(List.of(BigDecimal.valueOf(10.1)))
+                .objectIdsCollection(List.of(new ObjectId("000000000000000000000001")))
+                .structAggregateEmbeddablesCollection(List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)))
+                .build();
+
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -185,32 +190,34 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testArrayAndCollectionEmptyValues() {
-        var item = new ItemWithArrayAndCollectionValues(
-                1,
-                new byte[0],
-                new char[0],
-                new int[0],
-                new long[0],
-                new double[0],
-                new boolean[0],
-                new Character[0],
-                new Integer[0],
-                new Long[0],
-                new Double[0],
-                new Boolean[0],
-                new String[0],
-                new BigDecimal[0],
-                new ObjectId[0],
-                new StructAggregateEmbeddableIntegrationTests.Single[0],
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of());
+        var item = ItemWithArrayAndCollectionValues.builder()
+                .id(1)
+                .bytes(new byte[0])
+                .chars(new char[0])
+                .ints(new int[0])
+                .longs(new long[0])
+                .doubles(new double[0])
+                .booleans(new boolean[0])
+                .boxedChars(new Character[0])
+                .boxedInts(new Integer[0])
+                .boxedLongs(new Long[0])
+                .boxedDoubles(new Double[0])
+                .boxedBooleans(new Boolean[0])
+                .strings(new String[0])
+                .bigDecimals(new BigDecimal[0])
+                .objectIds(new ObjectId[0])
+                .structAggregateEmbeddables(new StructAggregateEmbeddableIntegrationTests.Single[0])
+                .charsCollection(List.of())
+                .intsCollection(List.of())
+                .longsCollection(List.of())
+                .doublesCollection(List.of())
+                .booleansCollection(List.of())
+                .stringsCollection(List.of())
+                .bigDecimalsCollection(List.of())
+                .objectIdsCollection(List.of())
+                .structAggregateEmbeddablesCollection(List.of())
+                .build();
+
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -291,34 +298,36 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     @Test
     void testArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections() {
-        var arraysAndCollections = new ArraysAndCollections(
-                new byte[] {2, 3},
-                new char[] {'s', 't', 'r'},
-                new int[] {5},
-                new long[] {Long.MAX_VALUE, 6},
-                new double[] {Double.MAX_VALUE},
-                new boolean[] {true},
-                new Character[] {'s', 't', 'r'},
-                new Integer[] {7},
-                new Long[] {8L},
-                new Double[] {9.1d},
-                new Boolean[] {true},
-                new String[] {"str"},
-                new BigDecimal[] {BigDecimal.valueOf(10.1)},
-                new ObjectId[] {new ObjectId("000000000000000000000001")},
-                new StructAggregateEmbeddableIntegrationTests.Single[] {
+        var arraysAndCollections = ArraysAndCollections.builder()
+                .bytes(new byte[] {2, 3})
+                .chars(new char[] {'s', 't', 'r'})
+                .ints(new int[] {5})
+                .longs(new long[] {Long.MAX_VALUE, 6})
+                .doubles(new double[] {Double.MAX_VALUE})
+                .booleans(new boolean[] {true})
+                .boxedChars(new Character[] {'s', 't', 'r'})
+                .boxedInts(new Integer[] {7})
+                .boxedLongs(new Long[] {8L})
+                .boxedDoubles(new Double[] {9.1d})
+                .boxedBooleans(new Boolean[] {true})
+                .strings(new String[] {"str"})
+                .bigDecimals(new BigDecimal[] {BigDecimal.valueOf(10.1)})
+                .objectIds(new ObjectId[] {new ObjectId("000000000000000000000001")})
+                .structAggregateEmbeddables(new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1)
-                },
-                List.of('s', 't', 'r'),
+                })
+                .charsCollection(List.of('s', 't', 'r'))
                 // Hibernate ORM uses `LinkedHashSet`, forcing us to also use it, but messing up the order anyway
-                new LinkedHashSet<>(List.of(5)),
-                List.of(Long.MAX_VALUE, 6L),
-                List.of(Double.MAX_VALUE),
-                List.of(true),
-                List.of("str"),
-                List.of(BigDecimal.valueOf(10.1)),
-                List.of(new ObjectId("000000000000000000000001")),
-                List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)));
+                .intsCollection(new LinkedHashSet<>(List.of(5)))
+                .longsCollection(List.of(Long.MAX_VALUE, 6L))
+                .doublesCollection(List.of(Double.MAX_VALUE))
+                .booleansCollection(List.of(true))
+                .stringsCollection(List.of("str"))
+                .bigDecimalsCollection(List.of(BigDecimal.valueOf(10.1)))
+                .objectIdsCollection(List.of(new ObjectId("000000000000000000000001")))
+                .structAggregateEmbeddablesCollection(List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)))
+                .build();
+
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1, new ArraysAndCollections[] {arraysAndCollections}, List.of());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
@@ -489,6 +498,9 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     static class ItemWithArrayAndCollectionValues {
         @Id
         int id;
@@ -517,82 +529,18 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
-
-        ItemWithArrayAndCollectionValues() {}
-
-        ItemWithArrayAndCollectionValues(
-                int id,
-                byte[] bytes,
-                char[] chars,
-                int[] ints,
-                long[] longs,
-                double[] doubles,
-                boolean[] booleans,
-                Character[] boxedChars,
-                Integer[] boxedInts,
-                Long[] boxedLongs,
-                Double[] boxedDoubles,
-                Boolean[] boxedBooleans,
-                String[] strings,
-                BigDecimal[] bigDecimals,
-                ObjectId[] objectIds,
-                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
-                Collection<Character> charsCollection,
-                Collection<Integer> intsCollection,
-                Collection<Long> longsCollection,
-                Collection<Double> doublesCollection,
-                Collection<Boolean> booleansCollection,
-                Collection<String> stringsCollection,
-                Collection<BigDecimal> bigDecimalsCollection,
-                Collection<ObjectId> objectIdsCollection,
-                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
-            this.id = id;
-            this.bytes = bytes;
-            this.chars = chars;
-            this.ints = ints;
-            this.longs = longs;
-            this.doubles = doubles;
-            this.booleans = booleans;
-            this.boxedChars = boxedChars;
-            this.boxedInts = boxedInts;
-            this.boxedLongs = boxedLongs;
-            this.boxedDoubles = boxedDoubles;
-            this.boxedBooleans = boxedBooleans;
-            this.strings = strings;
-            this.bigDecimals = bigDecimals;
-            this.objectIds = objectIds;
-            this.structAggregateEmbeddables = structAggregateEmbeddables;
-            this.charsCollection = charsCollection;
-            this.intsCollection = intsCollection;
-            this.longsCollection = longsCollection;
-            this.doublesCollection = doublesCollection;
-            this.booleansCollection = booleansCollection;
-            this.stringsCollection = stringsCollection;
-            this.bigDecimalsCollection = bigDecimalsCollection;
-            this.objectIdsCollection = objectIdsCollection;
-            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
-        }
     }
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections {
         @Id
         int id;
 
         ArraysAndCollections[] structAggregateEmbeddables;
         Collection<ArraysAndCollections> structAggregateEmbeddablesCollection;
-
-        ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections() {}
-
-        ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
-                int id,
-                ArraysAndCollections[] structAggregateEmbeddables,
-                Collection<ArraysAndCollections> structAggregateEmbeddablesCollection) {
-            this.id = id;
-            this.structAggregateEmbeddables = structAggregateEmbeddables;
-            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
-        }
     }
 
     @Nested
@@ -670,36 +618,25 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
         @Entity
         @Table(name = "items")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class ItemWithBoxedBytesArrayValue {
             @Id
             int id;
 
             byte[] bytes;
             Byte[] boxedBytes;
-
-            ItemWithBoxedBytesArrayValue() {}
-
-            ItemWithBoxedBytesArrayValue(int id, byte[] bytes, Byte[] boxedBytes) {
-                this.id = id;
-                this.bytes = bytes;
-                this.boxedBytes = boxedBytes;
-            }
         }
 
         @Entity
         @Table(name = "items")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class ItemWithBytesCollectionValue {
             @Id
             int id;
 
             Collection<Byte> bytes;
-
-            ItemWithBytesCollectionValue() {}
-
-            ItemWithBytesCollectionValue(int id, Collection<Byte> bytes) {
-                this.id = id;
-                this.bytes = bytes;
-            }
         }
 
         /**

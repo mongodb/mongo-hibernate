@@ -38,6 +38,9 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.annotations.Parent;
@@ -241,31 +244,32 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         var item = new ItemWithNestedValueHavingArraysAndCollections(
                 1,
                 // TODO-HIBERNATE-48 sprinkle on `null` array/collection elements
-                new ArraysAndCollections(
-                        new byte[] {2, 3},
-                        new char[] {'s', 't', 'r'},
-                        new int[] {5},
-                        new long[] {Long.MAX_VALUE, 6},
-                        new double[] {Double.MAX_VALUE},
-                        new boolean[] {true},
-                        new Character[] {'s', 't', 'r'},
-                        new Integer[] {7},
-                        new Long[] {8L},
-                        new Double[] {9.1d},
-                        new Boolean[] {true},
-                        new String[] {"str"},
-                        new BigDecimal[] {BigDecimal.valueOf(10.1)},
-                        new ObjectId[] {new ObjectId("000000000000000000000001")},
-                        new Single[] {new Single(1)},
-                        List.of('s', 't', 'r'),
-                        Set.of(5),
-                        List.of(Long.MAX_VALUE, 6L),
-                        List.of(Double.MAX_VALUE),
-                        List.of(true),
-                        List.of("str"),
-                        List.of(BigDecimal.valueOf(10.1)),
-                        List.of(new ObjectId("000000000000000000000001")),
-                        List.of(new Single(1))));
+                ArraysAndCollections.builder()
+                        .bytes(new byte[] {2, 3})
+                        .chars(new char[] {'s', 't', 'r'})
+                        .ints(new int[] {5})
+                        .longs(new long[] {Long.MAX_VALUE, 6})
+                        .doubles(new double[] {Double.MAX_VALUE})
+                        .booleans(new boolean[] {true})
+                        .boxedChars(new Character[] {'s', 't', 'r'})
+                        .boxedInts(new Integer[] {7})
+                        .boxedLongs(new Long[] {8L})
+                        .boxedDoubles(new Double[] {9.1d})
+                        .boxedBooleans(new Boolean[] {true})
+                        .strings(new String[] {"str"})
+                        .bigDecimals(new BigDecimal[] {BigDecimal.valueOf(10.1)})
+                        .objectIds(new ObjectId[] {new ObjectId("000000000000000000000001")})
+                        .structAggregateEmbeddables(new Single[] {new Single(1)})
+                        .charsCollection(List.of('s', 't', 'r'))
+                        .intsCollection(Set.of(5))
+                        .longsCollection(List.of(Long.MAX_VALUE, 6L))
+                        .doublesCollection(List.of(Double.MAX_VALUE))
+                        .booleansCollection(List.of(true))
+                        .stringsCollection(List.of("str"))
+                        .bigDecimalsCollection(List.of(BigDecimal.valueOf(10.1)))
+                        .objectIdsCollection(List.of(new ObjectId("000000000000000000000001")))
+                        .structAggregateEmbeddablesCollection(List.of(new Single(1)))
+                        .build());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -352,31 +356,32 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     void testNestedValueHavingEmptyArraysAndCollections() {
         var item = new ItemWithNestedValueHavingArraysAndCollections(
                 1,
-                new ArraysAndCollections(
-                        new byte[0],
-                        new char[0],
-                        new int[0],
-                        new long[0],
-                        new double[0],
-                        new boolean[0],
-                        new Character[0],
-                        new Integer[0],
-                        new Long[0],
-                        new Double[0],
-                        new Boolean[0],
-                        new String[0],
-                        new BigDecimal[0],
-                        new ObjectId[0],
-                        new Single[0],
-                        List.of(),
-                        Set.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of()));
+                ArraysAndCollections.builder()
+                        .bytes(new byte[0])
+                        .chars(new char[0])
+                        .ints(new int[0])
+                        .longs(new long[0])
+                        .doubles(new double[0])
+                        .booleans(new boolean[0])
+                        .boxedChars(new Character[0])
+                        .boxedInts(new Integer[0])
+                        .boxedLongs(new Long[0])
+                        .boxedDoubles(new Double[0])
+                        .boxedBooleans(new Boolean[0])
+                        .strings(new String[0])
+                        .bigDecimals(new BigDecimal[0])
+                        .objectIds(new ObjectId[0])
+                        .structAggregateEmbeddables(new Single[0])
+                        .charsCollection(List.of())
+                        .intsCollection(Set.of())
+                        .longsCollection(List.of())
+                        .doublesCollection(List.of())
+                        .booleansCollection(List.of())
+                        .stringsCollection(List.of())
+                        .bigDecimalsCollection(List.of())
+                        .objectIdsCollection(List.of())
+                        .structAggregateEmbeddablesCollection(List.of())
+                        .build());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -527,6 +532,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithNestedValues {
         @Id
         EmbeddableIntegrationTests.Single flattenedId;
@@ -534,37 +541,24 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         Single nested1;
 
         PairWithParent nested2;
-
-        ItemWithNestedValues() {}
-
-        ItemWithNestedValues(EmbeddableIntegrationTests.Single flattenedId, Single nested1, PairWithParent nested2) {
-            this.flattenedId = flattenedId;
-            this.nested1 = nested1;
-            this.nested2 = nested2;
-        }
     }
 
     @Embeddable
     @Struct(name = "Single")
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class Single {
         public int a;
-
-        Single() {}
-
-        public Single(int a) {
-            this.a = a;
-        }
     }
 
     @Embeddable
     @Struct(name = "PairWithParent")
+    @NoArgsConstructor
     static class PairWithParent {
         int a;
         Plural nested;
 
         @Parent ItemWithNestedValues parent;
-
-        PairWithParent() {}
 
         PairWithParent(int a, Plural nested) {
             this.a = a;
@@ -607,22 +601,20 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
     @Entity
     @Table(name = "items")
+    @NoArgsConstructor
+    @AllArgsConstructor
     static class ItemWithNestedValueHavingArraysAndCollections {
         @Id
         int id;
 
         ArraysAndCollections nested;
-
-        ItemWithNestedValueHavingArraysAndCollections() {}
-
-        ItemWithNestedValueHavingArraysAndCollections(int id, ArraysAndCollections nested) {
-            this.id = id;
-            this.nested = nested;
-        }
     }
 
     @Embeddable
     @Struct(name = "ArraysAndCollections")
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
     public static class ArraysAndCollections {
         byte[] bytes;
         char[] chars;
@@ -648,59 +640,6 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
         Collection<Single> structAggregateEmbeddablesCollection;
-
-        ArraysAndCollections() {}
-
-        public ArraysAndCollections(
-                byte[] bytes,
-                char[] chars,
-                int[] ints,
-                long[] longs,
-                double[] doubles,
-                boolean[] booleans,
-                Character[] boxedChars,
-                Integer[] boxedInts,
-                Long[] boxedLongs,
-                Double[] boxedDoubles,
-                Boolean[] boxedBooleans,
-                String[] strings,
-                BigDecimal[] bigDecimals,
-                ObjectId[] objectIds,
-                Single[] structAggregateEmbeddables,
-                List<Character> charsCollection,
-                Set<Integer> intsCollection,
-                Collection<Long> longsCollection,
-                Collection<Double> doublesCollection,
-                Collection<Boolean> booleansCollection,
-                Collection<String> stringsCollection,
-                Collection<BigDecimal> bigDecimalsCollection,
-                Collection<ObjectId> objectIdsCollection,
-                Collection<Single> structAggregateEmbeddablesCollection) {
-            this.bytes = bytes;
-            this.chars = chars;
-            this.ints = ints;
-            this.longs = longs;
-            this.doubles = doubles;
-            this.booleans = booleans;
-            this.boxedChars = boxedChars;
-            this.boxedInts = boxedInts;
-            this.boxedLongs = boxedLongs;
-            this.boxedDoubles = boxedDoubles;
-            this.boxedBooleans = boxedBooleans;
-            this.strings = strings;
-            this.bigDecimals = bigDecimals;
-            this.objectIds = objectIds;
-            this.structAggregateEmbeddables = structAggregateEmbeddables;
-            this.charsCollection = charsCollection;
-            this.intsCollection = intsCollection;
-            this.longsCollection = longsCollection;
-            this.doublesCollection = doublesCollection;
-            this.booleansCollection = booleansCollection;
-            this.stringsCollection = stringsCollection;
-            this.bigDecimalsCollection = bigDecimalsCollection;
-            this.objectIdsCollection = objectIdsCollection;
-            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
-        }
     }
 
     @Nested
@@ -793,18 +732,13 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairHavingNonUpdatable")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class PairHavingNonUpdatable {
             @Column(updatable = false)
             int a;
 
             int b;
-
-            PairHavingNonUpdatable() {}
-
-            PairHavingNonUpdatable(int a, int b) {
-                this.a = a;
-                this.b = b;
-            }
         }
 
         @Entity
@@ -822,18 +756,13 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Entity
         @Table(name = "items")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class ItemWithPolymorphicPersistentAttribute {
             @Id
             int id;
 
             Polymorphic polymorphic;
-
-            ItemWithPolymorphicPersistentAttribute() {}
-
-            ItemWithPolymorphicPersistentAttribute(int id, Polymorphic polymorphic) {
-                this.id = id;
-                this.polymorphic = polymorphic;
-            }
         }
 
         @Embeddable
@@ -844,28 +773,20 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "Concrete")
+        @NoArgsConstructor
+        @AllArgsConstructor
         static class Concrete extends Polymorphic {
             int a;
-
-            Concrete() {}
-
-            Concrete(int a) {
-                this.a = a;
-            }
         }
 
         @Entity
         @Table(name = "items")
+        @AllArgsConstructor
         static class ItemWithNestedValueHavingEmbeddable {
             @Id
             int id;
 
             SingleHavingEmbeddable nested;
-
-            ItemWithNestedValueHavingEmbeddable(int id, SingleHavingEmbeddable nested) {
-                this.id = id;
-                this.nested = nested;
-            }
         }
 
         @Embeddable
