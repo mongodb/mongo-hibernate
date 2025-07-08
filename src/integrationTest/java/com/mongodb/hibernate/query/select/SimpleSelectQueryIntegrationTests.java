@@ -41,6 +41,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Nested
     class QueryTests {
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
+            getTestCommandListener().clear();
+        }
 
         private static final List<Contact> testingContacts = List.of(
                 new Contact(1, "Bob", 18, Country.USA),
@@ -56,12 +61,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                             .findFirst()
                             .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                     .toList();
-        }
-
-        @BeforeEach
-        void beforeEach() {
-            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
-            getTestCommandListener().clear();
         }
 
         @ParameterizedTest

@@ -1107,6 +1107,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     private static BsonValue toBsonValue(Object value) {
+        // TODO-HIBERNATE-74 decide if `value` is nullable
         try {
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {

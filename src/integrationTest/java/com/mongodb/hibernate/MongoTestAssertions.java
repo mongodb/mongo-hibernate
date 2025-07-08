@@ -40,11 +40,11 @@ public final class MongoTestAssertions {
             @Nullable Object actual,
             BiConsumer<RecursiveComparisonAssert<?>, Object> assertion) {
         assertion.accept(
-                assertThat(expected)
+                assertThat(actual)
                         .usingRecursiveComparison()
                         .usingOverriddenEquals()
                         .withStrictTypeChecking(),
-                actual);
+                expected);
     }
 
     /**
