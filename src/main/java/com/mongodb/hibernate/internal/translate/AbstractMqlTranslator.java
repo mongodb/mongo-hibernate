@@ -513,7 +513,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation).withTernaryNullnessLogicEnforced();
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -592,7 +592,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
                 new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation).withTernaryNullnessLogicEnforced();
         astVisitorValueHolder.yield(FILTER, filter);
     }
 

@@ -151,9 +151,18 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                   "pipeline": [
                     {
                       "$match": {
-                        "outOfStock": {
-                          "$eq": false
-                        }
+                        "$and": [
+                          {
+                            "outOfStock": {
+                              "$eq": false
+                            }
+                          },
+                          {
+                            "outOfStock": {
+                              "$ne": null
+                            }
+                          }
+                        ]
                       }
                     },
                     {
