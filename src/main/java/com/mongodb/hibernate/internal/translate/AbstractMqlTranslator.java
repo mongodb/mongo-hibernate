@@ -713,8 +713,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Insertion statement with source selection is not supported");
         }
 
-        var collection = insertStatement.getTargetTable().getTableExpression();
-        affectedTableNames.add(collection);
+        var collection = addToAffectedCollections(insertStatement.getTargetTable());
 
         var fieldReferences = insertStatement.getTargetColumns();
         assertFalse(fieldReferences.isEmpty());
