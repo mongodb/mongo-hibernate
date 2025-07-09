@@ -23,7 +23,6 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
@@ -41,7 +40,6 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -86,40 +84,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLException(format("Parameter with index [%d] is not set", i + 1));
             }
         }
-        checkComparatorNotComparingWithNullValues();
     }
-
-    /**
-     * Temporary method to ensure exception is thrown when comparison query operators are comparing with {@code null}
-     * values.
-     *
-     * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
-     */
-    private void checkComparatorNotComparingWithNullValues() {
-        doCheckComparatorNotComparingWithNullValues(command);
-    }
-
-    private void doCheckComparatorNotComparingWithNullValues(BsonDocument document) {
-        for (var entry : document.entrySet()) {
-            if (COMPARISON_OPERATOR_NAMES_SUPPORTED.contains(entry.getKey())
-                    && entry.getValue().isNull()) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-            }
-            if (entry.getValue().isDocument()) {
-                doCheckComparatorNotComparingWithNullValues(entry.getValue().asDocument());
-            } else if (entry.getValue().isArray()) {
-                for (var bsonValue : entry.getValue().asArray()) {
-                    if (bsonValue.isDocument()) {
-                        doCheckComparatorNotComparingWithNullValues(bsonValue.asDocument());
-                    }
-                }
-            }
-        }
-    }
-
-    private static final Set<String> COMPARISON_OPERATOR_NAMES_SUPPORTED =
-            Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte");
 
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {

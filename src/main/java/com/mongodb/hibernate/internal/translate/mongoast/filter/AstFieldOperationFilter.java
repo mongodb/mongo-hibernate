@@ -16,9 +16,15 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
+
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import java.util.List;
 import org.bson.BsonWriter;
 
 public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
@@ -27,5 +33,11 @@ public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filte
             filterOperation.render(writer);
         }
         writer.writeEndDocument();
+    }
+
+    public AstFilter withTernaryNullnessLogicEnforced() {
+        var nullFieldExclusionFilter =
+                new AstFieldOperationFilter(fieldPath, new AstComparisonFilterOperation(NE, AstLiteralValue.NULL));
+        return new AstLogicalFilter(AND, List.<AstFilter>of(this, nullFieldExclusionFilter));
     }
 }

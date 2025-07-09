@@ -518,7 +518,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation).withTernaryNullnessLogicEnforced();
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -566,9 +566,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        if (literalValue == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-        }
         astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toLiteralBsonValue(literalValue)));
     }
 
@@ -600,7 +597,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
                 new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
+        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation).withTernaryNullnessLogicEnforced();
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -1020,8 +1017,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toLiteralBsonValue(Object value) {
-        // TODO-HIBERNATE-74 decide if `value` is nullable
+    private static BsonValue toLiteralBsonValue(@Nullable Object value) {
         try {
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {
