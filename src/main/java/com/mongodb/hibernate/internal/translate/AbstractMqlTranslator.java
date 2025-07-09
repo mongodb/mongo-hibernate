@@ -356,7 +356,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQuerySpec(QuerySpec querySpec) {
         if (!querySpec.getGroupByClauseExpressions().isEmpty()) {
-            throw new FeatureNotSupportedException("GroupBy not supported");
+            throw new FeatureNotSupportedException("GroupBy is not supported");
         }
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
@@ -553,7 +553,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitColumnReference(ColumnReference columnReference) {
         if (columnReference.isColumnExpressionFormula()) {
-            throw new FeatureNotSupportedException("Formulas are not supported");
+            throw new FeatureNotSupportedException("Formula is not supported");
         }
         astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
     }
@@ -590,7 +590,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
         if (!isFieldPathExpression(booleanExpressionPredicate.getExpression())) {
-            throw new FeatureNotSupportedException("Expression not of field path not supported");
+            throw new FeatureNotSupportedException("Expression not of field path is not supported");
         }
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
@@ -707,7 +707,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitInsertStatement(InsertSelectStatement insertStatement) {
         checkMutationStatementSupportability(insertStatement);
         if (insertStatement.getConflictClause() != null) {
-            throw new FeatureNotSupportedException("Conflict clause in insert statement is not supported");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
         }
         if (insertStatement.getSourceSelectStatement() != null) {
             throw new FeatureNotSupportedException("Insertion statement with source selection is not supported");
@@ -1028,42 +1028,42 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     private static void checkQueryOptionsSupportability(QueryOptions queryOptions) {
         if (queryOptions.getTimeout() != null) {
-            throw new FeatureNotSupportedException("'timeout' inQueryOptions not supported");
+            throw new FeatureNotSupportedException("'timeout' inQueryOptions is not supported");
         }
         if (queryOptions.getFlushMode() != null) {
-            throw new FeatureNotSupportedException("'flushMode' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'flushMode' in QueryOptions is not supported");
         }
         if (Boolean.TRUE.equals(queryOptions.isReadOnly())) {
-            throw new FeatureNotSupportedException("'readOnly' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'readOnly' in QueryOptions is not supported");
         }
         if (queryOptions.getAppliedGraph() != null
                 && queryOptions.getAppliedGraph().getGraph() != null) {
-            throw new FeatureNotSupportedException("'appliedGraph' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'appliedGraph' in QueryOptions is not supported");
         }
         if (queryOptions.getTupleTransformer() != null) {
-            throw new FeatureNotSupportedException("'tupleTransformer' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'tupleTransformer' in QueryOptions is not supported");
         }
         if (queryOptions.getResultListTransformer() != null) {
-            throw new FeatureNotSupportedException("'resultListTransformer' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'resultListTransformer' in QueryOptions is not supported");
         }
         if (Boolean.TRUE.equals(queryOptions.isResultCachingEnabled())) {
-            throw new FeatureNotSupportedException("'resultCaching' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'resultCaching' in QueryOptions is not supported");
         }
         if (queryOptions.getDisabledFetchProfiles() != null
                 && !queryOptions.getDisabledFetchProfiles().isEmpty()) {
-            throw new FeatureNotSupportedException("'disabledFetchProfiles' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'disabledFetchProfiles' in QueryOptions is not supported");
         }
         if (queryOptions.getEnabledFetchProfiles() != null
                 && !queryOptions.getEnabledFetchProfiles().isEmpty()) {
-            throw new FeatureNotSupportedException("'enabledFetchProfiles' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'enabledFetchProfiles' in QueryOptions is not supported");
         }
         if (queryOptions.getLockOptions() != null
                 && !queryOptions.getLockOptions().isEmpty()) {
-            throw new FeatureNotSupportedException("'lockOptions' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'lockOptions' in QueryOptions is not supported");
         }
         if (queryOptions.getDatabaseHints() != null
                 && !queryOptions.getDatabaseHints().isEmpty()) {
-            throw new FeatureNotSupportedException("'databaseHints' in QueryOptions not supported");
+            throw new FeatureNotSupportedException("'databaseHints' in QueryOptions is not supported");
         }
         if (queryOptions.getFetchSize() != null) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-54 https://jira.mongodb.org/browse/HIBERNATE-54");
@@ -1113,14 +1113,14 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private static void checkCteContainerSupportability(CteContainer cteContainer) {
         if (!cteContainer.getCteStatements().isEmpty()
                 || !cteContainer.getCteObjects().isEmpty()) {
-            throw new FeatureNotSupportedException("CTE not supported");
+            throw new FeatureNotSupportedException("CTE is ");
         }
     }
 
     private static void checkMutationStatementSupportability(AbstractMutationStatement mutationStatement) {
         checkCteContainerSupportability(mutationStatement);
         if (!mutationStatement.getReturningColumns().isEmpty()) {
-            throw new FeatureNotSupportedException("Returning columns from mutation statements not supported");
+            throw new FeatureNotSupportedException("Returning columns from mutation statements is not supported");
         }
         if (mutationStatement instanceof AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
             checkFromClauseSupportability(updateOrDeleteStatement.getFromClause());
