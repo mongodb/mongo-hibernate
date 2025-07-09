@@ -662,21 +662,20 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         checkMutationStatementSupportability(deleteStatement);
-        var collectionAndAstFilter = getCollectionAndFilter(deleteStatement);
-        affectedTableNames.add(collectionAndAstFilter.collection);
+        var collection = addToAffectedCollections(deleteStatement.getTargetTable());
+        var filter = acceptAndYield(deleteStatement.getRestriction(), FILTER);
+
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstDeleteCommand(collectionAndAstFilter.collection, collectionAndAstFilter.filter),
-                        parameterBinders,
-                        affectedTableNames));
+                        new AstDeleteCommand(collection, filter), parameterBinders, affectedTableNames));
     }
 
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
         checkMutationStatementSupportability(updateStatement);
-        var collectionAndAstFilter = getCollectionAndFilter(updateStatement);
-        affectedTableNames.add(collectionAndAstFilter.collection);
+        var collection = addToAffectedCollections(updateStatement.getTargetTable());
+        var filter = acceptAndYield(updateStatement.getRestriction(), FILTER);
 
         var assignments = updateStatement.getAssignments();
         var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
@@ -695,16 +694,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstUpdateCommand(
-                                collectionAndAstFilter.collection, collectionAndAstFilter.filter, fieldUpdates),
-                        parameterBinders,
-                        affectedTableNames));
+                        new AstUpdateCommand(collection, filter, fieldUpdates), parameterBinders, affectedTableNames));
     }
 
-    private CollectionAndFilter getCollectionAndFilter(AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
-        var collection = updateOrDeleteStatement.getTargetTable().getTableExpression();
-        var astFilter = acceptAndYield(updateOrDeleteStatement.getRestriction(), FILTER);
-        return new CollectionAndFilter(collection, astFilter);
+    private String addToAffectedCollections(NamedTableReference tableRef) {
+        var collection = tableRef.getTableExpression();
+        affectedTableNames.add(collection);
+        return collection;
     }
 
     @Override
@@ -1145,8 +1141,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Only single table from clause is supported");
         }
     }
-
-    private record CollectionAndFilter(String collection, AstFilter filter) {}
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
 
