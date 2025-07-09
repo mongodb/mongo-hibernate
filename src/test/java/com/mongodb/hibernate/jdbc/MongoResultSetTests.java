@@ -29,6 +29,7 @@ import static org.mockito.Mockito.doReturn;
 import com.mongodb.client.MongoCursor;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
@@ -239,6 +240,13 @@ class MongoResultSetTests {
                     () -> assertEquals(objectId, mongoResultSet.getObject(1, ObjectId.class)),
                     () -> assertFalse(mongoResultSet.wasNull()));
         }
+
+        @Test
+        void testGettersForUnsupportedTypes() {
+            assertAll(
+                    () -> assertThrowsSQLFeatureNotSupportedException(() -> mongoResultSet.getShort(1)),
+                    () -> assertThrowsSQLFeatureNotSupportedException(() -> mongoResultSet.getFloat(1)));
+        }
     }
 
     private void checkMethodsWithOpenPrecondition(Consumer<Executable> asserter) {
@@ -283,5 +291,10 @@ class MongoResultSetTests {
     private static void assertThrowsTypeMismatchException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).startsWith("Failed to get value from column");
+    }
+
+    private static void assertThrowsSQLFeatureNotSupportedException(Executable executable) {
+        var exception = assertThrows(SQLFeatureNotSupportedException.class, executable);
+        assertThat(exception.getMessage()).matches("get(\\w+) not implemented");
     }
 }
