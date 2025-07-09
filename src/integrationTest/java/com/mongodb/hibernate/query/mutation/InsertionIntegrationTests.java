@@ -41,6 +41,41 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Test
+    void testInsertPartialSingleDocument() {
+        assertMutationQuery(
+                "insert into Book (id, title, outOfStock, isbn13, discount) values (1, 'Pride & Prejudice', false, 9780141439518L, 0.2D)",
+                null,
+                1,
+                """
+                {
+                  "insert": "books",
+                  "documents": [
+                    {
+                      "_id": 1,
+                      "title": "Pride & Prejudice",
+                      "outOfStock": false,
+                      "isbn13": 9780141439518,
+                      "discount": 0.2
+                    }
+                  ]
+                }
+                """,
+                mongoCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "Pride & Prejudice",
+                                  "outOfStock": false,
+                                  "isbn13": 9780141439518,
+                                  "discount": 0.2
+                                }
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Test
     void testInsertSingleDocument() {
         assertMutationQuery(
                 "insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price) values (1, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD)",
