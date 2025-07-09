@@ -714,7 +714,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Conflict clause in insert statement not supported");
         }
         if (insertStatement.getSourceSelectStatement() != null) {
-            throw new FeatureNotSupportedException("Insertion statement with source selection not supported");
+            throw new FeatureNotSupportedException("Insertion statement with source selection is not supported");
         }
 
         var collection = insertStatement.getTargetTable().getTableExpression();
