@@ -94,6 +94,6 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
                 "from Book where " + booleanLiteral,
                 Book.class,
                 FeatureNotSupportedException.class,
-                "Expression not of field path not supported");
+                "Expression not of field path is not supported");
     }
 }
