@@ -59,23 +59,7 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
     @Override
     protected <X> @Nullable X getArray(
             BasicExtractor<X> extractor, java.sql.@Nullable Array array, WrapperOptions options) throws SQLException {
-        if (array != null && getElementJdbcType() instanceof AggregateJdbcType aggregateJdbcType) {
-            var embeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-            var embeddableJavaType = embeddableMappingType.getMappedJavaType().getJavaTypeClass();
-            var rawArray = array.getArray();
-            var domainObjects = (Object[]) Array.newInstance(embeddableJavaType, Array.getLength(rawArray));
-            for (var i = 0; i < domainObjects.length; i++) {
-                var aggregateRawValues = aggregateJdbcType.extractJdbcValues(Array.get(rawArray, i), options);
-                if (aggregateRawValues != null) {
-                    var attributeValues =
-                            StructHelper.getAttributeValues(embeddableMappingType, aggregateRawValues, options);
-                    domainObjects[i] = instantiate(embeddableMappingType, attributeValues, options.getSessionFactory());
-                }
-            }
-            return extractor.getJavaType().wrap(domainObjects, options);
-        } else {
-            return extractor.getJavaType().wrap(array, options);
-        }
+        return super.getArray(extractor, array, options);
     }
 
     public static final class Constructor implements JdbcTypeConstructor {
