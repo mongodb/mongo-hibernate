@@ -17,18 +17,14 @@
 package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
-import static org.hibernate.dialect.StructHelper.instantiate;
 
 import java.io.Serial;
-import java.lang.reflect.Array;
 import java.sql.JDBCType;
 import java.sql.SQLException;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.StructHelper;
 import org.hibernate.tool.schema.extract.spi.ColumnTypeInformation;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.WrapperOptions;
-import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
