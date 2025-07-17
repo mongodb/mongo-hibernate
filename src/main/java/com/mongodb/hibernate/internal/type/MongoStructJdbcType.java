@@ -101,8 +101,8 @@ public final class MongoStructJdbcType implements StructJdbcType {
     }
 
     /**
-     * We replaced this method with {@link #createBsonValue(Object, WrapperOptions)} to make it clear that
-     * {@link #createJdbcValue(Object, WrapperOptions)} is not called by Hibernate ORM.
+     * We replaced this method with {@link #createBsonValue(Object, WrapperOptions)}, to make it clear that this method
+     * is not called by Hibernate ORM.
      */
     @Override
     public BsonValue createJdbcValue(@Nullable Object domainValue, WrapperOptions options) {
