@@ -33,9 +33,11 @@ import org.hibernate.sql.ast.tree.expression.Expression;
 @SuppressWarnings("UnusedTypeParameter")
 final class AstVisitorValueDescriptor<T> {
 
-    static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MUTATION_RESULT =
+    static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MODEL_MUTATION_RESULT =
             new AstVisitorValueDescriptor<>();
     static final AstVisitorValueDescriptor<SelectMqlTranslator.Result> SELECT_RESULT =
+            new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<MutationMqlTranslator.Result> MUTATION_RESULT =
             new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();

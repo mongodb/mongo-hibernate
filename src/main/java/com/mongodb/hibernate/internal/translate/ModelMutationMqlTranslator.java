@@ -18,7 +18,7 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MUTATION_RESULT;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MODEL_MUTATION_RESULT;
 import static java.util.Collections.emptyList;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
@@ -50,7 +50,7 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
         if ((TableMutation<?>) tableMutation instanceof TableUpdateNoSet) {
             result = Result.empty();
         } else {
-            result = acceptAndYield(tableMutation, MUTATION_RESULT);
+            result = acceptAndYield(tableMutation, MODEL_MUTATION_RESULT);
         }
         return result.createJdbcMutationOperation(tableMutation);
     }

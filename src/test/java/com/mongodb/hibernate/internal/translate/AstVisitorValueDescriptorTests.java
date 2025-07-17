@@ -24,6 +24,6 @@ class AstVisitorValueDescriptorTests {
 
     @Test
     void testToString() {
-        assertEquals("MUTATION_RESULT", AstVisitorValueDescriptor.MUTATION_RESULT.toString());
+        assertEquals("MODEL_MUTATION_RESULT", AstVisitorValueDescriptor.MODEL_MUTATION_RESULT.toString());
     }
 }
