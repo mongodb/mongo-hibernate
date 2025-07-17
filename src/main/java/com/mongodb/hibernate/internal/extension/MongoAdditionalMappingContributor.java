@@ -26,7 +26,6 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import java.util.Collection;
 import java.util.Set;
-import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
@@ -59,18 +58,10 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             MetadataBuildingContext buildingContext) {
         forbidEmbeddablesWithoutPersistentAttributes(metadata);
         metadata.getEntityBindings().forEach(persistentClass -> {
-            forbidDynamicInsert(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
-    }
-
-    private static void forbidDynamicInsert(PersistentClass persistentClass) {
-        if (persistentClass.useDynamicInsert()) {
-            throw new FeatureNotSupportedException(
-                    format("%s: %s is not supported", persistentClass, DynamicInsert.class.getSimpleName()));
-        }
     }
 
     private static void checkColumnNames(PersistentClass persistentClass) {
