@@ -184,11 +184,7 @@ public final class ValueConversions {
         } else if (value instanceof BsonDecimal128 v) {
             return toDomainValue(v);
         } else if (value instanceof BsonString v) {
-            if (domainType.isArray()) {
-                return toDomainValue(v);
-            } else {
-                return toDomainValue(v, domainType);
-            }
+            return toDomainValue(v, domainType);
         } else if (value instanceof BsonBinary v) {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
@@ -249,17 +245,25 @@ public final class ValueConversions {
         return value.decimal128Value().bigDecimalValue();
     }
 
-    public static String toStringDomainValue(BsonValue value) {
+    public static String toStringDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
         return toDomainValue(value.asString(), String.class);
     }
 
-    private static <T> T toDomainValue(BsonString value, Class<T> domainType) {
-        var v = value.getValue();
+    private static <T> T toDomainValue(BsonString value, Class<T> domainType) throws SQLFeatureNotSupportedException {
         Object result;
-        if (domainType.equals(Character.class)) {
-            result = toDomainValue(v);
+        if (domainType.equals(char[].class)) {
+            result = toDomainValue(value);
         } else {
-            result = v;
+            var v = value.getValue();
+            if (domainType.equals(Character.class) && v.length() == 1) {
+                result = toDomainValue(v);
+            } else if (domainType.equals(String.class) || domainType.equals(Object.class)) {
+                result = v;
+            } else {
+                throw new SQLFeatureNotSupportedException(format(
+                        "Value [%s] of type [%s] is not supported for the domain type [%s]",
+                        value, value.getClass().getTypeName(), domainType));
+            }
         }
         return domainType.cast(result);
     }
@@ -304,7 +308,7 @@ public final class ValueConversions {
     }
 
     /** @see #toBsonValue(char[]) */
-    private static char[] toDomainValue(BsonString value) {
+    private static char[] toDomainValue(BsonString value) throws SQLFeatureNotSupportedException {
         return toDomainValue(value, String.class).toCharArray();
     }
 }
