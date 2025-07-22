@@ -120,7 +120,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static final Set<String> COMPARISON_OPERATOR_NAMES_SUPPORTED =
-            Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte");
+            Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
 
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
