@@ -49,7 +49,7 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
             new Book(2, "Crime and Punishment", 1866, false),
             new Book(3, "Anna Karenina", 1877, false),
             new Book(4, "The Brothers Karamazov", null, false),
-            new Book(5, "War and Peace", 2025, false),
+            new Book(5, "War and Peace", 2025, true),
             new Book(6, null, 2000, false));
 
     private static List<Book> getBooksByIds(int... ids) {
@@ -171,19 +171,42 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                     }
                   ]
                 }""",
-                getBooksByIds(6, 3, 2, 4, 5));
+                getBooksByIds(6, 3, 2, 4));
     }
 
     @Test
     void testOrderByMultipleFieldsWithTies() {
         assertSelectionQuery(
-                "from Book ORDER BY title ASC",
+                "from Book ORDER BY title ASC, publishYear DESC",
                 Book.class,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
+                """
+                {
+                  "aggregate": "books",
+                  "pipeline": [
+                    {
+                      "$sort": {
+                        "title": 1,
+                        "publishYear": -1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id": true,
+                        "discount": true,
+                        "isbn13": true,
+                        "outOfStock": true,
+                        "price": true,
+                        "publishYear": true,
+                        "title": true
+                      }
+                    }
+                  ]
+                }
+                """,
                 resultList -> assertThat(resultList)
                         .satisfiesAnyOf(
                                 list -> assertIterableEq(getBooksByIds(6, 3, 2, 4, 1, 5), list),
-                                list -> assertIterableEq(getBooksByIds(3, 2, 4, 5, 1, 6), list)));
+                                list -> assertIterableEq(getBooksByIds(6, 3, 2, 4, 5, 1), list)));
     }
 
     @Test

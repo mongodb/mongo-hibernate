@@ -96,10 +96,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
      * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
      */
     private void checkComparatorNotComparingWithNullValues() {
-        doCheckComparatorNotComparingWithNullValues(command);
+        checkComparatorNotComparingWithNullValuesRecursively(command);
     }
 
-    private void doCheckComparatorNotComparingWithNullValues(BsonDocument document) {
+    private void checkComparatorNotComparingWithNullValuesRecursively(BsonDocument document) {
         for (var entry : document.entrySet()) {
             if (COMPARISON_OPERATOR_NAMES_SUPPORTED.contains(entry.getKey())
                     && entry.getValue().isNull()) {
@@ -107,11 +107,12 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                         "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
             }
             if (entry.getValue().isDocument()) {
-                doCheckComparatorNotComparingWithNullValues(entry.getValue().asDocument());
+                checkComparatorNotComparingWithNullValuesRecursively(
+                        entry.getValue().asDocument());
             } else if (entry.getValue().isArray()) {
                 for (var bsonValue : entry.getValue().asArray()) {
                     if (bsonValue.isDocument()) {
-                        doCheckComparatorNotComparingWithNullValues(bsonValue.asDocument());
+                        checkComparatorNotComparingWithNullValuesRecursively(bsonValue.asDocument());
                     }
                 }
             }
