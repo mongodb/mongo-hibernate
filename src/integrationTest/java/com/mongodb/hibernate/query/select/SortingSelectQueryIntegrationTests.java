@@ -43,7 +43,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @BeforeEach
-    protected void beforeEach() {
+    void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
         getTestCommandListener().clear();
     }
