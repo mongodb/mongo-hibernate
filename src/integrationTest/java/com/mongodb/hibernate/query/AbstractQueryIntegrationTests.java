@@ -163,9 +163,9 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
     }
 
-    protected <T> void assertSelectQueryFailure(
+    protected void assertSelectQueryFailure(
             String hql,
-            Class<T> resultType,
+            Class<?> resultType,
             Class<? extends Exception> expectedExceptionType,
             String expectedExceptionMessage,
             Object... expectedExceptionMessageParameters) {
