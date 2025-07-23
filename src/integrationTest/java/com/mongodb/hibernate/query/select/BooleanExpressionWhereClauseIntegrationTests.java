@@ -34,7 +34,7 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
     private Book bookInStock;
 
     @BeforeEach
-    protected void beforeEach() {
+    void beforeEach() {
         bookOutOfStock = new Book();
         bookOutOfStock.id = 1;
         bookOutOfStock.outOfStock = true;
