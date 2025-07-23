@@ -41,7 +41,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
             new Book(5, "War & Peace", 2025, false));
 
     @BeforeEach
-    protected void beforeEach() {
+    void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
         getTestCommandListener().clear();
     }
