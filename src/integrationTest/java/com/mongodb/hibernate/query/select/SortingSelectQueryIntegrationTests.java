@@ -42,18 +42,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 @DomainModel(annotatedClasses = Book.class)
 class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
-    @BeforeEach
-    void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
-    }
-
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
             new Book(2, "Crime and Punishment", 1866, false),
             new Book(3, "Anna Karenina", 1877, false),
             new Book(4, "The Brothers Karamazov", 1880, false),
             new Book(5, "War and Peace", 2025, false));
+
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
 
     private static List<Book> getBooksByIds(int... ids) {
         return Arrays.stream(ids)
