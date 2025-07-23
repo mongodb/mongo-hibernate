@@ -662,7 +662,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         checkMutationStatementSupportability(deleteStatement);
-        var collection = addToAffectedCollections(deleteStatement.getTargetTable());
+        var collection = addToAffectedTableNames(deleteStatement.getTargetTable());
         var filter = acceptAndYield(deleteStatement.getRestriction(), FILTER);
 
         astVisitorValueHolder.yield(
@@ -674,7 +674,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitUpdateStatement(UpdateStatement updateStatement) {
         checkMutationStatementSupportability(updateStatement);
-        var collection = addToAffectedCollections(updateStatement.getTargetTable());
+        var collection = addToAffectedTableNames(updateStatement.getTargetTable());
         var filter = acceptAndYield(updateStatement.getRestriction(), FILTER);
 
         var assignments = updateStatement.getAssignments();
@@ -697,7 +697,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                         new AstUpdateCommand(collection, filter, fieldUpdates), parameterBinders, affectedTableNames));
     }
 
-    private String addToAffectedCollections(NamedTableReference tableRef) {
+    private String addToAffectedTableNames(NamedTableReference tableRef) {
         var collection = tableRef.getTableExpression();
         affectedTableNames.add(collection);
         return collection;
@@ -713,7 +713,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Insertion statement with source selection is not supported");
         }
 
-        var collection = addToAffectedCollections(insertStatement.getTargetTable());
+        var collection = addToAffectedTableNames(insertStatement.getTargetTable());
 
         var fieldReferences = insertStatement.getTargetColumns();
         assertFalse(fieldReferences.isEmpty());
@@ -1113,7 +1113,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private static void checkCteContainerSupportability(CteContainer cteContainer) {
         if (!cteContainer.getCteStatements().isEmpty()
                 || !cteContainer.getCteObjects().isEmpty()) {
-            throw new FeatureNotSupportedException("CTE is ");
+            throw new FeatureNotSupportedException("CTE is not supported");
         }
     }
 

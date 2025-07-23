@@ -61,6 +61,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 @DomainModel(annotatedClasses = Book.class)
 class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTests {
 
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
+
     private static final List<Book> testingBooks = List.of(
             new Book(0, "Nostromo", 1904, true),
             new Book(1, "The Age of Innocence", 1920, false),
@@ -80,12 +86,6 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         .findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                 .toList();
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Nested
