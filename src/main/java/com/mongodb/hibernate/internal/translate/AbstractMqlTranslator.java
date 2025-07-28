@@ -561,9 +561,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        if (literalValue == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-        }
         astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toLiteralBsonValue(literalValue)));
     }
 
@@ -1090,8 +1087,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toLiteralBsonValue(Object value) {
-        // TODO-HIBERNATE-74 decide if `value` is nullable
+    private static BsonValue toLiteralBsonValue(@Nullable Object value) {
         try {
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {
