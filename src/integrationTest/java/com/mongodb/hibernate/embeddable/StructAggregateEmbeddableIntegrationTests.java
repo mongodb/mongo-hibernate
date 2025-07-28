@@ -16,13 +16,6 @@
 
 package com.mongodb.hibernate.embeddable;
 
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -34,12 +27,6 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.sql.SQLFeatureNotSupportedException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.annotations.Parent;
@@ -52,6 +39,18 @@ import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
@@ -462,12 +461,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
-        // `loadedItem.nested` is `null` despite `item.nested` not being `null`.
-        // There is nothing we can do here, such is the Hibernate ORM behavior.
-        assertNull(loadedItem.nested);
-        assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
-                .ignoringFields("nested")
-                .isEqualTo(expected));
+        assertEq(item, loadedItem);
     }
 
     @Test
@@ -494,9 +488,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 insertResult.getInsertedId().asInt32().getValue());
         var expectedItem = new ItemWithNestedValues(
                 id,
-                // `loadedItem.nested1` is `null` despite `nested1` not being BSON `Null` in the database.
-                // There is nothing we can do here, such is the Hibernate ORM behavior.
-                null,
+                new Single(),
                 new PairWithParent(
                         3,
                         new Plural(
