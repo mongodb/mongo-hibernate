@@ -54,7 +54,6 @@ final class MutationMqlTranslator extends AbstractMqlTranslator<JdbcOperationQue
 
         logSqlAst(mutationStatement);
 
-        checkJdbcParameterBindingsSupportability(jdbcParameterBindings);
         applyQueryOptions(queryOptions);
 
         var result = acceptAndYield(mutationStatement, MUTATION_RESULT);

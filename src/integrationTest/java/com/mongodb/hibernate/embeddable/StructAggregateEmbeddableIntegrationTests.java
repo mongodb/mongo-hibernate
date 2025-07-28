@@ -16,6 +16,11 @@
 
 package com.mongodb.hibernate.embeddable;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -27,6 +32,12 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.annotations.Parent;
@@ -39,18 +50,6 @@ import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.math.BigDecimal;
-import java.sql.SQLFeatureNotSupportedException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
@@ -471,7 +470,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         """
                         {
                             _id: 1,
-                            nested1: {},
+                            nested1: {a: 0},
                             nested2: {
                                 a: 3,
                                 nested: {
