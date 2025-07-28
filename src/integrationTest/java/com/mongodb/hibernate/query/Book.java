@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.select;
+package com.mongodb.hibernate.query;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -22,21 +22,23 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
 @Entity(name = "Book")
-@Table(name = "books")
-class Book {
+@Table(name = Book.COLLECTION_NAME)
+public class Book {
+    public static final String COLLECTION_NAME = "books";
+
     @Id
-    int id;
+    public int id;
 
-    String title;
-    Boolean outOfStock;
-    Integer publishYear;
-    Long isbn13;
-    Double discount;
-    BigDecimal price;
+    public String title;
+    public Boolean outOfStock;
+    public Integer publishYear;
+    public Long isbn13;
+    public Double discount;
+    public BigDecimal price;
 
-    Book() {}
+    public Book() {}
 
-    Book(int id, String title, Integer publishYear, Boolean outOfStock) {
+    public Book(int id, String title, Integer publishYear, Boolean outOfStock) {
         this.id = id;
         this.title = title;
         this.publishYear = publishYear;

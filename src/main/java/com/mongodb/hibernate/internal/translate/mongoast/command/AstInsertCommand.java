@@ -16,10 +16,18 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
+import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstInsertCommand(String collection, AstDocument document) implements AstCommand {
+public record AstInsertCommand(String collection, List<? extends AstDocument> documents) implements AstCommand {
+
+    public AstInsertCommand {
+        assertFalse(documents.isEmpty());
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
@@ -28,7 +36,7 @@ public record AstInsertCommand(String collection, AstDocument document) implemen
             writer.writeName("documents");
             writer.writeStartArray();
             {
-                document.render(writer);
+                documents.forEach(document -> document.render(writer));
             }
             writer.writeEndArray();
         }
