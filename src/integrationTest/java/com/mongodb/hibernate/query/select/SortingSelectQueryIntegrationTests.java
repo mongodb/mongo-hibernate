@@ -25,8 +25,11 @@ import static org.hibernate.query.NullPrecedence.NONE;
 import static org.hibernate.query.SortDirection.ASCENDING;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
@@ -37,12 +40,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrationTests {
-    @BeforeEach
-    void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
-    }
+class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
@@ -50,6 +48,12 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
             new Book(3, "Anna Karenina", 1877, false),
             new Book(4, "The Brothers Karamazov", 1880, false),
             new Book(5, "War and Peace", 2025, false));
+
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
 
     private static List<Book> getBooksByIds(int... ids) {
         return Arrays.stream(ids)
@@ -90,7 +94,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 }
                 """
                         .formatted(sortDirection.equals("ASC") ? 1 : -1),
-                sortDirection.equals("ASC") ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2));
+                sortDirection.equals("ASC") ? getBooksByIds(2, 1, 3, 4, 5) : getBooksByIds(5, 4, 3, 1, 2),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @ParameterizedTest
@@ -131,7 +136,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                         : resultList -> assertThat(resultList)
                                 .satisfiesAnyOf(
                                         list -> assertIterableEq(getBooksByIds(1, 5, 4, 2, 3), list),
-                                        list -> assertIterableEq(getBooksByIds(5, 1, 4, 2, 3), list)));
+                                        list -> assertIterableEq(getBooksByIds(5, 1, 4, 2, 3), list)),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
@@ -170,7 +176,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                     }
                   ]
                 }""",
-                getBooksByIds(3, 2, 4, 5));
+                getBooksByIds(3, 2, 4, 5),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
@@ -182,7 +189,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                 resultList -> assertThat(resultList)
                         .satisfiesAnyOf(
                                 list -> assertIterableEq(getBooksByIds(3, 2, 4, 1, 5), list),
-                                list -> assertIterableEq(getBooksByIds(3, 2, 4, 5, 1), list)));
+                                list -> assertIterableEq(getBooksByIds(3, 2, 4, 5, 1), list)),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
@@ -214,7 +222,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                         new Object[] {"The Brothers Karamazov", 1880},
                         new Object[] {"Anna Karenina", 1877},
                         new Object[] {"War and Peace", 1869},
-                        new Object[] {"Crime and Punishment", 1866}));
+                        new Object[] {"Crime and Punishment", 1866}),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Test
@@ -245,13 +254,14 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                         new Object[] {"Crime and Punishment", 1866},
                         new Object[] {"The Brothers Karamazov", 1880},
                         new Object[] {"War and Peace", 2025},
-                        new Object[] {"War and Peace", 1869}));
+                        new Object[] {"War and Peace", 1869}),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @Nested
     @DomainModel(annotatedClasses = Book.class)
     @ServiceRegistry(settings = @Setting(name = DEFAULT_NULL_ORDERING, value = "first"))
-    class DefaultNullPrecedenceTests extends AbstractSelectionQueryIntegrationTests {
+    class DefaultNullPrecedenceTests extends AbstractQueryIntegrationTests {
         @Test
         void testDefaultNullPrecedenceFeatureNotSupported() {
             assertSelectQueryFailure(
@@ -331,7 +341,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                       ]
                     }
                     """,
-                    getBooksByIds(2, 1, 3, 4, 5));
+                    getBooksByIds(2, 1, 3, 4, 5),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @Test
@@ -364,7 +375,8 @@ class SortingSelectQueryIntegrationTests extends AbstractSelectionQueryIntegrati
                       ]
                     }
                     """,
-                    getBooksByIds(5, 1, 4, 2, 3));
+                    getBooksByIds(5, 1, 4, 2, 3),
+                    Set.of(Book.COLLECTION_NAME));
         }
     }
 }

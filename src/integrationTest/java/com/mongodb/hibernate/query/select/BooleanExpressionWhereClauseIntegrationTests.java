@@ -19,13 +19,16 @@ package com.mongodb.hibernate.query.select;
 import static java.util.Collections.singletonList;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
+import java.util.Set;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrationTests {
 
     private Book bookOutOfStock;
     private Book bookInStock;
@@ -54,19 +57,43 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractSelectionQuer
         assertSelectionQuery(
                 "from Book where" + (negated ? " not " : " ") + "outOfStock",
                 Book.class,
-                "{'aggregate': 'books', 'pipeline': [{'$match': {'outOfStock': {'$eq': "
-                        + (negated ? "false" : "true")
-                        + "}}}, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true}}]}",
-                negated ? singletonList(bookInStock) : singletonList(bookOutOfStock));
+                """
+                {
+                  "aggregate": "books",
+                  "pipeline": [
+                    {
+                      "$match": {
+                        "outOfStock": {
+                          "$eq": %s
+                        }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id": true,
+                        "discount": true,
+                        "isbn13": true,
+                        "outOfStock": true,
+                        "price": true,
+                        "publishYear": true,
+                        "title": true
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(negated ? "false" : "true"),
+                negated ? singletonList(bookInStock) : singletonList(bookOutOfStock),
+                Set.of(Book.COLLECTION_NAME));
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void testNonFieldPathExpressionNotSupported(final boolean booleanLiteral) {
+    void testNonFieldPathExpressionNotSupported(boolean booleanLiteral) {
         assertSelectQueryFailure(
                 "from Book where " + booleanLiteral,
                 Book.class,
                 FeatureNotSupportedException.class,
-                "Expression not of field path not supported");
+                "Expression not of field path is not supported");
     }
 }

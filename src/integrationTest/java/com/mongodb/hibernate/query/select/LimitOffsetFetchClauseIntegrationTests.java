@@ -26,8 +26,11 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
@@ -56,7 +59,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = Book.class)
-class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTests {
 
     private static final List<Book> testingBooks = List.of(
             new Book(0, "Nostromo", 1904, true),
@@ -70,6 +73,12 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
             new Book(8, "Sons and Lovers", 1913, false),
             new Book(9, "The Sound and the Fury", 1929, false));
 
+    @BeforeEach
+    void beforeEach() {
+        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getTestCommandListener().clear();
+    }
+
     private static List<Book> getBooksByIds(int... ids) {
         return Arrays.stream(ids)
                 .mapToObj(id -> testingBooks.stream()
@@ -77,12 +86,6 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                         .findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                 .toList();
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Nested
@@ -122,7 +125,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     }
                     """
                             .formatted(5),
-                    getBooksByIds(0, 1, 2, 3, 4));
+                    getBooksByIds(0, 1, 2, 3, 4),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -159,7 +163,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     }
                     """
                             .formatted(7),
-                    getBooksByIds(7, 8, 9));
+                    getBooksByIds(7, 8, 9),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -203,7 +208,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     }
                     """
                             .formatted(3, 2),
-                    getBooksByIds(3, 4));
+                    getBooksByIds(3, 4),
+                    Set.of(Book.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -244,7 +250,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                     }
                     """
                             .formatted(5),
-                    getBooksByIds(0, 1, 2, 3, 4));
+                    getBooksByIds(0, 1, 2, 3, 4),
+                    Set.of(Book.COLLECTION_NAME));
         }
     }
 
@@ -286,7 +293,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                         }
                         """
                                 .formatted(6),
-                        getBooksByIds(6, 7, 8, 9));
+                        getBooksByIds(6, 7, 8, 9),
+                        Set.of(Book.COLLECTION_NAME));
             }
 
             @Test
@@ -322,7 +330,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                         }
                         """
                                 .formatted(3),
-                        getBooksByIds(0, 1, 2));
+                        getBooksByIds(0, 1, 2),
+                        Set.of(Book.COLLECTION_NAME));
             }
 
             @Test
@@ -361,7 +370,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                         }
                         """
                                 .formatted(2, 3),
-                        getBooksByIds(2, 3, 4));
+                        getBooksByIds(2, 3, 4),
+                        Set.of(Book.COLLECTION_NAME));
             }
         }
 
@@ -407,7 +417,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                                         .setParameter("offset", 0)
                                         .setFirstResult(firstResult),
                         expectedMqlTemplate.formatted("{\"$skip\": " + firstResult + "}"),
-                        expectedBooks);
+                        expectedBooks,
+                        Set.of(Book.COLLECTION_NAME));
             }
 
             @Test
@@ -423,7 +434,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                                         .setParameter("offset", 0)
                                         .setMaxResults(maxResults),
                         expectedMqlTemplate.formatted("{\"$limit\": " + maxResults + "}"),
-                        expectedBooks);
+                        expectedBooks,
+                        Set.of(Book.COLLECTION_NAME));
             }
 
             @Test
@@ -442,7 +454,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                                         .setMaxResults(maxResults),
                         expectedMqlTemplate.formatted(
                                 "{\"$skip\": " + firstResult + "}," + "{\"$limit\": " + maxResults + "}"),
-                        expectedBooks);
+                        expectedBooks,
+                        Set.of(Book.COLLECTION_NAME));
             }
         }
     }
@@ -482,7 +495,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractSelectionQueryInteg
                         value =
                                 "com.mongodb.hibernate.query.select.LimitOffsetFetchClauseIntegrationTests$TranslatingCacheTestingDialect"),
             })
-    class QueryPlanCacheTests extends AbstractSelectionQueryIntegrationTests {
+    class QueryPlanCacheTests extends AbstractQueryIntegrationTests {
 
         private static final String HQL = "from Book order by id";
         private static final String expectedMqlTemplate =
