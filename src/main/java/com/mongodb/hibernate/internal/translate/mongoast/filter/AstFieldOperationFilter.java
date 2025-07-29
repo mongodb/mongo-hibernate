@@ -23,7 +23,12 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
 import java.util.List;
 import org.bson.BsonWriter;
 
-public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
+public record AstFieldOperationFilter(String fieldPath, boolean requiresNullSafety, AstFilterOperation filterOperation)
+        implements AstFilter {
+
+    public AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) {
+        this(fieldPath, true, filterOperation);
+    }
 
     @Override
     public void render(BsonWriter writer) {
@@ -36,6 +41,9 @@ public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filte
     }
 
     public AstFilter withTernaryNullnessLogicEnforced() {
+        if (!requiresNullSafety) {
+            return this;
+        }
         var nullFieldExclusionFilter =
                 new AstFieldOperationFilter(fieldPath, new AstComparisonFilterOperation(NE, AstLiteralValue.NULL));
         return new AstLogicalFilter(AND, List.<AstFilter>of(this, nullFieldExclusionFilter));

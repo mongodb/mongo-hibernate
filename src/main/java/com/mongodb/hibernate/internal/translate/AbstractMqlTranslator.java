@@ -657,6 +657,25 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @Override
+    public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
+        var expression = nullnessPredicate.getExpression();
+        var isNegated = nullnessPredicate.isNegated();
+        var filter = createNullnessFieldComparisonFilter(expression, isNegated);
+        astVisitorValueHolder.yield(FILTER, filter);
+    }
+
+    private AstFieldOperationFilter createNullnessFieldComparisonFilter(Expression expression, boolean isNegated) {
+        if (!isFieldPathExpression(expression)) {
+            throw new FeatureNotSupportedException(
+                    format("Nullness predicate on expression [%s] not of field path is not supported", expression));
+        }
+        var fieldPath = acceptAndYield(expression, FIELD_PATH);
+        var comparisonOperator = isNegated ? NE : EQ;
+        return new AstFieldOperationFilter(
+                fieldPath, false, new AstComparisonFilterOperation(comparisonOperator, AstLiteralValue.NULL));
+    }
+
+    @Override
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         checkMutationStatementSupportability(deleteStatement);
         var collection = addToAffectedTableNames(deleteStatement.getTargetTable());
@@ -948,11 +967,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
-        throw new FeatureNotSupportedException();
-    }
-
-    @Override
-    public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
         throw new FeatureNotSupportedException();
     }
 
