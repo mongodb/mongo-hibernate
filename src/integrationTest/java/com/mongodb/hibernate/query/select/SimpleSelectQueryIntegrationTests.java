@@ -41,11 +41,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Nested
     class QueryTests {
-        @BeforeEach
-        void beforeEach() {
-            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
-            getTestCommandListener().clear();
-        }
 
         private static final List<Contact> testingContacts = List.of(
                 new Contact(1, "Bob", 18, Country.USA),
@@ -53,6 +48,12 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 new Contact(3, "Dylan", 7, Country.CANADA),
                 new Contact(4, "Lucy", 78, Country.CANADA),
                 new Contact(5, "John", 25, Country.USA));
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
+            getTestCommandListener().clear();
+        }
 
         private static List<Contact> getTestingContacts(int... ids) {
             return Arrays.stream(ids)
