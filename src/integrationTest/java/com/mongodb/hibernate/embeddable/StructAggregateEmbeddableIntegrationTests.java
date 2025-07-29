@@ -560,7 +560,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         /**
-         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
+         * Hibernate ORM requires a setter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
          * field-based access}.
          */
         void setParent(ItemWithNestedValues parent) {
