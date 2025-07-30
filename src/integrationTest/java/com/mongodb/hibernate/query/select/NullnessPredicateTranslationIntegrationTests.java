@@ -16,18 +16,20 @@
 
 package com.mongodb.hibernate.query.select;
 
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = {NullnessPredicateTranslationIntegrationTests.Book.class})
-class NullnessPredicateTranslationIntegrationTests extends AbstractSelectionQueryIntegrationTests {
+class NullnessPredicateTranslationIntegrationTests extends AbstractQueryIntegrationTests {
 
     @BeforeEach
     void beforeEach() {
@@ -96,7 +98,8 @@ class NullnessPredicateTranslationIntegrationTests extends AbstractSelectionQuer
                   ]
                 }"""
                         .formatted(isNegated ? "$ne" : "$eq"),
-                isNegated ? getBooksByIds(4) : getBooksByIds(1));
+                isNegated ? getBooksByIds(4) : getBooksByIds(1),
+                Set.of("books"));
     }
 
     @Entity(name = "Book")

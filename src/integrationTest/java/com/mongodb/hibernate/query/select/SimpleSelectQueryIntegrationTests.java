@@ -146,7 +146,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    emptyList());
+                    emptyList(),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -227,7 +228,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(1, 2, 3, 4, 5, 6, 8));
+                    getTestingContacts(1, 2, 3, 4, 5, 6, 8),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -308,7 +310,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    emptyList());
+                    emptyList(),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -389,7 +392,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    emptyList());
+                    emptyList(),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -429,7 +433,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    getTestingContacts(2, 4, 5, 6));
+                    getTestingContacts(2, 4, 5, 6),
+                    Set.of(Contact.COLLECTION_NAME));
         }
 
         @ParameterizedTest
@@ -678,16 +683,89 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     Contact.class,
                     """
                     {
+                       "aggregate": "contacts",
+                       "pipeline": [
+                         {
+                           "$match": {
+                             "$and": [
+                               {
+                                 "$and": [
+                                   {
+                                     "age": {
+                                       "$gt": {
+                                         "$numberInt": "18"
+                                       }
+                                     }
+                                   },
+                                   {
+                                     "age": {
+                                       "$ne": null
+                                     }
+                                   }
+                                 ]
+                               },
+                               {
+                                 "$and": [
+                                   {
+                                     "country": {
+                                       "$ne": "USA"
+                                     }
+                                   },
+                                   {
+                                     "country": {
+                                       "$ne": null
+                                     }
+                                   }
+                                 ]
+                               }
+                             ]
+                           }
+                         },
+                         {
+                           "$project": {
+                             "_id": true,
+                             "age": true,
+                             "country": true,
+                             "name": true
+                           }
+                         }
+                       ]
+                     }""",
+                    getTestingContacts(2, 4),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testSingleNegationWithAnd() {
+            assertSelectionQuery(
+                    "from Contact where not (country = 'USA' and age > 18)",
+                    Contact.class,
+                    """
+                    {
                       "aggregate": "contacts",
                       "pipeline": [
                         {
                           "$match": {
-                            "$and": [
+                            "$or": [
+                              {
+                                "$and": [
+                                  {
+                                    "country": {
+                                      "$ne": "USA"
+                                    }
+                                  },
+                                  {
+                                    "country": {
+                                      "$ne": null
+                                    }
+                                  }
+                                ]
+                              },
                               {
                                 "$and": [
                                   {
                                     "age": {
-                                      "$gt": {
+                                      "$lte": {
                                         "$numberInt": "18"
                                       }
                                     }
@@ -698,14 +776,102 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                     }
                                   }
                                 ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(1, 2, 3, 4, 8),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testSingleNegationWithOr() {
+            assertSelectionQuery(
+                    "from Contact where not (country = 'USA' or age > 18)",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$and": [
+                              {
+                                "$and": [
+                                  {
+                                    "country": {
+                                      "$ne": "USA"
+                                    }
+                                  },
+                                  {
+                                    "country": {
+                                      "$ne": null
+                                    }
+                                  }
+                                ]
                               },
                               {
-                                "$nor": [
+                                "$and": [
+                                  {
+                                    "age": {
+                                      "$lte": {
+                                        "$numberInt": "18"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "age": {
+                                      "$ne": null
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(3),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testSingleNegationWithAndOr() {
+            assertSelectionQuery(
+                    "from Contact where not (country = 'USA' and age > 18 or age < 25)",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$and": [
+                              {
+                                "$or": [
                                   {
                                     "$and": [
                                       {
                                         "country": {
-                                          "$eq": "USA"
+                                          "$ne": "USA"
                                         }
                                       },
                                       {
@@ -714,6 +880,38 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                         }
                                       }
                                     ]
+                                  },
+                                  {
+                                    "$and": [
+                                      {
+                                        "age": {
+                                          "$lte": {
+                                            "$numberInt": "18"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "age": {
+                                          "$ne": null
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "$and": [
+                                  {
+                                    "age": {
+                                      "$gte": {
+                                        "$numberInt": "25"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "age": {
+                                      "$ne": null
+                                    }
                                   }
                                 ]
                               }
@@ -731,215 +929,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                       ]
                     }""",
                     getTestingContacts(2, 4),
-                    Set.of(Contact.COLLECTION_NAME));
-        }
-
-        @Test
-        void testSingleNegationWithAnd() {
-            assertSelectionQuery(
-                    "from Contact where not (country = 'USA' and age > 18)",
-                    Contact.class,
-                    """
-                    {
-                      "aggregate": "contacts",
-                      "pipeline": [
-                        {
-                          "$match": {
-                            "$nor": [
-                              {
-                                "$and": [
-                                  {
-                                    "$and": [
-                                      {
-                                        "country": {
-                                          "$eq": "USA"
-                                        }
-                                      },
-                                      {
-                                        "country": {
-                                          "$ne": null
-                                        }
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "$and": [
-                                      {
-                                        "age": {
-                                          "$gt": {
-                                            "$numberInt": "18"
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "age": {
-                                          "$ne": null
-                                        }
-                                      }
-                                    ]
-                                  }
-                                ]
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
-                          }
-                        }
-                      ]
-                    }""",
-                    getTestingContacts(1, 2, 3, 4, 7, 8),
-                    Set.of(Contact.COLLECTION_NAME));
-        }
-
-        @Test
-        void testSingleNegationWithOr() {
-            assertSelectionQuery(
-                    "from Contact where not (country = 'USA' or age > 18)",
-                    Contact.class,
-                    """
-                    {
-                      "aggregate": "contacts",
-                      "pipeline": [
-                        {
-                          "$match": {
-                            "$nor": [
-                              {
-                                "$or": [
-                                  {
-                                    "$and": [
-                                      {
-                                        "country": {
-                                          "$eq": "USA"
-                                        }
-                                      },
-                                      {
-                                        "country": {
-                                          "$ne": null
-                                        }
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "$and": [
-                                      {
-                                        "age": {
-                                          "$gt": {
-                                            "$numberInt": "18"
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "age": {
-                                          "$ne": null
-                                        }
-                                      }
-                                    ]
-                                  }
-                                ]
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
-                          }
-                        }
-                      ]
-                    }""",
-                    getTestingContacts(3, 7, 8),
-                    Set.of(Contact.COLLECTION_NAME));
-        }
-
-        @Test
-        void testSingleNegationWithAndOr() {
-            assertSelectionQuery(
-                    "from Contact where not (country = 'USA' and age > 18 or age < 25)",
-                    Contact.class,
-                    """
-                    {
-                      "aggregate": "contacts",
-                      "pipeline": [
-                        {
-                          "$match": {
-                            "$nor": [
-                              {
-                                "$or": [
-                                  {
-                                    "$and": [
-                                      {
-                                        "$and": [
-                                          {
-                                            "country": {
-                                              "$eq": "USA"
-                                            }
-                                          },
-                                          {
-                                            "country": {
-                                              "$ne": null
-                                            }
-                                          }
-                                        ]
-                                      },
-                                      {
-                                        "$and": [
-                                          {
-                                            "age": {
-                                              "$gt": {
-                                                "$numberInt": "18"
-                                              }
-                                            }
-                                          },
-                                          {
-                                            "age": {
-                                              "$ne": null
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "$and": [
-                                      {
-                                        "age": {
-                                          "$lt": {
-                                            "$numberInt": "25"
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "age": {
-                                          "$ne": null
-                                        }
-                                      }
-                                    ]
-                                  }
-                                ]
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
-                          }
-                        }
-                      ]
-                    }""",
-                    getTestingContacts(2, 4, 7, 8),
                     Set.of(Contact.COLLECTION_NAME));
         }
 
@@ -972,24 +961,16 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                 ]
                               },
                               {
-                                "$nor": [
+                                "$and": [
                                   {
-                                    "$nor": [
-                                      {
-                                        "$and": [
-                                          {
-                                            "country": {
-                                              "$eq": "USA"
-                                            }
-                                          },
-                                          {
-                                            "country": {
-                                              "$ne": null
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    ]
+                                    "country": {
+                                      "$eq": "USA"
+                                    }
+                                  },
+                                  {
+                                    "country": {
+                                      "$ne": null
+                                    }
                                   }
                                 ]
                               }
@@ -1013,65 +994,57 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @Test
         void testDoubleNegationWithOr() {
             assertSelectionQuery(
-                    "from Contact where not(not((country = :country) OR (age = :age)))",
+                    "from Contact where not ( not ( (country = :country) OR (age = :age) ) )",
                     Contact.class,
                     q -> q.setParameter("country", "CANADA").setParameter("age", null),
                     """
                     {
-                       "aggregate": "contacts",
-                       "pipeline": [
-                         {
-                           "$match": {
-                             "$nor": [
-                               {
-                                 "$nor": [
-                                   {
-                                     "$or": [
-                                       {
-                                         "$and": [
-                                            {
-                                              "country": {
-                                                "$eq": "CANADA"
-                                              }
-                                            },
-                                            {
-                                              "country": {
-                                                "$ne": null
-                                              }
-                                            }
-                                           ]
-                                       },
-                                       {
-                                         "$and": [
-                                           {
-                                             "age": {
-                                               "$eq": null
-                                             }
-                                           },
-                                           {
-                                             "age": {
-                                               "$ne": null
-                                             }
-                                           }
-                                         ]
-                                       }
-                                     ]
-                                   }
-                                 ]
-                               }
-                             ]
-                           }
-                         },
-                         {
-                           "$project": {
-                             "_id": true,
-                             "age": true,
-                             "country": true,
-                             "name": true
-                           }
-                         }
-                       ]
-                     }""",
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$or": [
+                              {
+                                "$and": [
+                                  {
+                                    "country": {
+                                      "$eq": "CANADA"
+                                    }
+                                  },
+                                  {
+                                    "country": {
+                                      "$ne": null
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "$and": [
+                                  {
+                                    "age": {
+                                      "$eq": null
+                                    }
+                                  },
+                                  {
+                                    "age": {
+                                      "$ne": null
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
                     getTestingContacts(2, 3, 4, 8),
                     Set.of(Contact.COLLECTION_NAME));
         }

@@ -44,7 +44,6 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
 import static org.hibernate.query.sqm.FetchClauseType.ROWS_ONLY;
@@ -206,6 +205,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private final Set<String> affectedTableNames = new HashSet<>();
 
     private @Nullable QueryOptionsLimit queryOptionsLimit;
+
+    private boolean negated;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -504,7 +505,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             assertTrue(isFieldPathExpression(rhs));
         }
 
-        var fieldPath = acceptAndYield((isFieldOnLeftHandSide ? lhs : rhs), FIELD_PATH);
+        var fieldExpression = isFieldOnLeftHandSide ? lhs : rhs;
+        var fieldPath = acceptAndYield(fieldExpression, FIELD_PATH);
+
         var comparisonValue = acceptAndYield((isFieldOnLeftHandSide ? rhs : lhs), VALUE);
 
         var operator = isFieldOnLeftHandSide
@@ -513,14 +516,17 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation).withTernaryNullnessLogicEnforced();
+
+        var filter = AstFieldOperationFilter.toNullExclusionFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
+        negated = !negated;
         var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
-        astVisitorValueHolder.yield(FILTER, new AstLogicalFilter(NOR, List.of(filter)));
+        negated = !negated;
+        astVisitorValueHolder.yield(FILTER, filter);
     }
 
     @Override
@@ -570,10 +576,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         for (Predicate predicate : junction.getPredicates()) {
             subFilters.add(acceptAndYield(predicate, FILTER));
         }
+
         var junctionFilter =
                 switch (junction.getNature()) {
-                    case DISJUNCTION -> new AstLogicalFilter(OR, subFilters);
-                    case CONJUNCTION -> new AstLogicalFilter(AND, subFilters);
+                    case DISJUNCTION -> new AstLogicalFilter(negated ? AND : OR, subFilters);
+                    case CONJUNCTION -> new AstLogicalFilter(negated ? OR : AND, subFilters);
                 };
         astVisitorValueHolder.yield(FILTER, junctionFilter);
     }
@@ -592,7 +599,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
         var astFilterOperation =
                 new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation).withTernaryNullnessLogicEnforced();
+        var filter = AstFieldOperationFilter.toNullExclusionFilter(fieldPath, astFilterOperation);
         astVisitorValueHolder.yield(FILTER, filter);
     }
 
@@ -672,7 +679,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var fieldPath = acceptAndYield(expression, FIELD_PATH);
         var comparisonOperator = isNegated ? NE : EQ;
         return new AstFieldOperationFilter(
-                fieldPath, false, new AstComparisonFilterOperation(comparisonOperator, AstLiteralValue.NULL));
+                fieldPath, new AstComparisonFilterOperation(comparisonOperator, AstLiteralValue.NULL));
     }
 
     @Override
@@ -1070,8 +1077,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
-        return switch (operator) {
+    private AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
+        ComparisonOperator currentOperator = negated ? operator.negated() : operator;
+        return switch (currentOperator) {
             case EQUAL -> EQ;
             case NOT_EQUAL -> NE;
             case LESS_THAN -> LT;
