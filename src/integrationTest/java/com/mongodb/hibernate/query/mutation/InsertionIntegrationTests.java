@@ -43,7 +43,7 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
     @Test
     void testInsertPartialSingleDocument() {
         assertMutationQuery(
-                "insert into Book (id, title, outOfStock, isbn13, discount) values (1, 'Pride & Prejudice', false, 9780141439518L, 0.2D)",
+                "insert into Book (id, title, outOfStock, isbn13, discount) values (1, 'Pride & Prejudice', false, null, 0.2D)",
                 null,
                 1,
                 """
@@ -54,7 +54,7 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                       "_id": 1,
                       "title": "Pride & Prejudice",
                       "outOfStock": false,
-                      "isbn13": 9780141439518,
+                      "isbn13": null,
                       "discount": 0.2
                     }
                   ]
@@ -68,7 +68,7 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "_id": 1,
                                   "title": "Pride & Prejudice",
                                   "outOfStock": false,
-                                  "isbn13": 9780141439518,
+                                  "isbn13": null,
                                   "discount": 0.2
                                 }
                                 """)),
@@ -78,7 +78,7 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
     @Test
     void testInsertSingleDocument() {
         assertMutationQuery(
-                "insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price) values (1, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD)",
+                "insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price) values (1, 'Pride & Prejudice', null, null, 9780141439518L, null, 23.55BD)",
                 null,
                 1,
                 """
@@ -88,10 +88,10 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "_id": 1,
                       "title": "Pride & Prejudice",
-                      "outOfStock": false,
-                      "publishYear": 1813,
+                      "outOfStock": null,
+                      "publishYear": null,
                       "isbn13": 9780141439518,
-                      "discount": 0.2,
+                      "discount": null,
                       "price": {"$numberDecimal": "23.55"}
                     }
                   ]
@@ -104,10 +104,10 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                                 {
                                   "_id": 1,
                                   "title": "Pride & Prejudice",
-                                  "outOfStock": false,
-                                  "publishYear": 1813,
+                                  "outOfStock": null,
+                                  "publishYear": null,
                                   "isbn13": 9780141439518,
-                                  "discount": 0.2,
+                                  "discount": null,
                                   "price": {"$numberDecimal": "23.55"}
                                 }
                                 """)),
@@ -120,8 +120,8 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                 """
                 insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price)
                 values
-                    (1, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD),
-                    (2, 'War & Peace', false, 1867, 9780143039990L, 0.1D, 19.99BD)
+                    (1, null, false, null, 9780141439518L, null, 23.55BD),
+                    (2, 'War & Peace', null, 1867, null, 0.1D, null)
                 """,
                 null,
                 2,
@@ -131,21 +131,21 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                   "documents": [
                     {
                       "_id": 1,
-                      "title": "Pride & Prejudice",
+                      "title": null,
                       "outOfStock": false,
-                      "publishYear": 1813,
+                      "publishYear": null,
                       "isbn13": 9780141439518,
-                      "discount": 0.2,
+                      "discount": null,
                       "price": {"$numberDecimal": "23.55"}
                     },
                     {
                       "_id": 2,
                       "title": "War & Peace",
-                      "outOfStock": false,
+                      "outOfStock": null,
                       "publishYear": 1867,
-                      "isbn13": 9780143039990,
+                      "isbn13": null,
                       "discount": 0.1,
-                      "price": {"$numberDecimal": "19.99"}
+                      "price": null
                     }
                   ]
                 }
@@ -156,11 +156,11 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                                 """
                                 {
                                   "_id": 1,
-                                  "title": "Pride & Prejudice",
+                                  "title": null,
                                   "outOfStock": false,
-                                  "publishYear": 1813,
+                                  "publishYear": null,
                                   "isbn13": 9780141439518,
-                                  "discount": 0.2,
+                                  "discount": null,
                                   "price": {"$numberDecimal": "23.55"}
                                 }
                                 """),
@@ -169,11 +169,11 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                                 {
                                   "_id": 2,
                                   "title": "War & Peace",
-                                  "outOfStock": false,
+                                  "outOfStock": null,
                                   "publishYear": 1867,
-                                  "isbn13": 9780143039990,
+                                  "isbn13": null,
                                   "discount": 0.1,
-                                  "price": {"$numberDecimal": "19.99"}
+                                  "price": null
                                 }
                                 """)),
                 Set.of(Book.COLLECTION_NAME));

@@ -561,10 +561,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        if (literalValue == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-        }
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toLiteralBsonValue(literalValue)));
     }
 
     @Override
@@ -584,7 +581,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toLiteralBsonValue(literalValue)));
     }
 
     @Override
@@ -1015,17 +1012,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    static void checkJdbcParameterBindingsSupportability(@Nullable JdbcParameterBindings jdbcParameterBindings) {
-        if (jdbcParameterBindings != null) {
-            for (var jdbcParameterBinding : jdbcParameterBindings.getBindings()) {
-                if (jdbcParameterBinding.getBindValue() == null) {
-                    throw new FeatureNotSupportedException(
-                            "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-                }
-            }
-        }
-    }
-
     private static void checkQueryOptionsSupportability(QueryOptions queryOptions) {
         if (queryOptions.getTimeout() != null) {
             throw new FeatureNotSupportedException("'timeout' inQueryOptions is not supported");
@@ -1101,8 +1087,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toBsonValue(Object value) {
-        // TODO-HIBERNATE-74 decide if `value` is nullable
+    private static BsonValue toLiteralBsonValue(@Nullable Object value) {
         try {
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {
