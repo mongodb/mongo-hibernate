@@ -18,10 +18,11 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstProjectStage(List<? extends AstProjectStageSpecification> specifications) implements AstStage {
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/">{@code project}</a>. */
+public record AstProjectStage(Collection<? extends AstProjectStageSpecification> specifications) implements AstStage {
 
     public AstProjectStage {
         assertFalse(specifications.isEmpty());

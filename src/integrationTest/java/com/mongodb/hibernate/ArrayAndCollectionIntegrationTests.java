@@ -64,7 +64,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
 public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
-    @InjectMongoCollection("items")
+    private static final String COLLECTION_NAME = "items";
+
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -485,7 +487,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithArrayAndCollectionValues {
         @Id
         int id;
@@ -572,7 +574,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections {
         @Id
         int id;
@@ -662,7 +664,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithBoxedBytesArrayValue {
             @Id
             int id;
@@ -680,7 +682,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithBytesCollectionValue {
             @Id
             int id;
@@ -702,7 +704,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
          * example.</a>
          */
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedArrayValue {
             @Id
             int id;
@@ -717,7 +719,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
          * example.</a>
          */
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedCollectionValue {
             @Id
             int id;
@@ -726,7 +728,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithArrayOfEmbeddablesValue {
             @Id
             int id;
@@ -735,7 +737,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithCollectionOfEmbeddablesValue {
             @Id
             int id;
@@ -744,7 +746,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithArrayOfEmbeddablesElementCollectionValue {
             @Id
             int id;
@@ -754,7 +756,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithCollectionOfEmbeddablesElementCollectionValue {
             @Id
             int id;

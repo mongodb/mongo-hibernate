@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
@@ -103,6 +104,7 @@ import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
 import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
@@ -194,7 +196,7 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
-abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
     private final SessionFactoryImplementor sessionFactory;
 
@@ -212,6 +214,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 .getServiceRegistry()
                 .requireService(StandardServiceRegistryScopedState.class)
                 .getConfiguration());
+    }
+
+    public static AbstractMqlTranslator<?> cast(SqlAstTranslator<?> translator) {
+        return assertInstanceOf(translator, AbstractMqlTranslator.class);
     }
 
     @Override
@@ -250,8 +256,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @SuppressWarnings("overloads")
-    <R> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
+    public <R> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
+    }
+
+    @SuppressWarnings("NamedLikeContextualKeyword")
+    public <R> void yield(AstVisitorValueDescriptor<R> valueDescriptor, R value) {
+        astVisitorValueHolder.yield(valueDescriptor, value);
     }
 
     @Override
@@ -872,7 +883,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        throw new FeatureNotSupportedException();
+        selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
     }
 
     @Override
@@ -962,7 +973,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelfRenderingPredicate(SelfRenderingPredicate selfRenderingPredicate) {
-        throw new FeatureNotSupportedException();
+        assertFalse(selfRenderingPredicate.isEmpty());
+        selfRenderingPredicate.getSelfRenderingExpression().accept(this);
     }
 
     @Override
@@ -1170,6 +1182,21 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                             executionContext.getQueryOptions().getLimit().getMaxRows(),
                             startPosition,
                             executionContext.getSession());
+        }
+    }
+
+    /**
+     * This {@link SqlAppender} makes any {@link SelfRenderingExpression}/{@link SelfRenderingPredicate} explicitly
+     * unsupported, unless we implemented its rendering such that it avoids using this appender.
+     */
+    private static final class FeatureNotSupportedSqlAppender implements SqlAppender {
+        static final FeatureNotSupportedSqlAppender INSTANCE = new FeatureNotSupportedSqlAppender();
+
+        private FeatureNotSupportedSqlAppender() {}
+
+        @Override
+        public void appendSql(String fragment) {
+            throw new FeatureNotSupportedException();
         }
     }
 }

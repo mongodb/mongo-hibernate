@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+@NullMarked
+package com.mongodb.hibernate.internal.dialect.function.array;
 
-import org.bson.BsonWriter;
-
-/** @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS */
-@SuppressWarnings("MissingSummary")
-public final class AstParameterMarker implements AstValue {
-
-    public static final AstParameterMarker INSTANCE = new AstParameterMarker();
-
-    private AstParameterMarker() {}
-
-    @Override
-    public void render(BsonWriter writer) {
-        writer.writeUndefined();
-    }
-}
+import org.jspecify.annotations.NullMarked;

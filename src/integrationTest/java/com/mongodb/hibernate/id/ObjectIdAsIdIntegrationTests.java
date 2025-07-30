@@ -48,7 +48,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
-    @InjectMongoCollection("items")
+    private static final String COLLECTION_NAME = "items";
+
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -106,14 +108,14 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class Item {
         @Id
         ObjectId id;
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemGenerated {
         @Id
         @ObjectIdGenerator
@@ -121,7 +123,7 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemGeneratedWithPropertyAccess {
         private ObjectId id;
 

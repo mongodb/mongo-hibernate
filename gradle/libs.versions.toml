@@ -13,12 +13,12 @@
 # limitations under the License.
 
 [versions]
-junit-jupiter = "5.11.4"
+junit-jupiter = "5.13.4"
 assertj = "3.27.3"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.4"
 jspecify = "1.0.0"
-hibernate-orm = "6.6.23.Final"
+hibernate-orm = "6.6.25.Final"
 mongo-java-driver-sync = "5.3.1"
 slf4j-api = "2.0.16"
 logback-classic = "1.5.16"

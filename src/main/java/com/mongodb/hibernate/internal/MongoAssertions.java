@@ -101,10 +101,11 @@ public final class MongoAssertions {
         return false;
     }
 
-    public static <T> T assertInstanceOf(@Nullable Object value, Class<? extends T> type) {
-        if (!type.isInstance(value)) {
+    public static <T> T assertInstanceOf(Object value, Class<? extends T> type) {
+        try {
+            return type.cast(value);
+        } catch (ClassCastException e) {
             throw fail();
         }
-        return type.cast(value);
     }
 }

@@ -18,4 +18,5 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 
+/** See <a href="https://www.mongodb.com/docs/manual/reference/command/">Database Commands</a>. */
 public interface AstCommand extends AstNode {}

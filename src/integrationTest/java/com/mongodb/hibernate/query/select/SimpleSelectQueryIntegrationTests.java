@@ -693,7 +693,7 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @Test
         void testNullParameterNotSupported() {
             assertSelectQueryFailure(
-                    "from Contact where country = :country",
+                    "from Contact where country != :country",
                     Contact.class,
                     q -> q.setParameter("country", null),
                     FeatureNotSupportedException.class,

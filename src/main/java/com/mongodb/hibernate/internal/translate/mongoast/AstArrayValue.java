@@ -16,18 +16,16 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-/** @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS */
-@SuppressWarnings("MissingSummary")
-public final class AstParameterMarker implements AstValue {
-
-    public static final AstParameterMarker INSTANCE = new AstParameterMarker();
-
-    private AstParameterMarker() {}
-
+public record AstArrayValue(Collection<AstValue> elements) implements AstValue {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeUndefined();
+        writer.writeStartArray();
+        {
+            elements.forEach(element -> element.render(writer));
+        }
+        writer.writeEndArray();
     }
 }

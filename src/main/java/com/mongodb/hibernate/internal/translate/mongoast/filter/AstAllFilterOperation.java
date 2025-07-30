@@ -14,19 +14,29 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
+package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+
+import com.mongodb.hibernate.internal.translate.mongoast.AstArrayValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/skip/">{@code $skip}</a>. */
-public record AstSkipStage(AstValue value) implements AstStage {
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/all/">{@code $all}</a>. */
+@SuppressWarnings("MissingSummary")
+public record AstAllFilterOperation(AstValue parameterMarkerOrArrayValue) implements AstFilterOperation {
+    public AstAllFilterOperation {
+        assertTrue(parameterMarkerOrArrayValue instanceof AstParameterMarker
+                || parameterMarkerOrArrayValue instanceof AstArrayValue);
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeName("$skip");
-            value.render(writer);
+            writer.writeName("$all");
+            parameterMarkerOrArrayValue.render(writer);
         }
         writer.writeEndDocument();
     }

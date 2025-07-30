@@ -14,31 +14,33 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command;
+package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import java.util.Collection;
+import org.bson.BsonType;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/command/delete/">{@code delete}</a>. */
-public record AstDeleteCommand(String collection, AstFilter filter) implements AstCommand {
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/type/">{@code $type}</a>. */
+public record AstTypeFilterOperation(Collection<BsonType> types) implements AstFilterOperation {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeString("delete", collection);
-            writer.writeName("deletes");
-            writer.writeStartArray();
-            {
-                writer.writeStartDocument();
+            writer.writeName("$type");
+            if (types.size() == 1) {
+                render(writer, types.iterator().next());
+            } else {
+                writer.writeStartArray();
                 {
-                    writer.writeName("q");
-                    filter.render(writer);
-                    writer.writeInt32("limit", 0);
+                    types.forEach(type -> render(writer, type));
                 }
-                writer.writeEndDocument();
+                writer.writeEndArray();
             }
-            writer.writeEndArray();
         }
         writer.writeEndDocument();
+    }
+
+    private static void render(BsonWriter writer, BsonType type) {
+        writer.writeInt32(type.getValue());
     }
 }

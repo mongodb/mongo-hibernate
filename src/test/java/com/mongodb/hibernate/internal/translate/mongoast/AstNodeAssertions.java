@@ -28,21 +28,29 @@ public final class AstNodeAssertions {
     private AstNodeAssertions() {}
 
     public static void assertRendering(String expectedJson, AstNode node) {
-        doAssertRendering(expectedJson, node, false);
+        doAssertRendering(expectedJson, node, AstNodeKind.DOCUMENT);
     }
 
-    public static void assertElementRendering(String expectedJson, AstNode node) {
-        doAssertRendering(expectedJson, node, true);
+    public static void assertElementRendering(String expectedCanonicalExtendedJson, AstNode node) {
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.ELEMENT);
     }
 
-    private static void doAssertRendering(String expectedJson, AstNode node, boolean isElement) {
+    public static void assertValueRendering(String expectedCanonicalExtendedJson, AstValue node) {
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.VALUE);
+    }
+
+    private static void doAssertRendering(String expectedJson, AstNode node, AstNodeKind nodeKind) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
-            if (isElement) {
+            if (nodeKind != AstNodeKind.DOCUMENT) {
                 jsonWriter.writeStartDocument();
             }
+            var ancillaryFieldName = "";
+            if (nodeKind == AstNodeKind.VALUE) {
+                jsonWriter.writeName(ancillaryFieldName);
+            }
             node.render(jsonWriter);
-            if (isElement) {
+            if (nodeKind != AstNodeKind.DOCUMENT) {
                 jsonWriter.writeEndDocument();
             }
             jsonWriter.flush();
@@ -51,5 +59,12 @@ public final class AstNodeAssertions {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private enum AstNodeKind {
+        DOCUMENT,
+        /** A key/value pair, a.k.a., field (a name and a value). */
+        ELEMENT,
+        VALUE
     }
 }

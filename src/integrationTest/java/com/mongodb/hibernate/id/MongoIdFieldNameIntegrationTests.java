@@ -43,8 +43,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 class MongoIdFieldNameIntegrationTests {
+    private static final String COLLECTION_NAME = "movies";
 
-    @InjectMongoCollection("movies")
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     @Test
@@ -92,14 +93,14 @@ class MongoIdFieldNameIntegrationTests {
     }
 
     @Entity
-    @Table(name = "movies")
+    @Table(name = COLLECTION_NAME)
     static class EntityWithoutIdColumnAnnotation {
         @Id
         int id;
     }
 
     @Entity
-    @Table(name = "movies")
+    @Table(name = COLLECTION_NAME)
     static class EntityWithIdColumnAnnotationWithoutNameElement {
         @Id
         @Column
@@ -107,7 +108,7 @@ class MongoIdFieldNameIntegrationTests {
     }
 
     @Entity
-    @Table(name = "movies")
+    @Table(name = COLLECTION_NAME)
     static class EntityWithIdColumnAnnotationWithValidNameElement {
         @Id
         @Column(name = ID_FIELD_NAME)
@@ -115,7 +116,7 @@ class MongoIdFieldNameIntegrationTests {
     }
 
     @Entity
-    @Table(name = "movies")
+    @Table(name = COLLECTION_NAME)
     static class EntityWithIdColumnAnnotationWithInvalidNameElement {
         @Id
         @Column(name = "silentlyReplaced")

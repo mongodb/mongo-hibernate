@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.bson.BsonWriter;
 
+/** @see AstSortStage */
+@SuppressWarnings("MissingSummary")
 public record AstSortField(String path, AstSortOrder order) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
