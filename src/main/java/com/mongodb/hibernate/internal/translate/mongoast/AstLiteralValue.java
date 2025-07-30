@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonBoolean;
+import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
 import org.bson.codecs.BsonValueCodec;
@@ -30,6 +31,7 @@ public record AstLiteralValue(BsonValue literalValue) implements AstValue {
 
     public static final AstLiteralValue TRUE = new AstLiteralValue(BsonBoolean.TRUE);
     public static final AstLiteralValue FALSE = new AstLiteralValue(BsonBoolean.FALSE);
+    public static final AstLiteralValue NULL = new AstLiteralValue(BsonNull.VALUE);
 
     @Override
     public void render(BsonWriter writer) {

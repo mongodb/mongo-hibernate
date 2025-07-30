@@ -59,9 +59,18 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "limit": 0,
                       "q": {
-                        "title": {
-                          "$eq": "War and Peace"
-                        }
+                        "$and": [
+                          {
+                            "title": {
+                              "$eq": "War and Peace"
+                            }
+                          },
+                          {
+                            "title": {
+                              "$ne": null
+                            }
+                          }
+                        ]
                       }
                     }
                   ]
@@ -121,9 +130,18 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "limit": 0,
                       "q": {
-                        "publishYear": {
-                          "$lt": 1850
-                        }
+                        "$and": [
+                          {
+                            "publishYear": {
+                              "$lt": 1850
+                            }
+                          },
+                          {
+                            "publishYear": {
+                              "$ne": null
+                            }
+                          }
+                        ]
                       }
                     }
                   ]

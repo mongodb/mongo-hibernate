@@ -63,9 +63,18 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
                   "pipeline": [
                     {
                       "$match": {
-                        "outOfStock": {
-                          "$eq": %s
-                        }
+                        "$and": [
+                          {
+                            "outOfStock": {
+                              "$eq": %s
+                            }
+                          },
+                          {
+                            "outOfStock": {
+                              "$ne": null
+                            }
+                          }
+                        ]
                       }
                     },
                     {

@@ -59,9 +59,18 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                      {
                        "multi": true,
                        "q": {
-                         "title": {
-                           "$eq": "War & Peace"
-                         }
+                         "$and": [
+                           {
+                             "title": {
+                               "$eq": "War & Peace"
+                             }
+                           },
+                           {
+                             "title": {
+                               "$ne": null
+                             }
+                           }
+                         ]
                        },
                        "u": {
                          "$set": {
@@ -151,9 +160,18 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                      {
                        "multi": true,
                        "q": {
-                         "publishYear": {
-                           "$lt": 1850
-                         }
+                         "$and": [
+                            {
+                              "publishYear": {
+                                 "$lt": 1850
+                              }
+                            },
+                            {
+                              "publishYear": {
+                                 "$ne": null
+                              }
+                            }
+                         ]
                        },
                        "u": {
                          "$set": {

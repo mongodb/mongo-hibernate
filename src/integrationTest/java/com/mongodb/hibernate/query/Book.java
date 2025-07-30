@@ -45,6 +45,20 @@ public class Book {
         this.outOfStock = outOfStock;
     }
 
+    public Book(
+            int id,
+            String title,
+            Integer publishYear,
+            Boolean outOfStock,
+            Long isbn13,
+            Double discount,
+            BigDecimal price) {
+        this(id, title, publishYear, outOfStock);
+        this.isbn13 = isbn13;
+        this.discount = discount;
+        this.price = price;
+    }
+
     @Override
     public String toString() {
         return "Book{" + "id=" + id + '}';
