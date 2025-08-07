@@ -39,6 +39,10 @@ public class Book {
 
     public Book() {}
 
+    public Book(int id) {
+        this.id = id;
+    }
+
     public Book(int id, String title, Integer publishYear, Boolean outOfStock) {
         this.id = id;
         this.title = title;
