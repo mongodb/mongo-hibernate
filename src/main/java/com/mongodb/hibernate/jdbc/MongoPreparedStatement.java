@@ -18,6 +18,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.MongoConstants.PARAMETER_PLACEHOLDER;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
 
@@ -34,10 +35,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.function.Consumer;
@@ -50,6 +53,7 @@ import org.bson.types.ObjectId;
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
+    private final List<BsonDocument> commandBatch;
 
     private final List<ParameterValueSetter> parameterValueSetters;
 
@@ -57,8 +61,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        this.command = MongoStatement.parse(mql);
-        this.parameterValueSetters = new ArrayList<>();
+        command = MongoStatement.parse(mql);
+        commandBatch = new ArrayList<>();
+        parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -202,7 +207,41 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        commandBatch.add(command.clone());
+        parameterValueSetters.forEach(setter -> setter.accept(PARAMETER_PLACEHOLDER));
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        commandBatch.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        if (commandBatch.isEmpty()) {
+            return new int[0];
+        }
+
+        try {
+            executeBulkWrite(commandBatch);
+
+            // TODO-HIBERNATE-43 log bulk write result in debug level
+
+            var rowCounts = new int[commandBatch.size()];
+
+            // MongoDB bulk write API returns row counts grouped by mutation types, not by each command in the batch,
+            // so returns 'SUCCESS_NO_INFO' to work around
+            Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
+
+            return rowCounts;
+
+        } catch (RuntimeException e) {
+            throw new SQLException("Failed to execute batch: " + e.getMessage(), e);
+        } finally {
+            clearBatch();
+        }
     }
 
     @Override
