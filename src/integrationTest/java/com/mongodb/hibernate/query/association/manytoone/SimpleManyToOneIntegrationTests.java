@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.query.select;
+package com.mongodb.hibernate.query.association.manytoone;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 
@@ -30,11 +30,11 @@ import org.junit.jupiter.api.Test;
 
 @DomainModel(
         annotatedClasses = {
-            TableJoiningIntegrationTests.Country.class,
-            TableJoiningIntegrationTests.Province.class,
-            TableJoiningIntegrationTests.City.class
+            SimpleManyToOneIntegrationTests.Country.class,
+            SimpleManyToOneIntegrationTests.Province.class,
+            SimpleManyToOneIntegrationTests.City.class
         })
-class TableJoiningIntegrationTests extends AbstractQueryIntegrationTests {
+class SimpleManyToOneIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Test
     void testOneLevelJoin() {
