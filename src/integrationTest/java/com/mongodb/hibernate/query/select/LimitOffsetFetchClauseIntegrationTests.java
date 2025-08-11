@@ -112,13 +112,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -150,13 +151,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -195,13 +197,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -237,13 +240,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -280,13 +284,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                             },
                             {
                               "$project": {
-                                "_id": true,
-                                "discount": true,
-                                "isbn13": true,
-                                "outOfStock": true,
-                                "price": true,
-                                "publishYear": true,
-                                "title": true
+                                "f0": "$_id",
+                                "f1": "$discount",
+                                "f2": "$isbn13",
+                                "f3": "$outOfStock",
+                                "f4": "$price",
+                                "f5": "$publishYear",
+                                "f6": "$title",
+                                "_id": false
                               }
                             }
                           ]
@@ -317,13 +322,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                             },
                             {
                               "$project": {
-                                "_id": true,
-                                "discount": true,
-                                "isbn13": true,
-                                "outOfStock": true,
-                                "price": true,
-                                "publishYear": true,
-                                "title": true
+                                "f0": "$_id",
+                                "f1": "$discount",
+                                "f2": "$isbn13",
+                                "f3": "$outOfStock",
+                                "f4": "$price",
+                                "f5": "$publishYear",
+                                "f6": "$title",
+                                "_id": false
                               }
                             }
                           ]
@@ -357,13 +363,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                             },
                             {
                               "$project": {
-                                "_id": true,
-                                "discount": true,
-                                "isbn13": true,
-                                "outOfStock": true,
-                                "price": true,
-                                "publishYear": true,
-                                "title": true
+                                "f0": "$_id",
+                                "f1": "$discount",
+                                "f2": "$isbn13",
+                                "f3": "$outOfStock",
+                                "f4": "$price",
+                                "f5": "$publishYear",
+                                "f6": "$title",
+                                "_id": false
                               }
                             }
                           ]
@@ -391,13 +398,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         %s,
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -512,13 +520,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                     %s
                     {
                       "$project": {
-                        "_id": true,
-                        "discount": true,
-                        "isbn13": true,
-                        "outOfStock": true,
-                        "price": true,
-                        "publishYear": true,
-                        "title": true
+                        "f0": "$_id",
+                        "f1": "$discount",
+                        "f2": "$isbn13",
+                        "f3": "$outOfStock",
+                        "f4": "$price",
+                        "f5": "$publishYear",
+                        "f6": "$title",
+                        "_id": false
                       }
                     }
                   ]

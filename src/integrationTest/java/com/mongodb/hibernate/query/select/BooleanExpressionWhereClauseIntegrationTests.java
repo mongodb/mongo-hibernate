@@ -59,28 +59,29 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
                 Book.class,
                 """
                 {
-                  "aggregate": "books",
-                  "pipeline": [
-                    {
-                      "$match": {
-                        "outOfStock": {
-                          "$eq": %s
+                    "aggregate": "books",
+                    "pipeline": [
+                      {
+                        "$match": {
+                          "outOfStock": {
+                            "$eq": %s
+                          }
+                        }
+                      },
+                      {
+                        "$project": {
+                          "f0": "$_id",
+                          "f1": "$discount",
+                          "f2": "$isbn13",
+                          "f3": "$outOfStock",
+                          "f4": "$price",
+                          "f5": "$publishYear",
+                          "f6": "$title",
+                          "_id": false
                         }
                       }
-                    },
-                    {
-                      "$project": {
-                        "_id": true,
-                        "discount": true,
-                        "isbn13": true,
-                        "outOfStock": true,
-                        "price": true,
-                        "publishYear": true,
-                        "title": true
-                      }
-                    }
-                  ]
-                }
+                    ]
+                  }
                 """
                         .formatted(negated ? "false" : "true"),
                 negated ? singletonList(bookInStock) : singletonList(bookOutOfStock),
