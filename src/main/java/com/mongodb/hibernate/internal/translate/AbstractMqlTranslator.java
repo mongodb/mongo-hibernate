@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
@@ -62,15 +63,18 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageExcludeSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSetFieldSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSkipStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstUnwindStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
@@ -83,10 +87,14 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -206,6 +214,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     private final Set<String> affectedTableNames = new HashSet<>();
 
     private @Nullable QueryOptionsLimit queryOptionsLimit;
+
+    private final Map<String, String> columnQualifierFullPaths = new HashMap<>();
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -361,7 +371,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
 
-        var stages = new ArrayList<AstStage>();
+        var stages = new ArrayList<>(createLookupAndUnwindStages(querySpec));
 
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
@@ -380,6 +390,67 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                         affectedTableNames,
                         skipLimitStagesAndJdbcParams.offset(),
                         skipLimitStagesAndJdbcParams.limit()));
+    }
+
+    private List<AstStage> createLookupAndUnwindStages(QuerySpec querySpec) {
+        var rootTableGroup = querySpec.getFromClause().getRoots().get(0);
+        var lookupAndUnwindStages = new ArrayList<AstStage>();
+        if (rootTableGroup.hasRealJoins()) {
+            for (var tableGroupJoin : rootTableGroup.getTableGroupJoins()) {
+                if (tableGroupJoin.isInitialized()) {
+                    lookupAndUnwindStages.addAll(translateTableGroupJoin(rootTableGroup, tableGroupJoin));
+                }
+            }
+        }
+        return lookupAndUnwindStages;
+    }
+
+    private List<AstStage> translateTableGroupJoin(TableGroup sourceTableGroup, TableGroupJoin tableGroupJoin) {
+        var targetTableGroup = tableGroupJoin.getJoinedGroup();
+        var predicate = tableGroupJoin.getPredicate();
+        var targetTableReference =
+                assertInstanceOf(targetTableGroup.getPrimaryTableReference(), NamedTableReference.class);
+        var sourceQualifier = sourceTableGroup.getPrimaryTableReference().getIdentificationVariable();
+        var targetQualifier = targetTableReference.getIdentificationVariable();
+
+        var sourceQualifierFullPath = columnQualifierFullPaths.getOrDefault(sourceQualifier, "");
+        columnQualifierFullPaths.put(targetQualifier, sourceQualifierFullPath + targetQualifier + ".");
+
+        var comparisonPredicate = assertInstanceOf(predicate, ComparisonPredicate.class);
+
+        ColumnReference sourceColumnReference = null, targetColumnReference = null;
+        var leftHandColumnReference =
+                comparisonPredicate.getLeftHandExpression().getColumnReference();
+        var rightHandColumnReference =
+                comparisonPredicate.getRightHandExpression().getColumnReference();
+        if (leftHandColumnReference.getQualifier().equals(targetQualifier)
+                && rightHandColumnReference.getQualifier().equals(sourceQualifier)) {
+            targetColumnReference = leftHandColumnReference;
+            sourceColumnReference = rightHandColumnReference;
+        } else if (leftHandColumnReference.getQualifier().equals(sourceQualifier)
+                && rightHandColumnReference.getQualifier().equals(targetQualifier)) {
+            sourceColumnReference = leftHandColumnReference;
+            targetColumnReference = rightHandColumnReference;
+        }
+
+        var pipeline = Collections.<AstStage>emptyList();
+        if (targetTableGroup.hasRealJoins()) {
+            pipeline = new ArrayList<>();
+            for (var targetTableGroupTableGroupJoin : targetTableGroup.getTableGroupJoins()) {
+                if (targetTableGroupTableGroupJoin.isInitialized()) {
+                    pipeline.addAll(translateTableGroupJoin(targetTableGroup, targetTableGroupTableGroupJoin));
+                }
+            }
+        }
+
+        return List.of(
+                new AstLookupStage(
+                        targetTableReference.getTableExpression(),
+                        assertNotNull(sourceColumnReference).getColumnExpression(),
+                        assertNotNull(targetColumnReference).getColumnExpression(),
+                        pipeline,
+                        targetQualifier),
+                new AstUnwindStage("$" + targetQualifier));
     }
 
     private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
@@ -537,6 +608,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());
 
+        var i = 0;
         for (SqlSelection sqlSelection : selectClause.getSqlSelections()) {
             if (sqlSelection.isVirtual()) {
                 continue;
@@ -544,9 +616,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             if (!(sqlSelection.getExpression() instanceof ColumnReference columnReference)) {
                 throw new FeatureNotSupportedException();
             }
-            var field = acceptAndYield(columnReference, FIELD_PATH);
-            projectStageSpecifications.add(new AstProjectStageIncludeSpecification(field));
+            var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
+            projectStageSpecifications.add(new AstProjectStageSetFieldSpecification(
+                    "f" + i++, new AstLiteralValue(new BsonString("$" + fieldPath))));
         }
+        projectStageSpecifications.add(new AstProjectStageExcludeSpecification("_id"));
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
     }
 
@@ -555,7 +629,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (columnReference.isColumnExpressionFormula()) {
             throw new FeatureNotSupportedException("Formula is not supported");
         }
-        astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
+        var fieldPath = columnQualifierFullPaths.getOrDefault(columnReference.getQualifier(), "")
+                + columnReference.getColumnExpression();
+        astVisitorValueHolder.yield(FIELD_PATH, fieldPath);
     }
 
     @Override
@@ -1117,9 +1193,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Only single root from clause is supported");
         }
         var root = fromClause.getRoots().get(0);
-        if (root.hasRealJoins()) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-65 https://jira.mongodb.org/browse/HIBERNATE-65");
-        }
         if (!(root.getModelPart() instanceof EntityPersister entityPersister)
                 || entityPersister.getQuerySpaces().length != 1) {
             throw new FeatureNotSupportedException("Only single table from clause is supported");
