@@ -142,7 +142,6 @@ dependencies {
     testCompileOnly(libs.checker.qual)
 
     integrationTestImplementation(libs.bundles.test.common)
-    @Suppress("UnstableApiUsage")
     integrationTestImplementation(libs.hibernate.testing) {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
