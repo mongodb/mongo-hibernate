@@ -23,6 +23,7 @@ import static org.mockito.Mockito.doReturn;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -46,7 +47,7 @@ class SelectMqlTranslatorTests {
 
     @Test
     void testAffectedTableNames(
-            @Mock EntityPersister entityPersister,
+            @Mock AbstractEntityPersister entityPersister,
             @Mock(mockMaker = MockMakers.PROXY) SessionFactoryImplementor sessionFactory,
             @Mock JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider,
             @Mock(mockMaker = MockMakers.PROXY) ServiceRegistryImplementor serviceRegistry,

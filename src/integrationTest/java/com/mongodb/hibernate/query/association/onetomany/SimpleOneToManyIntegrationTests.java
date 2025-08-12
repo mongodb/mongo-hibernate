@@ -26,7 +26,6 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.util.Set;
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(
@@ -37,7 +36,7 @@ import org.junit.jupiter.api.Test;
 public class SimpleOneToManyIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Test
-    @Disabled("OneToMany not implemented yet")
+    // @Disabled("OneToMany not implemented yet")
     void test() {
         var company = new Company(1, "Acme Corp");
         var dept1 = new Department(1, "HR", company);

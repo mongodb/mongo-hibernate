@@ -87,6 +87,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -99,6 +100,7 @@ import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
+import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.NullPrecedence;
@@ -155,6 +157,7 @@ import org.hibernate.sql.ast.tree.expression.UnparsedNumericLiteral;
 import org.hibernate.sql.ast.tree.from.FromClause;
 import org.hibernate.sql.ast.tree.from.FunctionTableReference;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
+import org.hibernate.sql.ast.tree.from.OneToManyTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
@@ -550,8 +553,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitFromClause(FromClause fromClause) {
         checkFromClauseSupportability(fromClause);
         var tableGroup = fromClause.getRoots().get(0);
-        var entityPersister = (EntityPersister) tableGroup.getModelPart();
-        affectedTableNames.add(((String[]) entityPersister.getQuerySpaces())[0]);
+        var modelPart = tableGroup.getModelPart();
+        if (modelPart instanceof AbstractEntityPersister abstractEntityPersister) {
+            String[] querySpaces = (String[]) abstractEntityPersister.getQuerySpaces();
+            affectedTableNames.addAll(Arrays.asList(querySpaces));
+        }
         tableGroup.getPrimaryTableReference().accept(this);
     }
 
@@ -1193,8 +1199,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Only single root from clause is supported");
         }
         var root = fromClause.getRoots().get(0);
-        if (!(root.getModelPart() instanceof EntityPersister entityPersister)
-                || entityPersister.getQuerySpaces().length != 1) {
+        if (!(root instanceof OneToManyTableGroup) && (!(root.getModelPart() instanceof EntityPersister entityPersister)
+                || entityPersister.getQuerySpaces().length != 1)) {
             throw new FeatureNotSupportedException("Only single table from clause is supported");
         }
     }
