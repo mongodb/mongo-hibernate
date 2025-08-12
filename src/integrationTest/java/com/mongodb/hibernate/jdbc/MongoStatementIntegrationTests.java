@@ -41,8 +41,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
+@ParameterizedClass
+@ValueSource(booleans = {true, false})
 class MongoStatementIntegrationTests {
 
     @AutoClose
@@ -53,6 +58,9 @@ class MongoStatementIntegrationTests {
 
     @AutoClose
     private Session session;
+
+    @Parameter
+    boolean autoCommit;
 
     @BeforeAll
     static void beforeAll() {
@@ -278,7 +286,8 @@ class MongoStatementIntegrationTests {
     }
 
     void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
+        doWithSpecifiedAutoCommit(
+                autoCommit, connection, autoCommit ? work : () -> doAndTerminateTransaction(connection, work));
     }
 
     static void doWithSpecifiedAutoCommit(boolean autoCommit, Connection connection, SqlExecutable work)

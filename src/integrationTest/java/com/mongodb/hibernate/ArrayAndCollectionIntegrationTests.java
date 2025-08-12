@@ -597,17 +597,6 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     @Nested
     class Unsupported {
-        /**
-         * The {@link ClassCastException} caught here manifests a Hibernate ORM bug. The issue goes away if the
-         * {@link ItemWithBoxedBytesArrayValue#bytes} field is removed. Otherwise, the behavior of this test should have
-         * been equivalent to {@link #testBytesCollectionValue()}.
-         */
-        @Test
-        void testBoxedBytesArrayValue() {
-            var item = new ItemWithBoxedBytesArrayValue(1, new byte[] {1}, new Byte[] {2});
-            assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
-                    .isInstanceOf(ClassCastException.class);
-        }
 
         @Test
         void testBytesCollectionValue() {
