@@ -133,7 +133,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
             var value = embeddableMappingType.getValue(domainValue, columnIndex);
             BsonValue bsonValue;
             if (value == null) {
-                bsonValue = BsonNull.VALUE;
+                bsonValue = toBsonValue(value);
             } else {
                 var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
                 var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
