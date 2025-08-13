@@ -166,7 +166,6 @@ import org.hibernate.sql.ast.tree.predicate.Junction;
 import org.hibernate.sql.ast.tree.predicate.LikePredicate;
 import org.hibernate.sql.ast.tree.predicate.NegatedPredicate;
 import org.hibernate.sql.ast.tree.predicate.NullnessPredicate;
-import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.predicate.SelfRenderingPredicate;
 import org.hibernate.sql.ast.tree.predicate.ThruthnessPredicate;
 import org.hibernate.sql.ast.tree.select.QueryGroup;
@@ -537,7 +536,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());
 
-        for (SqlSelection sqlSelection : selectClause.getSqlSelections()) {
+        for (var sqlSelection : selectClause.getSqlSelections()) {
             if (sqlSelection.isVirtual()) {
                 continue;
             }
@@ -561,13 +560,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toLiteralBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
     public void visitJunction(Junction junction) {
         var subFilters = new ArrayList<AstFilter>(junction.getPredicates().size());
-        for (Predicate predicate : junction.getPredicates()) {
+        for (var predicate : junction.getPredicates()) {
             subFilters.add(acceptAndYield(predicate, FILTER));
         }
         var junctionFilter =
@@ -581,7 +580,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toLiteralBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
@@ -1087,7 +1086,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toLiteralBsonValue(@Nullable Object value) {
+    private static BsonValue toBsonValue(@Nullable Object value) {
         try {
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {

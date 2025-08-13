@@ -86,41 +86,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLException(format("Parameter with index [%d] is not set", i + 1));
             }
         }
-        checkComparatorNotComparingWithNullValues();
+        checkComparatorNotComparingWithNullValues(command);
     }
-
-    /**
-     * Temporary method to ensure exception is thrown when comparison query operators are comparing with {@code null}
-     * values.
-     *
-     * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
-     */
-    private void checkComparatorNotComparingWithNullValues() {
-        checkComparatorNotComparingWithNullValuesRecursively(command);
-    }
-
-    private void checkComparatorNotComparingWithNullValuesRecursively(BsonDocument document) {
-        for (var entry : document.entrySet()) {
-            if (COMPARISON_OPERATOR_NAMES_SUPPORTED.contains(entry.getKey())
-                    && entry.getValue().isNull()) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-            }
-            if (entry.getValue().isDocument()) {
-                checkComparatorNotComparingWithNullValuesRecursively(
-                        entry.getValue().asDocument());
-            } else if (entry.getValue().isArray()) {
-                for (var bsonValue : entry.getValue().asArray()) {
-                    if (bsonValue.isDocument()) {
-                        checkComparatorNotComparingWithNullValuesRecursively(bsonValue.asDocument());
-                    }
-                }
-            }
-        }
-    }
-
-    private static final Set<String> COMPARISON_OPERATOR_NAMES_SUPPORTED =
-            Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
 
     @Override
     public void setNull(int parameterIndex, int sqlType) throws SQLException {
@@ -366,6 +333,32 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
         boolean isUsed() {
             return used;
+        }
+    }
+
+    /**
+     * Temporary method to ensure exception is thrown when comparison query operators are comparing with {@code null}
+     * values.
+     *
+     * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
+     */
+    private static void checkComparatorNotComparingWithNullValues(BsonDocument document) {
+        var comparisonOperators = Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
+        for (var entry : document.entrySet()) {
+            var value = entry.getValue();
+            if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+            }
+            if (value instanceof BsonDocument documentValue) {
+                checkComparatorNotComparingWithNullValues(documentValue);
+            } else if (value instanceof BsonArray arrayValue) {
+                for (var element : arrayValue) {
+                    if (element instanceof BsonDocument documentElement) {
+                        checkComparatorNotComparingWithNullValues(documentElement);
+                    }
+                }
+            }
         }
     }
 }

@@ -102,7 +102,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
     }
 
     /**
-     * We replaced this method with {@link #createBsonValue(Object, WrapperOptions)}, to make it clear that this method
+     * We replaced this method with {@link #createBindValue(Object, WrapperOptions)}, to make it clear that this method
      * is not called by Hibernate ORM.
      */
     @Override
@@ -110,7 +110,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         throw fail();
     }
 
-    private @Nullable BsonDocument createBsonValue(@Nullable Object domainValue, WrapperOptions options)
+    private @Nullable BsonDocument createBindValue(@Nullable Object domainValue, WrapperOptions options)
             throws SQLException {
         if (domainValue == null) {
             return null;
@@ -139,7 +139,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
                 var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
                 if (jdbcTypeCode == getJdbcTypeCode()) {
                     var structValueBinder = assertInstanceOf(jdbcMapping.getJdbcValueBinder(), Binder.class);
-                    bsonValue = structValueBinder.getJdbcType().createBsonValue(value, options);
+                    bsonValue = structValueBinder.getJdbcType().createBindValue(value, options);
                 } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
                     @SuppressWarnings("unchecked")
                     ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
@@ -223,7 +223,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
         @Override
         public @Nullable Object getBindValue(@Nullable X value, WrapperOptions options) throws SQLException {
-            return getJdbcType().createBsonValue(value, options);
+            return getJdbcType().createBindValue(value, options);
         }
 
         @Override
