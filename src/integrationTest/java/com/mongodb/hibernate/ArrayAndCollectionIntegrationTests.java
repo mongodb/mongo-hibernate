@@ -42,7 +42,6 @@ import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.MappingException;
 import org.hibernate.boot.MetadataSources;
-import org.hibernate.exception.GenericJDBCException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
