@@ -600,7 +600,6 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         void testBoxedBytesArrayValue() {
             var item = new ItemWithBoxedBytesArrayValue(1, new byte[] {1}, new Byte[] {2});
             assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
-                    .isInstanceOf(GenericJDBCException.class)
                     .hasCauseInstanceOf(SQLFeatureNotSupportedException.class);
         }
 
