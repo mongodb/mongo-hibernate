@@ -470,7 +470,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         """
                         {
                             _id: 1,
-                            nested1: {a: 0},
+                            nested1: {},
                             nested2: {
                                 a: 3,
                                 nested: {
@@ -535,11 +535,11 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     @Embeddable
     @Struct(name = "Single")
     public static class Single {
-        public int a;
+        public Integer a;
 
         Single() {}
 
-        public Single(int a) {
+        public Single(Integer a) {
             this.a = a;
         }
     }
