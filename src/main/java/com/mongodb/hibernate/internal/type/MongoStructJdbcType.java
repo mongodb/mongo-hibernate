@@ -37,7 +37,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Struct;
 import org.bson.BsonDocument;
-import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;

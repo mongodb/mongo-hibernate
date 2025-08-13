@@ -292,10 +292,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static void parseParameters(BsonValue value, List<ParameterValueSetter> parameterValueSetters) {
-        if (value.isDocument()) {
-            parseParameters(value.asDocument(), parameterValueSetters);
-        } else if (value.isArray()) {
-            parseParameters(value.asArray(), parameterValueSetters);
+        if (value instanceof BsonDocument document) {
+            parseParameters(document, parameterValueSetters);
+        } else if (value instanceof BsonArray array) {
+            parseParameters(array, parameterValueSetters);
         } else {
             fail("Only BSON container type (BsonDocument or BsonArray) is accepted; provided type: "
                     + value.getBsonType());
