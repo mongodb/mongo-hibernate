@@ -415,9 +415,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 assertInstanceOf(targetTableGroup.getPrimaryTableReference(), NamedTableReference.class);
         var sourceQualifier = sourceTableGroup.getPrimaryTableReference().getIdentificationVariable();
         var targetQualifier = targetTableReference.getIdentificationVariable();
+        var lookupAsFieldName = getLookupAsFieldName(targetQualifier);
 
         var sourceQualifierFullPath = columnQualifierFullPaths.getOrDefault(sourceQualifier, "");
-        columnQualifierFullPaths.put(targetQualifier, sourceQualifierFullPath + targetQualifier + ".");
+        columnQualifierFullPaths.put(targetQualifier, sourceQualifierFullPath + lookupAsFieldName + ".");
 
         var comparisonPredicate = assertInstanceOf(predicate, ComparisonPredicate.class);
 
@@ -452,8 +453,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                         assertNotNull(sourceColumnReference).getColumnExpression(),
                         assertNotNull(targetColumnReference).getColumnExpression(),
                         pipeline,
-                        targetQualifier),
-                new AstUnwindStage("$" + targetQualifier));
+                        lookupAsFieldName),
+                new AstUnwindStage("$" + lookupAsFieldName));
     }
 
     private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
@@ -1252,5 +1253,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                             startPosition,
                             executionContext.getSession());
         }
+    }
+
+    private static String getLookupAsFieldName(String tableQualifier) {
+        return "_$" + tableQualifier; // $ is the forbidden entity column name so the lookup as field won't conflict
     }
 }
