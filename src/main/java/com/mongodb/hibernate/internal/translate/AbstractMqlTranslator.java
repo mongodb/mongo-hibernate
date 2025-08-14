@@ -166,7 +166,6 @@ import org.hibernate.sql.ast.tree.predicate.Junction;
 import org.hibernate.sql.ast.tree.predicate.LikePredicate;
 import org.hibernate.sql.ast.tree.predicate.NegatedPredicate;
 import org.hibernate.sql.ast.tree.predicate.NullnessPredicate;
-import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.predicate.SelfRenderingPredicate;
 import org.hibernate.sql.ast.tree.predicate.ThruthnessPredicate;
 import org.hibernate.sql.ast.tree.select.QueryGroup;
@@ -537,7 +536,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());
 
-        for (SqlSelection sqlSelection : selectClause.getSqlSelections()) {
+        for (var sqlSelection : selectClause.getSqlSelections()) {
             if (sqlSelection.isVirtual()) {
                 continue;
             }
@@ -561,16 +560,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        if (literalValue == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-        }
         astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
     }
 
     @Override
     public void visitJunction(Junction junction) {
         var subFilters = new ArrayList<AstFilter>(junction.getPredicates().size());
-        for (Predicate predicate : junction.getPredicates()) {
+        for (var predicate : junction.getPredicates()) {
             subFilters.add(acceptAndYield(predicate, FILTER));
         }
         var junctionFilter =
@@ -1015,17 +1011,6 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    static void checkJdbcParameterBindingsSupportability(@Nullable JdbcParameterBindings jdbcParameterBindings) {
-        if (jdbcParameterBindings != null) {
-            for (var jdbcParameterBinding : jdbcParameterBindings.getBindings()) {
-                if (jdbcParameterBinding.getBindValue() == null) {
-                    throw new FeatureNotSupportedException(
-                            "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-                }
-            }
-        }
-    }
-
     private static void checkQueryOptionsSupportability(QueryOptions queryOptions) {
         if (queryOptions.getTimeout() != null) {
             throw new FeatureNotSupportedException("'timeout' inQueryOptions is not supported");
@@ -1101,8 +1086,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 || (isFieldPathExpression(rhs) && isValueExpression(lhs));
     }
 
-    private static BsonValue toBsonValue(Object value) {
-        // TODO-HIBERNATE-74 decide if `value` is nullable
+    private static BsonValue toBsonValue(@Nullable Object value) {
         try {
             return ValueConversions.toBsonValue(value);
         } catch (SQLFeatureNotSupportedException e) {

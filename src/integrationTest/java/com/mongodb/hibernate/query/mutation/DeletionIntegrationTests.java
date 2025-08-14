@@ -76,9 +76,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "Crime and Punishment",
                                   "outOfStock": false,
                                   "publishYear": 1866,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """),
                         BsonDocument.parse(
@@ -88,9 +88,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "Anna Karenina",
                                   "outOfStock": false,
                                   "publishYear": 1877,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """),
                         BsonDocument.parse(
@@ -100,9 +100,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "The Brothers Karamazov",
                                   "outOfStock": false,
                                   "publishYear": 1880,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """)),
                 Set.of(Book.COLLECTION_NAME));
@@ -138,9 +138,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "War and Peace",
                                   "outOfStock": true,
                                   "publishYear": 1869,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """),
                         BsonDocument.parse(
@@ -150,9 +150,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "Crime and Punishment",
                                   "outOfStock": false,
                                   "publishYear": 1866,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """),
                         BsonDocument.parse(
@@ -162,9 +162,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "Anna Karenina",
                                   "outOfStock": false,
                                   "publishYear": 1877,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """),
                         BsonDocument.parse(
@@ -174,9 +174,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "The Brothers Karamazov",
                                   "outOfStock": false,
                                   "publishYear": 1880,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """),
                         BsonDocument.parse(
@@ -186,9 +186,9 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "title": "War and Peace",
                                   "outOfStock": false,
                                   "publishYear": 2025,
-                                  "isbn13": {"$numberLong": "0"},
-                                  "discount": {"$numberDouble": "0"},
-                                  "price": {"$numberDecimal": "0.0"}
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
                                 }
                                 """)),
                 Set.of(Book.COLLECTION_NAME));

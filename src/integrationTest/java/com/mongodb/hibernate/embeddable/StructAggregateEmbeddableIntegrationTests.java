@@ -17,10 +17,9 @@
 package com.mongodb.hibernate.embeddable;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
@@ -36,6 +35,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
@@ -47,7 +47,6 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -164,7 +163,6 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     }
 
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testNestedNullValueOrHavingNulls() {
         var item = new ItemWithNestedValues(
                 new EmbeddableIntegrationTests.Single(1),
@@ -240,7 +238,6 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     void testNestedValueHavingArraysAndCollections() {
         var item = new ItemWithNestedValueHavingArraysAndCollections(
                 1,
-                // TODO-HIBERNATE-48 sprinkle on `null` array/collection elements
                 new ArraysAndCollections(
                         new byte[] {2, 3},
                         new char[] {'s', 't', 'r'},
@@ -248,24 +245,24 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         new long[] {Long.MAX_VALUE, 6},
                         new double[] {Double.MAX_VALUE},
                         new boolean[] {true},
-                        new Character[] {'s', 't', 'r'},
-                        new Integer[] {7},
-                        new Long[] {8L},
-                        new Double[] {9.1d},
-                        new Boolean[] {true},
-                        new String[] {"str"},
-                        new BigDecimal[] {BigDecimal.valueOf(10.1)},
-                        new ObjectId[] {new ObjectId("000000000000000000000001")},
-                        new Single[] {new Single(1)},
-                        List.of('s', 't', 'r'),
-                        Set.of(5),
-                        List.of(Long.MAX_VALUE, 6L),
-                        List.of(Double.MAX_VALUE),
-                        List.of(true),
-                        List.of("str"),
-                        List.of(BigDecimal.valueOf(10.1)),
-                        List.of(new ObjectId("000000000000000000000001")),
-                        List.of(new Single(1))));
+                        new Character[] {'s', null, 't', 'r'},
+                        new Integer[] {null, 7},
+                        new Long[] {8L, null},
+                        new Double[] {9.1d, null},
+                        new Boolean[] {true, null},
+                        new String[] {null, "str"},
+                        new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
+                        new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                        new Single[] {new Single(1), null},
+                        asList('s', 't', null, 'r'),
+                        new HashSet<>(asList(null, 5)),
+                        asList(Long.MAX_VALUE, null, 6L),
+                        asList(null, Double.MAX_VALUE),
+                        asList(null, true),
+                        asList("str", null),
+                        asList(BigDecimal.valueOf(10.1), null),
+                        asList(null, new ObjectId("000000000000000000000001")),
+                        asList(new Single(1), null)));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -278,24 +275,24 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
                         doubles: [{$numberDouble: "1.7976931348623157E308"}],
                         booleans: [true],
-                        boxedChars: ["s", "t", "r"],
-                        boxedInts: [7],
-                        boxedLongs: [{$numberLong: "8"}],
-                        boxedDoubles: [{$numberDouble: "9.1"}],
-                        boxedBooleans: [true],
-                        strings: ["str"],
-                        bigDecimals: [{$numberDecimal: "10.1"}],
-                        objectIds: [{$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddables: [{a: 1}],
-                        charsCollection: ["s", "t", "r"],
-                        intsCollection: [5],
-                        longsCollection: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
-                        doublesCollection: [{$numberDouble: "1.7976931348623157E308"}],
-                        booleansCollection: [true],
-                        stringsCollection: ["str"],
-                        bigDecimalsCollection: [{$numberDecimal: "10.1"}],
-                        objectIdsCollection: [{$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddablesCollection: [{a: 1}]
+                        boxedChars: ["s", null, "t", "r"],
+                        boxedInts: [null, 7],
+                        boxedLongs: [{$numberLong: "8"}, null],
+                        boxedDoubles: [{$numberDouble: "9.1"}, null],
+                        boxedBooleans: [true, null],
+                        strings: [null, "str"],
+                        bigDecimals: [null, {$numberDecimal: "10.1"}],
+                        objectIds: [{$oid: "000000000000000000000001"}, null],
+                        structAggregateEmbeddables: [{a: 1}, null],
+                        charsCollection: ["s", "t", null, "r"],
+                        intsCollection: [null, 5],
+                        longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "6"}],
+                        doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
+                        booleansCollection: [null, true],
+                        stringsCollection: ["str", null],
+                        bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
+                        objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                        structAggregateEmbeddablesCollection: [{a: 1}, null]
                     }
                 }
                 """);
@@ -322,24 +319,24 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
                         doubles: [{$numberDouble: "1.7976931348623157E308"}],
                         booleans: [true],
-                        boxedChars: ["s", "t", "r"],
-                        boxedInts: [7],
-                        boxedLongs: [{$numberLong: "8"}],
-                        boxedDoubles: [{$numberDouble: "9.1"}],
-                        boxedBooleans: [true],
-                        strings: ["str"],
-                        bigDecimals: [{$numberDecimal: "10.1"}],
-                        objectIds: [{$oid: "000000000000000000000002"}],
-                        structAggregateEmbeddables: [{a: 1}],
-                        charsCollection: ["s", "t", "r"],
-                        intsCollection: [5],
-                        longsCollection: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
-                        doublesCollection: [{$numberDouble: "1.7976931348623157E308"}],
-                        booleansCollection: [true],
-                        stringsCollection: ["str"],
-                        bigDecimalsCollection: [{$numberDecimal: "10.1"}],
-                        objectIdsCollection: [{$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddablesCollection: [{a: 1}]
+                        boxedChars: ["s", null, "t", "r"],
+                        boxedInts: [null, 7],
+                        boxedLongs: [{$numberLong: "8"}, null],
+                        boxedDoubles: [{$numberDouble: "9.1"}, null],
+                        boxedBooleans: [true, null],
+                        strings: [null, "str"],
+                        bigDecimals: [null, {$numberDecimal: "10.1"}],
+                        objectIds: [{$oid: "000000000000000000000002"}, null],
+                        structAggregateEmbeddables: [{a: 1}, null],
+                        charsCollection: ["s", "t", null, "r"],
+                        intsCollection: [null, 5],
+                        longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "-6"}],
+                        doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
+                        booleansCollection: [null, true],
+                        stringsCollection: ["str", null],
+                        bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
+                        objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                        structAggregateEmbeddablesCollection: [{a: 1}, null]
                     }
                 }
                 """);
@@ -423,7 +420,6 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
      * @see ArrayAndCollectionIntegrationTests#testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables()
      */
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     public void testNestedValueHavingNullArraysAndCollections() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
@@ -464,16 +460,10 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
-        // `loadedItem.nested` is `null` despite `item.nested` not being `null`.
-        // There is nothing we can do here, such is the Hibernate ORM behavior.
-        assertNull(loadedItem.nested);
-        assertUsingRecursiveComparison(item, loadedItem, (assertion, expected) -> assertion
-                .ignoringFields("nested")
-                .isEqualTo(expected));
+        assertEq(item, loadedItem);
     }
 
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testReadNestedValuesMissingFields() {
         var insertResult = mongoCollection.insertOne(
                 BsonDocument.parse(
@@ -497,9 +487,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 insertResult.getInsertedId().asInt32().getValue());
         var expectedItem = new ItemWithNestedValues(
                 id,
-                // `loadedItem.nested1` is `null` despite `nested1` not being BSON `Null` in the database.
-                // There is nothing we can do here, such is the Hibernate ORM behavior.
-                null,
+                new Single(),
                 new PairWithParent(
                         3,
                         new Plural(
@@ -547,11 +535,11 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     @Embeddable
     @Struct(name = "Single")
     public static class Single {
-        public int a;
+        public Integer a;
 
         Single() {}
 
-        public Single(int a) {
+        public Single(Integer a) {
             this.a = a;
         }
     }
@@ -572,7 +560,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         /**
-         * Hibernate ORM requires a getter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
+         * Hibernate ORM requires a setter for a {@link Parent} field, despite us using {@linkplain AccessType#FIELD
          * field-based access}.
          */
         void setParent(ItemWithNestedValues parent) {

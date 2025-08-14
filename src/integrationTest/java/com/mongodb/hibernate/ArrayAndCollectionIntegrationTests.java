@@ -17,6 +17,7 @@
 package com.mongodb.hibernate;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.WRAPPER_ARRAY_HANDLING;
@@ -47,7 +48,6 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,33 +78,32 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     void testArrayAndCollectionValues() {
         var item = new ItemWithArrayAndCollectionValues(
                 1,
-                // TODO-HIBERNATE-48 sprinkle on `null` array/collection elements
                 new byte[] {2, 3},
                 new char[] {'s', 't', 'r'},
                 new int[] {5},
                 new long[] {Long.MAX_VALUE, 6},
                 new double[] {Double.MAX_VALUE},
                 new boolean[] {true},
-                new Character[] {'s', 't', 'r'},
-                new Integer[] {7},
-                new Long[] {8L},
-                new Double[] {9.1d},
-                new Boolean[] {true},
-                new String[] {"str"},
-                new BigDecimal[] {BigDecimal.valueOf(10.1)},
-                new ObjectId[] {new ObjectId("000000000000000000000001")},
+                new Character[] {'s', null, 't', 'r'},
+                new Integer[] {null, 7},
+                new Long[] {8L, null},
+                new Double[] {9.1d, null},
+                new Boolean[] {true, null},
+                new String[] {null, "str"},
+                new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
+                new ObjectId[] {new ObjectId("000000000000000000000001"), null},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
-                    new StructAggregateEmbeddableIntegrationTests.Single(1)
+                    new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
-                List.of('s', 't', 'r'),
-                List.of(5),
-                List.of(Long.MAX_VALUE, 6L),
-                List.of(Double.MAX_VALUE),
-                List.of(true),
-                List.of("str"),
-                List.of(BigDecimal.valueOf(10.1)),
-                List.of(new ObjectId("000000000000000000000001")),
-                List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)));
+                asList('s', 't', null, 'r'),
+                asList(null, 5),
+                asList(Long.MAX_VALUE, null, 6L),
+                asList(null, Double.MAX_VALUE),
+                asList(null, true),
+                asList("str", null),
+                asList(BigDecimal.valueOf(10.1), null),
+                asList(null, new ObjectId("000000000000000000000001")),
+                asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -116,24 +115,24 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
                     doubles: [{$numberDouble: "1.7976931348623157E308"}],
                     booleans: [true],
-                    boxedChars: ["s", "t", "r"],
-                    boxedInts: [7],
-                    boxedLongs: [{$numberLong: "8"}],
-                    boxedDoubles: [{$numberDouble: "9.1"}],
-                    boxedBooleans: [true],
-                    strings: ["str"],
-                    bigDecimals: [{$numberDecimal: "10.1"}],
-                    objectIds: [{$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddables: [{a: 1}],
-                    charsCollection: ["s", "t", "r"],
-                    intsCollection: [5],
-                    longsCollection: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
-                    doublesCollection: [{$numberDouble: "1.7976931348623157E308"}],
-                    booleansCollection: [true],
-                    stringsCollection: ["str"],
-                    bigDecimalsCollection: [{$numberDecimal: "10.1"}],
-                    objectIdsCollection: [{$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddablesCollection: [{a: 1}]
+                    boxedChars: ["s", null, "t", "r"],
+                    boxedInts: [null, 7],
+                    boxedLongs: [{$numberLong: "8"}, null],
+                    boxedDoubles: [{$numberDouble: "9.1"}, null],
+                    boxedBooleans: [true, null],
+                    strings: [null, "str"],
+                    bigDecimals: [null, {$numberDecimal: "10.1"}],
+                    objectIds: [{$oid: "000000000000000000000001"}, null],
+                    structAggregateEmbeddables: [{a: 1}, null],
+                    charsCollection: ["s", "t", null, "r"],
+                    intsCollection: [null, 5],
+                    longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "6"}],
+                    doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
+                    booleansCollection: [null, true],
+                    stringsCollection: ["str", null],
+                    bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
+                    objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                    structAggregateEmbeddablesCollection: [{a: 1}, null]
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -158,24 +157,24 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
                     doubles: [{$numberDouble: "1.7976931348623157E308"}],
                     booleans: [true],
-                    boxedChars: ["s", "t", "r"],
-                    boxedInts: [7],
-                    boxedLongs: [{$numberLong: "8"}],
-                    boxedDoubles: [{$numberDouble: "9.1"}],
-                    boxedBooleans: [true],
-                    strings: ["str"],
-                    bigDecimals: [{$numberDecimal: "10.1"}],
-                    objectIds: [{$oid: "000000000000000000000002"}],
-                    structAggregateEmbeddables: [{a: 1}],
-                    charsCollection: ["s", "t", "r"],
-                    intsCollection: [5],
-                    longsCollection: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
-                    doublesCollection: [{$numberDouble: "1.7976931348623157E308"}],
-                    booleansCollection: [true],
-                    stringsCollection: ["str"],
-                    bigDecimalsCollection: [{$numberDecimal: "10.1"}],
-                    objectIdsCollection: [{$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddablesCollection: [{a: 1}]
+                    boxedChars: ["s", null, "t", "r"],
+                    boxedInts: [null, 7],
+                    boxedLongs: [{$numberLong: "8"}, null],
+                    boxedDoubles: [{$numberDouble: "9.1"}, null],
+                    boxedBooleans: [true, null],
+                    strings: [null, "str"],
+                    bigDecimals: [null, {$numberDecimal: "10.1"}],
+                    objectIds: [{$oid: "000000000000000000000002"}, null],
+                    structAggregateEmbeddables: [{a: 1}, null],
+                    charsCollection: ["s", "t", null, "r"],
+                    intsCollection: [null, 5],
+                    longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "-6"}],
+                    doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
+                    booleansCollection: [null, true],
+                    stringsCollection: ["str", null],
+                    bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
+                    objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                    structAggregateEmbeddablesCollection: [{a: 1}, null]
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -248,7 +247,6 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     }
 
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     void testArrayAndCollectionNullValues() {
         var item = new ItemWithArrayAndCollectionValues(
                 1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
@@ -410,7 +408,6 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
      * @see StructAggregateEmbeddableIntegrationTests#testNestedValueHavingNullArraysAndCollections()
      */
     @Test
-    @Disabled("TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48 enable this test")
     public void testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
@@ -597,16 +594,12 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
     @Nested
     class Unsupported {
-        /**
-         * The {@link ClassCastException} caught here manifests a Hibernate ORM bug. The issue goes away if the
-         * {@link ItemWithBoxedBytesArrayValue#bytes} field is removed. Otherwise, the behavior of this test should have
-         * been equivalent to {@link #testBytesCollectionValue()}.
-         */
+
         @Test
         void testBoxedBytesArrayValue() {
             var item = new ItemWithBoxedBytesArrayValue(1, new byte[] {1}, new Byte[] {2});
             assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
-                    .isInstanceOf(ClassCastException.class);
+                    .hasCauseInstanceOf(SQLFeatureNotSupportedException.class);
         }
 
         @Test

@@ -23,6 +23,7 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
@@ -40,6 +41,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -84,6 +86,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLException(format("Parameter with index [%d] is not set", i + 1));
             }
         }
+        checkComparatorNotComparingWithNullValues(command);
     }
 
     @Override
@@ -91,7 +94,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         switch (sqlType) {
-            case Types.ARRAY:
             case Types.BLOB:
             case Types.CLOB:
             case Types.DATALINK:
@@ -103,13 +105,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             case Types.REF:
             case Types.ROWID:
             case Types.SQLXML:
-            case Types.STRUCT:
                 throw new SQLFeatureNotSupportedException(
                         "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
-        throw new SQLFeatureNotSupportedException(
-                "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74, TODO-HIBERNATE-48 https://jira.mongodb.org/browse/HIBERNATE-48"
-                        + " setParameter(parameterIndex, ValueConversions.toBsonValue((Object) null))");
+        setParameter(parameterIndex, toBsonValue((Object) null));
     }
 
     @Override
@@ -293,10 +292,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static void parseParameters(BsonValue value, List<ParameterValueSetter> parameterValueSetters) {
-        if (value.isDocument()) {
-            parseParameters(value.asDocument(), parameterValueSetters);
-        } else if (value.isArray()) {
-            parseParameters(value.asArray(), parameterValueSetters);
+        if (value instanceof BsonDocument document) {
+            parseParameters(document, parameterValueSetters);
+        } else if (value instanceof BsonArray array) {
+            parseParameters(array, parameterValueSetters);
         } else {
             fail("Only BSON container type (BsonDocument or BsonArray) is accepted; provided type: "
                     + value.getBsonType());
@@ -334,6 +333,32 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
         boolean isUsed() {
             return used;
+        }
+    }
+
+    /**
+     * Temporary method to ensure exception is thrown when comparison query operators are comparing with {@code null}
+     * values.
+     *
+     * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
+     */
+    private static void checkComparatorNotComparingWithNullValues(BsonDocument document) {
+        var comparisonOperators = Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
+        for (var entry : document.entrySet()) {
+            var value = entry.getValue();
+            if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+            }
+            if (value instanceof BsonDocument documentValue) {
+                checkComparatorNotComparingWithNullValues(documentValue);
+            } else if (value instanceof BsonArray arrayValue) {
+                for (var element : arrayValue) {
+                    if (element instanceof BsonDocument documentElement) {
+                        checkComparatorNotComparingWithNullValues(documentElement);
+                    }
+                }
+            }
         }
     }
 }

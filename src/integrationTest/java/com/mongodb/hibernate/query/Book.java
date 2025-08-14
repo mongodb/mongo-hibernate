@@ -29,13 +29,12 @@ public class Book {
     @Id
     public int id;
 
-    // TODO-HIBERNATE-48 dummy values are set for currently null value is not supported
-    public String title = "";
-    public Boolean outOfStock = false;
-    public Integer publishYear = 0;
-    public Long isbn13 = 0L;
-    public Double discount = 0.0;
-    public BigDecimal price = new BigDecimal("0.0");
+    public String title;
+    public Boolean outOfStock;
+    public Integer publishYear;
+    public Long isbn13;
+    public Double discount;
+    public BigDecimal price;
 
     public Book() {}
 
@@ -44,5 +43,10 @@ public class Book {
         this.title = title;
         this.publishYear = publishYear;
         this.outOfStock = outOfStock;
+    }
+
+    @Override
+    public String toString() {
+        return "Book{" + "id=" + id + '}';
     }
 }
