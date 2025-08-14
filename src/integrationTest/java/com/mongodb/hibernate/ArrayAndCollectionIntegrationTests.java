@@ -596,6 +596,13 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     class Unsupported {
 
         @Test
+        void testBoxedBytesArrayValue() {
+            var item = new ItemWithBoxedBytesArrayValue(1, new byte[] {1}, new Byte[] {2});
+            assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
+                    .hasCauseInstanceOf(SQLFeatureNotSupportedException.class);
+        }
+
+        @Test
         void testBytesCollectionValue() {
             var item = new ItemWithBytesCollectionValue(1, List.of((byte) 2));
             assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
