@@ -29,4 +29,7 @@ public final class MongoConstants {
     public static final String MONGO_DBMS_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = "MongoDB Java Driver JDBC Adapter";
     public static final String ID_FIELD_NAME = "_id";
+
+    public static final String MONGO_DIALECT_SHORT_NAME = "mongodb";
+    public static final String MONGO_CONNECTION_PROVIDER_SHORT_NAME = "mongodb-connection-provider";
 }
