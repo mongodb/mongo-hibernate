@@ -49,6 +49,8 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogica
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
 import static org.hibernate.query.sqm.FetchClauseType.ROWS_ONLY;
+import static org.hibernate.sql.ast.SqlAstJoinType.INNER;
+import static org.hibernate.sql.ast.SqlAstJoinType.LEFT;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
@@ -95,7 +97,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -409,6 +410,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     private List<AstStage> translateTableGroupJoin(TableGroup sourceTableGroup, TableGroupJoin tableGroupJoin) {
+        if (tableGroupJoin.getJoinType() != LEFT && tableGroupJoin.getJoinType() != INNER) {
+            throw new FeatureNotSupportedException(format(
+                    "unsupported join type: [%s]; currently only LEFT JOIN and INNERT JOIN are supported",
+                    tableGroupJoin.getJoinType().getText()));
+        }
         var targetTableGroup = tableGroupJoin.getJoinedGroup();
         var predicate = tableGroupJoin.getPredicate();
         var targetTableReference =
@@ -417,24 +423,28 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var targetQualifier = targetTableReference.getIdentificationVariable();
         var lookupAsFieldName = getLookupAsFieldName(targetQualifier);
 
+        // only root table qualifier can't be found; defaulting to empty string eliminates root table qualifier
         var sourceQualifierFullPath = columnQualifierFullPaths.getOrDefault(sourceQualifier, "");
         columnQualifierFullPaths.put(targetQualifier, sourceQualifierFullPath + lookupAsFieldName + ".");
 
         var comparisonPredicate = assertInstanceOf(predicate, ComparisonPredicate.class);
 
-        ColumnReference sourceColumnReference = null, targetColumnReference = null;
-        var leftHandColumnReference =
-                comparisonPredicate.getLeftHandExpression().getColumnReference();
-        var rightHandColumnReference =
-                comparisonPredicate.getRightHandExpression().getColumnReference();
-        if (leftHandColumnReference.getQualifier().equals(targetQualifier)
-                && rightHandColumnReference.getQualifier().equals(sourceQualifier)) {
-            targetColumnReference = leftHandColumnReference;
-            sourceColumnReference = rightHandColumnReference;
-        } else if (leftHandColumnReference.getQualifier().equals(sourceQualifier)
-                && rightHandColumnReference.getQualifier().equals(targetQualifier)) {
-            sourceColumnReference = leftHandColumnReference;
-            targetColumnReference = rightHandColumnReference;
+        ColumnReference sourceColumnReference, targetColumnReference;
+        var lhs = comparisonPredicate.getLeftHandExpression().getColumnReference();
+        var rhs = comparisonPredicate.getRightHandExpression().getColumnReference();
+        if (lhs.getQualifier().equals(targetQualifier) && rhs.getQualifier().equals(sourceQualifier)) {
+            targetColumnReference = lhs;
+            sourceColumnReference = rhs;
+        } else if (lhs.getQualifier().equals(sourceQualifier)
+                && rhs.getQualifier().equals(targetQualifier)) {
+            sourceColumnReference = lhs;
+            targetColumnReference = rhs;
+        } else {
+            throw new FeatureNotSupportedException(format(
+                    "Unsupported join predicate: [%s] for join between [%s] and [%s]",
+                    comparisonPredicate,
+                    sourceTableGroup.getModelPart().getNavigableRole(),
+                    targetTableGroup.getModelPart().getNavigableRole()));
         }
 
         var pipeline = Collections.<AstStage>emptyList();
@@ -445,8 +455,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                     pipeline.addAll(translateTableGroupJoin(targetTableGroup, targetTableGroupTableGroupJoin));
                 }
             }
+            // TODO need to handle other joins (e.g. TableReferenceJoin, nested TableGroupJoins)
         }
 
+        // TODO implement INNER JOIN properly (with $lookup + $unwind + $match)
         return List.of(
                 new AstLookupStage(
                         targetTableReference.getTableExpression(),
@@ -624,8 +636,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 throw new FeatureNotSupportedException();
             }
             var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
-            projectStageSpecifications.add(new AstProjectStageSetFieldSpecification(
-                    "f" + i++, new AstLiteralValue(new BsonString("$" + fieldPath))));
+            projectStageSpecifications.add(new AstProjectStageSetFieldSpecification("f" + i++, fieldPath));
         }
         projectStageSpecifications.add(new AstProjectStageExcludeSpecification("_id"));
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);

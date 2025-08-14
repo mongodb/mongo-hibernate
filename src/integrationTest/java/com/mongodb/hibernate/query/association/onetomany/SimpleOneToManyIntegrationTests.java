@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.query.association.onetomany;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
@@ -25,6 +26,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.util.Set;
+import org.hibernate.Hibernate;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +38,6 @@ import org.junit.jupiter.api.Test;
 public class SimpleOneToManyIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Test
-    // @Disabled("OneToMany not implemented yet")
     void test() {
         var company = new Company(1, "Acme Corp");
         var dept1 = new Department(1, "HR", company);
@@ -48,6 +49,12 @@ public class SimpleOneToManyIntegrationTests extends AbstractQueryIntegrationTes
             session.persist(dept1);
             session.persist(dept2);
         });
+
+        var loadedCompanyOutsideSession =
+                getSessionFactoryScope().fromTransaction(session -> session.find(Company.class, company.id));
+        assertThat(Hibernate.isInitialized(loadedCompanyOutsideSession.departments))
+                .isFalse();
+
         getSessionFactoryScope().inTransaction(session -> {
             var loadedCompany = session.find(Company.class, company.id);
             assertEq(company, loadedCompany);

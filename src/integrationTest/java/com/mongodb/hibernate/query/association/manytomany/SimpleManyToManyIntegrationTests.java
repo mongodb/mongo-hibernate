@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.query.association.manytomany;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
@@ -24,6 +25,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.util.Set;
+import org.hibernate.Hibernate;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.Test;
 
@@ -48,6 +50,25 @@ class SimpleManyToManyIntegrationTests extends AbstractQueryIntegrationTests {
             session.persist(book1);
             session.persist(book2);
         });
+
+        var loadedBook1OutsideSession =
+                getSessionFactoryScope().fromTransaction(session -> session.find(Book.class, book1.id));
+        assertThat(Hibernate.isInitialized(loadedBook1OutsideSession.authors)).isFalse();
+
+        var loadedBook2OutsideSession =
+                getSessionFactoryScope().fromTransaction(session -> session.find(Book.class, book2.id));
+        assertThat(Hibernate.isInitialized(loadedBook2OutsideSession.authors)).isFalse();
+
+        var loadedAuthor1OutsideSession =
+                getSessionFactoryScope().fromTransaction(session -> session.find(Author.class, author1.id));
+        assertThat(Hibernate.isInitialized(loadedAuthor1OutsideSession.writtenBooks))
+                .isFalse();
+
+        var loadedAuthor2OutsideSession =
+                getSessionFactoryScope().fromTransaction(session -> session.find(Author.class, author2.id));
+        assertThat(Hibernate.isInitialized(loadedAuthor2OutsideSession.writtenBooks))
+                .isFalse();
+
         getSessionFactoryScope().inTransaction(session -> {
             var loadedBook1 = session.find(Book.class, book1.id);
             var loadedBook2 = session.find(Book.class, book2.id);

@@ -16,14 +16,14 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.bson.BsonWriter;
 
-public record AstProjectStageSetFieldSpecification(String path, AstNode value) implements AstProjectStageSpecification {
+public record AstProjectStageSetFieldSpecification(String path, String sourceFieldPath)
+        implements AstProjectStageSpecification {
 
     @Override
     public void render(final BsonWriter writer) {
         writer.writeName(path);
-        value.render(writer);
+        writer.writeString("$" + sourceFieldPath);
     }
 }
