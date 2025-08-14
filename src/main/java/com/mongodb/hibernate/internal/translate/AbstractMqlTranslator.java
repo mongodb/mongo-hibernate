@@ -157,8 +157,8 @@ import org.hibernate.sql.ast.tree.expression.UnparsedNumericLiteral;
 import org.hibernate.sql.ast.tree.from.FromClause;
 import org.hibernate.sql.ast.tree.from.FunctionTableReference;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
-import org.hibernate.sql.ast.tree.from.OneToManyTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
+import org.hibernate.sql.ast.tree.from.StandardTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
@@ -1199,8 +1199,9 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             throw new FeatureNotSupportedException("Only single root from clause is supported");
         }
         var root = fromClause.getRoots().get(0);
-        if (!(root instanceof OneToManyTableGroup) && (!(root.getModelPart() instanceof EntityPersister entityPersister)
-                || entityPersister.getQuerySpaces().length != 1)) {
+        if (root instanceof StandardTableGroup
+                && root.getModelPart() instanceof EntityPersister entityPersister
+                && entityPersister.getQuerySpaces().length != 1) {
             throw new FeatureNotSupportedException("Only single table from clause is supported");
         }
     }

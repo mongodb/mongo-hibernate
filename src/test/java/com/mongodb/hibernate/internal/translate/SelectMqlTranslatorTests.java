@@ -24,7 +24,6 @@ import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryS
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.AbstractEntityPersister;
-import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.hibernate.spi.NavigablePath;
