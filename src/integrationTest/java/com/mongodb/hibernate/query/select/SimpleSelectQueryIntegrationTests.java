@@ -83,10 +83,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -115,10 +116,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -147,10 +149,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -179,10 +182,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -211,10 +215,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -243,10 +248,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -283,10 +289,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -323,10 +330,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -366,10 +374,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -411,10 +420,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -456,10 +466,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -512,10 +523,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -559,10 +571,11 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "age": true,
-                            "country": true,
-                            "name": true
+                            "f0": "$_id",
+                            "f1": "$age",
+                            "f2": "$country",
+                            "f3": "$name"
+                            "_id": false
                           }
                         }
                       ]
@@ -590,8 +603,9 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "name": true,
-                            "age": true
+                            "f0": "$name",
+                            "f1": "$age",
+                            "_id": false
                           }
                         }
                       ]
@@ -619,8 +633,9 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "name": true,
-                            "age": true
+                            "f0": "$name",
+                            "f1": "$age",
+                            "_id": false
                           }
                         }
                       ]
@@ -746,13 +761,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -779,13 +795,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -812,13 +829,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -845,13 +863,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -878,13 +897,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -913,13 +933,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]

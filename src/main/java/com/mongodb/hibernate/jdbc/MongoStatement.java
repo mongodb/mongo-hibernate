@@ -23,7 +23,6 @@ import static java.util.stream.Collectors.toCollection;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -110,10 +109,10 @@ class MongoStatement implements StatementAdapter {
                     "Exclusions are not allowed in `$project` specifications, except for the [%s] field: [%s, %s]",
                     ID_FIELD_NAME, key, value));
         }
-        if (!value.isBoolean() && !value.isNumber()) {
+        /*if (!value.isBoolean() && !value.isNumber()) {
             throw new FeatureNotSupportedException(format(
                     "Expressions and literals are not supported in `$project` specifications: [%s: %s]", key, value));
-        }
+        }*/
         return exclude;
     }
 

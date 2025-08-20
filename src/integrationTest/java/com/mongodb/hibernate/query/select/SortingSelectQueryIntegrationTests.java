@@ -81,13 +81,14 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     },
                     {
                       "$project": {
-                        "_id": true,
-                        "discount": true,
-                        "isbn13": true,
-                        "outOfStock": true,
-                        "price": true,
-                        "publishYear": true,
-                        "title": true
+                        "f0": "$_id",
+                        "f1": "$discount",
+                        "f2": "$isbn13",
+                        "f3": "$outOfStock",
+                        "f4": "$price",
+                        "f5": "$publishYear",
+                        "f6": "$title",
+                        "_id": false
                       }
                     }
                   ]
@@ -115,13 +116,14 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     },
                     {
                       "$project": {
-                        "_id": true,
-                        "discount": true,
-                        "isbn13": true,
-                        "outOfStock": true,
-                        "price": true,
-                        "publishYear": true,
-                        "title": true
+                        "f0": "$_id",
+                        "f1": "$discount",
+                        "f2": "$isbn13",
+                        "f3": "$outOfStock",
+                        "f4": "$price",
+                        "f5": "$publishYear",
+                        "f6": "$title",
+                        "_id": false
                       }
                     }
                   ]
@@ -165,13 +167,14 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     },
                     {
                       "$project": {
-                        "_id": true,
-                        "discount": true,
-                        "isbn13": true,
-                        "outOfStock": true,
-                        "price": true,
-                        "publishYear": true,
-                        "title": true
+                        "f0": "$_id",
+                        "f1": "$discount",
+                        "f2": "$isbn13",
+                        "f3": "$outOfStock",
+                        "f4": "$price",
+                        "f5": "$publishYear",
+                        "f6": "$title",
+                        "_id": false
                       }
                     }
                   ]
@@ -185,7 +188,7 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         assertSelectionQuery(
                 "from Book ORDER BY title ASC, publishYear DESC, id ASC",
                 Book.class,
-                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'_id': true, 'discount': true, 'isbn13': true, 'outOfStock': true, 'price': true, 'publishYear': true, 'title': true} } ] }",
+                "{ 'aggregate': 'books', 'pipeline': [ { '$sort': { 'title': 1, 'publishYear': -1, '_id': 1 } }, {'$project': {'f0': '$_id', 'f1': '$discount', 'f2': '$isbn13', 'f3': '$outOfStock', 'f4': '$price', 'f5': '$publishYear', 'f6': '$title', '_id': false} } ] }",
                 resultList -> assertThat(resultList)
                         .satisfiesAnyOf(
                                 list -> assertIterableEq(getBooksByIds(3, 2, 4, 1, 5), list),
@@ -210,8 +213,9 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     },
                     {
                       "$project": {
-                        "title": true,
-                        "publishYear": true
+                        "f0": "$title",
+                        "f1": "$publishYear",
+                        "_id": false
                       }
                     }
                   ]
@@ -243,8 +247,9 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     },
                     {
                       "$project": {
-                        "title": true,
-                        "publishYear": true
+                        "f0": "$title",
+                        "f1": "$publishYear",
+                        "_id": false
                       }
                     }
                   ]
@@ -329,13 +334,14 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
@@ -363,13 +369,14 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "_id": true,
-                            "discount": true,
-                            "isbn13": true,
-                            "outOfStock": true,
-                            "price": true,
-                            "publishYear": true,
-                            "title": true
+                            "f0": "$_id",
+                            "f1": "$discount",
+                            "f2": "$isbn13",
+                            "f3": "$outOfStock",
+                            "f4": "$price",
+                            "f5": "$publishYear",
+                            "f6": "$title",
+                            "_id": false
                           }
                         }
                       ]
