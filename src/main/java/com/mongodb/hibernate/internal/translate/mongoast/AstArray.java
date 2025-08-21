@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstArrayValue(Collection<AstValue> elements) implements AstValue {
+public record AstArray(Collection<AstValue> elements) implements AstValue {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartArray();

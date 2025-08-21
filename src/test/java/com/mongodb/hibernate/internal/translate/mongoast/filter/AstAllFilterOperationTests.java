@@ -19,8 +19,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstArrayValue;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstArray;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.util.List;
 import org.bson.BsonNull;
@@ -37,6 +37,6 @@ class AstAllFilterOperationTests {
                 () -> assertRendering(
                         """
                         {"$all": [null]}""",
-                        new AstAllFilterOperation(new AstArrayValue(List.of(new AstLiteralValue(BsonNull.VALUE))))));
+                        new AstAllFilterOperation(new AstArray(List.of(new AstLiteral(BsonNull.VALUE))))));
     }
 }

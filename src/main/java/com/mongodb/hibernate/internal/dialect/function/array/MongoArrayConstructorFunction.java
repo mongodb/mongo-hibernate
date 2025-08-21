@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.dialect.function.array;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
 
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
-import com.mongodb.hibernate.internal.translate.mongoast.AstArrayValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstArray;
 import java.util.List;
 import java.util.Set;
 import org.hibernate.dialect.function.array.ArrayConstructorFunction;
@@ -52,6 +52,6 @@ public final class MongoArrayConstructorFunction extends ArrayConstructorFunctio
         var translatedArguments = arguments.stream()
                 .map(argument -> translator.acceptAndYield(argument, VALUE))
                 .toList();
-        translator.yield(VALUE, new AstArrayValue(translatedArguments));
+        translator.yield(VALUE, new AstArray(translatedArguments));
     }
 }

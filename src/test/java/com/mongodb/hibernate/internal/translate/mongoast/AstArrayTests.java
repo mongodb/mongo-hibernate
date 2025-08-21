@@ -24,16 +24,15 @@ import org.bson.BsonBoolean;
 import org.bson.BsonNull;
 import org.junit.jupiter.api.Test;
 
-class AstArrayValueTests {
+class AstArrayTests {
     @Test
     void testRendering() {
         assertAll(
                 () -> assertValueRendering("""
-                        {"": []}""", new AstArrayValue(List.of())),
+                        {"": []}""", new AstArray(List.of())),
                 () -> assertValueRendering(
                         """
                         {"": [true, null]}""",
-                        new AstArrayValue(
-                                List.of(new AstLiteralValue(BsonBoolean.TRUE), new AstLiteralValue(BsonNull.VALUE)))));
+                        new AstArray(List.of(new AstLiteral(BsonBoolean.TRUE), new AstLiteral(BsonNull.VALUE)))));
     }
 }

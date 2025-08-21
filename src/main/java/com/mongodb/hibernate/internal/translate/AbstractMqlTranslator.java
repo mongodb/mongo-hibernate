@@ -34,8 +34,8 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
-import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.FALSE;
-import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.TRUE;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.FALSE;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.TRUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -55,7 +55,7 @@ import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryS
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
@@ -572,7 +572,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteral(toBsonValue(literalValue)));
     }
 
     @Override
@@ -592,7 +592,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteral(toBsonValue(literalValue)));
     }
 
     @Override
