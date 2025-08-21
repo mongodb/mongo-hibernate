@@ -98,6 +98,7 @@ import org.hibernate.query.NullPrecedence;
 import org.hibernate.query.spi.Limit;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
+import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
@@ -883,6 +884,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
+        if (!(selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression)) {
+            throw new FeatureNotSupportedException("Only function expressions are supported");
+        }
         selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
     }
 
@@ -1186,8 +1190,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     /**
-     * This {@link SqlAppender} makes any {@link SelfRenderingExpression}/{@link SelfRenderingPredicate} explicitly
-     * unsupported, unless we implemented its rendering such that it avoids using this appender.
+     * This {@link SqlAppender} makes any {@link SelfRenderingExpression} explicitly unsupported, unless we implemented
+     * its rendering such that it avoids using this appender. Unfortunately, this class does not give us protection if a
+     * {@link SelfRenderingExpression} delegates rendering to its {@link SqlAstTranslator}, and does not explicitly use
+     * its {@link SqlAppender}.
      */
     private static final class FeatureNotSupportedSqlAppender implements SqlAppender {
         static final FeatureNotSupportedSqlAppender INSTANCE = new FeatureNotSupportedSqlAppender();

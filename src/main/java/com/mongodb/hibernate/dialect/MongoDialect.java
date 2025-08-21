@@ -150,14 +150,25 @@ public final class MongoDialect extends Dialect {
      *     </thead>
      *     <tbody>
      *         <tr>
-     *             <td><a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
-     *             {@code array}, {@code array_list}</a></td>
-     *             <td></td>
+     *             <td>
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
+     *                     {@code array}, {@code array_list}</a>
+     *             </td>
+     *             <td>
+     *                 Is allowed only in a
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                     {@code where} clause</a>.
+     *             </td>
      *         </tr>
      *         <tr>
-     *             <td><a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
-     *             {@code array_contains}, {@code array_contains_nullable}</a></td>
      *             <td>
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
+     *                     {@code array_contains}, {@code array_contains_nullable}</a>
+     *             </td>
+     *             <td>
+     *                 Is allowed only in a
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                     {@code where} clause</a>.
      *                 <ul>
      *                     <li>
      *                         The first argument must be an
@@ -174,13 +185,23 @@ public final class MongoDialect extends Dialect {
      *                         The second argument must not be an HQL path expression.
      *                         It is unclear if Hibernate ORM intended them to be supported.
      *                     </li>
+     *                     <li>
+     *                         Is allowed only in a
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                             {@code where} clause</a>.
+     *                     </li>
      *                 </ul>
      *             </td>
      *         </tr>
      *         <tr>
-     *             <td><a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
-     *             {@code array_includes}, {@code array_includes_nullable}</a></td>
      *             <td>
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
+     *                     {@code array_includes}, {@code array_includes_nullable}</a>
+     *             </td>
+     *             <td>
+     *                 Is allowed only in a
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                     {@code where} clause</a>.
      *                 <ul>
      *                     <li>
      *                         The first argument must be an

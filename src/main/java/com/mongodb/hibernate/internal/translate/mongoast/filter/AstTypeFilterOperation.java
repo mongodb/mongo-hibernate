@@ -16,12 +16,18 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
 import java.util.Collection;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
 
 /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/type/">{@code $type}</a>. */
 public record AstTypeFilterOperation(Collection<BsonType> types) implements AstFilterOperation {
+    public AstTypeFilterOperation {
+        assertFalse(types.isEmpty());
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

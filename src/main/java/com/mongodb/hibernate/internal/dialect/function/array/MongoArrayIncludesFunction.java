@@ -16,9 +16,9 @@
 
 package com.mongodb.hibernate.internal.dialect.function.array;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction.checkNotHqlPathExpression;
+import static com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction.getArgumentAsExpression;
 import static com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction.haystackFieldPath;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
@@ -38,7 +38,6 @@ import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.SqlAstNode;
-import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.SqlTuple;
 import org.hibernate.type.spi.TypeConfiguration;
 
@@ -67,7 +66,7 @@ public final class MongoArrayIncludesFunction extends AbstractArrayIncludesFunct
         var functionName = getName();
         var fieldPath = haystackFieldPath(translator, functionName, arguments);
         var needleParameterIndex = 1;
-        var needleExpression = assertInstanceOf(arguments.get(needleParameterIndex), Expression.class);
+        var needleExpression = getArgumentAsExpression(arguments, needleParameterIndex);
         if (needleExpression instanceof SqlTuple) {
             // Hibernate ORM represents a `Collection` set as a query parameter as an `SqlTuple`
             // with `SqmParameterInterpretation` for each of the elements in the `Collection`. That is,

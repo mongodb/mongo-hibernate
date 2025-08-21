@@ -27,8 +27,8 @@ public final class AstNodeAssertions {
 
     private AstNodeAssertions() {}
 
-    public static void assertRendering(String expectedJson, AstNode node) {
-        doAssertRendering(expectedJson, node, AstNodeKind.DOCUMENT);
+    public static void assertRendering(String expectedCanonicalExtendedJson, AstNode node) {
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.DOCUMENT);
     }
 
     public static void assertElementRendering(String expectedCanonicalExtendedJson, AstNode node) {

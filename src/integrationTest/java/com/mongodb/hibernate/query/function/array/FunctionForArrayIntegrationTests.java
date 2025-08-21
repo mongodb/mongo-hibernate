@@ -20,7 +20,6 @@ import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.AvailableSettings.WRAPPER_ARRAY_HANDLING;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.mongodb.MongoCommandException;
@@ -31,7 +30,6 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -42,11 +40,9 @@ import org.hibernate.JDBCException;
 import org.hibernate.query.sqm.UnknownPathException;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -58,7 +54,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {FunctionForArrayIntegrationTests.Item.class})
-@ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
 // TODO-HIBERNATE-74 We need to make sure the functions behave in accordance with the ternary logic
 public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAware {
@@ -138,7 +133,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
 
         @BeforeEach
         void beforeEach() {
-            item = new Item(1, new ArrayList<>(asList(2, null, 3)));
+            item = new Item(1, asList(2, null, 3));
             persistInTransaction(List.of(item, new Item(4, null)));
         }
 
@@ -243,7 +238,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
 
         @BeforeEach
         void beforeEach() {
-            item = new Item(1, new ArrayList<>(asList(2, null, 3)));
+            item = new Item(1, asList(2, null, 3));
             persistInTransaction(List.of(item, new Item(4, null)));
         }
 
@@ -290,7 +285,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
 
         @BeforeEach
         void beforeEach() {
-            item = new Item(1, new ArrayList<>(asList(2, null, 3)));
+            item = new Item(1, asList(2, null, 3));
             persistInTransaction(List.of(item, new Item(4, null)));
         }
 
@@ -396,7 +391,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
 
         @BeforeEach
         void beforeEach() {
-            item = new Item(1, new ArrayList<>(asList(2, null, 3)));
+            item = new Item(1, asList(2, null, 3));
             persistInTransaction(List.of(item, new Item(4, null)));
         }
 

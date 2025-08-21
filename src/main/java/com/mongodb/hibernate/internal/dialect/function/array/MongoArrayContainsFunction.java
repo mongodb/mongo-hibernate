@@ -73,7 +73,7 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
         var functionName = getName();
         var fieldPath = haystackFieldPath(translator, functionName, arguments);
         var needleParameterIndex = 1;
-        var needleExpression = assertInstanceOf(arguments.get(needleParameterIndex), Expression.class);
+        var needleExpression = getArgumentAsExpression(arguments, needleParameterIndex);
         if (needleExpression instanceof SqlTuple
                 || needleExpression.getExpressionType() instanceof BasicPluralType
                 || (needleExpression instanceof FunctionExpression functionExpression
@@ -101,8 +101,7 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
         // so ideally we should have used
         // https://www.mongodb.com/docs/manual/reference/operator/query/elemMatch/ instead.
         // However, since Hibernate ORM does not allow the first argument to be an HQL path expression
-        // referring to a non-array persistent attribute,
-        // the current approach should be fine, and it does not need new `AstNode`s implementations.
+        // referring to a non-plural persistent attribute, the current approach should be fine.
         translator.yield(
                 FILTER,
                 new AstLogicalFilter(
@@ -119,10 +118,14 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
                                         fieldPath, new AstComparisonFilterOperation(EQ, needleValue)))));
     }
 
+    static Expression getArgumentAsExpression(List<? extends SqlAstNode> arguments, int index) {
+        return assertInstanceOf(arguments.get(index), Expression.class);
+    }
+
     static String haystackFieldPath(
-            AbstractMqlTranslator<?> translator, String functionName, List<? extends SqlAstNode> sqlAstArguments) {
+            AbstractMqlTranslator<?> translator, String functionName, List<? extends SqlAstNode> arguments) {
         var haystackParameterIndex = 0;
-        var haystackExpression = assertInstanceOf(sqlAstArguments.get(haystackParameterIndex), Expression.class);
+        var haystackExpression = getArgumentAsExpression(arguments, haystackParameterIndex);
         if (haystackExpression instanceof Literal
                 || haystackExpression.getExpressionType() instanceof BasicPluralType
                 || haystackExpression instanceof SqmParameterInterpretation) {
