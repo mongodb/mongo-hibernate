@@ -75,14 +75,14 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     private static void assertRequiresArrayArgument(ThrowingCallable shouldRaiseThrowable) {
         assertThatThrownBy(shouldRaiseThrowable)
                 .isInstanceOf(FunctionArgumentException.class)
-                .hasMessageMatching("Parameter . of function .* requires an array type, but argument is of type .*");
+                .hasMessageMatching("Parameter .* of function .* requires an array type, but argument is of type .*");
     }
 
     /** Hibernate ORM error. */
     private static void assertRequiresDifferentTypeOfArgument(ThrowingCallable shouldRaiseThrowable) {
         assertThatThrownBy(shouldRaiseThrowable)
                 .isInstanceOf(FunctionArgumentException.class)
-                .hasMessageMatching("Parameter . of function .* has type .*, but argument is of type .*");
+                .hasMessageMatching("Parameter .* of function .* has type .*, but argument is of type .*");
     }
 
     /** Our error. */
@@ -98,7 +98,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
         assertThatThrownBy(shouldRaiseThrowable)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(FunctionArgumentException.class)
-                .hasMessageMatching(".*Parameter . of function .* requires an array, but argument is a list");
+                .hasMessageMatching(".*Parameter .* of function .* requires an array, but argument is a list");
     }
 
     /** Our error. */
@@ -106,14 +106,15 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
         assertThatThrownBy(shouldRaiseThrowable)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(FunctionArgumentException.class)
-                .hasMessageMatching(".*Parameter . of function .* requires .*value that is not an HQL path expression");
+                .hasMessageMatching(
+                        ".*Parameter .* of function .* requires .*value that is not an HQL path expression");
     }
 
     /** Our error. */
     private static void assertRequiresHqlPathExpressionArgument(ThrowingCallable shouldRaiseThrowable) {
         assertThatThrownBy(shouldRaiseThrowable)
                 .isInstanceOf(FeatureNotSupportedException.class)
-                .hasMessageMatching("Parameter . of function .* requires an HQL path expression");
+                .hasMessageMatching("Parameter .* of function .* requires an HQL path expression");
     }
 
     @Nested
@@ -227,7 +228,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     }
 
     @Nested
-    class ArrayContainsNullable {
+    class ArrayContainsNull {
         private Item item;
 
         @BeforeEach
@@ -380,7 +381,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     }
 
     @Nested
-    class ArrayIncludesNullable {
+    class ArrayIncludesNull {
         private Item item;
 
         @BeforeEach
