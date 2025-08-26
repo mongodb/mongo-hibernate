@@ -31,6 +31,7 @@ import jakarta.persistence.Table;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.hibernate.JDBCException;
@@ -98,7 +99,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
         assertThatThrownBy(shouldRaiseThrowable)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(FunctionArgumentException.class)
-                .hasMessageMatching(".*Parameter .* of function .* requires an array, but argument is a list");
+                .hasMessageMatching(".*Parameter .* of function .* requires an array, but argument is a collection");
     }
 
     /** Our error. */
@@ -340,7 +341,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
                         assertIterableEq(List.of(item), function.apply(3));
                     },
                     () -> assertRequiresArrayNotListArgument(() -> function.apply(List.of())),
-                    () -> assertRequiresArrayNotListArgument(() -> function.apply(List.of(2, 3))),
+                    () -> assertRequiresArrayNotListArgument(() -> function.apply(Set.of(2, 3))),
                     () -> assertRequiresArrayNotListArgument(() -> function.apply(List.of("3"))),
                     () -> assertThatThrownBy(() -> function.apply("3"))
                             .isInstanceOf(JDBCException.class)

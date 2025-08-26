@@ -76,7 +76,7 @@ public final class MongoArrayIncludesFunction extends AbstractArrayIncludesFunct
             // The error wording is taken partially from
             // `org.hibernate.dialect.function.array.ArrayIncludesArgumentValidator`.
             throw new FunctionArgumentException(format(
-                    "Parameter %d of function '%s()' requires an array, but argument is a list",
+                    "Parameter %d of function '%s()' requires an array, but argument is a collection",
                     needleParameterIndex, functionName));
         }
         checkNotHqlPathExpression(functionName, needleParameterIndex, needleExpression);
