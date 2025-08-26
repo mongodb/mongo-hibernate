@@ -23,9 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.mongodb.MongoCommandException;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -35,7 +33,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
-import org.bson.BsonDocument;
 import org.hibernate.JDBCException;
 import org.hibernate.query.sqm.UnknownPathException;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
@@ -58,9 +55,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 // TODO-HIBERNATE-74 We need to make sure the functions behave in accordance with the ternary logic
 public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAware {
     private static final String COLLECTION_NAME = "items";
-
-    @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 

@@ -24,6 +24,7 @@ import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.cfg.MongoConfigurator;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
 import org.bson.BsonDocument;
@@ -41,6 +42,7 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
 
     private static final State STATE = State.create();
 
+    /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}. */
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
         var fieldMustBeStaticMsgFormat = "The field [%s] must be static";
@@ -59,6 +61,10 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
         }
     }
 
+    /**
+     * {@linkplain MongoDatabase#drop() Drops} the {@link MongoConfigurator#databaseName(String) database}, thus
+     * dropping all {@linkplain InjectMongoCollection collections}.
+     */
     @Override
     public void beforeEach(ExtensionContext context) {
         STATE.mongoDatabase().drop();
