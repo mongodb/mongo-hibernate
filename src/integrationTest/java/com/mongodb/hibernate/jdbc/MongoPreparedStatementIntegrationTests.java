@@ -17,8 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doAndTerminateTransaction;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWithSpecifiedAutoCommit;
+import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWorkWithSpecifiedAutoCommit;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -30,7 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.SqlExecutable;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.math.BigDecimal;
@@ -409,11 +407,6 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     private void doWorkAwareOfAutoCommit(Work work) {
-        session.doWork(connection -> doAwareOfAutoCommit(connection, () -> work.execute(connection)));
-    }
-
-    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(
-                autoCommit, connection, autoCommit ? work : () -> doAndTerminateTransaction(connection, work));
+        doWorkWithSpecifiedAutoCommit(autoCommit, session, work);
     }
 }
