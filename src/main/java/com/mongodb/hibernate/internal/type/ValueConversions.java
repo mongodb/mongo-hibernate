@@ -21,7 +21,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.jdbc.MongoArray;
+import com.mongodb.hibernate.internal.jdbc.MongoArray;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.sql.JDBCType;

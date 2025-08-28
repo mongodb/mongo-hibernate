@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2024-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+/** The program elements within this package are not part of the public API and may be removed or changed at any time */
+@NullMarked
+package com.mongodb.hibernate.internal.jdbc;
 
-public final class MongoArray implements ArrayAdapter {
-    private final Object contents;
-
-    public MongoArray(Object contents) {
-        this.contents = contents;
-    }
-
-    @Override
-    public Object getArray() {
-        // Hibernate ORM does not call `Connection.getTypeMap`/`setTypeMap`, therefore we are free to ignore it
-        return contents;
-    }
-}
+import org.jspecify.annotations.NullMarked;
