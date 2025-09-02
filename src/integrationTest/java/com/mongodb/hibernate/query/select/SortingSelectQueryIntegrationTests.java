@@ -20,7 +20,7 @@ import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.QuerySettings.DEFAULT_NULL_ORDERING;
+import static org.hibernate.cfg.AvailableSettings.DEFAULT_NULL_ORDERING;
 import static org.hibernate.query.NullPrecedence.NONE;
 import static org.hibernate.query.SortDirection.ASCENDING;
 
