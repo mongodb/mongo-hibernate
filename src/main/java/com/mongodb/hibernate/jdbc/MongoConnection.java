@@ -24,6 +24,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
+import com.mongodb.hibernate.internal.jdbc.MongoArray;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
