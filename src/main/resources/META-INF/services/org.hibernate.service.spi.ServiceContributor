@@ -1,1 +1,2 @@
 com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState$ServiceContributor
+com.mongodb.hibernate.internal.extension.MongoStrategyContributor
