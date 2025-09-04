@@ -16,25 +16,27 @@
 
 package com.mongodb.hibernate.dialect;
 
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static java.lang.String.format;
-
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
-import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.TimeZoneSupport;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
+
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static java.lang.String.format;
 
 /**
  * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}. Must be used together
@@ -50,6 +52,24 @@ public final class MongoDialect extends Dialect {
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
+    }
+
+    @Override
+    public TimeZoneSupport getTimeZoneSupport() {
+        /*
+        NORMALIZE doesn’t store time zone information and Hibernate will simply convert the TIMESTAMP_WITH_TIMEZONE to TIMESTAMP with UTC timezone.
+        */
+        return TimeZoneSupport.NORMALIZE;
+    }
+
+    @Override
+    public boolean supportsTemporalLiteralOffset() {
+        return false; // TODO check
+    }
+
+    @Override
+    public void appendDatetimeFormat(final SqlAppender appender, final String format) {
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
     }
 
     /**
@@ -101,7 +121,6 @@ public final class MongoDialect extends Dialect {
 
     private void contributeObjectIdType(TypeContributions typeContributions) {
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
-        typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
         var objectIdTypeCode = MqlType.OBJECT_ID.getVendorTypeNumber();
         typeContributions
                 .getTypeConfiguration()

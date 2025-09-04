@@ -16,16 +16,8 @@
 
 package com.mongodb.hibernate.internal.extension;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static java.lang.String.format;
-
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
-import java.util.Collection;
-import java.util.Set;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
@@ -34,6 +26,17 @@ import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
+
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Set;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static java.lang.String.format;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
@@ -58,9 +61,16 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             MetadataBuildingContext buildingContext) {
         forbidEmbeddablesWithoutPersistentAttributes(metadata);
         metadata.getEntityBindings().forEach(persistentClass -> {
+            checkPropertyTypes(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
+        });
+    }
+
+    private static void checkPropertyTypes(final PersistentClass persistentClass) {
+        persistentClass.getProperties().forEach(property -> {
+            forbidCalendarType(persistentClass, property);
         });
     }
 
@@ -100,6 +110,14 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                         format("%s: must have at least one persistent attribute", component));
             }
         });
+    }
+
+    private static void forbidCalendarType(final PersistentClass persistentClass, final Property property) {
+        if (Calendar.class.equals(property.getType().getReturnedClass())) {
+            throw new FeatureNotSupportedException(format(
+                    "%s: the persistent attribute [%s] has type [%s] that is not supported",
+                    persistentClass, property.getName(), property.getType()));
+        }
     }
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {

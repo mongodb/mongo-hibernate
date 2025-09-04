@@ -16,12 +16,14 @@
 
 package com.mongodb.hibernate;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.function.BiConsumer;
 import org.assertj.core.api.RecursiveComparisonAssert;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 import org.jspecify.annotations.Nullable;
+
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public final class MongoTestAssertions {
     private MongoTestAssertions() {}
@@ -54,11 +56,29 @@ public final class MongoTestAssertions {
      */
     @SuppressWarnings("unchecked")
     public static <T> void assertIterableEq(Iterable<T> expectedResultList, Iterable<? extends T> actualResultList) {
-        assertThat((Iterable<T>) actualResultList)
-                .usingRecursiveFieldByFieldElementComparator(RecursiveComparisonConfiguration.builder()
+        assertIterableEq(expectedResultList, actualResultList, b -> {});
+    }
+
+    /**
+     * This method is intended to be a drop-in replacement for
+     * {@link org.junit.jupiter.api.Assertions#assertIterableEquals(Iterable, Iterable)}. It should work even if
+     * elements in {@code expected}/{@code actual} do not override {@link Object#equals(Object)}.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> void assertIterableEq(
+            Iterable<T> expectedResultList,
+            Iterable<? extends T> actualResultList,
+            Consumer<RecursiveComparisonConfiguration.Builder> additionalComparisonConfiguration) {
+
+        RecursiveComparisonConfiguration.Builder comparisonConfigurationBuilder =
+                RecursiveComparisonConfiguration.builder()
                         .withIgnoreAllOverriddenEquals(false)
-                        .withStrictTypeChecking(true)
-                        .build())
+                        .withStrictTypeChecking(true);
+
+        additionalComparisonConfiguration.accept(comparisonConfigurationBuilder);
+
+        assertThat((Iterable<T>) actualResultList)
+                .usingRecursiveFieldByFieldElementComparator(comparisonConfigurationBuilder.build())
                 .containsExactlyElementsOf(expectedResultList);
     }
 }

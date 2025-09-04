@@ -16,12 +16,6 @@
 
 package com.mongodb.hibernate;
 
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.AvailableSettings.WRAPPER_ARRAY_HANDLING;
-
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
@@ -29,15 +23,11 @@ import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTest
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.lang.Nullable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.sql.SQLFeatureNotSupportedException;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.MappingException;
@@ -48,9 +38,33 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.TimeZone;
+
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hibernate.cfg.AvailableSettings.WRAPPER_ARRAY_HANDLING;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
@@ -68,11 +82,24 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
+    private static final TimeZone CURRENT_TIME_ZONE = TimeZone.getDefault();
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
     }
+
+    @BeforeAll
+    public static void setUp() {
+        // Set timezone to UTC to have deterministic date/time values.
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
+    @AfterAll
+    public static void tearDown() {
+        TimeZone.setDefault(CURRENT_TIME_ZONE);
+    }
+
 
     @Test
     void testArrayAndCollectionValues() {
@@ -92,6 +119,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[] {null, "str"},
                 new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                new LocalDate[]{LocalDate.of(2025, 1, 1)},
+                new LocalTime[]{LocalTime.of(3, 15, 30)},
+                new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
+                new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
+                new Date[]{new Date(0)},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
@@ -103,7 +138,16 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 asList("str", null),
                 asList(BigDecimal.valueOf(10.1), null),
                 asList(null, new ObjectId("000000000000000000000001")),
-                asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null));
+                asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null),
+                List.of(LocalDate.of(2025, 1, 1)),
+                List.of(LocalTime.of(3, 15, 30)),
+                List.of(LocalDateTime.of(2025, 10, 10, 3, 15, 30)),
+                List.of(OffsetTime.parse("03:15:30Z")),
+                List.of(OffsetDateTime.parse("2025-10-10T03:15:30Z")),
+                List.of(ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")),
+                List.of(Instant.parse("2007-12-03T10:15:30Z")),
+                List.of(new Date(0))
+        );
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -132,7 +176,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddablesCollection: [{a: 1}, null]
+                    structAggregateEmbeddablesCollection: [{a: 1}, null],
+                    localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                    dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                    localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                    datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -174,7 +234,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddablesCollection: [{a: 1}, null]
+                    structAggregateEmbeddablesCollection: [{a: 1}, null],
+                    localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                    dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                    localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                    datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -200,7 +276,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[0],
                 new BigDecimal[0],
                 new ObjectId[0],
+                new LocalDate[0],
+                new LocalTime[0],
+                new LocalDateTime[0],
+                new OffsetTime[0],
+                new OffsetDateTime[0],
+                new ZonedDateTime[0],
+                new Instant[0],
+                new Date[0],
                 new StructAggregateEmbeddableIntegrationTests.Single[0],
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -238,7 +330,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: [],
                     bigDecimalsCollection: [],
                     objectIdsCollection: [],
-                    structAggregateEmbeddablesCollection: []
+                    structAggregateEmbeddablesCollection: [],
+                    localDates: [],
+                    localTimes: [],
+                    localDateTimes: [],
+                    offsetTimes: [],
+                    offsetDateTimes: [],
+                    zonedDateTimes: [],
+                    instants: [],
+                    dates: [],
+                    localDatesCollection: [],
+                    localTimesCollection: [],
+                    localDateTimesCollection: [],
+                    offsetTimesCollection: [],
+                    offsetDateTimesCollection: [],
+                    zonedDateTimesCollection: [],
+                    instantsCollection: [],
+                    datesCollection: []
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -249,8 +357,11 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     @Test
     void testArrayAndCollectionNullValues() {
         var item = new ItemWithArrayAndCollectionValues(
-                1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                1,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -279,7 +390,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: null,
                     bigDecimalsCollection: null,
                     objectIdsCollection: null,
-                    structAggregateEmbeddablesCollection: null
+                    structAggregateEmbeddablesCollection: null,
+                    localDates: null,
+                    localTimes: null,
+                    localDateTimes: null,
+                    offsetTimes: null,
+                    offsetDateTimes: null,
+                    zonedDateTimes: null,
+                    instants: null,
+                    dates: null,
+                    localDatesCollection: null,
+                    localTimesCollection: null,
+                    localDateTimesCollection: null,
+                    offsetTimesCollection: null,
+                    offsetDateTimesCollection: null,
+                    zonedDateTimesCollection: null,
+                    instantsCollection: null,
+                    datesCollection: null
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -304,6 +431,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[] {"str"},
                 new BigDecimal[] {BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001")},
+                new LocalDate[]{LocalDate.of(2025, 1, 1)},
+                new LocalTime[]{LocalTime.of(3, 15, 30)},
+                new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
+                new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
+                new Date[]{new Date(0)},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1)
                 },
@@ -316,7 +451,16 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 List.of("str"),
                 List.of(BigDecimal.valueOf(10.1)),
                 List.of(new ObjectId("000000000000000000000001")),
-                List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)));
+                List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)),
+                List.of(LocalDate.of(2025, 1, 1)),
+                List.of(LocalTime.of(3, 15, 30)),
+                List.of(LocalDateTime.of(2025, 10, 10, 3, 15, 30)),
+                List.of(OffsetTime.parse("03:15:30Z")),
+                List.of(OffsetDateTime.parse("2025-10-10T03:15:30Z")),
+                List.of(ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")),
+                List.of(Instant.parse("2007-12-03T10:15:30Z")),
+                List.of(new Date(0))
+        );
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1, new ArraysAndCollections[] {arraysAndCollections}, List.of());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
@@ -348,7 +492,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: ["str"],
                         bigDecimalsCollection: [{$numberDecimal: "10.1"}],
                         objectIdsCollection: [{$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddablesCollection: [{a: 1}]
+                        structAggregateEmbeddablesCollection: [{a: 1}],
+                        localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                        localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                        localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                        offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                        offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                        zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                        instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                        dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                        localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                        localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                        localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                        offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                        offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                        zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                        instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                        datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
                     }],
                     structAggregateEmbeddablesCollection: []
                 }
@@ -393,7 +553,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: ["str"],
                         bigDecimalsCollection: [{$numberDecimal: "10.1"}],
                         objectIdsCollection: [{$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddablesCollection: [{a: 1}]
+                        structAggregateEmbeddablesCollection: [{a: 1}],
+                        localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                        localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                        localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                        offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                        offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                        zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                        instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                        dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                        localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                        localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                        localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                        offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                        offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                        zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                        instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                        datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
                     }]
                 }
                 """);
@@ -410,8 +586,11 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     @Test
     public void testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null);
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1,
                 new ArraysAndCollections[] {emptyStructAggregateEmbeddable},
@@ -445,7 +624,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: null,
                         bigDecimalsCollection: null,
                         objectIdsCollection: null,
-                        structAggregateEmbeddablesCollection: null
+                        structAggregateEmbeddablesCollection: null,
+                        localDates: null,
+                        localTimes: null,
+                        localDateTimes: null,
+                        offsetTimes: null,
+                        offsetDateTimes: null,
+                        zonedDateTimes: null,
+                        instants: null,
+                        dates: null,
+                        localDatesCollection: null,
+                        localTimesCollection: null,
+                        localDateTimesCollection: null,
+                        offsetTimesCollection: null,
+                        offsetDateTimesCollection: null,
+                        zonedDateTimesCollection: null,
+                        instantsCollection: null,
+                        datesCollection: null
                     }],
                     structAggregateEmbeddablesCollection: [{
                         bytes: null,
@@ -471,7 +666,23 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: null,
                         bigDecimalsCollection: null,
                         objectIdsCollection: null,
-                        structAggregateEmbeddablesCollection: null
+                        structAggregateEmbeddablesCollection: null,
+                        localDates: null,
+                        localTimes: null,
+                        localDateTimes: null,
+                        offsetTimes: null,
+                        offsetDateTimes: null,
+                        zonedDateTimes: null,
+                        instants: null,
+                        dates: null,
+                        localDatesCollection: null,
+                        localTimesCollection: null,
+                        localDateTimesCollection: null,
+                        offsetTimesCollection: null,
+                        offsetDateTimesCollection: null,
+                        zonedDateTimesCollection: null,
+                        instantsCollection: null,
+                        datesCollection: null
                     }]
                 }
                 """);
@@ -504,6 +715,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         String[] strings;
         BigDecimal[] bigDecimals;
         ObjectId[] objectIds;
+        LocalDate[] localDates;
+        LocalTime[] localTimes;
+        LocalDateTime[] localDateTimes;
+        OffsetTime[] offsetTimes;
+        OffsetDateTime[] offsetDateTimes;
+        ZonedDateTime[] zonedDateTimes;
+        Instant[] instants;
+        Date[] dates;
         StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables;
         Collection<Character> charsCollection;
         Collection<Integer> intsCollection;
@@ -514,6 +733,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
+        Collection<LocalDate> localDatesCollection;
+        Collection<LocalTime> localTimesCollection;
+        Collection<LocalDateTime> localDateTimesCollection;
+        Collection<OffsetTime> offsetTimesCollection;
+        Collection<OffsetDateTime> offsetDateTimesCollection;
+        Collection<ZonedDateTime> zonedDateTimesCollection;
+        Collection<Instant> instantsCollection;
+        Collection<Date> datesCollection;
 
         ItemWithArrayAndCollectionValues() {}
 
@@ -533,6 +760,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 String[] strings,
                 BigDecimal[] bigDecimals,
                 ObjectId[] objectIds,
+                LocalDate[] localDates,
+                LocalTime[] localTimes,
+                LocalDateTime[] localDateTimes,
+                OffsetTime[] offsetTimes,
+                OffsetDateTime[] offsetDateTimes,
+                ZonedDateTime[] zonedDateTimes,
+                Instant[] instants,
+                Date[] dates,
                 StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
                 Collection<Character> charsCollection,
                 Collection<Integer> intsCollection,
@@ -542,7 +777,15 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 Collection<String> stringsCollection,
                 Collection<BigDecimal> bigDecimalsCollection,
                 Collection<ObjectId> objectIdsCollection,
-                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
+                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection,
+                List<LocalDate> localDatesCollection,
+                List<LocalTime> localTimesCollection,
+                List<LocalDateTime> localDateTimesCollection,
+                List<OffsetTime> offsetTimesCollection,
+                List<OffsetDateTime> offsetDateTimesCollection,
+                List<ZonedDateTime> zonedDateTimesCollection,
+                List<Instant> instantsCollection,
+                List<Date> datesCollection) {
             this.id = id;
             this.bytes = bytes;
             this.chars = chars;
@@ -568,6 +811,22 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
             this.bigDecimalsCollection = bigDecimalsCollection;
             this.objectIdsCollection = objectIdsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+            this.localDates = localDates;
+            this.localTimes = localTimes;
+            this.localDateTimes = localDateTimes;
+            this.offsetTimes = offsetTimes;
+            this.offsetDateTimes = offsetDateTimes;
+            this.zonedDateTimes = zonedDateTimes;
+            this.instants = instants;
+            this.dates = dates;
+            this.localDatesCollection = localDatesCollection;
+            this.localTimesCollection = localTimesCollection;
+            this.localDateTimesCollection = localDateTimesCollection;
+            this.offsetTimesCollection = offsetTimesCollection;
+            this.offsetDateTimesCollection = offsetDateTimesCollection;
+            this.zonedDateTimesCollection = zonedDateTimesCollection;
+            this.instantsCollection = instantsCollection;
+            this.datesCollection = datesCollection;
         }
     }
 
@@ -762,5 +1021,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
             @ElementCollection
             Collection<EmbeddableIntegrationTests.Single> embeddables;
         }
+    }
+
+    private void assertEq(@Nullable Object expected, @Nullable Object actual) {
+        assertUsingRecursiveComparison(expected, actual, (recursiveComparisonAssert, expectedToCompare) -> {
+            recursiveComparisonAssert
+                    .ignoringAllOverriddenEquals()
+                    .withComparatorForType(Comparator.comparingLong(Date::getTime), Date.class)
+                    .isEqualTo(expectedToCompare);
+        });
     }
 }

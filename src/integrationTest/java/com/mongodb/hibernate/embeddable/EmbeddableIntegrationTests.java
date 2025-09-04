@@ -16,18 +16,12 @@
 
 package com.mongodb.hibernate.embeddable;
 
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.lang.Nullable;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
@@ -35,12 +29,6 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.HibernateException;
@@ -50,11 +38,36 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-@SessionFactory(exportSchema = false)
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TimeZone;
+
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+@SessionFactory(exportSchema = true)
 @DomainModel(
         annotatedClasses = {
             EmbeddableIntegrationTests.ItemWithFlattenedValues.class,
@@ -63,6 +76,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
+
+    private static final TimeZone CURRENT_TIME_ZONE = TimeZone.getDefault();
+
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -71,6 +87,17 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @BeforeAll
+    public static void setUp() {
+        // Set timezone to UTC to have deterministic date/time values.
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
+    @AfterAll
+    public static void tearDown() {
+        TimeZone.setDefault(CURRENT_TIME_ZONE);
     }
 
     @Test
@@ -93,7 +120,15 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                 true,
                                 "str",
                                 BigDecimal.valueOf(10.1),
-                                new ObjectId("000000000000000000000001"))));
+                                new ObjectId("000000000000000000000001"),
+                                LocalDate.of(2025, 1, 1),
+                                LocalTime.of(3, 15, 30),
+                                LocalDateTime.of(2025, 10, 10, 3, 15, 30),
+                                OffsetTime.parse("03:15:30Z"),
+                                OffsetDateTime.parse("2025-10-10T03:15:30Z"),
+                                ZonedDateTime.parse("2025-10-10T03:15:30Z"),
+                                Instant.parse("2007-12-03T10:15:30Z"),
+                                new Date(3_600_000))));
         item.flattened2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -114,7 +149,15 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: true,
                     string: "str",
                     bigDecimal: {$numberDecimal: "10.1"},
-                    objectId: {$oid: "000000000000000000000001"}
+                    objectId: {$oid: "000000000000000000000001"},
+                    localDate: {"$date": "2025-01-01T00:00:00Z"},
+                    local_Time: {"$date": "1970-01-01T03:15:30Z"},
+                    localDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                    offsetTime: {"$date": "1970-01-01T03:15:30Z"},
+                    offsetDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                    zonedDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                    instant: {"$date": "2007-12-03T10:15:30Z"},
+                    date: {"$date": "1970-01-01T01:00:00Z"}
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -143,7 +186,15 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: true,
                     string: "str",
                     bigDecimal: {$numberDecimal: "10.1"},
-                    objectId: {$oid: "000000000000000000000001"}
+                    objectId: {$oid: "000000000000000000000001"},
+                    localDate: {"$date": "2025-01-01T00:00:00Z"},
+                    local_Time: {"$date": "1970-01-01T03:15:30Z"},
+                    localDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                    offsetTime: {"$date": "1970-01-01T03:15:30Z"},
+                    offsetDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                    zonedDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                    instant: {"$date": "2007-12-03T10:15:30Z"},
+                    date: {"$date": "1970-01-01T01:00:00Z"}
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -164,6 +215,14 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                 Long.MAX_VALUE,
                                 Double.MAX_VALUE,
                                 true,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
                                 null,
                                 null,
                                 null,
@@ -192,7 +251,15 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: null,
                     string: null,
                     bigDecimal: null,
-                    objectId: null
+                    objectId: null,
+                    localDate: null,
+                    local_Time: null,
+                    localDateTime: null,
+                    offsetTime: null,
+                    offsetDateTime: null,
+                    zonedDateTime: null,
+                    instant: null,
+                    date: null
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -221,7 +288,15 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: null,
                     string: null,
                     bigDecimal: null,
-                    objectId: null
+                    objectId: null,
+                    localDate: null,
+                    local_Time: null,
+                    localDateTime: null,
+                    offsetTime: null,
+                    offsetDateTime: null,
+                    zonedDateTime: null,
+                    instant: null,
+                    date: null
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -259,7 +334,23 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         asList("str", null),
                         asList(BigDecimal.valueOf(10.1), null),
                         asList(null, new ObjectId("000000000000000000000001")),
-                        asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null)));
+                        asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null),
+                        new LocalDate[]{LocalDate.of(2025, 1, 1)},
+                        new LocalTime[]{LocalTime.of(3, 15, 30)},
+                        new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                        new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
+                        new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                        new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                        new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
+                        new Date[]{new Date(0)},
+                        List.of(LocalDate.of(2025, 1, 1)),
+                        List.of(LocalTime.of(3, 15, 30)),
+                        List.of(LocalDateTime.of(2025, 10, 10, 3, 15, 30)),
+                        List.of(OffsetTime.parse("03:15:30Z")),
+                        List.of(OffsetDateTime.parse("2025-10-10T03:15:30Z")),
+                        List.of(ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")),
+                        List.of(Instant.parse("2007-12-03T10:15:30Z")),
+                        List.of(new Date(0))));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -288,7 +379,23 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddablesCollection: [{a: 1}, null]
+                    structAggregateEmbeddablesCollection: [{a: 1}, null],
+                    localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                    dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                    localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                    datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -330,7 +437,23 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
-                    structAggregateEmbeddablesCollection: [{a: 1}, null]
+                    structAggregateEmbeddablesCollection: [{a: 1}, null],
+                    localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                    dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                    localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                    localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                    offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                    datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -366,6 +489,22 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         List.of(),
                         List.of(),
                         List.of(),
+                        List.of(),
+                        new LocalDate[0],
+                        new LocalTime[0],
+                        new LocalDateTime[0],
+                        new OffsetTime[0],
+                        new OffsetDateTime[0],
+                        new ZonedDateTime[0],
+                        new Instant[0],
+                        new Date[0],
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
                         List.of()));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -395,7 +534,23 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: [],
                     bigDecimalsCollection: [],
                     objectIdsCollection: [],
-                    structAggregateEmbeddablesCollection: []
+                    structAggregateEmbeddablesCollection: [],
+                    localDates: [],
+                    localTimes: [],
+                    localDateTimes: [],
+                    offsetTimes: [],
+                    offsetDateTimes: [],
+                    zonedDateTimes: [],
+                    instants: [],
+                    dates: [],
+                    localDatesCollection: [],
+                    localTimesCollection: [],
+                    localDateTimesCollection: [],
+                    offsetTimesCollection: [],
+                    offsetDateTimesCollection: [],
+                    zonedDateTimesCollection: [],
+                    instantsCollection: [],
+                    datesCollection: []
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -414,7 +569,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     public void testFlattenedValueHavingNullArraysAndCollections() {
         var emptyEmbeddable = new ArraysAndCollections(
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
         var item = new ItemWithFlattenedValueHavingArraysAndCollections(1, emptyEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -444,7 +600,23 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: null,
                     bigDecimalsCollection: null,
                     objectIdsCollection: null,
-                    structAggregateEmbeddablesCollection: null
+                    structAggregateEmbeddablesCollection: null,
+                    localDates: null,
+                    localTimes: null,
+                    localDateTimes: null,
+                    offsetTimes: null,
+                    offsetDateTimes: null,
+                    zonedDateTimes: null,
+                    instants: null,
+                    dates: null,
+                    localDatesCollection: null,
+                    localTimesCollection: null,
+                    localDateTimesCollection: null,
+                    offsetTimesCollection: null,
+                    offsetDateTimesCollection: null,
+                    zonedDateTimesCollection: null,
+                    instantsCollection: null,
+                    datesCollection: null
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -491,6 +663,14 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                 null,
                                 null,
                                 null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
                                 null)));
         expectedItem.flattened2.parent = expectedItem;
         var loadedItem =
@@ -514,7 +694,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @AttributeOverride(name = "a", column = @Column(name = "flattened2_a"))
         PairWithParent flattened2;
 
-        ItemWithFlattenedValues() {}
+        public ItemWithFlattenedValues() {
+        }
 
         ItemWithFlattenedValues(Single flattenedId, Single flattened1, PairWithParent flattened2) {
             this.flattenedId = flattenedId;
@@ -527,7 +708,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     public static class Single {
         int a;
 
-        Single() {}
+        public Single() {
+        }
 
         Single(int a) {
             this.a = a;
@@ -555,7 +737,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         @Parent ItemWithFlattenedValues parent;
 
-        PairWithParent() {}
+        public PairWithParent() {
+        }
 
         PairWithParent(int a, Plural flattened) {
             this.a = a;
@@ -593,7 +776,17 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             Boolean boxedBoolean,
             String string,
             BigDecimal bigDecimal,
-            ObjectId objectId) {}
+            ObjectId objectId,
+            LocalDate localDate,
+            @Column(name = "local_Time")
+            LocalTime localTime,
+            LocalDateTime localDateTime,
+            OffsetTime offsetTime,
+            OffsetDateTime offsetDateTime,
+            ZonedDateTime zonedDateTime,
+            Instant instant,
+            Date date) {
+    }
 
     @Entity
     @Table(name = "items")
@@ -603,7 +796,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         ArraysAndCollections flattened;
 
-        ItemWithFlattenedValueHavingArraysAndCollections() {}
+        public ItemWithFlattenedValueHavingArraysAndCollections() {
+        }
 
         ItemWithFlattenedValueHavingArraysAndCollections(int id, ArraysAndCollections flattened) {
             this.id = id;
@@ -627,6 +821,14 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         String[] strings;
         BigDecimal[] bigDecimals;
         ObjectId[] objectIds;
+        LocalDate[] localDates;
+        LocalTime[] localTimes;
+        LocalDateTime[] localDateTimes;
+        OffsetTime[] offsetTimes;
+        OffsetDateTime[] offsetDateTimes;
+        ZonedDateTime[] zonedDateTimes;
+        Instant[] instants;
+        Date[] dates;
         StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables;
         List<Character> charsCollection;
         Set<Integer> intsCollection;
@@ -636,9 +838,18 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         Collection<String> stringsCollection;
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
+        Collection<LocalDate> localDatesCollection;
+        Collection<LocalTime> localTimesCollection;
+        Collection<LocalDateTime> localDateTimesCollection;
+        Collection<OffsetTime> offsetTimesCollection;
+        Collection<OffsetDateTime> offsetDateTimesCollection;
+        Collection<ZonedDateTime> zonedDateTimesCollection;
+        Collection<Instant> instantsCollection;
+        Collection<Date> datesCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
 
-        ArraysAndCollections() {}
+        public ArraysAndCollections() {
+        }
 
         ArraysAndCollections(
                 byte[] bytes,
@@ -664,7 +875,23 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 Collection<String> stringsCollection,
                 Collection<BigDecimal> bigDecimalsCollection,
                 Collection<ObjectId> objectIdsCollection,
-                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
+                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection,
+                LocalDate[] localDates,
+                LocalTime[] localTimes,
+                LocalDateTime[] localDateTimes,
+                OffsetTime[] offsetTimes,
+                OffsetDateTime[] offsetDateTimes,
+                ZonedDateTime[] zonedDateTimes,
+                Instant[] instants,
+                Date[] dates,
+                List<LocalDate> localDatesCollection,
+                List<LocalTime> localTimesCollection,
+                List<LocalDateTime> localDateTimesCollection,
+                List<OffsetTime> offsetTimesCollection,
+                List<OffsetDateTime> offsetDateTimesCollection,
+                List<ZonedDateTime> zonedDateTimesCollection,
+                List<Instant> instantsCollection,
+                List<Date> datesCollection) {
             this.bytes = bytes;
             this.chars = chars;
             this.ints = ints;
@@ -689,6 +916,22 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             this.bigDecimalsCollection = bigDecimalsCollection;
             this.objectIdsCollection = objectIdsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+            this.localDates = localDates;
+            this.localTimes = localTimes;
+            this.localDateTimes = localDateTimes;
+            this.offsetTimes = offsetTimes;
+            this.offsetDateTimes = offsetDateTimes;
+            this.zonedDateTimes = zonedDateTimes;
+            this.instants = instants;
+            this.dates = dates;
+            this.localDatesCollection = localDatesCollection;
+            this.localTimesCollection = localTimesCollection;
+            this.localDateTimesCollection = localDateTimesCollection;
+            this.offsetTimesCollection = offsetTimesCollection;
+            this.offsetDateTimesCollection = offsetDateTimesCollection;
+            this.zonedDateTimesCollection = zonedDateTimesCollection;
+            this.instantsCollection = instantsCollection;
+            this.datesCollection = datesCollection;
         }
     }
 
@@ -758,5 +1001,14 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         @Embeddable
         static class NoPersistentAttributes {}
+    }
+
+    private void assertEq(@Nullable Object expected, @Nullable Object actual) {
+        assertUsingRecursiveComparison(expected, actual, (recursiveComparisonAssert, expectedToCompare) -> {
+            recursiveComparisonAssert
+                    .ignoringAllOverriddenEquals()
+                    .withComparatorForType(Comparator.comparingLong(Date::getTime), Date.class)
+                    .isEqualTo(expectedToCompare);
+        });
     }
 }

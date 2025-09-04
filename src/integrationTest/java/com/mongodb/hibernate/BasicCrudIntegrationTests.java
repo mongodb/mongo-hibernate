@@ -16,25 +16,43 @@
 
 package com.mongodb.hibernate;
 
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
+
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
@@ -45,14 +63,27 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
+    private static final TimeZone CURRENT_TIME_ZONE = TimeZone.getDefault();
+
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
-    private SessionFactoryScope sessionFactoryScope;
+    protected SessionFactoryScope sessionFactoryScope;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @BeforeAll
+    private static void setUp() {
+        // Set timezone to UTC to have deterministic date/time values.
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
+    @AfterAll
+    private static void tearDown() {
+        TimeZone.setDefault(CURRENT_TIME_ZONE);
     }
 
     @Nested
@@ -73,7 +104,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     true,
                     "str",
                     BigDecimal.valueOf(10.1),
-                    new ObjectId("000000000000000000000001"))));
+                    new ObjectId("000000000000000000000001"),
+                    LocalDate.of(2024, 1, 1),
+                    LocalTime.of(12, 0),
+                    Instant.ofEpochMilli(100),
+                    OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC),
+                    OffsetTime.of(1, 1, 1, 1, ZoneOffset.UTC),
+                    LocalDateTime.of(2024, 1, 1, 12, 0),
+                    new Date(123456789L))));
             assertCollectionContainsExactly(
                     """
                     {
@@ -90,7 +128,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: true,
                         string: "str",
                         bigDecimal: {$numberDecimal: "10.1"},
-                        objectId: {$oid: "000000000000000000000001"}
+                        objectId: {$oid: "000000000000000000000001"},
+                        localDate: {"$date": "2024-01-01T00:00:00Z"},
+                        localTime1: {"$date": "1970-01-01T12:00:00Z"},
+                        instant: {"$date": "1970-01-01T00:00:00.1Z"},
+                        "offsetDateTime": {"$date": "2024-01-01T12:00:00Z"},
+                        "offsetTime": {"$date": "1970-01-01T01:01:01Z"},
+                        "localDateTime": {"$date": "2024-01-01T12:00:00Z"},
+                        "date": {"$date": "1970-01-02T10:17:36.789Z"}
                     }
                     """);
         }
@@ -104,6 +149,13 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     Long.MAX_VALUE,
                     Double.MAX_VALUE,
                     true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     null,
                     null,
                     null,
@@ -128,7 +180,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: null,
                         string: null,
                         bigDecimal: null,
-                        objectId: null
+                        objectId: null,
+                        localDate: null,
+                        localTime1: null,
+                        instant: null,
+                        offsetDateTime: null,
+                        "offsetTime": null,
+                        "localDateTime": null,
+                        "date": null
                     }
                     """);
         }
@@ -155,8 +214,16 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     true,
                     "str",
                     BigDecimal.valueOf(10.1),
-                    new ObjectId("000000000000000000000001"))));
-            assertThat(mongoCollection.find()).hasSize(1);
+                    new ObjectId("000000000000000000000001"),
+                    LocalDate.of(2024, 1, 1),
+                    LocalTime.of(12, 0),
+                    Instant.ofEpochMilli(100),
+                    OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC),
+                    OffsetTime.of(1, 1, 1, 1, ZoneOffset.UTC),
+                    LocalDateTime.of(2024, 1, 1, 12, 0),
+                    new Date(123456789L))));
+
+            assertCollectionSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
                 var item = session.getReference(Item.class, id);
@@ -165,6 +232,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
             assertThat(mongoCollection.find()).isEmpty();
         }
+    }
+
+    protected void assertCollectionSize(final int expectedSize) {
+        assertThat(mongoCollection.find()).hasSize(expectedSize);
     }
 
     @Nested
@@ -187,7 +258,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         true,
                         "str",
                         BigDecimal.valueOf(10.1),
-                        new ObjectId("000000000000000000000001"));
+                        new ObjectId("000000000000000000000001"),
+                        LocalDate.of(2024, 1, 1),
+                        LocalTime.of(12, 0),
+                        Instant.ofEpochMilli(100),
+                        OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC),
+                        OffsetTime.of(1, 1, 1, 1, ZoneOffset.UTC),
+                        LocalDateTime.of(2024, 1, 1, 12, 0),
+                        new Date(123456789L));
                 session.persist(item);
                 session.flush();
                 item.primitiveBoolean = false;
@@ -210,7 +288,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: false,
                         string: "str",
                         bigDecimal: {$numberDecimal: "10.1"},
-                        objectId: {$oid: "000000000000000000000001"}
+                        objectId: {$oid: "000000000000000000000001"},
+                        localDate: {"$date": "2024-01-01T00:00:00Z"},
+                        localTime1: {"$date": "1970-01-01T12:00:00Z"},
+                        instant: {"$date": "1970-01-01T00:00:00.1Z"},
+                        "offsetDateTime": {"$date": "2024-01-01T12:00:00Z"},
+                        "offsetTime": {"$date": "1970-01-01T01:01:01Z"},
+                        "localDateTime": {"$date": "2024-01-01T12:00:00Z"},
+                        "date": {"$date": "1970-01-02T10:17:36.789Z"}
                     }
                     """);
         }
@@ -232,7 +317,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         true,
                         "str",
                         BigDecimal.valueOf(10.1),
-                        new ObjectId("000000000000000000000001"));
+                        new ObjectId("000000000000000000000001"),
+                        LocalDate.of(2024, 1, 1),
+                        LocalTime.of(12, 0),
+                        Instant.ofEpochMilli(100),
+                        OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC),
+                        OffsetTime.of(1, 1, 1, 1, ZoneOffset.UTC),
+                        LocalDateTime.of(2024, 1, 1, 12, 0),
+                        new Date(123456789L));
                 session.persist(item);
                 session.flush();
                 item.boxedChar = null;
@@ -243,6 +335,13 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 item.string = null;
                 item.bigDecimal = null;
                 item.objectId = null;
+                item.localDate = null;
+                item.localTime1 = null;
+                item.instant = null;
+                item.offsetDateTime = null;
+                item.offsetTime = null;
+                item.localDateTime = null;
+                item.date = null;
             });
 
             assertCollectionContainsExactly(
@@ -261,7 +360,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: null,
                         string: null,
                         bigDecimal: null,
-                        objectId: null
+                        objectId: null,
+                        localDate: null,
+                        localTime1: null,
+                        instant: null,
+                        offsetDateTime: null,
+                        offsetTime: null,
+                        localDateTime: null,
+                        date: null
                     }
                     """);
         }
@@ -311,6 +417,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
         @Test
         void testFindByPrimaryKey() {
+            Calendar utc = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             var item = new Item(
                     1,
                     'c',
@@ -325,17 +432,50 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     true,
                     "str",
                     BigDecimal.valueOf(10.1),
-                    new ObjectId("000000000000000000000001"));
+                    new ObjectId("000000000000000000000001"),
+                    LocalDate.of(2024, 1, 1),
+                    LocalTime.of(12, 0),
+                    Instant.ofEpochMilli(100),
+                    OffsetDateTime.of(2024, 1, 1, 12, 0, 0, 0, ZoneOffset.UTC),
+                    OffsetTime.of(1, 1, 1, 0, ZoneOffset.UTC),
+                    LocalDateTime.of(2024, 1, 1, 12, 0),
+                    new Date(Instant.now().toEpochMilli()));
             sessionFactoryScope.inTransaction(session -> session.persist(item));
 
             var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
-            assertEq(item, loadedItem);
+
+            assertUsingRecursiveComparison(item, loadedItem, (recursiveComparisonAssert, expected) -> {
+                recursiveComparisonAssert
+                        .withComparatorForType(Comparator.comparingLong(Date::getTime), Date.class)
+                        .isEqualTo(expected);
+            });
         }
 
         @Test
         void testFindByPrimaryKeyWithNullFieldValues() {
+
             var item = new Item(
-                    1, 'c', 1, Long.MAX_VALUE, Double.MAX_VALUE, true, null, null, null, null, null, null, null, null);
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
             sessionFactoryScope.inTransaction(session -> session.persist(item));
 
             var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
@@ -343,8 +483,13 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-    private static void assertCollectionContainsExactly(String documentAsJsonObject) {
-        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
+    protected void assertCollectionContainsExactly(String documentAsJsonObject) {
+        List<BsonDocument> actualItems = new ArrayList<>();
+        mongoCollection.find().into(actualItems);
+        for (BsonDocument actualItem : actualItems) {
+            System.err.println("JSON " + actualItem.toJson());
+        }
+        assertThat(actualItems).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
 
     @Entity
@@ -364,12 +509,22 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         Double boxedDouble;
         Boolean boxedBoolean;
         String string;
+
+        @Column(precision = 5, scale = 1)
         BigDecimal bigDecimal;
+
         ObjectId objectId;
+        LocalDate localDate;
+        LocalTime localTime1;
+        Instant instant;
+        OffsetDateTime offsetDateTime;
+        OffsetTime offsetTime;
+        LocalDateTime localDateTime;
+        Date date;
 
-        Item() {}
+        public Item() {}
 
-        Item(
+        public Item(
                 int id,
                 char primitiveChar,
                 int primitiveInt,
@@ -383,7 +538,14 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 Boolean boxedBoolean,
                 String string,
                 BigDecimal bigDecimal,
-                ObjectId objectId) {
+                ObjectId objectId,
+                LocalDate localDate,
+                LocalTime localTime,
+                Instant instant,
+                OffsetDateTime offsetDateTime,
+                OffsetTime offsetTime,
+                LocalDateTime localDateTime,
+                Date date) {
             this.id = id;
             this.primitiveChar = primitiveChar;
             this.primitiveInt = primitiveInt;
@@ -398,6 +560,13 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             this.string = string;
             this.bigDecimal = bigDecimal;
             this.objectId = objectId;
+            this.localDate = localDate;
+            this.localTime1 = localTime;
+            this.instant = instant;
+            this.offsetDateTime = offsetDateTime;
+            this.offsetTime = offsetTime;
+            this.localDateTime = localDateTime;
+            this.date = date;
         }
     }
 
@@ -410,9 +579,9 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         boolean primitiveBoolean;
         Boolean boxedBoolean;
 
-        ItemDynamicallyUpdated() {}
+        public ItemDynamicallyUpdated() {}
 
-        ItemDynamicallyUpdated(int id, boolean primitiveBoolean, Boolean boxedBoolean) {
+        public ItemDynamicallyUpdated(int id, boolean primitiveBoolean, Boolean boxedBoolean) {
             this.id = id;
             this.primitiveBoolean = primitiveBoolean;
             this.boxedBoolean = boxedBoolean;

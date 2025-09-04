@@ -16,23 +16,11 @@
 
 package com.mongodb.hibernate.internal.type;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static java.lang.String.format;
-
 import com.mongodb.hibernate.jdbc.MongoArray;
-import java.lang.reflect.Array;
-import java.math.BigDecimal;
-import java.sql.JDBCType;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
-import java.util.ArrayList;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
@@ -45,6 +33,31 @@ import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
+
+import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.JDBCType;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Calendar;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static java.lang.String.format;
 
 /**
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}
@@ -71,6 +84,16 @@ public final class ValueConversions {
             return toBsonValue(v.doubleValue());
         } else if (value instanceof BigDecimal v) {
             return toBsonValue(v);
+        } else if (value instanceof Date v) {
+            return toBsonValue(v);
+        } else if (value instanceof Time v) {
+            return toBsonValue(v);
+        } else if (value instanceof Timestamp v) {
+            return toBsonValue(v);
+        } else if (value instanceof OffsetTime v) {
+            return toBsonValue(v);
+        } else if (value instanceof Instant v) {
+            return toBsonValue(v);
         } else if (value instanceof String v) {
             return toBsonValue(v);
         } else if (value instanceof byte[] v) {
@@ -82,6 +105,7 @@ public final class ValueConversions {
         } else if (value instanceof Object[] v) {
             return arrayToBsonValue(v);
         }
+
         throw new SQLFeatureNotSupportedException(format(
                 "Value [%s] of type [%s] is not supported",
                 value, assertNotNull(value).getClass().getTypeName()));
@@ -184,6 +208,8 @@ public final class ValueConversions {
         } else if (value instanceof BsonDecimal128 v) {
             return toDomainValue(v);
         } else if (value instanceof BsonString v) {
+            return toDomainValue(v, domainType);
+        } else if (value instanceof BsonDateTime v) {
             return toDomainValue(v, domainType);
         } else if (value instanceof BsonBinary v) {
             return toDomainValue(v);
@@ -310,5 +336,139 @@ public final class ValueConversions {
     /** @see #toBsonValue(char[]) */
     private static char[] toDomainValue(BsonString value) throws SQLFeatureNotSupportedException {
         return toDomainValue(value, String.class).toCharArray();
+    }
+
+    public static BsonDateTime toBsonValue(Date date) {
+        return toBsonValue(date, Calendar.getInstance());
+    }
+
+    public static BsonDateTime toBsonValue(Time time) {
+        return toBsonValue(time, Calendar.getInstance());
+    }
+
+    public static BsonDateTime toBsonValue(Timestamp timestamp) {
+        return toBsonValue(timestamp, Calendar.getInstance());
+    }
+
+    public static BsonDateTime toBsonValue(LocalTime localTime) {
+        long epochMillis = LocalDate.of(1970, 1, 1)
+                .atTime(localTime)
+                .toInstant(ZoneOffset.UTC)
+                .toEpochMilli();
+        return new BsonDateTime(epochMillis);
+    }
+
+    public static BsonDateTime toBsonValue(OffsetTime value) {
+        LocalTime localTime = value
+                .withOffsetSameInstant(ZoneOffset.UTC)
+                .toLocalTime();
+        return toBsonValue(localTime);
+    }
+
+    public static BsonDateTime toBsonValue(Instant instant) {
+        return new BsonDateTime(instant.toEpochMilli());
+    }
+
+    private static <T> T toDomainValue(BsonDateTime value, Class<T> domainType) throws SQLFeatureNotSupportedException {
+        Object result;
+        if (domainType.equals(Date.class)) {
+            result = toDomainValue(value, Calendar.getInstance());
+        } else if (domainType.equals(Time.class)) {
+            result = toTimeDomainValue(value, Calendar.getInstance());
+        } else if (domainType.equals(Timestamp.class) || domainType.equals(Object.class)) {
+            result = toTimestampDomainValue(value, Calendar.getInstance());
+        } else {
+            throw new SQLFeatureNotSupportedException(format(
+                    "Value [%s] of type [%s] is not supported for the domain type [%s]",
+                    value, value.getClass().getTypeName(), domainType));
+        }
+        return domainType.cast(result);
+    }
+
+    public static Date toDomainValue(BsonValue bsonValue, Calendar calendar) {
+        BsonDateTime dateTime = bsonValue.asDateTime();
+
+        LocalDate localDate =
+                Instant.ofEpochMilli(dateTime.getValue()).atZone(ZoneOffset.UTC).toLocalDate();
+
+        long epochMillis = localDate
+                .atStartOfDay(calendar.getTimeZone().toZoneId())
+                .toInstant()
+                .toEpochMilli();
+
+        return new Date(epochMillis);
+    }
+
+    public static Date toDateDomainValue(BsonValue bsonValue, Calendar calendar) {
+        BsonDateTime dateTime = bsonValue.asDateTime();
+
+        LocalDate localDate =
+                Instant.ofEpochMilli(dateTime.getValue()).atZone(ZoneOffset.UTC).toLocalDate();
+
+        long epochMillis = localDate
+                .atStartOfDay(calendar.getTimeZone().toZoneId())
+                .toInstant()
+                .toEpochMilli();
+
+        return new Date(epochMillis);
+    }
+
+    public static Time toTimeDomainValue(BsonValue bsonValue, Calendar calendar) {
+        long epochUtc = bsonValue.asDateTime().getValue();
+        /*
+          LocalTime unaltered by timezone.
+        */
+        LocalDateTime localDateTime =
+                Instant.ofEpochMilli(epochUtc).atZone(ZoneOffset.UTC).toLocalDateTime();
+
+        ZoneId zone = calendar.getTimeZone().toZoneId();
+        long epochMillis = localDateTime.atZone(zone).toInstant().toEpochMilli();
+
+        /*
+          This will treat LocalTime as point on current timezone timeline and will convert to UTC epoch time on 1970-01-01.
+          Time.toLocalTime() does the opposite - the internally stored point on UTC timeline, which accessible via Time.getTime(),
+          converts to local timeline.
+        */
+        return new Time(epochMillis);
+    }
+
+    public static Timestamp toTimestampDomainValue(BsonValue timestamp, Calendar calendar) {
+        long epochUtc = timestamp.asDateTime().getValue();
+        ZoneId zoneId = calendar.getTimeZone().toZoneId();
+        long epochMillis = Instant.ofEpochMilli(epochUtc)
+                .atZone(ZoneOffset.UTC)
+                .toLocalDateTime()
+                .atZone(zoneId)
+                .toInstant()
+                .toEpochMilli();
+        return new Timestamp(epochMillis);
+    }
+
+    public static BsonDateTime toBsonValue(Time time, Calendar calendar) {
+        ZoneId zone = calendar.getTimeZone().toZoneId();
+        LocalTime localTime = Instant.ofEpochMilli(time.getTime()).
+                atZone(zone).
+                toLocalTime();
+        return toBsonValue(localTime);
+    }
+
+    public static BsonDateTime toBsonValue(Timestamp timestamp, Calendar calendar) {
+        ZoneId zone = calendar.getTimeZone().toZoneId();
+        LocalDateTime localDateTime = Instant.ofEpochMilli(timestamp.getTime())
+                .atZone(zone)
+                .toLocalDateTime();
+        long epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        return new BsonDateTime(epochMillis);
+    }
+
+    public static BsonDateTime toBsonValue(Date date, Calendar calendar) {
+        ZoneId zone = calendar.getTimeZone().toZoneId();
+        LocalDate localDate = Instant.ofEpochMilli(date.getTime())
+                .atZone(zone)
+                .toLocalDate();
+        long epochMillis = localDate.atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli();
+        return new BsonDateTime(epochMillis);
     }
 }

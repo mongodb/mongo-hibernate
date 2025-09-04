@@ -16,16 +16,17 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
-import static java.lang.String.format;
-
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
+import org.bson.BsonArray;
+import org.bson.BsonDocument;
+import org.bson.BsonType;
+import org.bson.BsonValue;
+import org.bson.types.ObjectId;
+
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -43,11 +44,11 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-import org.bson.BsonArray;
-import org.bson.BsonDocument;
-import org.bson.BsonType;
-import org.bson.BsonValue;
-import org.bson.types.ObjectId;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
+import static java.lang.String.format;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
@@ -161,24 +162,24 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setDate(int parameterIndex, Date x) throws SQLException {
+    public void setDate(int parameterIndex, Date date) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setParameter(parameterIndex, toBsonValue(date, Calendar.getInstance()));
     }
 
     @Override
-    public void setTime(int parameterIndex, Time x) throws SQLException {
+    public void setTime(int parameterIndex, Time time) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setParameter(parameterIndex, toBsonValue(time, Calendar.getInstance()));
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setTimestamp(parameterIndex, x, Calendar.getInstance());
     }
 
     @Override
@@ -212,24 +213,24 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
+    public void setDate(int parameterIndex, Date date, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setParameter(parameterIndex, toBsonValue(date, cal));
     }
 
     @Override
-    public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
+    public void setTime(int parameterIndex, Time time, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setParameter(parameterIndex, toBsonValue(time, cal));
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
+    public void setTimestamp(int parameterIndex, Timestamp timestamp, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setParameter(parameterIndex, toBsonValue(timestamp, cal));
     }
 
     @Override

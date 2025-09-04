@@ -32,12 +32,13 @@ package com.mongodb.hibernate.jdbc;
  * limitations under the License.
  */
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static java.lang.String.format;
-
 import com.mongodb.client.MongoCursor;
 import com.mongodb.hibernate.internal.type.ValueConversions;
+import org.bson.BsonDocument;
+import org.bson.BsonValue;
+import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
+
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -49,10 +50,13 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
-import org.bson.BsonDocument;
-import org.bson.BsonValue;
-import org.bson.types.ObjectId;
-import org.jspecify.annotations.Nullable;
+
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toDateDomainValue;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toTimeDomainValue;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toTimestampDomainValue;
+import static java.lang.String.format;
 
 final class MongoResultSet implements ResultSetAdapter {
 
@@ -153,35 +157,42 @@ final class MongoResultSet implements ResultSetAdapter {
     public @Nullable Date getDate(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        return getValue(columnIndex, bsonValue -> toDateDomainValue(bsonValue, Calendar.getInstance()));
+    }
+
+    @Override
+    public @Nullable Date getDate(final int columnIndex, final Calendar calendar) throws SQLException {
+        checkClosed();
+        checkColumnIndex(columnIndex);
+        return getValue(columnIndex, bsonValue -> ValueConversions.toDateDomainValue(bsonValue, calendar));
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        return getValue(columnIndex, bsonValue -> toTimeDomainValue(bsonValue, Calendar.getInstance()));
     }
 
     @Override
-    public @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
+    public @Nullable Time getTime(int columnIndex, Calendar calendar) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        return getValue(columnIndex, bsonValue -> toTimeDomainValue(bsonValue, calendar));
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        return getValue(columnIndex, bsonValue -> toTimestampDomainValue(bsonValue, Calendar.getInstance()));
     }
 
     @Override
-    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
+    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar calendar) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        return getValue(columnIndex, bsonValue -> toTimestampDomainValue(bsonValue, calendar));
     }
 
     @Override

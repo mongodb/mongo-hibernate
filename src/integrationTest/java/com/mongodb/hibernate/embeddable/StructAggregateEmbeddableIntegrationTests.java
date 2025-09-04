@@ -1,3 +1,5 @@
+package com.mongodb.hibernate.embeddable;
+
 /*
  * Copyright 2025-present MongoDB, Inc.
  *
@@ -14,30 +16,19 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.embeddable;
-
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.lang.Nullable;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.sql.SQLFeatureNotSupportedException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.annotations.Parent;
@@ -47,21 +38,47 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.TimeZone;
+
+import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 @SessionFactory(exportSchema = false)
 @DomainModel(
         annotatedClasses = {
-            StructAggregateEmbeddableIntegrationTests.ItemWithNestedValues.class,
-            StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingArraysAndCollections.class,
-            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
-            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class,
-            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingEmbeddable.class
+                StructAggregateEmbeddableIntegrationTests.ItemWithNestedValues.class,
+                StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingArraysAndCollections.class,
+                StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
+                StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class,
+                StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingEmbeddable.class
         })
 @ExtendWith(MongoExtension.class)
 public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
+
+    private static final TimeZone CURRENT_TIME_ZONE = TimeZone.getDefault();
     @InjectMongoCollection("items")
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -70,6 +87,17 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    @BeforeAll
+    public static void setUp() {
+        // Set timezone to UTC to have deterministic date/time values.
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
+    @AfterAll
+    public static void tearDown() {
+        TimeZone.setDefault(CURRENT_TIME_ZONE);
     }
 
     @Test
@@ -92,36 +120,52 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 true,
                                 "str",
                                 BigDecimal.valueOf(10.1),
-                                new ObjectId("000000000000000000000001"))));
+                                new ObjectId("000000000000000000000001"),
+                                LocalDate.of(2025, 1, 1),
+                                LocalTime.of(3, 15, 30),
+                                LocalDateTime.of(2025, 10, 10, 3, 15, 30),
+                                OffsetTime.parse("03:15:30Z"),
+                                OffsetDateTime.parse("2025-10-10T03:15:30Z"),
+                                ZonedDateTime.parse("2025-10-10T03:15:30Z"),
+                                Instant.parse("2007-12-03T10:15:30Z"),
+                                new Date(3_600_000))));
         item.nested2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested1: {
-                        a: 2
-                    },
-                    nested2: {
-                        a: 3,
-                        nested: {
-                            primitiveChar: "c",
-                            primitiveInt: 1,
-                            primitiveLong: {$numberLong: "9223372036854775807"},
-                            primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
-                            primitiveBoolean: true,
-                            boxedChar: "c",
-                            boxedInt: 1,
-                            boxedLong: {$numberLong: "9223372036854775807"},
-                            boxedDouble: {$numberDouble: "1.7976931348623157E308"},
-                            boxedBoolean: true,
-                            string: "str",
-                            bigDecimal: {$numberDecimal: "10.1"},
-                            objectId: {$oid: "000000000000000000000001"}
+                        {
+                            _id: 1,
+                            nested1: {
+                                a: 2
+                            },
+                            nested2: {
+                                a: 3,
+                                nested: {
+                                    primitiveChar: "c",
+                                    primitiveInt: 1,
+                                    primitiveLong: {$numberLong: "9223372036854775807"},
+                                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                                    primitiveBoolean: true,
+                                    boxedChar: "c",
+                                    boxedInt: 1,
+                                    boxedLong: {$numberLong: "9223372036854775807"},
+                                    boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                                    boxedBoolean: true,
+                                    string: "str",
+                                    bigDecimal: {$numberDecimal: "10.1"},
+                                    objectId: {$oid: "000000000000000000000001"},
+                                    localDate: {"$date": "2025-01-01T00:00:00Z"},
+                                    localTime: {"$date": "1970-01-01T03:15:30Z"},
+                                    localDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                                    offsetTime: {"$date": "1970-01-01T03:15:30Z"},
+                                    offsetDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                                    zonedDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                                    instant: {"$date": "2007-12-03T10:15:30Z"},
+                                    date: {"$date": "1970-01-01T01:00:00Z"}
+                                }
+                            }
                         }
-                    }
-                }
-                """);
+                        """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValues.class, item.flattenedId));
         assertEq(item, loadedItem);
@@ -132,31 +176,39 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         });
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested1: {
-                        a: -2
-                    },
-                    nested2: {
-                        a: 3,
-                        nested: {
-                            primitiveChar: "c",
-                            primitiveInt: 1,
-                            primitiveLong: {$numberLong: "9223372036854775807"},
-                            primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
-                            primitiveBoolean: true,
-                            boxedChar: "c",
-                            boxedInt: 1,
-                            boxedLong: {$numberLong: "9223372036854775807"},
-                            boxedDouble: {$numberDouble: "1.7976931348623157E308"},
-                            boxedBoolean: true,
-                            string: "str",
-                            bigDecimal: {$numberDecimal: "10.1"},
-                            objectId: {$oid: "000000000000000000000001"}
+                        {
+                            _id: 1,
+                            nested1: {
+                                a: -2
+                            },
+                            nested2: {
+                                a: 3,
+                                nested: {
+                                    primitiveChar: "c",
+                                    primitiveInt: 1,
+                                    primitiveLong: {$numberLong: "9223372036854775807"},
+                                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                                    primitiveBoolean: true,
+                                    boxedChar: "c",
+                                    boxedInt: 1,
+                                    boxedLong: {$numberLong: "9223372036854775807"},
+                                    boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                                    boxedBoolean: true,
+                                    string: "str",
+                                    bigDecimal: {$numberDecimal: "10.1"},
+                                    objectId: {$oid: "000000000000000000000001"},
+                                    localDate: {"$date": "2025-01-01T00:00:00Z"},
+                                    localTime: {"$date": "1970-01-01T03:15:30Z"},
+                                    localDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                                    offsetTime: {"$date": "1970-01-01T03:15:30Z"},
+                                    offsetDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                                    zonedDateTime: {"$date": "2025-10-10T03:15:30Z"},
+                                    instant: {"$date": "2007-12-03T10:15:30Z"},
+                                    date: {"$date": "1970-01-01T01:00:00Z"}
+                                }
+                            }
                         }
-                    }
-                }
-                """);
+                        """);
         loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValues.class, updatedItem.flattenedId));
         assertEq(updatedItem, loadedItem);
@@ -182,34 +234,50 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 null,
                                 null,
                                 null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
                                 null)));
         item.nested2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested1: null,
-                    nested2: {
-                        a: 3,
-                        nested: {
-                            primitiveChar: "c",
-                            primitiveInt: 1,
-                            primitiveLong: {$numberLong: "9223372036854775807"},
-                            primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
-                            primitiveBoolean: true,
-                            boxedChar: null,
-                            boxedInt: null,
-                            boxedLong: null,
-                            boxedDouble: null,
-                            boxedBoolean: null,
-                            string: null,
-                            bigDecimal: null,
-                            objectId: null
+                        {
+                            _id: 1,
+                            nested1: null,
+                            nested2: {
+                                a: 3,
+                                nested: {
+                                    primitiveChar: "c",
+                                    primitiveInt: 1,
+                                    primitiveLong: {$numberLong: "9223372036854775807"},
+                                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                                    primitiveBoolean: true,
+                                    boxedChar: null,
+                                    boxedInt: null,
+                                    boxedLong: null,
+                                    boxedDouble: null,
+                                    boxedBoolean: null,
+                                    string: null,
+                                    bigDecimal: null,
+                                    objectId: null,
+                                    localDate: null,
+                                    local_Time: null,
+                                    localDateTime: null,
+                                    offsetTime: null,
+                                    offsetDateTime: null,
+                                    zonedDateTime: null,
+                                    instant: null,
+                                    date: null
+                                }
+                            }
                         }
-                    }
-                }
-                """);
+                        """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValues.class, item.flattenedId));
         assertEq(item, loadedItem);
@@ -220,15 +288,15 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         });
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested1: null,
-                    nested2: {
-                        a: 3,
-                        nested: null
-                    }
-                }
-                """);
+                        {
+                            _id: 1,
+                            nested1: null,
+                            nested2: {
+                                a: 3,
+                                nested: null
+                            }
+                        }
+                        """);
         loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValues.class, updatedItem.flattenedId));
         assertEq(updatedItem, loadedItem);
@@ -239,21 +307,29 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         var item = new ItemWithNestedValueHavingArraysAndCollections(
                 1,
                 new ArraysAndCollections(
-                        new byte[] {2, 3},
-                        new char[] {'s', 't', 'r'},
-                        new int[] {5},
-                        new long[] {Long.MAX_VALUE, 6},
-                        new double[] {Double.MAX_VALUE},
-                        new boolean[] {true},
-                        new Character[] {'s', null, 't', 'r'},
-                        new Integer[] {null, 7},
-                        new Long[] {8L, null},
-                        new Double[] {9.1d, null},
-                        new Boolean[] {true, null},
-                        new String[] {null, "str"},
-                        new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
-                        new ObjectId[] {new ObjectId("000000000000000000000001"), null},
-                        new Single[] {new Single(1), null},
+                        new byte[]{2, 3},
+                        new char[]{'s', 't', 'r'},
+                        new int[]{5},
+                        new long[]{Long.MAX_VALUE, 6},
+                        new double[]{Double.MAX_VALUE},
+                        new boolean[]{true},
+                        new Character[]{'s', null, 't', 'r'},
+                        new Integer[]{null, 7},
+                        new Long[]{8L, null},
+                        new Double[]{9.1d, null},
+                        new Boolean[]{true, null},
+                        new String[]{null, "str"},
+                        new BigDecimal[]{null, BigDecimal.valueOf(10.1)},
+                        new ObjectId[]{new ObjectId("000000000000000000000001"), null},
+                        new LocalDate[]{LocalDate.of(2025, 1, 1)},
+                        new LocalTime[]{LocalTime.of(3, 15, 30)},
+                        new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                        new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
+                        new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                        new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                        new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
+                        new Date[]{new Date(0)},
+                        new Single[]{new Single(1), null},
                         asList('s', 't', null, 'r'),
                         new HashSet<>(asList(null, 5)),
                         asList(Long.MAX_VALUE, null, 6L),
@@ -262,40 +338,65 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         asList("str", null),
                         asList(BigDecimal.valueOf(10.1), null),
                         asList(null, new ObjectId("000000000000000000000001")),
-                        asList(new Single(1), null)));
+                        asList(new Single(1), null),
+                        List.of(LocalDate.of(2025, 1, 1)),
+                        List.of(LocalTime.of(3, 15, 30)),
+                        List.of(LocalDateTime.of(2025, 10, 10, 3, 15, 30)),
+                        List.of(OffsetTime.parse("03:15:30Z")),
+                        List.of(OffsetDateTime.parse("2025-10-10T03:15:30Z")),
+                        List.of(ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")),
+                        List.of(Instant.parse("2007-12-03T10:15:30Z")),
+                        List.of(new Date(0))
+                ));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested: {
-                        bytes: {$binary: {base64: "AgM=", subType: "0"}},
-                        chars: "str",
-                        ints: [5],
-                        longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
-                        doubles: [{$numberDouble: "1.7976931348623157E308"}],
-                        booleans: [true],
-                        boxedChars: ["s", null, "t", "r"],
-                        boxedInts: [null, 7],
-                        boxedLongs: [{$numberLong: "8"}, null],
-                        boxedDoubles: [{$numberDouble: "9.1"}, null],
-                        boxedBooleans: [true, null],
-                        strings: [null, "str"],
-                        bigDecimals: [null, {$numberDecimal: "10.1"}],
-                        objectIds: [{$oid: "000000000000000000000001"}, null],
-                        structAggregateEmbeddables: [{a: 1}, null],
-                        charsCollection: ["s", "t", null, "r"],
-                        intsCollection: [null, 5],
-                        longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "6"}],
-                        doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
-                        booleansCollection: [null, true],
-                        stringsCollection: ["str", null],
-                        bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
-                        objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddablesCollection: [{a: 1}, null]
-                    }
-                }
-                """);
+                        {
+                            _id: 1,
+                            nested: {
+                                bytes: {$binary: {base64: "AgM=", subType: "0"}},
+                                chars: "str",
+                                ints: [5],
+                                longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "6"}],
+                                doubles: [{$numberDouble: "1.7976931348623157E308"}],
+                                booleans: [true],
+                                boxedChars: ["s", null, "t", "r"],
+                                boxedInts: [null, 7],
+                                boxedLongs: [{$numberLong: "8"}, null],
+                                boxedDoubles: [{$numberDouble: "9.1"}, null],
+                                boxedBooleans: [true, null],
+                                strings: [null, "str"],
+                                bigDecimals: [null, {$numberDecimal: "10.1"}],
+                                objectIds: [{$oid: "000000000000000000000001"}, null],
+                                structAggregateEmbeddables: [{a: 1}, null],
+                                charsCollection: ["s", "t", null, "r"],
+                                intsCollection: [null, 5],
+                                longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "6"}],
+                                doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
+                                booleansCollection: [null, true],
+                                stringsCollection: ["str", null],
+                                bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
+                                objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                                structAggregateEmbeddablesCollection: [{a: 1}, null],
+                                localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                                localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                                localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                                offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                                offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                                zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                                instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                                dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                                localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                                localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                                localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                                offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                                offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                                zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                                instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                                datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
+                            }
+                        }
+                        """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
         assertEq(item, loadedItem);
@@ -310,36 +411,52 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         });
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested: {
-                        bytes: {$binary: {base64: "/gM=", subType: "0"}},
-                        chars: "str",
-                        ints: [5],
-                        longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
-                        doubles: [{$numberDouble: "1.7976931348623157E308"}],
-                        booleans: [true],
-                        boxedChars: ["s", null, "t", "r"],
-                        boxedInts: [null, 7],
-                        boxedLongs: [{$numberLong: "8"}, null],
-                        boxedDoubles: [{$numberDouble: "9.1"}, null],
-                        boxedBooleans: [true, null],
-                        strings: [null, "str"],
-                        bigDecimals: [null, {$numberDecimal: "10.1"}],
-                        objectIds: [{$oid: "000000000000000000000002"}, null],
-                        structAggregateEmbeddables: [{a: 1}, null],
-                        charsCollection: ["s", "t", null, "r"],
-                        intsCollection: [null, 5],
-                        longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "-6"}],
-                        doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
-                        booleansCollection: [null, true],
-                        stringsCollection: ["str", null],
-                        bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
-                        objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
-                        structAggregateEmbeddablesCollection: [{a: 1}, null]
-                    }
-                }
-                """);
+                        {
+                            _id: 1,
+                            nested: {
+                                bytes: {$binary: {base64: "/gM=", subType: "0"}},
+                                chars: "str",
+                                ints: [5],
+                                longs: [{$numberLong: "9223372036854775807"}, {$numberLong: "-6"}],
+                                doubles: [{$numberDouble: "1.7976931348623157E308"}],
+                                booleans: [true],
+                                boxedChars: ["s", null, "t", "r"],
+                                boxedInts: [null, 7],
+                                boxedLongs: [{$numberLong: "8"}, null],
+                                boxedDoubles: [{$numberDouble: "9.1"}, null],
+                                boxedBooleans: [true, null],
+                                strings: [null, "str"],
+                                bigDecimals: [null, {$numberDecimal: "10.1"}],
+                                objectIds: [{$oid: "000000000000000000000002"}, null],
+                                structAggregateEmbeddables: [{a: 1}, null],
+                                charsCollection: ["s", "t", null, "r"],
+                                intsCollection: [null, 5],
+                                longsCollection: [{$numberLong: "9223372036854775807"}, null, {$numberLong: "-6"}],
+                                doublesCollection: [null, {$numberDouble: "1.7976931348623157E308"}],
+                                booleansCollection: [null, true],
+                                stringsCollection: ["str", null],
+                                bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
+                                objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                                structAggregateEmbeddablesCollection: [{a: 1}, null],
+                                localDates: [{"$date": "2025-01-01T00:00:00Z"}],
+                                localTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                                localDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                                offsetTimes: [{"$date": "1970-01-01T03:15:30Z"}],
+                                offsetDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                                zonedDateTimes: [{"$date": "2025-10-10T03:15:30Z"}],
+                                instants: [{"$date": "2007-12-03T10:15:30Z"}],
+                                dates: [{"$date": "1970-01-01T00:00:00Z"}],
+                                localDatesCollection: [{"$date": "2025-01-01T00:00:00Z"}],
+                                localTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                                localDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                                offsetTimesCollection: [{"$date": "1970-01-01T03:15:30Z"}],
+                                offsetDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                                zonedDateTimesCollection: [{"$date": "2025-10-10T03:15:30Z"}],
+                                instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
+                                datesCollection: [{"$date": "1970-01-01T00:00:00Z"}]
+                            }
+                        }
+                        """);
         loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, updatedItem.id));
         assertEq(updatedItem, loadedItem);
@@ -364,9 +481,25 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         new String[0],
                         new BigDecimal[0],
                         new ObjectId[0],
+                        new LocalDate[0],
+                        new LocalTime[0],
+                        new LocalDateTime[0],
+                        new OffsetTime[0],
+                        new OffsetDateTime[0],
+                        new ZonedDateTime[0],
+                        new Instant[0],
+                        new Date[0],
                         new Single[0],
                         List.of(),
                         Set.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
                         List.of(),
                         List.of(),
                         List.of(),
@@ -377,36 +510,52 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested: {
-                        bytes: {$binary: {base64: "", subType: "0"}},
-                        chars: "",
-                        ints: [],
-                        longs: [],
-                        doubles: [],
-                        booleans: [],
-                        boxedChars: [],
-                        boxedInts: [],
-                        boxedLongs: [],
-                        boxedDoubles: [],
-                        boxedBooleans: [],
-                        strings: [],
-                        bigDecimals: [],
-                        objectIds: [],
-                        structAggregateEmbeddables: [],
-                        charsCollection: [],
-                        intsCollection: [],
-                        longsCollection: [],
-                        doublesCollection: [],
-                        booleansCollection: [],
-                        stringsCollection: [],
-                        bigDecimalsCollection: [],
-                        objectIdsCollection: [],
-                        structAggregateEmbeddablesCollection: []
-                    }
-                }
-                """);
+                        {
+                            _id: 1,
+                            nested: {
+                                bytes: {$binary: {base64: "", subType: "0"}},
+                                chars: "",
+                                ints: [],
+                                longs: [],
+                                doubles: [],
+                                booleans: [],
+                                boxedChars: [],
+                                boxedInts: [],
+                                boxedLongs: [],
+                                boxedDoubles: [],
+                                boxedBooleans: [],
+                                strings: [],
+                                bigDecimals: [],
+                                objectIds: [],
+                                structAggregateEmbeddables: [],
+                                charsCollection: [],
+                                intsCollection: [],
+                                longsCollection: [],
+                                doublesCollection: [],
+                                booleansCollection: [],
+                                stringsCollection: [],
+                                bigDecimalsCollection: [],
+                                objectIdsCollection: [],
+                                structAggregateEmbeddablesCollection: [],
+                                localDates: [],
+                                localTimes: [],
+                                localDateTimes: [],
+                                offsetTimes: [],
+                                offsetDateTimes: [],
+                                zonedDateTimes: [],
+                                instants: [],
+                                dates: [],
+                                localDatesCollection: [],
+                                localTimesCollection: [],
+                                localDateTimesCollection: [],
+                                offsetTimesCollection: [],
+                                offsetDateTimesCollection: [],
+                                zonedDateTimesCollection: [],
+                                instantsCollection: [],
+                                datesCollection: []
+                            }
+                        }
+                        """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
         assertEq(item, loadedItem);
@@ -422,42 +571,61 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     @Test
     public void testNestedValueHavingNullArraysAndCollections() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null);
         var item = new ItemWithNestedValueHavingArraysAndCollections(1, emptyStructAggregateEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
-                {
-                    _id: 1,
-                    nested: {
-                        bytes: null,
-                        chars: null,
-                        ints: null,
-                        longs: null,
-                        doubles: null,
-                        booleans: null,
-                        boxedChars: null,
-                        boxedInts: null,
-                        boxedLongs: null,
-                        boxedDoubles: null,
-                        boxedBooleans: null,
-                        strings: null,
-                        bigDecimals: null,
-                        objectIds: null,
-                        structAggregateEmbeddables: null,
-                        charsCollection: null,
-                        intsCollection: null,
-                        longsCollection: null,
-                        doublesCollection: null,
-                        booleansCollection: null,
-                        stringsCollection: null,
-                        bigDecimalsCollection: null,
-                        objectIdsCollection: null,
-                        structAggregateEmbeddablesCollection: null
-                    }
-                }
-                """);
+                        {
+                            _id: 1,
+                            nested: {
+                                bytes: null,
+                                chars: null,
+                                ints: null,
+                                longs: null,
+                                doubles: null,
+                                booleans: null,
+                                boxedChars: null,
+                                boxedInts: null,
+                                boxedLongs: null,
+                                boxedDoubles: null,
+                                boxedBooleans: null,
+                                strings: null,
+                                bigDecimals: null,
+                                objectIds: null,
+                                structAggregateEmbeddables: null,
+                                charsCollection: null,
+                                intsCollection: null,
+                                longsCollection: null,
+                                doublesCollection: null,
+                                booleansCollection: null,
+                                stringsCollection: null,
+                                bigDecimalsCollection: null,
+                                objectIdsCollection: null,
+                                structAggregateEmbeddablesCollection: null,
+                                localDates: null,
+                                localTimes: null,
+                                localDateTimes: null,
+                                offsetTimes: null,
+                                offsetDateTimes: null,
+                                zonedDateTimes: null,
+                                instants: null,
+                                dates: null,
+                                localDatesCollection: null,
+                                localTimesCollection: null,
+                                localDateTimesCollection: null,
+                                offsetTimesCollection: null,
+                                offsetDateTimesCollection: null,
+                                zonedDateTimesCollection: null,
+                                instantsCollection: null,
+                                datesCollection: null
+                            }
+                        }
+                        """);
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.find(ItemWithNestedValueHavingArraysAndCollections.class, item.id));
         assertEq(item, loadedItem);
@@ -468,21 +636,21 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         var insertResult = mongoCollection.insertOne(
                 BsonDocument.parse(
                         """
-                        {
-                            _id: 1,
-                            nested1: {},
-                            nested2: {
-                                a: 3,
-                                nested: {
-                                    primitiveChar: "c",
-                                    primitiveInt: 1,
-                                    primitiveLong: {$numberLong: "9223372036854775807"},
-                                    primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
-                                    primitiveBoolean: true
+                                {
+                                    _id: 1,
+                                    nested1: {},
+                                    nested2: {
+                                        a: 3,
+                                        nested: {
+                                            primitiveChar: "c",
+                                            primitiveInt: 1,
+                                            primitiveLong: {$numberLong: "9223372036854775807"},
+                                            primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                                            primitiveBoolean: true
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                        """));
+                                """));
         var id = new EmbeddableIntegrationTests.Single(
                 insertResult.getInsertedId().asInt32().getValue());
         var expectedItem = new ItemWithNestedValues(
@@ -496,6 +664,14 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 Long.MAX_VALUE,
                                 Double.MAX_VALUE,
                                 true,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
                                 null,
                                 null,
                                 null,
@@ -523,7 +699,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         PairWithParent nested2;
 
-        ItemWithNestedValues() {}
+        ItemWithNestedValues() {
+        }
 
         ItemWithNestedValues(EmbeddableIntegrationTests.Single flattenedId, Single nested1, PairWithParent nested2) {
             this.flattenedId = flattenedId;
@@ -537,7 +714,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     public static class Single {
         public Integer a;
 
-        Single() {}
+        Single() {
+        }
 
         public Single(Integer a) {
             this.a = a;
@@ -550,9 +728,11 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         int a;
         Plural nested;
 
-        @Parent ItemWithNestedValues parent;
+        @Parent
+        ItemWithNestedValues parent;
 
-        PairWithParent() {}
+        PairWithParent() {
+        }
 
         PairWithParent(int a, Plural nested) {
             this.a = a;
@@ -591,17 +771,28 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             Boolean boxedBoolean,
             String string,
             BigDecimal bigDecimal,
-            ObjectId objectId) {}
+            ObjectId objectId,
+            LocalDate localDate,
+            @Column(name = "local_Time")
+            LocalTime localTime,
+            LocalDateTime localDateTime,
+            OffsetTime offsetTime,
+            OffsetDateTime offsetDateTime,
+            ZonedDateTime zonedDateTime,
+            Instant instant,
+            Date date) {
+    }
 
     @Entity
     @Table(name = "items")
-    static class ItemWithNestedValueHavingArraysAndCollections {
+    public static class ItemWithNestedValueHavingArraysAndCollections {
         @Id
         int id;
 
         ArraysAndCollections nested;
 
-        ItemWithNestedValueHavingArraysAndCollections() {}
+        ItemWithNestedValueHavingArraysAndCollections() {
+        }
 
         ItemWithNestedValueHavingArraysAndCollections(int id, ArraysAndCollections nested) {
             this.id = id;
@@ -626,6 +817,14 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         String[] strings;
         BigDecimal[] bigDecimals;
         ObjectId[] objectIds;
+        LocalDate[] localDates;
+        LocalTime[] localTimes;
+        LocalDateTime[] localDateTimes;
+        OffsetTime[] offsetTimes;
+        OffsetDateTime[] offsetDateTimes;
+        ZonedDateTime[] zonedDateTimes;
+        Instant[] instants;
+        Date[] dates;
         Single[] structAggregateEmbeddables;
         List<Character> charsCollection;
         Set<Integer> intsCollection;
@@ -636,8 +835,17 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
         Collection<Single> structAggregateEmbeddablesCollection;
+        Collection<LocalDate> localDatesCollection;
+        Collection<LocalTime> localTimesCollection;
+        Collection<LocalDateTime> localDateTimesCollection;
+        Collection<OffsetTime> offsetTimesCollection;
+        Collection<OffsetDateTime> offsetDateTimesCollection;
+        Collection<ZonedDateTime> zonedDateTimesCollection;
+        Collection<Instant> instantsCollection;
+        Collection<Date> datesCollection;
 
-        ArraysAndCollections() {}
+        ArraysAndCollections() {
+        }
 
         public ArraysAndCollections(
                 byte[] bytes,
@@ -654,6 +862,14 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 String[] strings,
                 BigDecimal[] bigDecimals,
                 ObjectId[] objectIds,
+                LocalDate[] localDates,
+                LocalTime[] localTimes,
+                LocalDateTime[] localDateTimes,
+                OffsetTime[] offsetTimes,
+                OffsetDateTime[] offsetDateTimes,
+                ZonedDateTime[] zonedDateTimes,
+                Instant[] instants,
+                Date[] dates,
                 Single[] structAggregateEmbeddables,
                 List<Character> charsCollection,
                 Set<Integer> intsCollection,
@@ -663,7 +879,15 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 Collection<String> stringsCollection,
                 Collection<BigDecimal> bigDecimalsCollection,
                 Collection<ObjectId> objectIdsCollection,
-                Collection<Single> structAggregateEmbeddablesCollection) {
+                Collection<Single> structAggregateEmbeddablesCollection,
+                List<LocalDate> localDatesCollection,
+                List<LocalTime> localTimesCollection,
+                List<LocalDateTime> localDateTimesCollection,
+                List<OffsetTime> offsetTimesCollection,
+                List<OffsetDateTime> offsetDateTimesCollection,
+                List<ZonedDateTime> zonedDateTimesCollection,
+                List<Instant> instantsCollection,
+                List<Date> datesCollection) {
             this.bytes = bytes;
             this.chars = chars;
             this.ints = ints;
@@ -688,6 +912,22 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             this.bigDecimalsCollection = bigDecimalsCollection;
             this.objectIdsCollection = objectIdsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+            this.localDates = localDates;
+            this.localTimes = localTimes;
+            this.localDateTimes = localDateTimes;
+            this.offsetTimes = offsetTimes;
+            this.offsetDateTimes = offsetDateTimes;
+            this.zonedDateTimes = zonedDateTimes;
+            this.instants = instants;
+            this.dates = dates;
+            this.localDatesCollection = localDatesCollection;
+            this.localTimesCollection = localTimesCollection;
+            this.localDateTimesCollection = localDateTimesCollection;
+            this.offsetTimesCollection = offsetTimesCollection;
+            this.offsetDateTimesCollection = offsetDateTimesCollection;
+            this.zonedDateTimesCollection = zonedDateTimesCollection;
+            this.instantsCollection = instantsCollection;
+            this.datesCollection = datesCollection;
         }
     }
 
@@ -696,8 +936,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         @Test
         void testStructPrimaryKey() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithSingleAsId.class)
-                            .buildMetadata())
+                    .addAnnotatedClass(ItemWithSingleAsId.class)
+                    .buildMetadata())
                     .hasMessageContaining("aggregate embeddable primary keys are not supported");
         }
 
@@ -709,12 +949,12 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Test
-        void testAllNonInsertable() {
+        void StructAggregateEmbeddableIntegrationTestsllNonInsertable() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithNestedValueHavingAllNonInsertable.class)
-                            .buildMetadata()
-                            .buildSessionFactory()
-                            .close())
+                    .addAnnotatedClass(ItemWithNestedValueHavingAllNonInsertable.class)
+                    .buildMetadata()
+                    .buildSessionFactory()
+                    .close())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("must have at least one persistent attribute");
         }
@@ -731,12 +971,12 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         @Test
         void testPolymorphic() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithPolymorphicPersistentAttribute.class)
-                            .addAnnotatedClass(Polymorphic.class)
-                            .addAnnotatedClass(Concrete.class)
-                            .buildMetadata()
-                            .buildSessionFactory()
-                            .close())
+                    .addAnnotatedClass(ItemWithPolymorphicPersistentAttribute.class)
+                    .addAnnotatedClass(Polymorphic.class)
+                    .addAnnotatedClass(Concrete.class)
+                    .buildMetadata()
+                    .buildSessionFactory()
+                    .close())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage("Polymorphic mapping is not supported");
         }
@@ -752,10 +992,10 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         @Test
         void testNoPersistentAttributes() {
             assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithNestedValueHavingNoPersistentAttributes.class)
-                            .buildMetadata()
-                            .buildSessionFactory()
-                            .close())
+                    .addAnnotatedClass(ItemWithNestedValueHavingNoPersistentAttributes.class)
+                    .buildMetadata()
+                    .buildSessionFactory()
+                    .close())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("must have at least one persistent attribute");
         }
@@ -769,15 +1009,18 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Entity
         @Table(name = "items")
-        record ItemWithNestedValueHavingNonInsertable(@Id int id, PairHavingNonInsertable nested) {}
+        record ItemWithNestedValueHavingNonInsertable(@Id int id, PairHavingNonInsertable nested) {
+        }
 
         @Embeddable
         @Struct(name = "PairHavingNonInsertable")
-        record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
+        record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {
+        }
 
         @Entity
         @Table(name = "items")
-        record ItemWithNestedValueHavingNonUpdatable(@Id int id, PairHavingNonUpdatable nested) {}
+        record ItemWithNestedValueHavingNonUpdatable(@Id int id, PairHavingNonUpdatable nested) {
+        }
 
         @Embeddable
         @Struct(name = "PairHavingNonUpdatable")
@@ -787,7 +1030,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
             int b;
 
-            PairHavingNonUpdatable() {}
+            PairHavingNonUpdatable() {
+            }
 
             PairHavingNonUpdatable(int a, int b) {
                 this.a = a;
@@ -806,7 +1050,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairAllNonInsertable")
-        record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
+        record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {
+        }
 
         @Entity
         @Table(name = "items")
@@ -816,7 +1061,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
             Polymorphic polymorphic;
 
-            ItemWithPolymorphicPersistentAttribute() {}
+            ItemWithPolymorphicPersistentAttribute() {
+            }
 
             ItemWithPolymorphicPersistentAttribute(int id, Polymorphic polymorphic) {
                 this.id = id;
@@ -827,7 +1073,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         @Embeddable
         @Struct(name = "Polymorphic")
         abstract static class Polymorphic {
-            Polymorphic() {}
+            Polymorphic() {
+            }
         }
 
         @Embeddable
@@ -835,7 +1082,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         static class Concrete extends Polymorphic {
             int a;
 
-            Concrete() {}
+            Concrete() {
+            }
 
             Concrete(int a) {
                 this.a = a;
@@ -858,7 +1106,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "SingleHavingEmbeddable")
-        record SingleHavingEmbeddable(EmbeddableIntegrationTests.Single flattened) {}
+        record SingleHavingEmbeddable(EmbeddableIntegrationTests.Single flattened) {
+        }
 
         @Entity
         @Table(name = "items")
@@ -871,6 +1120,17 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "NoPersistentAttributes")
-        static class NoPersistentAttributes {}
+        static class NoPersistentAttributes {
+        }
+    }
+
+    private void assertEq(@Nullable Object expected, @Nullable Object actual) {
+        assertUsingRecursiveComparison(expected, actual, (recursiveComparisonAssert, expectedToCompare) -> {
+            recursiveComparisonAssert
+                    .ignoringAllOverriddenEquals()
+                    .withComparatorForType(Comparator.comparingLong(Date::getTime), Date.class)
+                    .isEqualTo(expectedToCompare);
+        });
     }
 }
+
