@@ -100,7 +100,6 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         TimeZone.setDefault(CURRENT_TIME_ZONE);
     }
 
-
     @Test
     void testArrayAndCollectionValues() {
         var item = new ItemWithArrayAndCollectionValues(
@@ -119,14 +118,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[] {null, "str"},
                 new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001"), null},
-                new LocalDate[]{LocalDate.of(2025, 1, 1)},
-                new LocalTime[]{LocalTime.of(3, 15, 30)},
-                new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
-                new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
-                new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
-                new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
-                new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
-                new Date[]{new Date(0)},
+                new LocalDate[] {LocalDate.of(2025, 1, 1)},
+                new LocalTime[] {LocalTime.of(3, 15, 30)},
+                new LocalDateTime[] {LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                new OffsetTime[] {OffsetTime.parse("03:15:30Z")},
+                new OffsetDateTime[] {OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                new ZonedDateTime[] {ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                new Instant[] {Instant.parse("2007-12-03T10:15:30Z")},
+                new Date[] {new Date(0)},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
@@ -146,8 +145,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 List.of(OffsetDateTime.parse("2025-10-10T03:15:30Z")),
                 List.of(ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")),
                 List.of(Instant.parse("2007-12-03T10:15:30Z")),
-                List.of(new Date(0))
-        );
+                List.of(new Date(0)));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -357,11 +355,9 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     @Test
     void testArrayAndCollectionNullValues() {
         var item = new ItemWithArrayAndCollectionValues(
-                1,
-                null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null);
+                1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -431,14 +427,14 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[] {"str"},
                 new BigDecimal[] {BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001")},
-                new LocalDate[]{LocalDate.of(2025, 1, 1)},
-                new LocalTime[]{LocalTime.of(3, 15, 30)},
-                new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
-                new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
-                new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
-                new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
-                new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
-                new Date[]{new Date(0)},
+                new LocalDate[] {LocalDate.of(2025, 1, 1)},
+                new LocalTime[] {LocalTime.of(3, 15, 30)},
+                new LocalDateTime[] {LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                new OffsetTime[] {OffsetTime.parse("03:15:30Z")},
+                new OffsetDateTime[] {OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                new ZonedDateTime[] {ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                new Instant[] {Instant.parse("2007-12-03T10:15:30Z")},
+                new Date[] {new Date(0)},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1)
                 },
@@ -459,8 +455,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 List.of(OffsetDateTime.parse("2025-10-10T03:15:30Z")),
                 List.of(ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")),
                 List.of(Instant.parse("2007-12-03T10:15:30Z")),
-                List.of(new Date(0))
-        );
+                List.of(new Date(0)));
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1, new ArraysAndCollections[] {arraysAndCollections}, List.of());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
@@ -586,11 +581,9 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     @Test
     public void testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
-                null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1,
                 new ArraysAndCollections[] {emptyStructAggregateEmbeddable},

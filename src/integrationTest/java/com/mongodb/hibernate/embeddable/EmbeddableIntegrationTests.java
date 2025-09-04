@@ -335,14 +335,14 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         asList(BigDecimal.valueOf(10.1), null),
                         asList(null, new ObjectId("000000000000000000000001")),
                         asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null),
-                        new LocalDate[]{LocalDate.of(2025, 1, 1)},
-                        new LocalTime[]{LocalTime.of(3, 15, 30)},
-                        new LocalDateTime[]{LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
-                        new OffsetTime[]{OffsetTime.parse("03:15:30Z")},
-                        new OffsetDateTime[]{OffsetDateTime.parse("2025-10-10T03:15:30Z")},
-                        new ZonedDateTime[]{ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
-                        new Instant[]{Instant.parse("2007-12-03T10:15:30Z")},
-                        new Date[]{new Date(0)},
+                        new LocalDate[] {LocalDate.of(2025, 1, 1)},
+                        new LocalTime[] {LocalTime.of(3, 15, 30)},
+                        new LocalDateTime[] {LocalDateTime.of(2025, 10, 10, 3, 15, 30)},
+                        new OffsetTime[] {OffsetTime.parse("03:15:30Z")},
+                        new OffsetDateTime[] {OffsetDateTime.parse("2025-10-10T03:15:30Z")},
+                        new ZonedDateTime[] {ZonedDateTime.parse("2025-10-10T03:15:30Z[UTC]")},
+                        new Instant[] {Instant.parse("2007-12-03T10:15:30Z")},
+                        new Date[] {new Date(0)},
                         List.of(LocalDate.of(2025, 1, 1)),
                         List.of(LocalTime.of(3, 15, 30)),
                         List.of(LocalDateTime.of(2025, 10, 10, 3, 15, 30)),
@@ -694,8 +694,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         @AttributeOverride(name = "a", column = @Column(name = "flattened2_a"))
         PairWithParent flattened2;
 
-        public ItemWithFlattenedValues() {
-        }
+        public ItemWithFlattenedValues() {}
 
         ItemWithFlattenedValues(Single flattenedId, Single flattened1, PairWithParent flattened2) {
             this.flattenedId = flattenedId;
@@ -708,8 +707,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     public static class Single {
         int a;
 
-        public Single() {
-        }
+        public Single() {}
 
         Single(int a) {
             this.a = a;
@@ -737,8 +735,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         @Parent ItemWithFlattenedValues parent;
 
-        public PairWithParent() {
-        }
+        public PairWithParent() {}
 
         PairWithParent(int a, Plural flattened) {
             this.a = a;
@@ -778,15 +775,13 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             BigDecimal bigDecimal,
             ObjectId objectId,
             LocalDate localDate,
-            @Column(name = "local_Time")
-            LocalTime localTime,
+            @Column(name = "local_Time") LocalTime localTime,
             LocalDateTime localDateTime,
             OffsetTime offsetTime,
             OffsetDateTime offsetDateTime,
             ZonedDateTime zonedDateTime,
             Instant instant,
-            Date date) {
-    }
+            Date date) {}
 
     @Entity
     @Table(name = "items")
@@ -796,8 +791,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         ArraysAndCollections flattened;
 
-        public ItemWithFlattenedValueHavingArraysAndCollections() {
-        }
+        public ItemWithFlattenedValueHavingArraysAndCollections() {}
 
         ItemWithFlattenedValueHavingArraysAndCollections(int id, ArraysAndCollections flattened) {
             this.id = id;
@@ -848,8 +842,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         Collection<Date> datesCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
 
-        public ArraysAndCollections() {
-        }
+        public ArraysAndCollections() {}
 
         ArraysAndCollections(
                 byte[] bytes,

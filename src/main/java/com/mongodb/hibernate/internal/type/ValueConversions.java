@@ -359,9 +359,7 @@ public final class ValueConversions {
     }
 
     public static BsonDateTime toBsonValue(OffsetTime value) {
-        LocalTime localTime = value
-                .withOffsetSameInstant(ZoneOffset.UTC)
-                .toLocalTime();
+        LocalTime localTime = value.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime();
         return toBsonValue(localTime);
     }
 
@@ -446,29 +444,22 @@ public final class ValueConversions {
 
     public static BsonDateTime toBsonValue(Time time, Calendar calendar) {
         ZoneId zone = calendar.getTimeZone().toZoneId();
-        LocalTime localTime = Instant.ofEpochMilli(time.getTime()).
-                atZone(zone).
-                toLocalTime();
+        LocalTime localTime = Instant.ofEpochMilli(time.getTime()).atZone(zone).toLocalTime();
         return toBsonValue(localTime);
     }
 
     public static BsonDateTime toBsonValue(Timestamp timestamp, Calendar calendar) {
         ZoneId zone = calendar.getTimeZone().toZoneId();
-        LocalDateTime localDateTime = Instant.ofEpochMilli(timestamp.getTime())
-                .atZone(zone)
-                .toLocalDateTime();
+        LocalDateTime localDateTime =
+                Instant.ofEpochMilli(timestamp.getTime()).atZone(zone).toLocalDateTime();
         long epochMillis = localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
         return new BsonDateTime(epochMillis);
     }
 
     public static BsonDateTime toBsonValue(Date date, Calendar calendar) {
         ZoneId zone = calendar.getTimeZone().toZoneId();
-        LocalDate localDate = Instant.ofEpochMilli(date.getTime())
-                .atZone(zone)
-                .toLocalDate();
-        long epochMillis = localDate.atStartOfDay(ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli();
+        LocalDate localDate = Instant.ofEpochMilli(date.getTime()).atZone(zone).toLocalDate();
+        long epochMillis = localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
         return new BsonDateTime(epochMillis);
     }
 }

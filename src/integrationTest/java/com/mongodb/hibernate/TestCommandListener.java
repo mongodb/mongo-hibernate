@@ -18,11 +18,12 @@ package com.mongodb.hibernate;
 
 import com.mongodb.event.CommandListener;
 import com.mongodb.event.CommandStartedEvent;
+import org.bson.BsonDocument;
+import org.hibernate.service.Service;
+
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
-import org.bson.BsonDocument;
-import org.hibernate.service.Service;
 
 public final class TestCommandListener implements CommandListener, Service {
     @Serial
