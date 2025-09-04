@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/** The MongoDB {@link org.hibernate.dialect.Dialect} package. */
 @NullMarked
 package com.mongodb.hibernate.dialect;
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/** The MongoDB Hibernate JDBC package. */
 @NullMarked
 package com.mongodb.hibernate.jdbc;
 

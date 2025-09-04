@@ -18,8 +18,8 @@ assertj = "3.27.3"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.4"
 jspecify = "1.0.0"
-hibernate-orm = "6.6.23.Final"
-mongo-java-driver-sync = "5.3.1"
+hibernate-orm = "6.6.23.Final" # Remember to update javadoc links
+mongo-java-driver-sync = "5.3.1" # Remember to update javadoc links
 slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
 mockito = "5.16.0"
@@ -30,6 +30,7 @@ plugin-errorprone = "4.1.0"
 plugin-buildconfig = "5.5.4"
 plugin-palantir = "2.58.0"
 plugin-ktfmt = "0.54"
+plugin-nexus-publish = "2.0.0"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -51,3 +52,4 @@ test-common = ["junit-jupiter", "assertj", "logback-classic"]
 [plugins]
 errorprone = { id = "net.ltgt.errorprone", version.ref = "plugin-errorprone" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "plugin-buildconfig" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "plugin-nexus-publish" }
