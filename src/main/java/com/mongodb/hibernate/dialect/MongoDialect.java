@@ -48,6 +48,13 @@ import org.jspecify.annotations.Nullable;
 public final class MongoDialect extends Dialect {
     private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);
 
+    /**
+     * Constructs a {@link MongoDialect} using the given {@link DialectResolutionInfo}.
+     *
+     * <p>This constructor is used by Hibernate to initialize the dialect with database version and connection details.
+     *
+     * @param info the dialect resolution information provided by Hibernate
+     */
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
     }
