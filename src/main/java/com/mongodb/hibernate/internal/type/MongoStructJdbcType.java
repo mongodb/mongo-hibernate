@@ -164,7 +164,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         if (isNull(rawJdbcValue)) {
             return null;
         }
-        var bsonDocument = assertInstanceOf(rawJdbcValue, BsonDocument.class);
+        var bsonDocument = assertInstanceOf(assertNotNull(rawJdbcValue), BsonDocument.class);
         var embeddableMappingType = getEmbeddableMappingType();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         var result = new Object[jdbcValueCount];

@@ -22,15 +22,14 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import com.mongodb.client.MongoCollection;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 /**
  * The annotated field must be static and of the {@link MongoCollection}{@code <BsonDocument>} type. It is injected
- * {@linkplain BeforeAllCallback#beforeAll(ExtensionContext) before all} tests, and is
- * {@linkplain MongoCollection#drop() dropped} {@linkplain BeforeEachCallback#beforeEach(ExtensionContext) before each}
- * test.
+ * {@linkplain MongoExtension#beforeAll(ExtensionContext) before all} tests, and is dropped
+ * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test.
+ *
+ * <p>Requires {@link MongoExtension}.
  */
 @Target(FIELD)
 @Retention(RUNTIME)

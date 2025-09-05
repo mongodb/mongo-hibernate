@@ -18,6 +18,8 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonWriter;
 
+/** @see AstDocument */
+@SuppressWarnings("MissingSummary")
 public record AstElement(String name, AstValue value) implements AstNode {
     @Override
     public void render(BsonWriter writer) {

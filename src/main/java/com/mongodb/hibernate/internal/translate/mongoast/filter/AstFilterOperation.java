@@ -18,4 +18,6 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 
+/** @see AstFieldOperationFilter */
+@SuppressWarnings("MissingSummary")
 interface AstFilterOperation extends AstNode {}

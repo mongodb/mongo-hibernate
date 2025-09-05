@@ -18,10 +18,12 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstUpdateCommand(String collection, AstFilter filter, List<? extends AstFieldUpdate> updates)
+/** See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>. */
+@SuppressWarnings("InvalidParam")
+public record AstUpdateCommand(String collection, AstFilter filter, Collection<? extends AstFieldUpdate> updates)
         implements AstCommand {
     @Override
     public void render(BsonWriter writer) {

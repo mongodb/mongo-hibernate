@@ -44,8 +44,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
+    private static final String COLLECTION_NAME = "items";
 
-    @InjectMongoCollection("items")
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -348,7 +349,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class Item {
         @Id
         int id;
@@ -402,7 +403,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemDynamicallyUpdated {
         @Id
         int id;

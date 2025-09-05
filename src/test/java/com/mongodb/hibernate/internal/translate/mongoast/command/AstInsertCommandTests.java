@@ -20,7 +20,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertion
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.util.List;
 import org.bson.BsonInt32;
@@ -35,14 +35,14 @@ class AstInsertCommandTests {
         var collection = "books";
 
         var elements1 = List.of(
-                new AstElement("title", new AstLiteralValue(new BsonString("War and Peace"))),
-                new AstElement("year", new AstLiteralValue(new BsonInt32(1867))),
+                new AstElement("title", new AstLiteral(new BsonString("War and Peace"))),
+                new AstElement("year", new AstLiteral(new BsonInt32(1867))),
                 new AstElement("_id", AstParameterMarker.INSTANCE));
         var document1 = new AstDocument(elements1);
 
         var elements2 = List.of(
-                new AstElement("title", new AstLiteralValue(new BsonString("Crime and Punishment"))),
-                new AstElement("year", new AstLiteralValue(new BsonInt32(1868))),
+                new AstElement("title", new AstLiteral(new BsonString("Crime and Punishment"))),
+                new AstElement("year", new AstLiteral(new BsonInt32(1868))),
                 new AstElement("_id", AstParameterMarker.INSTANCE));
         var document2 = new AstDocument(elements2);
 

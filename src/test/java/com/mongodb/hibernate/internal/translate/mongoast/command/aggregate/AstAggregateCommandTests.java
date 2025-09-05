@@ -18,7 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
@@ -32,8 +32,7 @@ class AstAggregateCommandTests {
     void testRendering() {
         var matchStage = new AstMatchStage(new AstFieldOperationFilter(
                 "_id",
-                new AstComparisonFilterOperation(
-                        AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt32(1)))));
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1)))));
         var projectStage = new AstProjectStage(List.of(new AstProjectStageIncludeSpecification("title")));
         var aggregateCommand = new AstAggregateCommand("books", List.of(matchStage, projectStage));
         var expectedJson =

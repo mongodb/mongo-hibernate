@@ -16,10 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstDocument(List<? extends AstElement> elements) implements AstValue {
+/** See <a href="https://www.mongodb.com/docs/manual/core/document/">Documents</a>. */
+public record AstDocument(Collection<? extends AstElement> elements) implements AstValue {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

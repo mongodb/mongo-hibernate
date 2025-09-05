@@ -31,7 +31,7 @@ import java.util.Map;
 import org.hibernate.sql.ast.tree.expression.Expression;
 
 @SuppressWarnings("UnusedTypeParameter")
-final class AstVisitorValueDescriptor<T> {
+public final class AstVisitorValueDescriptor<T> {
 
     static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MODEL_MUTATION_RESULT =
             new AstVisitorValueDescriptor<>();
@@ -42,12 +42,12 @@ final class AstVisitorValueDescriptor<T> {
 
     static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();
 
-    static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstValue> VALUE = new AstVisitorValueDescriptor<>();
+    public static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
+    public static final AstVisitorValueDescriptor<AstValue> VALUE = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
             new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
+    public static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstSortField>> SORT_FIELDS = new AstVisitorValueDescriptor<>();
 

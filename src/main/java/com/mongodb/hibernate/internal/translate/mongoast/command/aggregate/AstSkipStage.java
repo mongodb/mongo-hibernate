@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/skip/">{@code $skip}</a>. */
 public record AstSkipStage(AstValue value) implements AstStage {
     @Override
     public void render(BsonWriter writer) {

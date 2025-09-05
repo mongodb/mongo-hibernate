@@ -63,7 +63,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
-    @InjectMongoCollection("items")
+    private static final String COLLECTION_NAME = "items";
+
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -503,7 +505,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithFlattenedValues {
         @Id
         Single flattenedId;
@@ -596,7 +598,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             ObjectId objectId) {}
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithFlattenedValueHavingArraysAndCollections {
         @Id
         int id;
@@ -723,14 +725,14 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithPluralAsId {
             @Id
             Plural id;
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithFlattenedValueHavingStructAggregateEmbeddable {
             @Id
             int id;
@@ -748,7 +750,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         record SingleHavingStructAggregateEmbeddable(StructAggregateEmbeddableIntegrationTests.Single nested) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithFlattenedValueHavingNoPersistentAttributes {
             @Id
             int id;

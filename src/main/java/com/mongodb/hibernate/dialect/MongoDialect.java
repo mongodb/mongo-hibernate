@@ -19,6 +19,9 @@ package com.mongodb.hibernate.dialect;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
+import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
+import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
@@ -26,6 +29,7 @@ import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
@@ -44,6 +48,10 @@ import org.jspecify.annotations.Nullable;
  * document DB and speaks <i>MQL</i> (MongoDB Query Language), but it is still possible to integrate with Hibernate by
  * creating a JDBC adaptor on top of <a href="https://www.mongodb.com/docs/drivers/java/sync/current/">MongoDB Java
  * Driver</a>.
+ *
+ * <p>For the documentation on the supported <a
+ * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-exp-functions">HQL
+ * functions</a> see {@link #initializeFunctionRegistry(FunctionContributions)}.
  */
 public final class MongoDialect extends Dialect {
     private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);
@@ -127,5 +135,106 @@ public final class MongoDialect extends Dialect {
     @Override
     public boolean supportsStandardArrays() {
         return true;
+    }
+
+    /**
+     *
+     *
+     * <table>
+     *     <caption>Supported HQL functions</caption>
+     *     <thead>
+     *         <tr>
+     *             <th>Name</th>
+     *             <th>Notes</th>
+     *         </tr>
+     *     </thead>
+     *     <tbody>
+     *         <tr>
+     *             <td>
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
+     *                     {@code array}, {@code array_list}</a>
+     *             </td>
+     *             <td>
+     *                 Is allowed only in a
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                     {@code where} clause</a>.
+     *             </td>
+     *         </tr>
+     *         <tr>
+     *             <td>
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
+     *                     {@code array_contains}, {@code array_contains_nullable}</a>
+     *             </td>
+     *             <td>
+     *                 Is allowed only in a
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                     {@code where} clause</a>.
+     *                 <ul>
+     *                     <li>
+     *                         The first argument must be an
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions">HQL path expression</a>
+     *                         (see also
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-case-sensitivity">HQL identifiers</a>
+     *                         ), and not an
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-literals">HQL literal</a>
+     *                         or any other
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-expressions">HQL expression</a>,
+     *                         despite Hibernate ORM seemingly not having such a limitation.
+     *                     </li>
+     *                     <li>
+     *                         The second argument must not be an HQL path expression.
+     *                         It is unclear if Hibernate ORM intended them to be supported.
+     *                     </li>
+     *                     <li>
+     *                         Is allowed only in a
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                             {@code where} clause</a>.
+     *                     </li>
+     *                 </ul>
+     *             </td>
+     *         </tr>
+     *         <tr>
+     *             <td>
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
+     *                     {@code array_includes}, {@code array_includes_nullable}</a>
+     *             </td>
+     *             <td>
+     *                 Is allowed only in a
+     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                     {@code where} clause</a>.
+     *                 <ul>
+     *                     <li>
+     *                         The first argument must be an
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions">HQL path expression</a>
+     *                         (see also
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-case-sensitivity">HQL identifiers</a>
+     *                         ), and not an
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-literals">HQL literal</a>
+     *                         or any other
+     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-expressions">HQL expression</a>,
+     *                         despite Hibernate ORM seemingly not having such a limitation.
+     *                     </li>
+     *                     <li>
+     *                         The second argument must not be an HQL path expression.
+     *                         Also, it must be an array and not be a {@link java.util.Collection} when specified as
+     *                         {@linkplain org.hibernate.query.SelectionQuery#setParameter(String, Object) query parameter}.
+     *                     </li>
+     *                 </ul>
+     *             </td>
+     *         </tr>
+     *     </tbody>
+     * </table>
+     */
+    @Override
+    public void initializeFunctionRegistry(FunctionContributions functionContributions) {
+        super.initializeFunctionRegistry(functionContributions);
+        var functionRegistry = functionContributions.getFunctionRegistry();
+        var typeConfiguration = functionContributions.getTypeConfiguration();
+        functionRegistry.register("array", new MongoArrayConstructorFunction(false));
+        functionRegistry.register("array_list", new MongoArrayConstructorFunction(true));
+        functionRegistry.register("array_contains", new MongoArrayContainsFunction(false, typeConfiguration));
+        functionRegistry.register("array_contains_nullable", new MongoArrayContainsFunction(true, typeConfiguration));
+        functionRegistry.register("array_includes", new MongoArrayIncludesFunction(false, typeConfiguration));
+        functionRegistry.register("array_includes_nullable", new MongoArrayIncludesFunction(true, typeConfiguration));
     }
 }

@@ -19,6 +19,10 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/#comparison">Query and Projection
+ * Operators. Query Selectors. Comparison</a>.
+ */
 public record AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value)
         implements AstFilterOperation {
     @Override
