@@ -17,8 +17,7 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doAndTerminateTransaction;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWithSpecifiedAutoCommit;
+import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWorkWithSpecifiedAutoCommit;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -30,7 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.SqlExecutable;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.math.BigDecimal;
@@ -50,8 +48,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
+@ParameterizedClass
+@ValueSource(booleans = {true, false})
 class MongoPreparedStatementIntegrationTests {
 
     @AutoClose
@@ -62,6 +65,9 @@ class MongoPreparedStatementIntegrationTests {
 
     @AutoClose
     private Session session;
+
+    @Parameter
+    private boolean autoCommit;
 
     @BeforeAll
     static void beforeAll() {
@@ -401,10 +407,6 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     private void doWorkAwareOfAutoCommit(Work work) {
-        session.doWork(connection -> doAwareOfAutoCommit(connection, () -> work.execute(connection)));
-    }
-
-    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
+        doWorkWithSpecifiedAutoCommit(autoCommit, session, work);
     }
 }
