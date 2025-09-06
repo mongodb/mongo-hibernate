@@ -29,6 +29,7 @@ import java.util.Map;
 import org.hibernate.HibernateException;
 import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.MappingSettings;
 import org.hibernate.service.Service;
 import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -63,10 +64,26 @@ public final class StandardServiceRegistryScopedState implements Service {
                 @Override
                 public StandardServiceRegistryScopedState initiateService(
                         Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
+                    forbidTemporalConfiguration(configurationValues);
                     return new StandardServiceRegistryScopedState(
                             createMongoConfiguration(configurationValues, serviceRegistry));
                 }
             });
+        }
+
+        private void forbidTemporalConfiguration(final Map<String, Object> configurationValues) {
+            Object enabled = configurationValues.get("hibernate.type.java_time_use_direct_jdbc");
+            if (enabled instanceof Boolean && (Boolean) enabled) {
+                throw new HibernateException(format(
+                        "Configuration property [%s] is incubating and not supported in MongoDB dialect",
+                        MappingSettings.JAVA_TIME_USE_DIRECT_JDBC));
+            }
+
+            if (configurationValues.get("hibernate.type.preferred_instant_jdbc_type") != null) {
+                throw new HibernateException(format(
+                        "Configuration property [%s] is incubating and not supported in MongoDB dialect",
+                        MappingSettings.PREFERRED_INSTANT_JDBC_TYPE));
+            }
         }
 
         private MongoConfiguration createMongoConfiguration(

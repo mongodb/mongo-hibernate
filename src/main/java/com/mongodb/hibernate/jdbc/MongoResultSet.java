@@ -178,10 +178,10 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
-    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
+    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar calendar) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        return getValue(columnIndex, ValueConversions::toTimestampDomainValue);
     }
 
     @Override

@@ -163,21 +163,21 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, Date x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Date type is not supported");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Time type is not supported");
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Timestamp type with default calendar is not supported");
     }
 
     @Override
@@ -214,21 +214,24 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Date type is not supported");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Time type is not supported");
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
+    public void setTimestamp(int parameterIndex, Timestamp timestamp, Calendar calendar) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        if (!"UTC".equals(calendar.getTimeZone().getID())) {
+            throw new SQLFeatureNotSupportedException("Only UTC timezone is supported");
+        }
+        setParameter(parameterIndex, toBsonValue(timestamp));
     }
 
     @Override
