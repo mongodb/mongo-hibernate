@@ -86,8 +86,11 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
                     Arguments.of(
                             systemDefaultTimeZone,
                             jdbcTimezone,
-                            Instant.parse("2007-12-03T10:15:30.00Z"),  // Attribute or an element of an attribute to save.
-                            Instant.parse("2007-12-03T10:15:30.00Z")), // Expected attribute or an element of an attribute after read.
+                            Instant.parse(
+                                    "2007-12-03T10:15:30.00Z"), // Attribute or an element of an attribute to save.
+                            Instant.parse(
+                                    "2007-12-03T10:15:30.00Z")), // Expected attribute or an element of an attribute
+                    // after read.
                     // nanoseconds are ignored on write.
                     Arguments.of(
                             systemDefaultTimeZone,
@@ -128,7 +131,6 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
                 systemDefaultTimeZone,
                 () -> fromTransaction(jdbcTimeZone, session -> session.find(ItemInstant.class, instantItem.id)));
 
-
         var expectedItem = new ItemInstant(1, toRead, List.of(toRead, toRead));
         assertEq(expectedItem, loadedInstantItem);
     }
@@ -154,8 +156,10 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
         assertEq(expectedItem, loadedInstantItem);
     }
 
-    @ParameterizedTest(name = "Instant:system TZ equal per read/write; system TZ not equal session TZ; session TZ not equal per read/write;"
-            + "systemDefaultTimeZone={0}, jdbcTimeZone={1}")
+    @ParameterizedTest(
+            name =
+                    "Instant:system TZ equal per read/write; system TZ not equal session TZ; session TZ not equal per read/write;"
+                            + "systemDefaultTimeZone={0}, jdbcTimeZone={1}")
     @MethodSource("testInstantPersistAndRead")
     /*
      system tz: T1 -> session tz: T2
@@ -180,12 +184,12 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
     static class ItemInstant {
         @Id
         int id;
+
         Instant instant;
         Collection<Instant> instantCollection;
         InstantAggregateEmbeddable instantAggregateEmbeddable;
 
-        public ItemInstant() {
-        }
+        public ItemInstant() {}
 
         public ItemInstant(int id, Instant instant, List<Instant> instantCollection) {
             this.id = id;
@@ -195,14 +199,12 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
-
     @Embeddable
     @Struct(name = "instant_aggregate_embeddable")
     static class InstantAggregateEmbeddable {
         public Instant instant;
 
-        public InstantAggregateEmbeddable() {
-        }
+        public InstantAggregateEmbeddable() {}
 
         public InstantAggregateEmbeddable(Instant instant) {
             this.instant = instant;

@@ -352,7 +352,21 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testFindByPrimaryKeyWithNullFieldValues() {
             var item = new Item(
-                    1, 'c', 1, Long.MAX_VALUE, Double.MAX_VALUE, true, null, null, null, null, null, null, null, null, null);
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
             sessionFactoryScope.inTransaction(session -> session.persist(item));
 
             var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));

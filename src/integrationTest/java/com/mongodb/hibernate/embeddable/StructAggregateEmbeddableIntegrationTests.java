@@ -525,8 +525,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 null,
                                 null,
                                 null,
-                                null
-                                )));
+                                null)));
         expectedItem.nested2.parent = expectedItem;
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, id));
         assertEq(expectedItem, loadedItem);

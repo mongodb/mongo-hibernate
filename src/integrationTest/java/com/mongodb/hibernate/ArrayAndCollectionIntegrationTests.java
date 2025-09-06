@@ -221,8 +221,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 List.of(),
                 List.of(),
                 List.of(),
-                List.of()
-                );
+                List.of());
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """

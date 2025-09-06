@@ -43,8 +43,7 @@ public abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends Abs
 
     public abstract List<I> getData();
 
-    @ParameterizedTest(
-            name = "testComparisonByEq: temporal={0}, expectedItems={2}, expectedRender={3}, timeZone={1}")
+    @ParameterizedTest(name = "testComparisonByEq: temporal={0}, expectedItems={2}, expectedRender={3}, timeZone={1}")
     @MethodSource
     void testComparisonByEq(
             T temporal, TimeZone timeZone, List<I> expectedItems, String expectedRender, Class<I> tClass) {
@@ -79,8 +78,7 @@ public abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends Abs
                         Set.of(COLLECTION_NAME)));
     }
 
-    @ParameterizedTest(
-            name = "testComparisonByNe: temporal={0}, expectedItems={2}, expectedRender={3}, timeZone={1}")
+    @ParameterizedTest(name = "testComparisonByNe: temporal={0}, expectedItems={2}, expectedRender={3}, timeZone={1}")
     @MethodSource
     void testComparisonByNe(
             T temporal, TimeZone timeZone, List<I> expectedItems, String expectedRender, Class<I> tClass) {

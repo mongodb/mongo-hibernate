@@ -143,16 +143,13 @@ class MongoPreparedStatementIntegrationTests {
                         new Timestamp(toUtc(LocalDateTime.of(
                                 LocalDate.of(1500, 1, 1), LocalTime.of(10, 15, 12, convertMillisToNanos(783))))),
                         new Timestamp(toUtc(LocalDateTime.of(
-                                LocalDate.of(1500, 1, 1), LocalTime.of(10, 15, 12, convertMillisToNanos(783)))))
-                ),
+                                LocalDate.of(1500, 1, 1), LocalTime.of(10, 15, 12, convertMillisToNanos(783)))))),
                 Arguments.of(
                         TimeZone.getTimeZone("GMT-1"),
                         new Timestamp(toUtc(LocalDateTime.of(
                                 LocalDate.of(1970, 1, 1), LocalTime.of(10, 11, 15, convertMillisToNanos(783))))),
                         new Timestamp(toUtc(LocalDateTime.of(
-                                LocalDate.of(1970, 1, 1), LocalTime.of(10, 11, 15, convertMillisToNanos(783)))))
-                )
-        );
+                                LocalDate.of(1970, 1, 1), LocalTime.of(10, 11, 15, convertMillisToNanos(783)))))));
     }
 
     @ParameterizedTest
@@ -161,18 +158,20 @@ class MongoPreparedStatementIntegrationTests {
         doWorkAwareOfAutoCommit(connection -> {
             try (var pstmt = connection.prepareStatement(
                     """
+                    {
+                        insert: "books",
+                        documents: [
                             {
-                                insert: "books",
-                                documents: [
-                                    {
-                                        _id: 1,
-                                        timestamp: { $undefined: true }
-                                    }
-                                ]
-                            }""")) {
+                                _id: 1,
+                                timestamp: { $undefined: true }
+                            }
+                        ]
+                    }""")) {
 
-                withSystemTimeZone(timeZone,
-                        () -> pstmt.setTimestamp(1, timestampToSave, Calendar.getInstance(TimeZone.getTimeZone("UTC"))));
+                withSystemTimeZone(
+                        timeZone,
+                        () -> pstmt.setTimestamp(
+                                1, timestampToSave, Calendar.getInstance(TimeZone.getTimeZone("UTC"))));
 
                 pstmt.executeUpdate();
             }
@@ -181,25 +180,28 @@ class MongoPreparedStatementIntegrationTests {
         doWorkAwareOfAutoCommit(connection -> {
             try (var pstmt = connection.prepareStatement(
                     """
-                            {
-                                aggregate: "books",
-                                pipeline: [
-                                    { $match: { _id: { $eq: { $undefined: true } } } },
-                                    { $project:
-                                        {
-                                            _id: 0,
-                                            timestamp: 1
-                                        }
-                                    }
-                                ]
-                            }""")) {
+                    {
+                        aggregate: "books",
+                        pipeline: [
+                            { $match: { _id: { $eq: { $undefined: true } } } },
+                            { $project:
+                                {
+                                    _id: 0,
+                                    timestamp: 1
+                                }
+                            }
+                        ]
+                    }""")) {
 
                 pstmt.setInt(1, 1);
                 try (var rs = pstmt.executeQuery()) {
 
                     assertTrue(rs.next());
-                    withSystemTimeZone(timeZone,
-                            () -> assertEquals(expectedTimeStamp, rs.getTimestamp(1, Calendar.getInstance(TimeZone.getTimeZone("UTC"))),
+                    withSystemTimeZone(
+                            timeZone,
+                            () -> assertEquals(
+                                    expectedTimeStamp,
+                                    rs.getTimestamp(1, Calendar.getInstance(TimeZone.getTimeZone("UTC"))),
                                     "timestamp with Calendar mismatch"));
                     assertFalse(rs.next());
                 }
