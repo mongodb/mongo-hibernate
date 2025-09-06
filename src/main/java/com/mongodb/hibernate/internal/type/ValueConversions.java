@@ -16,7 +16,22 @@
 
 package com.mongodb.hibernate.internal.type;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static java.lang.String.format;
+
 import com.mongodb.hibernate.internal.jdbc.MongoArray;
+import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.sql.JDBCType;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.ArrayList;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
@@ -33,22 +48,6 @@ import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
-
-import java.lang.reflect.Array;
-import java.math.BigDecimal;
-import java.sql.JDBCType;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.ArrayList;
-
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static java.lang.String.format;
 
 /**
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}

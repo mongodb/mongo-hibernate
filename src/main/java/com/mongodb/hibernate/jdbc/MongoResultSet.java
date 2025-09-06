@@ -32,13 +32,12 @@ package com.mongodb.hibernate.jdbc;
  * limitations under the License.
  */
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static java.lang.String.format;
+
 import com.mongodb.client.MongoCursor;
 import com.mongodb.hibernate.internal.type.ValueConversions;
-import org.bson.BsonDocument;
-import org.bson.BsonValue;
-import org.bson.types.ObjectId;
-import org.jspecify.annotations.Nullable;
-
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -50,10 +49,10 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
-
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static java.lang.String.format;
+import org.bson.BsonDocument;
+import org.bson.BsonValue;
+import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 
 final class MongoResultSet implements ResultSetAdapter {
 

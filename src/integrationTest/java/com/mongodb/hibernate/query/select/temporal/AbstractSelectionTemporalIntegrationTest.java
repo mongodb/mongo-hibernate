@@ -16,16 +16,15 @@
 
 package com.mongodb.hibernate.query.select.temporal;
 
-import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import static java.lang.String.format;
 
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
-
-import static java.lang.String.format;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQueryIntegrationTests {
 

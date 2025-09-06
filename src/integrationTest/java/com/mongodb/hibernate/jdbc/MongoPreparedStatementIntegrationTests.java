@@ -16,26 +16,24 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doAndTerminateTransaction;
+import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWithSpecifiedAutoCommit;
+import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.SqlExecutable;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
-import org.bson.BsonDocument;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
-import org.hibernate.jdbc.Work;
-import org.junit.jupiter.api.AutoClose;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -50,19 +48,20 @@ import java.util.Random;
 import java.util.TimeZone;
 import java.util.function.Function;
 import java.util.stream.Stream;
-
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doAndTerminateTransaction;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWithSpecifiedAutoCommit;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.bson.BsonDocument;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.jdbc.Work;
+import org.junit.jupiter.api.AutoClose;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(MongoExtension.class)
 class MongoPreparedStatementIntegrationTests {

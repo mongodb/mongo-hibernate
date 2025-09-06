@@ -16,6 +16,12 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hibernate.cfg.AvailableSettings.WRAPPER_ARRAY_HANDLING;
+
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
@@ -27,6 +33,12 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.MappingException;
@@ -40,19 +52,6 @@ import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.math.BigDecimal;
-import java.sql.SQLFeatureNotSupportedException;
-import java.time.Instant;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.AvailableSettings.WRAPPER_ARRAY_HANDLING;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(

@@ -19,14 +19,13 @@ package com.mongodb.hibernate.query.select.temporal;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.testing.orm.junit.DomainModel;
-import org.junit.jupiter.params.provider.Arguments;
-
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.stream.Stream;
+import org.hibernate.testing.orm.junit.DomainModel;
+import org.junit.jupiter.params.provider.Arguments;
 
 @DomainModel(annotatedClasses = {SelectionInstantIntegrationTest.Item.class})
 public class SelectionInstantIntegrationTest

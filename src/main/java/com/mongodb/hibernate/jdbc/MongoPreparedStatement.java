@@ -16,17 +16,16 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
+import static java.lang.String.format;
+
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
-import org.bson.BsonArray;
-import org.bson.BsonDocument;
-import org.bson.BsonType;
-import org.bson.BsonValue;
-import org.bson.types.ObjectId;
-
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
@@ -44,11 +43,11 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-
-import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
-import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
-import static java.lang.String.format;
+import org.bson.BsonArray;
+import org.bson.BsonDocument;
+import org.bson.BsonType;
+import org.bson.BsonValue;
+import org.bson.types.ObjectId;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 

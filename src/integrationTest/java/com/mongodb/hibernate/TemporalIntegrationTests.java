@@ -16,12 +16,22 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.TimeZone;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import org.hibernate.Session;
 import org.hibernate.annotations.Struct;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -34,17 +44,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
-import java.util.TimeZone;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Stream;
-
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(

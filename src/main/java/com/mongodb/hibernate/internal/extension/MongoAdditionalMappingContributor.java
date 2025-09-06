@@ -16,18 +16,14 @@
 
 package com.mongodb.hibernate.internal.extension;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static java.lang.String.format;
+
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
-import org.hibernate.annotations.Struct;
-import org.hibernate.boot.ResourceStreamLocator;
-import org.hibernate.boot.spi.AdditionalMappingContributions;
-import org.hibernate.boot.spi.AdditionalMappingContributor;
-import org.hibernate.boot.spi.InFlightMetadataCollector;
-import org.hibernate.boot.spi.MetadataBuildingContext;
-import org.hibernate.mapping.Component;
-import org.hibernate.mapping.PersistentClass;
-import org.hibernate.mapping.Property;
-
 import java.sql.Time;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -37,12 +33,15 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Set;
-
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static java.lang.String.format;
+import org.hibernate.annotations.Struct;
+import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.spi.AdditionalMappingContributions;
+import org.hibernate.boot.spi.AdditionalMappingContributor;
+import org.hibernate.boot.spi.InFlightMetadataCollector;
+import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.mapping.Component;
+import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**

@@ -16,12 +16,17 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -31,12 +36,6 @@ import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-
-import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
-import static org.assertj.core.api.Assertions.assertThat;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(
