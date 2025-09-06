@@ -34,6 +34,7 @@ package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.jdbc.MongoPreparedStatement.checkTimeZone;
 import static java.lang.String.format;
 
 import com.mongodb.client.MongoCursor;
@@ -150,38 +151,46 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
+    public Date getDate(final int columnIndex, final Calendar cal) throws SQLException {
+        checkClosed();
+        checkColumnIndex(columnIndex);
+        throw new SQLFeatureNotSupportedException("Date type is not supported");
+    }
+
+    @Override
     public @Nullable Date getDate(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Date type is not supported");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Time type is not supported");
     }
 
     @Override
     public @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Time type is not supported");
     }
 
     @Override
     public @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        throw new SQLFeatureNotSupportedException("Timestamp type with default calendar is not supported");
     }
 
     @Override
-    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
+    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar calendar) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        checkTimeZone(calendar.getTimeZone());
+        return getValue(columnIndex, ValueConversions::toTimestampDomainValue);
     }
 
     @Override
