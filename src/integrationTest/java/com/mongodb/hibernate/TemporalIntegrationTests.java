@@ -72,10 +72,10 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
 
     public static Stream<Arguments> testInstantPersistAndRead() {
         /*
-         * Hibernate will use TIMESTAMP_UTC Sql type (it is HIBERNATE defined type, not JDBC). This means it will be treated as TIMESTAMP
+         * Hibernate ORM will use TIMESTAMP_UTC Sql type (it is Hibernate ORM defined type, not JDBC). This means it will be treated as TIMESTAMP
          * at JDBC level, with Calendar being UTC.
          *
-         * For array / collection element values and for @Struct/@Embeddable component attributes the same Instant is propagated
+         * For array/collection element values and for @Struct/@Embeddable component attributes the same Instant is propagated
          * unchanged: each Instant is stored similarly to TIMESTAMP_UTC semantics
          */
         return differentTimeZones().flatMap(arguments -> {
@@ -85,17 +85,20 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
                     Arguments.of(
                             systemDefaultTimeZone,
                             jdbcTimezone,
-                            Instant.parse(
-                                    "2007-12-03T10:15:30.00Z"), // Attribute or an element of an attribute to save.
-                            Instant.parse(
-                                    "2007-12-03T10:15:30.00Z")), // Expected attribute or an element of an attribute
-                    // after read.
-                    // nanoseconds are ignored on write.
+                            // Attribute or an element of an attribute to save.
+                            Instant.parse("2007-12-03T10:15:30.00Z"),
+                            // Expected attribute or an element of an attribute after read.
+                            Instant.parse("2007-12-03T10:15:30.00Z")),
+                    Arguments.of(
+                            systemDefaultTimeZone,
+                            jdbcTimezone,
+                            Instant.parse("1500-12-03T10:15:30Z"),
+                            Instant.parse("1500-12-03T10:15:30Z")),
                     Arguments.of(
                             systemDefaultTimeZone,
                             jdbcTimezone,
                             /*
-                             Outer dialects might support nanoseconds precision, however, in our case the precision is within milliseconds.
+                             Outer dialects might support nanoseconds precision, however, in our case the precision is to within milliseconds.
                             */
                             Instant.parse("2007-12-03T10:15:30Z").plusNanos(999),
                             Instant.parse("2007-12-03T10:15:30Z")),
@@ -103,9 +106,7 @@ public class TemporalIntegrationTests implements SessionFactoryScopeAware {
                             systemDefaultTimeZone,
                             jdbcTimezone,
                             /*
-                              Postgres for example supports only nanosecond precision. However, in our case the precision is within
-                               milliseconds.
-                               We support milliseconds precision, so nanoseconds should be rounded down to milliseconds.
+                               We support milliseconds precision, so nanoseconds are rounded down to milliseconds.
                             */
                             Instant.parse("2007-12-03T10:15:30Z").plusNanos(2900000),
                             Instant.parse("2007-12-03T10:15:30Z").plusNanos(2000000)));
