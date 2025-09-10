@@ -24,7 +24,16 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
+import java.sql.Time;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
@@ -34,6 +43,7 @@ import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
@@ -42,6 +52,17 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      * Periods and Dollar Signs</a>.
      */
     private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
+
+    private static final Set<Class<?>> UNSUPPORTED_TEMPORAL_TYPES = new HashSet<>(List.of(
+            Calendar.class,
+            Date.class,
+            java.sql.Date.class,
+            java.sql.Timestamp.class,
+            Time.class,
+            LocalTime.class,
+            LocalDateTime.class,
+            ZonedDateTime.class,
+            OffsetTime.class));
 
     public MongoAdditionalMappingContributor() {}
 
@@ -58,9 +79,16 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             MetadataBuildingContext buildingContext) {
         forbidEmbeddablesWithoutPersistentAttributes(metadata);
         metadata.getEntityBindings().forEach(persistentClass -> {
+            checkPropertyTypes(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
             setIdentifierColumnName(persistentClass);
+        });
+    }
+
+    private static void checkPropertyTypes(final PersistentClass persistentClass) {
+        persistentClass.getProperties().forEach(property -> {
+            forbidTemporalTypes(persistentClass, property);
         });
     }
 
@@ -100,6 +128,15 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                         format("%s: must have at least one persistent attribute", component));
             }
         });
+    }
+
+    private static void forbidTemporalTypes(final PersistentClass persistentClass, final Property property) {
+        Class<?> persistenceAttributeType = property.getType().getReturnedClass();
+        if (UNSUPPORTED_TEMPORAL_TYPES.contains(persistenceAttributeType)) {
+            throw new FeatureNotSupportedException(format(
+                    "%s: the persistent attribute [%s] has type [%s] that is not supported",
+                    persistentClass, property.getName(), property.getType()));
+        }
     }
 
     private static void setIdentifierColumnName(PersistentClass persistentClass) {

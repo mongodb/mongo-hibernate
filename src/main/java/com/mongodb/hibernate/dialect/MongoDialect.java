@@ -19,6 +19,7 @@ package com.mongodb.hibernate.dialect;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
@@ -33,10 +34,12 @@ import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.TimeZoneSupport;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
@@ -58,6 +61,16 @@ public final class MongoDialect extends Dialect {
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
+    }
+
+    @Override
+    public TimeZoneSupport getTimeZoneSupport() {
+        return TimeZoneSupport.NONE;
+    }
+
+    @Override
+    public void appendDatetimeFormat(final SqlAppender appender, final String format) {
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
     }
 
     /**

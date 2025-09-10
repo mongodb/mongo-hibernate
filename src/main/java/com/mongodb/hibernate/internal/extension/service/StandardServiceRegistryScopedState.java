@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal.extension.service;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
+import static org.hibernate.cfg.AvailableSettings.JAVA_TIME_USE_DIRECT_JDBC;
+import static org.hibernate.cfg.AvailableSettings.PREFERRED_INSTANT_JDBC_TYPE;
 
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
@@ -69,6 +71,19 @@ public final class StandardServiceRegistryScopedState implements Service {
             });
         }
 
+        private static void forbidTemporalConfiguration(final Map<String, Object> configurationValues) {
+            Object enabled = configurationValues.get(JAVA_TIME_USE_DIRECT_JDBC);
+            if (enabled instanceof Boolean && (Boolean) enabled) {
+                throw new HibernateException(
+                        format("Configuration property [%s] is not supported", JAVA_TIME_USE_DIRECT_JDBC));
+            }
+
+            if (configurationValues.get(PREFERRED_INSTANT_JDBC_TYPE) != null) {
+                throw new HibernateException(
+                        format("Configuration property [%s] is not supported", PREFERRED_INSTANT_JDBC_TYPE));
+            }
+        }
+
         private MongoConfiguration createMongoConfiguration(
                 Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
             var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
@@ -79,6 +94,7 @@ public final class StandardServiceRegistryScopedState implements Service {
                         "Configuration property [%s] is required unless %s is provided",
                         JAKARTA_JDBC_URL, MongoConfigurationContributor.class.getName()));
             }
+            forbidTemporalConfiguration(configurationValues);
             var mongoConfigurationBuilder = new MongoConfigurationBuilder(configurationValues);
             if (mongoConfigurationContributor != null) {
                 mongoConfigurationContributor.configure(mongoConfigurationBuilder);
