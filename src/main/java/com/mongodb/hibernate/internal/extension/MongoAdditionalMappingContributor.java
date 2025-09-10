@@ -32,6 +32,8 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
@@ -50,6 +52,17 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      * Periods and Dollar Signs</a>.
      */
     private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
+
+    private static final Set<Class<?>> UNSUPPORTED_TEMPORAL_TYPES = new HashSet<>(List.of(
+            Calendar.class,
+            Date.class,
+            java.sql.Date.class,
+            java.sql.Timestamp.class,
+            Time.class,
+            LocalTime.class,
+            LocalDateTime.class,
+            ZonedDateTime.class,
+            OffsetTime.class));
 
     public MongoAdditionalMappingContributor() {}
 
@@ -119,15 +132,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
 
     private static void forbidTemporalTypes(final PersistentClass persistentClass, final Property property) {
         Class<?> persistenceAttributeType = property.getType().getReturnedClass();
-        if (Calendar.class.equals(persistenceAttributeType)
-                || Date.class.equals(persistenceAttributeType)
-                || java.sql.Date.class.equals(persistenceAttributeType)
-                || java.sql.Timestamp.class.equals(persistenceAttributeType)
-                || Time.class.equals(persistenceAttributeType)
-                || LocalTime.class.equals(persistenceAttributeType)
-                || LocalDateTime.class.equals(persistenceAttributeType)
-                || ZonedDateTime.class.equals(persistenceAttributeType)
-                || OffsetTime.class.equals(persistenceAttributeType)) {
+        if (UNSUPPORTED_TEMPORAL_TYPES.contains(persistenceAttributeType)) {
             throw new FeatureNotSupportedException(format(
                     "%s: the persistent attribute [%s] has type [%s] that is not supported",
                     persistentClass, property.getName(), property.getType()));
