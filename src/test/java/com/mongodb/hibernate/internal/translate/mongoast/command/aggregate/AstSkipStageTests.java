@@ -18,7 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class AstSkipStageTests {
     @Test
     void testRendering() {
         var skipValue = 5;
-        var astSkipStage = new AstSkipStage(new AstLiteralValue(new BsonInt32(skipValue)));
+        var astSkipStage = new AstSkipStage(new AstLiteral(new BsonInt32(skipValue)));
 
         var expectedJson =
                 """

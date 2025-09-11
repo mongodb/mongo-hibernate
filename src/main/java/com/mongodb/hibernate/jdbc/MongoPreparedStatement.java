@@ -97,7 +97,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             case Types.BLOB:
             case Types.CLOB:
             case Types.DATALINK:
-            case Types.JAVA_OBJECT:
             case Types.NCHAR:
             case Types.NCLOB:
             case Types.NVARCHAR:
@@ -343,7 +342,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
      * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
      */
     private static void checkComparatorNotComparingWithNullValues(BsonDocument document) {
-        var comparisonOperators = Set.of("$eq", "$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
+        var comparisonOperators = Set.of("$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
         for (var entry : document.entrySet()) {
             var value = entry.getValue();
             if (value.isNull() && comparisonOperators.contains(entry.getKey())) {

@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import org.bson.BsonString;
@@ -30,7 +30,7 @@ class AstMatchStageTests {
     @Test
     void testRendering() {
         var astFilter = new AstFieldOperationFilter(
-                "title", new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("Jane Eyre"))));
+                "title", new AstComparisonFilterOperation(EQ, new AstLiteral(new BsonString("Jane Eyre"))));
         var astMatchStage = new AstMatchStage(astFilter);
 
         var expectedJson = """

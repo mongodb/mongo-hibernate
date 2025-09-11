@@ -62,7 +62,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
-    @InjectMongoCollection("items")
+    private static final String COLLECTION_NAME = "items";
+
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -514,7 +516,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithNestedValues {
         @Id
         EmbeddableIntegrationTests.Single flattenedId;
@@ -594,7 +596,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             ObjectId objectId) {}
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithNestedValueHavingArraysAndCollections {
         @Id
         int id;
@@ -761,14 +763,14 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithSingleAsId {
             @Id
             Single id;
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         record ItemWithNestedValueHavingNonInsertable(@Id int id, PairHavingNonInsertable nested) {}
 
         @Embeddable
@@ -776,7 +778,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         record ItemWithNestedValueHavingNonUpdatable(@Id int id, PairHavingNonUpdatable nested) {}
 
         @Embeddable
@@ -796,7 +798,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValueHavingAllNonInsertable {
             @Id
             int id;
@@ -809,7 +811,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithPolymorphicPersistentAttribute {
             @Id
             int id;
@@ -843,7 +845,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValueHavingEmbeddable {
             @Id
             int id;
@@ -861,7 +863,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         record SingleHavingEmbeddable(EmbeddableIntegrationTests.Single flattened) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValueHavingNoPersistentAttributes {
             @Id
             int id;

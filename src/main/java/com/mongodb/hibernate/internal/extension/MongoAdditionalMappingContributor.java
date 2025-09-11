@@ -38,8 +38,8 @@ import org.hibernate.mapping.PersistentClass;
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
-     * described in <a href=https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/>Field Names with Periods
-     * and Dollar Signs</a>.
+     * described in <a href="https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/">Field Names with
+     * Periods and Dollar Signs</a>.
      */
     private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
 
