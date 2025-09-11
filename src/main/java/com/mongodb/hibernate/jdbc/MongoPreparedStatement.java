@@ -21,6 +21,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
 
+import com.mongodb.MongoBulkWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -28,6 +29,7 @@ import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.BatchUpdateException;
 import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
@@ -35,10 +37,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
@@ -52,15 +56,17 @@ import org.bson.types.ObjectId;
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
-
+    private final List<BsonDocument> batchCommands;
     private final List<ParameterValueSetter> parameterValueSetters;
+    private static final int[] EMPTY_BATCH_RESULT = new int[0];
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        this.command = MongoStatement.parse(mql);
-        this.parameterValueSetters = new ArrayList<>();
+        command = MongoStatement.parse(mql);
+        batchCommands = new ArrayList<>();
+        parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -200,7 +206,34 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        checkAllParametersSet(); // TODO first check that all parameters are set for the previous batch.
+        batchCommands.add(command.clone());
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        batchCommands.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        closeLastOpenResultSet();
+        if (batchCommands.isEmpty()) {
+            return EMPTY_BATCH_RESULT;
+        }
+        try {
+            executeBulkWrite(batchCommands);
+            var rowCounts = new int[batchCommands.size()];
+            // We cannot determine the actual number of rows affected for each command in the batch.
+            Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
+            return rowCounts;
+        } catch (MongoBulkWriteException mongoBulkWriteException) {
+            throw createBatchUpdateException(mongoBulkWriteException, command.getFirstKey());
+        } finally {
+            batchCommands.clear();
+        }
     }
 
     @Override
@@ -359,5 +392,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 }
             }
         }
+    }
+
+    static BatchUpdateException createBatchUpdateException(
+            final MongoBulkWriteException mongoBulkWriteException, final String commandName) {
+        int updateCount = getUpdateCount(commandName, mongoBulkWriteException.getWriteResult());
+        int[] updateCounts = new int[updateCount];
+        Arrays.fill(updateCounts, SUCCESS_NO_INFO);
+        return new BatchUpdateException(mongoBulkWriteException.getMessage(), updateCounts, mongoBulkWriteException);
     }
 }

@@ -16,13 +16,30 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toCollection;
 
+import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoExecutionTimeoutException;
+import com.mongodb.MongoSocketReadTimeoutException;
+import com.mongodb.MongoSocketWriteTimeoutException;
+import com.mongodb.MongoTimeoutException;
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.DeleteManyModel;
+import com.mongodb.client.model.DeleteOneModel;
+import com.mongodb.client.model.DeleteOptions;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.UpdateManyModel;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
@@ -30,8 +47,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.SQLTimeoutException;
 import java.sql.SQLWarning;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.bson.BsonDocument;
@@ -127,10 +146,37 @@ class MongoStatement implements StatementAdapter {
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
         try {
-            startTransactionIfNeeded();
-            return mongoDatabase.runCommand(clientSession, command).getInteger("n");
-        } catch (RuntimeException e) {
-            throw new SQLException("Failed to execute update command", e);
+            var bulkWriteResult = executeBulkWrite(singletonList(command));
+            return getUpdateCount(command.getFirstKey(), bulkWriteResult);
+        } catch (MongoBulkWriteException mongoBulkWriteException) {
+            throw new SQLException(mongoBulkWriteException.getMessage(), mongoBulkWriteException);
+        }
+    }
+
+    BulkWriteResult executeBulkWrite(List<? extends BsonDocument> commandBatch) throws SQLException {
+        startTransactionIfNeeded();
+        var firstDocumentInBatch = commandBatch.get(0);
+        var commandName = assertNotNull(firstDocumentInBatch.getFirstKey());
+        var collectionName =
+                assertNotNull(firstDocumentInBatch.getString(commandName).getValue());
+        MongoCollection<BsonDocument> collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
+
+        try {
+            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
+            for (var command : commandBatch) {
+                assertTrue(collectionName.equals(command.getString(commandName).getValue()));
+                convertToWriteModels(command, commandName, writeModels);
+            }
+            return collection.bulkWrite(clientSession, writeModels);
+        } catch (MongoSocketReadTimeoutException
+                | MongoSocketWriteTimeoutException
+                | MongoTimeoutException
+                | MongoExecutionTimeoutException mongoTimeoutException) {
+            throw new SQLTimeoutException(mongoTimeoutException.getMessage(), mongoTimeoutException);
+        } catch (MongoBulkWriteException mongoBulkWriteException) {
+            throw mongoBulkWriteException;
+        } catch (RuntimeException runtimeException) {
+            throw new SQLException("Failed to execute update", runtimeException);
         }
     }
 
@@ -187,25 +233,6 @@ class MongoStatement implements StatementAdapter {
     }
 
     @Override
-    public void addBatch(String mql) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
-    public void clearBatch() throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
-    public int[] executeBatch() throws SQLException {
-        checkClosed();
-        closeLastOpenResultSet();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
-    }
-
-    @Override
     public Connection getConnection() throws SQLException {
         checkClosed();
         return mongoConnection;
@@ -240,9 +267,73 @@ class MongoStatement implements StatementAdapter {
      * Starts transaction for the first {@link java.sql.Statement} executing if
      * {@linkplain MongoConnection#getAutoCommit() auto-commit} is disabled.
      */
-    private void startTransactionIfNeeded() throws SQLException {
+    void startTransactionIfNeeded() throws SQLException {
         if (!mongoConnection.getAutoCommit() && !clientSession.hasActiveTransaction()) {
             clientSession.startTransaction();
         }
+    }
+
+    static int getUpdateCount(final String commandName, final BulkWriteResult bulkWriteResult) {
+        return switch (commandName) {
+            case "insert" -> bulkWriteResult.getInsertedCount();
+            case "update" -> bulkWriteResult.getModifiedCount();
+            case "delete" -> bulkWriteResult.getDeletedCount();
+            default -> throw new FeatureNotSupportedException("Unsupported command: " + commandName);
+        };
+    }
+
+    private static void convertToWriteModels(
+            final BsonDocument command,
+            final String commandName,
+            final Collection<WriteModel<BsonDocument>> writeModels)
+            throws SQLFeatureNotSupportedException {
+        switch (commandName) {
+            case "insert":
+                var documents = command.getArray("documents");
+                for (var insertDocument : documents) {
+                    writeModels.add(createInsertModel(insertDocument.asDocument()));
+                }
+                break;
+            case "update":
+                var updates = command.getArray("updates").getValues();
+                for (var updateDocument : updates) {
+                    writeModels.add(createUpdateModel(updateDocument.asDocument()));
+                }
+                break;
+            case "delete":
+                var deletes = command.getArray("deletes");
+                for (var deleteDocument : deletes) {
+                    writeModels.add(createDeleteModel(deleteDocument.asDocument()));
+                }
+                break;
+            default:
+                throw new SQLFeatureNotSupportedException("Unsupported command: " + commandName);
+        }
+    }
+
+    private static WriteModel<BsonDocument> createInsertModel(final BsonDocument document) {
+        return new InsertOneModel<>(document);
+    }
+
+    private static WriteModel<BsonDocument> createDeleteModel(final BsonDocument deleteDocument) {
+        var isSingleDelete = deleteDocument.getNumber("limit").intValue() == 1;
+        var queryFilter = deleteDocument.getDocument("q");
+
+        if (isSingleDelete) {
+            new DeleteOptions();
+            return new DeleteOneModel<>(queryFilter);
+        }
+        return new DeleteManyModel<>(queryFilter);
+    }
+
+    private static WriteModel<BsonDocument> createUpdateModel(final BsonDocument updateDocument) {
+        var isMulti = updateDocument.getBoolean("multi").getValue();
+        var queryFilter = updateDocument.getDocument("q");
+        var updatePipeline = updateDocument.getDocument("u");
+
+        if (isMulti) {
+            return new UpdateManyModel<>(queryFilter, updatePipeline);
+        }
+        return new UpdateOneModel<>(queryFilter, updatePipeline);
     }
 }
