@@ -16,28 +16,38 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static java.sql.Statement.SUCCESS_NO_INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
+import com.mongodb.MongoBulkWriteException;
+import com.mongodb.ServerAddress;
+import com.mongodb.bulk.BulkWriteError;
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.BatchUpdateException;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -47,6 +57,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
@@ -54,7 +65,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
-import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,6 +83,9 @@ class MongoPreparedStatementTests {
 
     @Mock
     private MongoDatabase mongoDatabase;
+
+    @Mock
+    MongoCollection<BsonDocument> mongoCollection;
 
     @Mock
     private ClientSession clientSession;
@@ -108,15 +121,16 @@ class MongoPreparedStatementTests {
     class ParameterValueSettingTests {
 
         @Captor
-        private ArgumentCaptor<BsonDocument> commandCaptor;
+        private ArgumentCaptor<List<WriteModel<BsonDocument>>> commandCaptor;
 
         @Test
         @DisplayName("Happy path when all parameters are provided values")
         void testSuccess() throws SQLException {
+            BulkWriteResult bulkWriteResult = Mockito.mock(BulkWriteResult.class);
 
-            doReturn(Document.parse("{ok: 1.0, n: 1}"))
-                    .when(mongoDatabase)
-                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            doReturn(1).when(bulkWriteResult).getInsertedCount();
 
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
 
@@ -130,24 +144,139 @@ class MongoPreparedStatementTests {
 
                 preparedStatement.executeUpdate();
 
-                verify(mongoDatabase).runCommand(eq(clientSession), commandCaptor.capture());
-                var command = commandCaptor.getValue();
+                verify(mongoCollection).bulkWrite(eq(clientSession), commandCaptor.capture());
+                var writeModels = commandCaptor.getValue();
+                assertEquals(1, writeModels.size());
                 var expectedDoc = new BsonDocument()
-                        .append("insert", new BsonString("items"))
+                        .append("string1", new BsonString("s1"))
+                        .append("string2", new BsonString("s2"))
+                        .append("int32", new BsonInt32(1))
+                        .append("boolean", BsonBoolean.TRUE)
                         .append(
-                                "documents",
-                                new BsonArray(List.of(new BsonDocument()
-                                        .append("string1", new BsonString("s1"))
-                                        .append("string2", new BsonString("s2"))
-                                        .append("int32", new BsonInt32(1))
-                                        .append("boolean", BsonBoolean.TRUE)
-                                        .append(
-                                                "stringAndObjectId",
-                                                new BsonArray(List.of(
-                                                        new BsonString("array element"),
-                                                        new BsonObjectId(new ObjectId(1, 2)))))
-                                        .append("objectId", new BsonObjectId(new ObjectId(2, 0))))));
-                assertEquals(expectedDoc, command);
+                                "stringAndObjectId",
+                                new BsonArray(
+                                        List.of(new BsonString("array element"), new BsonObjectId(new ObjectId(1, 2)))))
+                        .append("objectId", new BsonObjectId(new ObjectId(2, 0)));
+                assertInstanceOf(InsertOneModel.class, writeModels.get(0));
+                assertEquals(expectedDoc, ((InsertOneModel<BsonDocument>) writeModels.get(0)).getDocument());
+            }
+        }
+    }
+
+    @Nested
+    class ExecuteBatchThrows {
+
+        static final String BULK_WRITE_ERROR_MESSAGE = "Test message";
+
+        @Mock
+        BulkWriteResult bulkWriteResult;
+
+        @BeforeEach
+        void beforeEach() {
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            BulkWriteError bulkWriteError = new BulkWriteError(10, BULK_WRITE_ERROR_MESSAGE, new BsonDocument(), 0);
+            List<BulkWriteError> writeErrors = List.of(bulkWriteError);
+
+            MongoBulkWriteException mongoBulkWriteException = new MongoBulkWriteException(
+                    bulkWriteResult, writeErrors, null, new ServerAddress("localhost"), Set.of("label"));
+
+            doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+        }
+
+        @Test
+        void testBatchInsert() throws SQLException {
+            doReturn(1).when(bulkWriteResult).getInsertedCount();
+
+            String mql =
+                    """
+                    {
+                        insert: "items",
+                        documents: [
+                            { _id: { $undefined: true } }
+                        ]
+                    }
+                    """;
+
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+                mongoPreparedStatement.setInt(1, 1);
+                mongoPreparedStatement.addBatch();
+                mongoPreparedStatement.addBatch();
+
+                BatchUpdateException batchUpdateException =
+                        assertThrows(BatchUpdateException.class, mongoPreparedStatement::executeBatch);
+
+                int[] updateCounts = batchUpdateException.getUpdateCounts();
+                assertEquals(1, updateCounts.length);
+                assertTrue(batchUpdateException.getMessage().contains(BULK_WRITE_ERROR_MESSAGE));
+                assertEquals(0, batchUpdateException.getErrorCode());
+                assertUpdateCounts(updateCounts);
+            }
+        }
+
+        @Test
+        void testBatchUpdate() throws SQLException {
+            doReturn(1).when(bulkWriteResult).getModifiedCount();
+
+            String mql =
+                    """
+                    {
+                        update: "items",
+                        updates: [
+                            { q: { _id: { $undefined: true } }, u: { $set: { touched: true } }, multi: false }
+                        ]
+                    }
+                    """;
+
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+                mongoPreparedStatement.setInt(1, 1);
+                mongoPreparedStatement.addBatch();
+                mongoPreparedStatement.addBatch();
+
+                BatchUpdateException batchUpdateException =
+                        assertThrows(BatchUpdateException.class, mongoPreparedStatement::executeBatch);
+
+                int[] updateCounts = batchUpdateException.getUpdateCounts();
+                assertEquals(1, updateCounts.length);
+                assertTrue(batchUpdateException.getMessage().contains(BULK_WRITE_ERROR_MESSAGE));
+                assertEquals(0, batchUpdateException.getErrorCode());
+                assertUpdateCounts(updateCounts);
+            }
+        }
+
+        @Test
+        void testBatchDelete() throws SQLException {
+            doReturn(1).when(bulkWriteResult).getDeletedCount();
+
+            String mql =
+                    """
+                    {
+                        delete: "items",
+                        deletes: [
+                            { q: { _id: { $undefined: true } }, limit: 1 }
+                        ]
+                    }
+                    """;
+
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+                mongoPreparedStatement.setInt(1, 1);
+                mongoPreparedStatement.addBatch();
+                mongoPreparedStatement.addBatch();
+
+                BatchUpdateException batchUpdateException =
+                        assertThrows(BatchUpdateException.class, mongoPreparedStatement::executeBatch);
+
+                int[] updateCounts = batchUpdateException.getUpdateCounts();
+                assertEquals(1, updateCounts.length);
+                assertTrue(batchUpdateException.getMessage().contains(BULK_WRITE_ERROR_MESSAGE));
+                assertNull(batchUpdateException.getSQLState());
+                assertEquals(0, batchUpdateException.getErrorCode());
+                assertUpdateCounts(updateCounts);
+            }
+        }
+
+        private static void assertUpdateCounts(final int[] updateCounts) {
+            for (int count : updateCounts) {
+                assertEquals(SUCCESS_NO_INFO, count);
             }
         }
     }
@@ -208,10 +337,13 @@ class MongoPreparedStatementTests {
 
         @Test
         void testExecuteUpdate() throws SQLException {
-            doReturn(Document.parse("{n: 10}"))
-                    .when(mongoDatabase)
-                    .runCommand(eq(clientSession), any(BsonDocument.class));
-            mongoPreparedStatement.executeUpdate();
+            assertThrows(SQLException.class, () -> mongoPreparedStatement.executeUpdate());
+            assertTrue(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteBatch() throws SQLException {
+            mongoPreparedStatement.executeBatch();
             assertTrue(lastOpenResultSet.isClosed());
         }
     }
