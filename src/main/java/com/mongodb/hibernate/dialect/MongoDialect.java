@@ -19,6 +19,7 @@ package com.mongodb.hibernate.dialect;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
@@ -35,8 +36,16 @@ import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.model.MutationOperation;
+import org.hibernate.sql.model.ValuesAnalysis;
+import org.hibernate.sql.model.internal.OptionalTableUpdate;
+import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
@@ -236,5 +245,22 @@ public final class MongoDialect extends Dialect {
         functionRegistry.register("array_contains_nullable", new MongoArrayContainsFunction(true, typeConfiguration));
         functionRegistry.register("array_includes", new MongoArrayIncludesFunction(false, typeConfiguration));
         functionRegistry.register("array_includes_nullable", new MongoArrayIncludesFunction(true, typeConfiguration));
+    }
+
+    @Override
+    public MutationOperation createOptionalTableUpdateOperation(
+            EntityMutationTarget mutationTarget,
+            OptionalTableUpdate optionalTableUpdate,
+            SessionFactoryImplementor factory) {
+        return new OptionalTableUpdateOperation(mutationTarget, optionalTableUpdate, factory) {
+            @Override
+            public void performMutation(
+                    JdbcValueBindings jdbcValueBindings,
+                    ValuesAnalysis valuesAnalysis,
+                    SharedSessionContractImplementor session) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
+            }
+        };
     }
 }
