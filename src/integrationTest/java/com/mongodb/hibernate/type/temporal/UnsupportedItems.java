@@ -135,6 +135,14 @@ final class UnsupportedItems {
     }
 
     @Entity
+    static class ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<T> {
+        @Id
+        int id;
+
+        Collection<AggregateEmbeddableWithBasicPersistentAttribute<T>> v;
+    }
+
+    @Entity
     static class ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<T> {
         @Id
         int id;
@@ -156,6 +164,14 @@ final class UnsupportedItems {
         int id;
 
         AggregateEmbeddableNestedCollectionPersistenceAttribute<T> v;
+    }
+
+    @Entity
+    static class ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<T> {
+        @Id
+        int id;
+
+        AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> v;
     }
 
     @Embeddable
@@ -188,39 +204,45 @@ final class UnsupportedItems {
         FlattenedEmbeddableWithCollectionPersistentAttribute<T> v;
     }
 
-    @Struct(name = "struct")
+    @Struct(name = "AggregateEmbeddableWithBasicPersistentAttribute")
     @Embeddable
     static class AggregateEmbeddableWithBasicPersistentAttribute<T> {
         T v;
     }
 
-    @Struct(name = "struct")
+    @Struct(name = "AggregateEmbeddableWithArrayPersistentAttribute")
     @Embeddable
     private static class AggregateEmbeddableWithArrayPersistentAttribute<T> {
         T[] v;
     }
 
-    @Struct(name = "struct")
+    @Struct(name = "AggregateEmbeddableWithCollectionPersistentAttribute")
     @Embeddable
     static class AggregateEmbeddableWithCollectionPersistentAttribute<T> {
         Collection<T> v;
     }
 
-    @Struct(name = "nestedStruct")
+    @Struct(name = "AggregateEmbeddableNestedWithBasicPersistentAttribute")
     @Embeddable
     static class AggregateEmbeddableNestedWithBasicPersistentAttribute<T> {
         AggregateEmbeddableWithBasicPersistentAttribute<T> v;
     }
 
-    @Struct(name = "nestedStruct")
+    @Struct(name = "AggregateEmbeddableNestedWithArrayPersistentAttribute")
     @Embeddable
     static class AggregateEmbeddableNestedWithArrayPersistentAttribute<T> {
         AggregateEmbeddableWithArrayPersistentAttribute<T> v;
     }
 
-    @Struct(name = "nestedStruct")
+    @Struct(name = "AggregateEmbeddableNestedCollectionPersistenceAttribute")
     @Embeddable
     static class AggregateEmbeddableNestedCollectionPersistenceAttribute<T> {
         AggregateEmbeddableWithCollectionPersistentAttribute<T> v;
+    }
+
+    @Struct(name = "AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute")
+    @Embeddable
+    static class AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> {
+        Collection<AggregateEmbeddableWithBasicPersistentAttribute<T>> v;
     }
 }

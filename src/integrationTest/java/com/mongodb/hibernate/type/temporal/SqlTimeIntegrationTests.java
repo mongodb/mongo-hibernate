@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.type.temporal;
 
 import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.sql.Time;
@@ -26,44 +27,44 @@ class SqlTimeIntegrationTests {
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new UnsupportedItems.ItemWithId<Time>() {}.getClass()),
-                () -> assertNotSupported(new UnsupportedItems.ItemWithFlattenedEmbeddableId<Time>() {}.getClass()),
-                () -> assertNotSupported(new UnsupportedItems.ItemWithBasicPersistentAttribute<Time>() {}.getClass()),
-                () -> assertNotSupported(new UnsupportedItems.ItemWithArrayPersistentAttribute<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithId<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<Time>() {}.getClass()),
+
+                // Flattened Embeddable
+                () -> assertNotSupported(new ItemWithEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithEmbeddableWithCollectionPersistentAttribute<Time>() {}.getClass()),
+
+                // Nested flattened embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithCollectionPersistentAttribute<Time>() {}.getClass()),
+                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
+                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
+                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<Time>() {}.getClass()),
+
+                // Aggregate embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithCollectionPersistentAttribute<Time>() {}.getClass()),
+                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithBasicPersistentAttribute<
-                                Time>() {}.getClass()),
+                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithArrayPersistentAttribute<
-                                Time>() {}.getClass()),
+                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
-                                Time>() {}.getClass()),
+                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
+
+                // Nested aggregate embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
-                                Time>() {}.getClass()),
+                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
-                                Time>() {}.getClass()),
+                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
-                                Time>() {}.getClass()),
+                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
-                                Time>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
-                                Time>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
                                 Time>() {}.getClass()));
     }
 }

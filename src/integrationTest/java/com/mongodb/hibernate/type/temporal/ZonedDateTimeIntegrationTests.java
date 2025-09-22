@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.type.temporal;
 
 import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.time.ZonedDateTime;
@@ -26,50 +27,52 @@ class ZonedDateTimeIntegrationTests {
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new UnsupportedItems.ItemWithId<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithId<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<ZonedDateTime>() {}.getClass()),
+
+                // Flattened Embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithFlattenedEmbeddableId<ZonedDateTime>() {}.getClass()),
+                        new ItemWithEmbeddableWithBasicPersistentAttribute<ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithBasicPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                        new ItemWithEmbeddableWithArrayPersistentAttribute<ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithArrayPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                        new ItemWithEmbeddableWithCollectionPersistentAttribute<ZonedDateTime>() {}.getClass()),
+
+                // Nested flattened embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithCollectionPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithBasicPersistentAttribute<
+                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<ZonedDateTime>() {}.getClass()),
+
+                // Aggregate embeddable
+                () -> assertNotSupported(
+                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<ZonedDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
                                 ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithArrayPersistentAttribute<
+                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<
+                                ZonedDateTime>() {}.getClass()),
+
+                // Nested aggregate embeddable
+                () -> assertNotSupported(
+                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
                                 ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithCollectionPersistentAttribute<
+                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
                                 ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithBasicPersistentAttribute<
+                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithArrayPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
                                 ZonedDateTime>() {}.getClass()));
     }
 }

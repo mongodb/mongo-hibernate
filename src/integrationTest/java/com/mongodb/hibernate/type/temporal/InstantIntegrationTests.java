@@ -53,7 +53,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class InstantIntegrationTests implements SessionFactoryScopeAware {
 
     private static final TimeZone ORIGINAL_JVM_TIMEZONE = TimeZone.getDefault();
-    private static final String OFFSET_ZONE_ID = "+11:13";
+    private static final String ZONE_OFFSET = "+11:13";
     private SessionFactoryScope sessionFactoryScope;
 
     @Override
@@ -67,14 +67,7 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
                 Arguments.of(ZoneId.of("Etc/GMT-1"), ZoneId.of("Etc/GMT+2")));
     }
 
-    /**
-     * Hibernate ORM will use TIMESTAMP_UTC SQL type by default (it is Hibernate ORM defined type, not JDBC). This means
-     * it will be treated as TIMESTAMP at JDBC level, with Calendar being UTC.
-     *
-     * <p>For array/collection elements and for persistent attributes of @Embeddable types the same Instant is
-     * propagated unchanged: each Instant is stored similarly to TIMESTAMP_UTC semantics
-     */
-    public static Stream<Arguments> instantPersistAndReadParameters() {
+    private static Stream<Arguments> instantPersistAndReadParameters() {
         return differentTimeZones().flatMap(arguments -> {
             var tz0 = (ZoneId) arguments.get()[0];
             var tz1 = (ZoneId) arguments.get()[1];
@@ -82,10 +75,10 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
                     Arguments.of(
                             tz0,
                             tz1,
-                            // Attribute or an element of an attribute to save.
+                            // Value to save.
                             // We support milliseconds precision, so nanoseconds are rounded down to milliseconds.
                             Instant.parse("2007-12-03T10:15:30.002900000Z"),
-                            // Expected attribute or an element of an attribute after read.
+                            // Expected value.
                             Instant.parse("2007-12-03T10:15:30.002000000Z")),
                     Arguments.of(
                             tz0, tz1, Instant.parse("1500-12-03T10:15:30Z"), Instant.parse("1500-12-03T10:15:30Z")),
@@ -97,9 +90,7 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
         });
     }
 
-    @ParameterizedTest(
-            name = "sys TZ equal per write/read; sys TZ not equal sess TZ; sess TZ equal per write/read. "
-                    + "Write(sys={0}, sess={1}). Read(sys={0}, sess={1})")
+    @ParameterizedTest(name = "testRoundTripSessionTzsEqual: Write(sys={0}, sess={1}). Read(sys={0}, sess={1})")
     @MethodSource("instantPersistAndReadParameters")
     void testRoundTripSessionTzsEqual(ZoneId systemDefaultTimeZone, ZoneId jdbcTimeZone, Instant toSave, Instant toRead)
             throws Exception {
@@ -115,10 +106,9 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @ParameterizedTest(
-            name = "sys TZ not equal per write/read; sys TZ equal sess TZ;"
-                    + "Write(sys={0}, sess={0}). Read(sys={1}, sess={1})")
+            name = "testRoundTripWriteAndReadPathTzsNotEqual: Write(sys={0}, sess={0}). Read(sys={1}, sess={1})")
     @MethodSource("instantPersistAndReadParameters")
-    void testRoundTripWriteAndReadPathTzNotEqual(
+    void testRoundTripWriteAndReadPathTzsNotEqual(
             ZoneId writeTimeZonePath, ZoneId readTimeZonePath, Instant toSave, Instant toRead) throws Exception {
         var instantItem = new Item(1, toSave);
         withSystemTimeZone(
@@ -132,12 +122,12 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @ParameterizedTest(
-            name = "sys TZ equal per write/read; sys TZ not equal sess TZ; sess TZ not equal per write/read; "
-                    + "Write(sys=" + OFFSET_ZONE_ID + ", sess={0}). Read(sys=" + OFFSET_ZONE_ID + ", sess={1})")
+            name = "testRoundTripSessionTzsNotEqual:" + "Write(sys=" + ZONE_OFFSET + ", sess={0}). Read(sys="
+                    + ZONE_OFFSET + ", sess={1})")
     @MethodSource("instantPersistAndReadParameters")
-    void testRoundTripSessionTzNotEqual(
+    void testRoundTripSessionTzsNotEqual(
             ZoneId sessionWriteTimeZone, ZoneId sessionReadTimeZone, Instant toSave, Instant toRead) throws Exception {
-        ZoneId systemTimeZone = ZoneId.of(OFFSET_ZONE_ID);
+        ZoneId systemTimeZone = ZoneId.of(ZONE_OFFSET);
         var instantItem = new Item(1, toSave);
 
         withSystemTimeZone(
@@ -159,15 +149,14 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
         int id;
 
         Instant instant;
-
         Collection<Instant> instantCollection;
         Instant[] instants;
         AggregateEmbeddable aggregateEmbeddable;
         FlattenedEmbeddable flattenedEmbeddable;
 
-        public Item() {}
+        Item() {}
 
-        public Item(int id, Instant instant) {
+        Item(int id, Instant instant) {
             this.id = id;
             this.instant = instant;
             this.instantCollection = List.of(instant, instant);
@@ -179,23 +168,23 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
 
     @Embeddable
     static class FlattenedEmbeddable {
-        public Instant instantEmbeddable;
+        Instant flattenedInstant;
 
-        public FlattenedEmbeddable() {}
+        FlattenedEmbeddable() {}
 
-        public FlattenedEmbeddable(Instant instantEmbeddable) {
-            this.instantEmbeddable = instantEmbeddable;
+        FlattenedEmbeddable(Instant instant) {
+            flattenedInstant = instant;
         }
     }
 
     @Embeddable
     @Struct(name = "AggregateEmbeddable")
     static class AggregateEmbeddable {
-        public Instant instant;
+        Instant instant;
 
-        public AggregateEmbeddable() {}
+        AggregateEmbeddable() {}
 
-        public AggregateEmbeddable(Instant instant) {
+        AggregateEmbeddable(Instant instant) {
             this.instant = instant;
         }
     }

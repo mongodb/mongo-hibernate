@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.type.temporal;
 
 import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.time.OffsetDateTime;
@@ -26,50 +27,52 @@ class OffsetDateTimeIntegrationTests {
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new UnsupportedItems.ItemWithId<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithId<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+
+                // Flattened Embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithFlattenedEmbeddableId<OffsetDateTime>() {}.getClass()),
+                        new ItemWithEmbeddableWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                        new ItemWithEmbeddableWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                        new ItemWithEmbeddableWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+
+                // Nested flattened embeddable
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithBasicPersistentAttribute<
+                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+
+                // Aggregate embeddable
+                () -> assertNotSupported(
+                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
                                 OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithArrayPersistentAttribute<
+                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<
+                                OffsetDateTime>() {}.getClass()),
+
+                // Nested aggregate embeddable
+                () -> assertNotSupported(
+                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
                                 OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithEmbeddableWithCollectionPersistentAttribute<
+                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
                                 OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithBasicPersistentAttribute<
+                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithArrayPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
                                 OffsetDateTime>() {}.getClass()));
     }
 }

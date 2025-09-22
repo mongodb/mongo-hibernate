@@ -42,6 +42,8 @@ import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.mapping.AggregateColumn;
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -145,13 +147,13 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         if (persistentAttributeType instanceof BasicPluralType<?, ?> pluralPersistentAttributeType) {
             pluralPersistentAttribute = true;
             classToCheck = pluralPersistentAttributeType.getElementType().getJavaType();
-        } else {
-            if (value instanceof Component componentPersistentAttributeType) {
-                componentPersistentAttributeType.getProperties().forEach(componentProperty -> {
-                    forbidTemporalTypes(persistentClass, componentProperty, propertyPath);
-                });
-            }
+            forbidTemporalTypesInAggregateEmbeddableAsCollectionType(persistentClass, propertyPath, value);
+        } else if (value instanceof Component componentValue) {
+            componentValue.getProperties().forEach(componentProperty -> {
+                forbidTemporalTypes(persistentClass, componentProperty, propertyPath);
+            });
         }
+
         if (UNSUPPORTED_TEMPORAL_TYPES.contains(classToCheck)) {
             throw new FeatureNotSupportedException(format(
                     pluralPersistentAttribute
@@ -160,6 +162,19 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                     persistentClass,
                     propertyPath,
                     classToCheck.getTypeName()));
+        }
+    }
+
+    private static void forbidTemporalTypesInAggregateEmbeddableAsCollectionType(
+            PersistentClass persistentClass, StringJoiner propertyPath, Value value) {
+        if (value instanceof BasicValue basicValue
+                && basicValue.getColumn() instanceof AggregateColumn aggregateColumn) {
+            Component componentValueOfCollection = aggregateColumn.getComponent();
+            if (componentValueOfCollection != null) {
+                componentValueOfCollection.getProperties().forEach(componentProperty -> {
+                    forbidTemporalTypes(persistentClass, componentProperty, propertyPath);
+                });
+            }
         }
     }
 
