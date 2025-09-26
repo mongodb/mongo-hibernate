@@ -55,9 +55,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
     @Serial
     private static final long serialVersionUID = 1L;
 
-    /** The StandardServiceRegistryScopedState */
     private @Nullable StandardServiceRegistryScopedState standardServiceRegistryScopedState;
-    /** The MongoClient */
     private @Nullable MongoClient mongoClient;
 
     @Override
@@ -101,12 +99,6 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
     }
 
-    /**
-     * Injects the {@link StandardServiceRegistryScopedState} and initializes the {@link MongoClient} with the
-     * configuration from the registry state.
-     *
-     * @param standardServiceRegistryScopedState the registry-scoped state containing configuration
-     */
     @InjectService
     public void injectStandardServiceRegistryScopedState(
             StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
@@ -120,12 +112,6 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         mongoClient = MongoClients.create(mongoClientSettings, driverInfo);
     }
 
-    /**
-     * This class is not designed to be serialized despite it having to implement `Serializable`
-     *
-     * @param out object output stream
-     * @throws NotSerializableException as this class does not implement serialization
-     */
     @Serial
     private void writeObject(ObjectOutputStream out) throws IOException {
         throw new NotSerializableException(

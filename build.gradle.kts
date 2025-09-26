@@ -40,6 +40,8 @@ java {
 
 tasks.withType<Javadoc> {
     exclude("/com/mongodb/hibernate/internal/**")
+    exclude("com/mongodb/hibernate/dialect/**")
+    exclude("com/mongodb/hibernate/jdbc/**")
 
     val standardDocletOptions = options as StandardJavadocDocletOptions
     standardDocletOptions.apply {
