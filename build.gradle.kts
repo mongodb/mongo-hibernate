@@ -33,7 +33,7 @@ plugins {
 repositories { mavenCentral() }
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    toolchain { languageVersion = JavaLanguageVersion.of(17) } // Remember to update javadoc links
     withJavadocJar()
     withSourcesJar()
 }
