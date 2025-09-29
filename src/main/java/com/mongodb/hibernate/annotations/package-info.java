@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-/** The library annotations package */
+/** Annotations for configuring a domain model. */
 @NullMarked
 package com.mongodb.hibernate.annotations;
 
