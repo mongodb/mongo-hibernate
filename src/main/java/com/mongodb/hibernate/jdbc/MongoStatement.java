@@ -294,7 +294,7 @@ class MongoStatement implements StatementAdapter {
      * Starts transaction for the first {@link java.sql.Statement} executing if
      * {@linkplain MongoConnection#getAutoCommit() auto-commit} is disabled.
      */
-    void startTransactionIfNeeded() throws SQLException {
+    private void startTransactionIfNeeded() throws SQLException {
         if (!mongoConnection.getAutoCommit() && !clientSession.hasActiveTransaction()) {
             clientSession.startTransaction();
         }
