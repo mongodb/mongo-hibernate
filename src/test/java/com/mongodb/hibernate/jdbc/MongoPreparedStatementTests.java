@@ -263,7 +263,8 @@ class MongoPreparedStatementTests {
                 throws SQLException {
             doThrow(exceptionToThrow).when(mongoCollection).aggregate(eq(clientSession), anyList());
 
-            assertExecuteThrowsSqlException(MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, exceptionToThrow, expectedType);
+            assertExecuteThrowsSqlException(
+                    MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, exceptionToThrow, expectedType);
         }
 
         @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}, expectedType={1}")

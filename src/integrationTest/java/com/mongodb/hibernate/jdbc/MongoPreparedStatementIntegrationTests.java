@@ -23,6 +23,7 @@ import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTe
 import static java.lang.String.format;
 import static java.sql.Statement.SUCCESS_NO_INFO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +38,7 @@ import com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.SqlExecutable;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.math.BigDecimal;
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -252,21 +254,38 @@ class MongoPreparedStatementIntegrationTests {
                 }""";
 
         @Test
+        @DisplayName("executeBatch throws a BatchUpdateException for command returning ResultSet")
+        void testQueriesReturningResult() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstm = connection.prepareStatement(
+                        """
+                        {
+                             aggregate: "books",
+                             pipeline: [
+                                 { $match: { _id: 1 } }
+                             ]
+                         }""")) {
+                    pstm.addBatch();
+                    assertThatExceptionOfType(BatchUpdateException.class)
+                            .isThrownBy(pstm::executeBatch)
+                            .satisfies(batchUpdateException -> {
+                                assertNull(batchUpdateException.getUpdateCounts());
+                                assertNull(batchUpdateException.getSQLState());
+                                assertEquals(0, batchUpdateException.getErrorCode());
+                            });
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            assertThat(mongoCollection.find()).isEmpty();
+        }
+
+        @Test
         void testEmptyBatch() {
             doWorkAwareOfAutoCommit(connection -> {
-                try {
-                    var pstmt = (MongoPreparedStatement)
-                            connection.prepareStatement(
-                                    """
-                                    {
-                                        insert: "books",
-                                        documents: [
-                                            {
-                                                _id: 1
-                                            }
-                                        ]
-                                    }""");
-                    int[] updateCounts = pstmt.executeBatch();
+                try (var pstmt = connection.prepareStatement(INSERT_MQL)) {
+                    var updateCounts = pstmt.executeBatch();
                     assertEquals(0, updateCounts.length);
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
@@ -280,25 +299,26 @@ class MongoPreparedStatementIntegrationTests {
         @DisplayName("Test statement’s batch queue is reset once executeBatch returns")
         void testBatchQueueIsResetAfterExecute() {
             doWorkAwareOfAutoCommit(connection -> {
-                var pstmt = (MongoPreparedStatement)
-                        connection.prepareStatement(
-                                """
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            insert: "books",
+                            documents: [
                                 {
-                                    insert: "books",
-                                    documents: [
-                                        {
-                                            _id: {$undefined: true},
-                                            title: {$undefined: true}
-                                        }
-                                    ]
-                                }""");
+                                    _id: {$undefined: true},
+                                    title: {$undefined: true}
+                                }
+                            ]
+                        }""")) {
 
-                pstmt.setInt(1, 1);
-                pstmt.setString(2, "War and Peace");
-                pstmt.addBatch();
-                assertExecuteBatch(pstmt, 1);
-
-                assertExecuteBatch(pstmt, 0);
+                    pstmt.setInt(1, 1);
+                    pstmt.setString(2, "War and Peace");
+                    pstmt.addBatch();
+                    assertExecuteBatch(pstmt, 1);
+                    assertExecuteBatch(pstmt, 0);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
             });
 
             assertThat(mongoCollection.find())
@@ -315,28 +335,30 @@ class MongoPreparedStatementIntegrationTests {
         @DisplayName("Test values set for the parameter markers of PreparedStatement are not reset when it is executed")
         void testBatchParametersReuse() {
             doWorkAwareOfAutoCommit(connection -> {
-                var pstmt = (MongoPreparedStatement)
-                        connection.prepareStatement(
-                                """
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            insert: "books",
+                            documents: [
                                 {
-                                    insert: "books",
-                                    documents: [
-                                        {
-                                            _id: {$undefined: true},
-                                            title: {$undefined: true}
-                                        }
-                                    ]
-                                }""");
+                                    _id: {$undefined: true},
+                                    title: {$undefined: true}
+                                }
+                            ]
+                        }""")) {
 
-                pstmt.setInt(1, 1);
-                pstmt.setString(2, "War and Peace");
-                pstmt.addBatch();
-                assertExecuteBatch(pstmt, 1);
+                    pstmt.setInt(1, 1);
+                    pstmt.setString(2, "War and Peace");
+                    pstmt.addBatch();
+                    assertExecuteBatch(pstmt, 1);
 
-                pstmt.setInt(1, 2);
-                // No need to set title again, it should be reused from the previous execution
-                pstmt.addBatch();
-                assertExecuteBatch(pstmt, 1);
+                    pstmt.setInt(1, 2);
+                    // No need to set title again, it should be reused from the previous execution
+                    pstmt.addBatch();
+                    assertExecuteBatch(pstmt, 1);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
             });
 
             assertThat(mongoCollection.find())
@@ -357,25 +379,27 @@ class MongoPreparedStatementIntegrationTests {
 
         @Test
         void testBatchInsert() {
-            int batchCount = 3;
+            var batchCount = 3;
             doWorkAwareOfAutoCommit(connection -> {
-                var pstmt = (MongoPreparedStatement)
-                        connection.prepareStatement(
-                                """
-                                {
-                                    insert: "books",
-                                    documents: [{
-                                        _id: {$undefined: true},
-                                        title: {$undefined: true}
-                                    }]
-                                }""");
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            insert: "books",
+                            documents: [{
+                                _id: {$undefined: true},
+                                title: {$undefined: true}
+                            }]
+                        }""")) {
 
-                for (int i = 1; i <= batchCount; i++) {
-                    pstmt.setInt(1, i);
-                    pstmt.setString(2, "Book " + i);
-                    pstmt.addBatch();
+                    for (int i = 1; i <= batchCount; i++) {
+                        pstmt.setInt(1, i);
+                        pstmt.setString(2, "Book " + i);
+                        pstmt.addBatch();
+                    }
+                    assertExecuteBatch(pstmt, batchCount);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
                 }
-                assertExecuteBatch(pstmt, batchCount);
             });
 
             var expectedDocs = new ArrayList<BsonDocument>();
@@ -394,26 +418,27 @@ class MongoPreparedStatementIntegrationTests {
         @Test
         void testBatchUpdate() {
             insertTestData(session, INSERT_MQL);
-
-            int batchCount = 3;
+            var batchCount = 3;
             doWorkAwareOfAutoCommit(connection -> {
-                var pstmt = (MongoPreparedStatement)
-                        connection.prepareStatement(
-                                """
-                                {
-                                     update: "books",
-                                     updates: [{
-                                        q: { _id: { $undefined: true } },
-                                        u: { $set: { title: { $undefined: true } } },
-                                        multi: true
-                                      }]
-                                 }""");
-                for (int i = 1; i <= batchCount; i++) {
-                    pstmt.setInt(1, i);
-                    pstmt.setString(2, "Book " + i);
-                    pstmt.addBatch();
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                             update: "books",
+                             updates: [{
+                                q: { _id: { $undefined: true } },
+                                u: { $set: { title: { $undefined: true } } },
+                                multi: true
+                              }]
+                         }""")) {
+                    for (int i = 1; i <= batchCount; i++) {
+                        pstmt.setInt(1, i);
+                        pstmt.setString(2, "Book " + i);
+                        pstmt.addBatch();
+                    }
+                    assertExecuteBatch(pstmt, batchCount);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
                 }
-                assertExecuteBatch(pstmt, batchCount);
             });
 
             var expectedDocs = new ArrayList<BsonDocument>();
@@ -432,32 +457,34 @@ class MongoPreparedStatementIntegrationTests {
         @Test
         void testBatchDelete() {
             insertTestData(session, INSERT_MQL);
-
-            int batchCount = 3;
+            var batchCount = 3;
             doWorkAwareOfAutoCommit(connection -> {
-                var pstmt = (MongoPreparedStatement)
-                        connection.prepareStatement(
-                                """
-                                {
-                                    delete: "books",
-                                    deletes: [{
-                                        q: { _id: { $undefined: true } },
-                                        limit: 0
-                                    }]
-                                }""");
-                for (int i = 1; i <= batchCount; i++) {
-                    pstmt.setInt(1, i);
-                    pstmt.addBatch();
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [{
+                                q: { _id: { $undefined: true } },
+                                limit: 0
+                            }]
+                        }""")) {
+                    for (int i = 1; i <= batchCount; i++) {
+                        pstmt.setInt(1, i);
+                        pstmt.addBatch();
+                    }
+                    assertExecuteBatch(pstmt, batchCount);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
                 }
-                assertExecuteBatch(pstmt, batchCount);
             });
 
             assertThat(mongoCollection.find()).isEmpty();
         }
 
-        private void assertExecuteBatch(MongoPreparedStatement pstmt, int expectedBatchResultSize) throws SQLException {
+        private static void assertExecuteBatch(PreparedStatement pstmt, int expectedUpdateCountsSize)
+                throws SQLException {
             int[] updateCounts = pstmt.executeBatch();
-            assertEquals(expectedBatchResultSize, updateCounts.length);
+            assertEquals(expectedUpdateCountsSize, updateCounts.length);
             for (int updateCount : updateCounts) {
                 assertEquals(SUCCESS_NO_INFO, updateCount);
             }
@@ -498,7 +525,7 @@ class MongoPreparedStatementIntegrationTests {
 
         @Test
         void testInsert() {
-            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+            Function<Connection, PreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)
                             connection.prepareStatement(
@@ -570,26 +597,25 @@ class MongoPreparedStatementIntegrationTests {
                                 outOfStock: false,
                                 tags: [ "classic", "dostoevsky", "literature" ]
                             }"""));
-            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+            Function<Connection, PreparedStatement> pstmtProvider = connection -> {
                 try {
-                    var pstmt = (MongoPreparedStatement)
-                            connection.prepareStatement(
-                                    """
+                    var pstmt = connection.prepareStatement(
+                            """
+                            {
+                                update: "books",
+                                updates: [
                                     {
-                                        update: "books",
-                                        updates: [
-                                            {
-                                                q: { author: { $undefined: true } },
-                                                u: {
-                                                    $set: {
-                                                        outOfStock: { $undefined: true }
-                                                    },
-                                                    $push: { tags: { $undefined: true } }
-                                                },
-                                                multi: true
-                                            }
-                                        ]
-                                    }""");
+                                        q: { author: { $undefined: true } },
+                                        u: {
+                                            $set: {
+                                                outOfStock: { $undefined: true }
+                                            },
+                                            $push: { tags: { $undefined: true } }
+                                        },
+                                        multi: true
+                                    }
+                                ]
+                            }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     pstmt.setBoolean(2, true);
                     pstmt.setString(3, "literature");
@@ -605,20 +631,19 @@ class MongoPreparedStatementIntegrationTests {
         void testDelete() {
             insertTestData(session, INSERT_MQL);
 
-            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+            Function<Connection, PreparedStatement> pstmtProvider = connection -> {
                 try {
-                    var pstmt = (MongoPreparedStatement)
-                            connection.prepareStatement(
-                                    """
+                    var pstmt = connection.prepareStatement(
+                            """
+                            {
+                                delete: "books",
+                                deletes: [
                                     {
-                                        delete: "books",
-                                        deletes: [
-                                            {
-                                                q: { author: { $undefined: true } },
-                                                limit: 0
-                                            }
-                                        ]
-                                    }""");
+                                        q: { author: { $undefined: true } },
+                                        limit: 0
+                                    }
+                                ]
+                            }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     return pstmt;
                 } catch (SQLException e) {
@@ -657,8 +682,9 @@ class MongoPreparedStatementIntegrationTests {
             });
         }
 
-        @Test
-        void testNotSupportedUpdateElements() {
+       @ParameterizedTest(name = "test not supported update elements. Parameters: option={0}")
+        @ValueSource(strings = {"hint", "collation", "arrayFilters", "sort", "upsert", "c"})
+        void testNotSupportedUpdateElements(String unsupportedElement) {
             doWorkAwareOfAutoCommit(connection -> {
                 try (PreparedStatement pstm = connection.prepareStatement(
                         format(
@@ -670,19 +696,20 @@ class MongoPreparedStatementIntegrationTests {
                                             q: { author: { $eq: "Leo Tolstoy" } },
                                             u: { $set: { outOfStock: true } },
                                             multi: true,
-                                            hint: { _id: 1 }
+                                            %s: { _id: 1 }
                                         }
                                     ]
-                                }"""))) {
+                                }""", unsupportedElement))) {
                     SQLFeatureNotSupportedException exception =
                             assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage()).isEqualTo("Unsupported elements in update command: [hint]");
+                    assertThat(exception.getMessage()).isEqualTo(format("Unsupported elements in update command: [%s]", unsupportedElement));
                 }
             });
         }
 
-        @Test
-        void testNotSupportedDeleteElements() {
+       @ParameterizedTest(name = "test not supported delete elements. Parameters: option={0}")
+        @ValueSource(strings = {"hint", "collation"})
+        void testNotSupportedDeleteElements(String unsupportedElement) {
             doWorkAwareOfAutoCommit(connection -> {
                 try (PreparedStatement pstm = connection.prepareStatement(
                         format(
@@ -693,19 +720,19 @@ class MongoPreparedStatementIntegrationTests {
                                         {
                                             q: { author: { $eq: "Leo Tolstoy" } },
                                             limit: 0,
-                                            hint: { _id: 1 }
+                                            %s: { _id: 1 }
                                         }
                                     ]
-                                }"""))) {
+                                }""", unsupportedElement))) {
                     SQLFeatureNotSupportedException exception =
                             assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage()).isEqualTo("Unsupported elements in delete command: [hint]");
+                    assertThat(exception.getMessage()).isEqualTo(format("Unsupported elements in delete command: [%s]", unsupportedElement));
                 }
             });
         }
 
         private void assertExecuteUpdate(
-                Function<Connection, MongoPreparedStatement> pstmtProvider,
+                Function<Connection, PreparedStatement> pstmtProvider,
                 int expectedUpdatedRowCount,
                 List<? extends BsonDocument> expectedDocuments) {
             doWorkAwareOfAutoCommit(connection -> {

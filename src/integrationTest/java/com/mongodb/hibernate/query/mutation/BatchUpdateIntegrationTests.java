@@ -57,7 +57,7 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new Item(i, String.valueOf(i)));
             }
             session.flush();
-            assertActualCommand(
+            assertActualCommandsInOrder(
                     parse(
                             """
                              {
@@ -101,7 +101,7 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
                 item.string = "u" + i;
             }
             session.flush();
-            assertActualCommand(
+            assertActualCommandsInOrder(
                     parse(
                             """
                             {
@@ -145,7 +145,7 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
                 session.remove(item);
             }
             session.flush();
-            assertActualCommand(
+            assertActualCommandsInOrder(
                     parse(
                             """
                             {

@@ -145,8 +145,7 @@ class MongoStatementTests {
         MongoCursor<BsonDocument> mongoCursor;
 
         private static final BulkWriteResult BULK_WRITE_RESULT = BulkWriteResult.acknowledged(
-                1, 0, 2, 3, emptyList(),
-                List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 1)))));
+                1, 0, 2, 3, emptyList(), List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 1)))));
 
         private ResultSet lastOpenResultSet;
 

@@ -276,7 +276,8 @@ class MongoStatement implements StatementAdapter {
                             "Commands returning result set are not supported. Received command: %s",
                             commandType.getCommandName()),
                     null,
-                    new int[0]);
+                    0,
+                    null);
         }
         checkSupportedUpdateCommand(commandType);
     }
