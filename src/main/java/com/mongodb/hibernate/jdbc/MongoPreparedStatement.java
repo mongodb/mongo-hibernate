@@ -225,10 +225,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkSupportedBatchCommand(commandBatch.get(0));
         try {
             executeBulkWrite(commandBatch, ExecutionType.BATCH);
-            var rowCounts = new int[commandBatch.size()];
+            var updateCounts = new int[commandBatch.size()];
             // We cannot determine the actual number of rows affected for each command in the batch.
-            Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
-            return rowCounts;
+            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
+            return updateCounts;
         } finally {
             commandBatch.clear();
         }

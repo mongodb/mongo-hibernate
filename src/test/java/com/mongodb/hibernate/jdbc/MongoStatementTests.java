@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -30,6 +31,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
+import com.mongodb.bulk.BulkWriteInsert;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
@@ -43,6 +45,8 @@ import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.function.BiConsumer;
 import org.bson.BsonDocument;
+import org.bson.BsonObjectId;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -140,8 +144,9 @@ class MongoStatementTests {
         @Mock
         MongoCursor<BsonDocument> mongoCursor;
 
-        @Mock
-        BulkWriteResult bulkWriteResult;
+        private static final BulkWriteResult BULK_WRITE_RESULT = BulkWriteResult.acknowledged(
+                1, 0, 2, 3, emptyList(),
+                List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 1)))));
 
         private ResultSet lastOpenResultSet;
 
@@ -164,8 +169,7 @@ class MongoStatementTests {
         @Test
         void testExecuteUpdate() throws SQLException {
             doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
-            doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            doReturn(10).when(bulkWriteResult).getModifiedCount();
+            doReturn(BULK_WRITE_RESULT).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
 
             mongoStatement.executeUpdate(exampleUpdateMql);
             assertTrue(lastOpenResultSet.isClosed());

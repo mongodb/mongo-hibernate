@@ -257,36 +257,38 @@ class MongoPreparedStatementTests {
                             new MongoOperationTimeoutException(DUMMY_EXCEPTION_MESSAGE), SQLTimeoutException.class));
         }
 
-        @ParameterizedTest(name = "test executeQuery throws SQLException. Parameters: exception={0}")
+        @ParameterizedTest(name = "test executeQuery throws SQLException. Parameters: exception={0}, expectedType={1}")
         @MethodSource("exceptions")
-        void testExecuteQueryThrowsSqlException(Exception thrownException, Class<? extends SQLException> expectedType)
+        void testExecuteQueryThrowsSqlException(Exception exceptionToThrow, Class<? extends SQLException> expectedType)
                 throws SQLException {
-            doThrow(thrownException).when(mongoCollection).aggregate(eq(clientSession), anyList());
-            assertExecuteThrowsSqlException(
-                    MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, thrownException, expectedType);
+            doThrow(exceptionToThrow).when(mongoCollection).aggregate(eq(clientSession), anyList());
+
+            assertExecuteThrowsSqlException(MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, exceptionToThrow, expectedType);
         }
 
-        @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}")
+        @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}, expectedType={1}")
         @MethodSource("exceptions")
-        void testExecuteUpdateThrowsSqlException(Exception thrownException, Class<? extends SQLException> expectedType)
+        void testExecuteUpdateThrowsSqlException(Exception exceptionToThrow, Class<? extends SQLException> expectedType)
                 throws SQLException {
-            doThrow(thrownException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            doThrow(exceptionToThrow).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+
             assertExecuteThrowsSqlException(
-                    MQL_ITEMS_INSERT, MongoPreparedStatement::executeUpdate, thrownException, expectedType);
+                    MQL_ITEMS_INSERT, MongoPreparedStatement::executeUpdate, exceptionToThrow, expectedType);
         }
 
-        @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}")
+        @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}, expectedType={1}")
         @MethodSource("exceptions")
-        void testExecuteBatchThrowsSqlException(Exception thrownException, Class<? extends SQLException> expectedType)
+        void testExecuteBatchThrowsSqlException(Exception exceptionToThrow, Class<? extends SQLException> expectedType)
                 throws SQLException {
-            doThrow(thrownException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            doThrow(exceptionToThrow).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+
             assertExecuteThrowsSqlException(
                     MQL_ITEMS_INSERT,
                     mongoPreparedStatement -> {
                         mongoPreparedStatement.addBatch();
                         mongoPreparedStatement.executeBatch();
                     },
-                    thrownException,
+                    exceptionToThrow,
                     expectedType);
         }
 
@@ -307,12 +309,13 @@ class MongoPreparedStatementTests {
         void testExecuteUpdateThrowsSqlExceptionWhenMongoBulkWriteExceptionOccurs(
                 String mql, MongoBulkWriteException mongoBulkWriteException) throws SQLException {
             doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+
             try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
                 assertThatExceptionOfType(SQLException.class)
                         .isThrownBy(mongoPreparedStatement::executeUpdate)
                         .withCause(mongoBulkWriteException)
                         .satisfies(sqlException -> {
-                            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
                             assertAll(
                                     () -> assertNull(sqlException.getSQLState()),
                                     () -> assertEquals(vendorCodeError, sqlException.getErrorCode()));
@@ -356,13 +359,14 @@ class MongoPreparedStatementTests {
                 String mql, MongoBulkWriteException mongoBulkWriteException, int expectedUpdateCountLength)
                 throws SQLException {
             doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+
             try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
                 mongoPreparedStatement.addBatch();
                 assertThatExceptionOfType(BatchUpdateException.class)
                         .isThrownBy(mongoPreparedStatement::executeBatch)
                         .withCause(mongoBulkWriteException)
                         .satisfies(batchUpdateException -> {
-                            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
                             assertAll(
                                     () -> assertUpdateCounts(
                                             batchUpdateException.getUpdateCounts(), expectedUpdateCountLength),

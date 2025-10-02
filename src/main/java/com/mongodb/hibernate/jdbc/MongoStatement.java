@@ -312,10 +312,7 @@ class MongoStatement implements StatementAdapter {
 
     private static SQLException handleException(
             RuntimeException exception, CommandType commandType, ExecutionType executionType) {
-        if (exception instanceof MongoSocketReadTimeoutException
-                || exception instanceof MongoSocketWriteTimeoutException
-                || exception instanceof MongoTimeoutException
-                || exception instanceof MongoExecutionTimeoutException) {
+        if (isTimeoutException(exception)) {
             return new SQLTimeoutException("Timeout while waiting for operation to complete", exception);
         }
 
@@ -332,6 +329,13 @@ class MongoStatement implements StatementAdapter {
         }
 
         return new SQLException(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION, exception);
+    }
+
+    private static boolean isTimeoutException(final RuntimeException exception) {
+        return exception instanceof MongoSocketReadTimeoutException
+                || exception instanceof MongoSocketWriteTimeoutException
+                || exception instanceof MongoTimeoutException
+                || exception instanceof MongoExecutionTimeoutException;
     }
 
     static BatchUpdateException createBatchUpdateException(
