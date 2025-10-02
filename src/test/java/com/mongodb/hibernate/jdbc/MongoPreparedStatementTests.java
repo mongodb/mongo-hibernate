@@ -20,7 +20,6 @@ import static java.sql.Statement.SUCCESS_NO_INFO;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatException;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -239,39 +238,59 @@ class MongoPreparedStatementTests {
         }
 
         private static Stream<Arguments> exceptions() {
+            var dummyCause = new RuntimeException();
             return Stream.of(
-                    Arguments.of(new MongoException(DUMMY_EXCEPTION_MESSAGE)),
-                    Arguments.of(new RuntimeException(DUMMY_EXCEPTION_MESSAGE)));
+                    Arguments.of(new MongoException(DUMMY_EXCEPTION_MESSAGE), SQLException.class),
+                    Arguments.of(new RuntimeException(DUMMY_EXCEPTION_MESSAGE), SQLException.class),
+                    Arguments.of(
+                            new MongoExecutionTimeoutException(DUMMY_EXCEPTION_MESSAGE), SQLTimeoutException.class),
+                    Arguments.of(
+                            new MongoSocketReadTimeoutException(
+                                    DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
+                            SQLTimeoutException.class),
+                    Arguments.of(
+                            new MongoSocketWriteTimeoutException(
+                                    DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
+                            SQLTimeoutException.class),
+                    Arguments.of(new MongoTimeoutException(DUMMY_EXCEPTION_MESSAGE), SQLTimeoutException.class),
+                    Arguments.of(
+                            new MongoOperationTimeoutException(DUMMY_EXCEPTION_MESSAGE), SQLTimeoutException.class));
         }
 
-        @ParameterizedTest(name = "testExecuteQueryThrowsSqlException: exception={0}")
+        @ParameterizedTest(name = "test executeQuery throws SQLException. Parameters: exception={0}")
         @MethodSource("exceptions")
-        void testExecuteQueryThrowsSqlExceptionWhenExceptionOccurs(Exception exception) throws SQLException {
-            doThrow(exception).when(mongoCollection).aggregate(eq(clientSession), anyList());
-            assertExecuteThrowsSqlException(MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, exception);
+        void testExecuteQueryThrowsSqlException(Exception thrownException, Class<? extends SQLException> expectedType)
+                throws SQLException {
+            doThrow(thrownException).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            assertExecuteThrowsSqlException(
+                    MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, thrownException, expectedType);
         }
 
-        @ParameterizedTest(name = "testExecuteUpdateThrowsSqlException: exception={0}")
+        @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}")
         @MethodSource("exceptions")
-        void testExecuteUpdateThrowsSqlExceptionWhenExceptionOccurs(Exception exception) throws SQLException {
-            doThrow(exception).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            assertExecuteThrowsSqlException(MQL_ITEMS_INSERT, MongoPreparedStatement::executeUpdate, exception);
+        void testExecuteUpdateThrowsSqlException(Exception thrownException, Class<? extends SQLException> expectedType)
+                throws SQLException {
+            doThrow(thrownException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteThrowsSqlException(
+                    MQL_ITEMS_INSERT, MongoPreparedStatement::executeUpdate, thrownException, expectedType);
         }
 
-        @ParameterizedTest(name = "testExecuteUpdateThrowsSqlException: exception={0}")
+        @ParameterizedTest(name = "test executeUpdate throws SQLException. Parameters: exception={0}")
         @MethodSource("exceptions")
-        void testExecuteBatchThrowsSqlExceptionWhenExceptionOccurs(Exception exception) throws SQLException {
-            doThrow(exception).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+        void testExecuteBatchThrowsSqlException(Exception thrownException, Class<? extends SQLException> expectedType)
+                throws SQLException {
+            doThrow(thrownException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
             assertExecuteThrowsSqlException(
                     MQL_ITEMS_INSERT,
                     mongoPreparedStatement -> {
                         mongoPreparedStatement.addBatch();
                         mongoPreparedStatement.executeBatch();
                     },
-                    exception);
+                    thrownException,
+                    expectedType);
         }
 
-        private static Stream<Arguments> argumentsForExecuteUpdate() {
+        private static Stream<Arguments> bulkWriteExceptionsForExecuteUpdate() {
             return Stream.of(
                     Arguments.of(named("insert", MQL_ITEMS_INSERT), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
                     Arguments.of(named("update", MQL_ITEMS_UPDATE), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
@@ -281,8 +300,10 @@ class MongoPreparedStatementTests {
                     Arguments.of(named("delete", MQL_ITEMS_DELETE), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS));
         }
 
-        @ParameterizedTest(name = "testUpdateThrowsSqlException: commandName={0}, exception={1}")
-        @MethodSource("argumentsForExecuteUpdate")
+        @ParameterizedTest(
+                name = "test executeUpdate throws SQLException when MongoBulkWriteException occurs."
+                        + " Parameters: commandName={0}, exception={1}")
+        @MethodSource("bulkWriteExceptionsForExecuteUpdate")
         void testExecuteUpdateThrowsSqlExceptionWhenMongoBulkWriteExceptionOccurs(
                 String mql, MongoBulkWriteException mongoBulkWriteException) throws SQLException {
             doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
@@ -299,7 +320,7 @@ class MongoPreparedStatementTests {
             }
         }
 
-        private static Stream<Arguments> argumentsForExecuteBatch() {
+        private static Stream<Arguments> bulkWriteExceptionsForExecuteBatch() {
             return Stream.of(
                     Arguments.of(
                             named("insert", MQL_ITEMS_INSERT),
@@ -327,8 +348,10 @@ class MongoPreparedStatementTests {
                             BULK_WRITE_RESULT.getDeletedCount()));
         }
 
-        @ParameterizedTest(name = "testBatchUpdateException: commandName={0}, exception={1}")
-        @MethodSource("argumentsForExecuteBatch")
+        @ParameterizedTest(
+                name = "test executeBatch throws BatchUpdateException when MongoBulkWriteException occurs."
+                        + " Parameters: commandName={0}, exception={1}")
+        @MethodSource("bulkWriteExceptionsForExecuteBatch")
         void testExecuteBatchThrowsBatchUpdateExceptionWhenMongoBulkWriteExceptionOccurs(
                 String mql, MongoBulkWriteException mongoBulkWriteException, int expectedUpdateCountLength)
                 throws SQLException {
@@ -349,64 +372,14 @@ class MongoPreparedStatementTests {
             }
         }
 
-        private static Stream<MongoException> timeoutExceptions() {
-            RuntimeException dummyCause = new RuntimeException();
-            return Stream.of(
-                    new MongoExecutionTimeoutException(DUMMY_EXCEPTION_MESSAGE),
-                    new MongoSocketReadTimeoutException(DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
-                    new MongoSocketWriteTimeoutException(DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
-                    new MongoTimeoutException(DUMMY_EXCEPTION_MESSAGE),
-                    new MongoOperationTimeoutException(DUMMY_EXCEPTION_MESSAGE));
-        }
-
-        @ParameterizedTest(
-                name =
-                        "SQLTimeoutException is thrown when timeout exception occurs in executeQuery. Parameters: timeoutException={0}")
-        @MethodSource("timeoutExceptions")
-        void testExecuteQuerySqlTimeoutException(MongoException timeoutException) throws SQLException {
-            doThrow(timeoutException).when(mongoCollection).aggregate(eq(clientSession), anyList());
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_AGGREGATE)) {
-                assertThatException()
-                        .isThrownBy(mongoPreparedStatement::executeQuery)
-                        .isInstanceOf(SQLTimeoutException.class)
-                        .withCause(timeoutException);
-            }
-        }
-
-        @ParameterizedTest(
-                name =
-                        "SQLTimeoutException is thrown when timeout exception occurs in executeUpdate. Parameters: timeoutException={0}")
-        @MethodSource("timeoutExceptions")
-        void testExecuteUpdateSqlTimeoutException(MongoException timeoutException) throws SQLException {
-            doThrow(timeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
-                assertThatException()
-                        .isThrownBy(mongoPreparedStatement::executeUpdate)
-                        .isInstanceOf(SQLTimeoutException.class)
-                        .withCause(timeoutException);
-            }
-        }
-
-        @ParameterizedTest(
-                name =
-                        "SQLTimeoutException is thrown when timeout exception occurs in executeBatch. Parameters: timeoutException={0}")
-        @MethodSource("timeoutExceptions")
-        void testExecuteBatchSqlTimeoutException(MongoException timeoutException) throws SQLException {
-            doThrow(timeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
-                mongoPreparedStatement.addBatch();
-                assertThatException()
-                        .isThrownBy(mongoPreparedStatement::executeBatch)
-                        .isInstanceOf(SQLTimeoutException.class)
-                        .withCause(timeoutException);
-            }
-        }
-
         private void assertExecuteThrowsSqlException(
-                String mql, SqlConsumer<MongoPreparedStatement> executeConsumer, Exception expectedCause)
+                String mql,
+                SqlConsumer<MongoPreparedStatement> executeConsumer,
+                Exception expectedCause,
+                Class<? extends SQLException> expectedExceptionType)
                 throws SQLException {
             try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
-                assertThatExceptionOfType(SQLException.class)
+                assertThatExceptionOfType(expectedExceptionType)
                         .isThrownBy(() -> executeConsumer.accept(mongoPreparedStatement))
                         .withCause(expectedCause)
                         .satisfies(sqlException -> {

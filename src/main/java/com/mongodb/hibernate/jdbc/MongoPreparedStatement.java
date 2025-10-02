@@ -55,7 +55,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
     private static final int[] EMPTY_BATCH_RESULT = new int[0];
     private final BsonDocument command;
-    private final List<BsonDocument> batchCommands;
+    private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
 
     MongoPreparedStatement(
@@ -63,7 +63,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
         command = MongoStatement.parse(mql);
-        batchCommands = new ArrayList<>();
+        commandBatch = new ArrayList<>();
         parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -81,7 +81,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
-        checkUpdateOperation(command);
+        checkSupportedUpdateCommand(command);
         return executeUpdateCommand(command);
     }
 
@@ -206,31 +206,31 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void addBatch() throws SQLException {
         checkClosed();
         checkAllParametersSet();
-        checkUpdateOperation(command);
-        batchCommands.add(command.clone());
+        commandBatch.add(command.clone());
     }
 
     @Override
     public void clearBatch() throws SQLException {
         checkClosed();
-        batchCommands.clear();
+        commandBatch.clear();
     }
 
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        if (batchCommands.isEmpty()) {
+        if (commandBatch.isEmpty()) {
             return EMPTY_BATCH_RESULT;
         }
+        checkSupportedBatchCommand(commandBatch.get(0));
         try {
-            executeBulkWrite(batchCommands, ExecutionType.BATCH);
-            var rowCounts = new int[batchCommands.size()];
+            executeBulkWrite(commandBatch, ExecutionType.BATCH);
+            var rowCounts = new int[commandBatch.size()];
             // We cannot determine the actual number of rows affected for each command in the batch.
             Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
             return rowCounts;
         } finally {
-            batchCommands.clear();
+            commandBatch.clear();
         }
     }
 

@@ -640,7 +640,7 @@ class MongoPreparedStatementIntegrationTests {
                                     }""")));
         }
 
-        @ParameterizedTest(name = "testNotSupportedCommands. Parameters: {0}")
+        @ParameterizedTest(name = "test not supported commands. Parameters: {0}")
         @ValueSource(strings = {"findAndModify", "aggregate", "bulkWrite"})
         void testNotSupportedCommands(String commandName) {
             doWorkAwareOfAutoCommit(connection -> {

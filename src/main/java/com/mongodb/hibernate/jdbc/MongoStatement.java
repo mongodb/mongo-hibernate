@@ -19,7 +19,6 @@ package com.mongodb.hibernate.jdbc;
 import static com.mongodb.assertions.Assertions.fail;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
@@ -30,7 +29,6 @@ import com.mongodb.MongoExecutionTimeoutException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoTimeoutException;
-import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
@@ -94,11 +92,11 @@ class MongoStatement implements StatementAdapter {
     }
 
     ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
-        var mongoCommand = getCommandType(command);
+        var commandType = getCommandType(command);
+        checkSupportedQueryCommand(command);
         try {
             startTransactionIfNeeded();
-            checkQueryOperation(command);
-            var collection = getCollection(mongoCommand, command);
+            var collection = getCollection(commandType, command);
             var pipeline = command.getArray("pipeline").stream()
                     .map(BsonValue::asDocument)
                     .toList();
@@ -107,8 +105,8 @@ class MongoStatement implements StatementAdapter {
 
             return resultSet = new MongoResultSet(
                     collection.aggregate(clientSession, pipeline).cursor(), fieldNames);
-        } catch (Exception exception) {
-            throw handleException(exception, mongoCommand, ExecutionType.QUERY);
+        } catch (RuntimeException exception) {
+            throw handleException(exception, commandType, ExecutionType.QUERY);
         }
     }
 
@@ -147,7 +145,7 @@ class MongoStatement implements StatementAdapter {
         checkClosed();
         closeLastOpenResultSet();
         var command = parse(mql);
-        checkUpdateOperation(command);
+        checkSupportedUpdateCommand(command);
         return executeUpdateCommand(command);
     }
 
@@ -167,7 +165,7 @@ class MongoStatement implements StatementAdapter {
             }
             var bulkWriteResult = collection.bulkWrite(clientSession, writeModels);
             return getUpdateCount(commandType, bulkWriteResult);
-        } catch (Exception exception) {
+        } catch (RuntimeException exception) {
             throw handleException(exception, commandType, executionType);
         }
     }
@@ -247,22 +245,40 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    private void checkQueryOperation(BsonDocument command) throws SQLFeatureNotSupportedException {
-        CommandType commandType = getCommandType(command);
+    private void checkSupportedQueryCommand(BsonDocument command) throws SQLFeatureNotSupportedException {
+        var commandType = getCommandType(command);
         if (commandType != CommandType.AGGREGATE) {
             throw new SQLFeatureNotSupportedException(
                     format("Unsupported command for query operation: %s", commandType.getCommandName()));
         }
     }
 
-    void checkUpdateOperation(BsonDocument command) throws SQLException {
-        CommandType commandType = getCommandType(command);
+    void checkSupportedUpdateCommand(BsonDocument command) throws SQLException {
+        checkSupportedUpdateCommand(getCommandType(command));
+    }
+
+    private void checkSupportedUpdateCommand(CommandType commandType) throws SQLException {
         if (commandType != CommandType.INSERT
                 && commandType != CommandType.UPDATE
                 && commandType != CommandType.DELETE) {
             throw new SQLFeatureNotSupportedException(
                     format("Unsupported command for batch operation: %s", commandType.getCommandName()));
         }
+    }
+
+    void checkSupportedBatchCommand(BsonDocument command) throws SQLException {
+        var commandType = getCommandType(command);
+        if (commandType == CommandType.AGGREGATE) {
+            // The method executeBatch throws a BatchUpdateException if any of the commands in the batch attempts to
+            // return a result set.
+            throw new BatchUpdateException(
+                    format(
+                            "Commands returning result set are not supported. Received command: %s",
+                            commandType.getCommandName()),
+                    null,
+                    new int[0]);
+        }
+        checkSupportedUpdateCommand(commandType);
     }
 
     static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
@@ -295,17 +311,12 @@ class MongoStatement implements StatementAdapter {
     }
 
     private static SQLException handleException(
-            Exception exception, CommandType commandType, ExecutionType executionType) {
-
-        if (exception instanceof SQLException sqlException) {
-            return sqlException;
-        }
+            RuntimeException exception, CommandType commandType, ExecutionType executionType) {
         if (exception instanceof MongoSocketReadTimeoutException
                 || exception instanceof MongoSocketWriteTimeoutException
                 || exception instanceof MongoTimeoutException
                 || exception instanceof MongoExecutionTimeoutException) {
-            return new SQLTimeoutException(
-                    format("Timeout while waiting for %s operation to complete", MONGO_DBMS_NAME), exception);
+            return new SQLTimeoutException("Timeout while waiting for operation to complete", exception);
         }
 
         if (exception instanceof MongoBulkWriteException mongoBulkWriteException) {
@@ -325,16 +336,16 @@ class MongoStatement implements StatementAdapter {
 
     static BatchUpdateException createBatchUpdateException(
             MongoBulkWriteException mongoBulkWriteException, CommandType commandType) {
-        int updateCount = getUpdateCount(commandType, mongoBulkWriteException.getWriteResult());
-        int[] updateCounts = new int[updateCount];
+        var updateCount = getUpdateCount(commandType, mongoBulkWriteException.getWriteResult());
+        var updateCounts = new int[updateCount];
         Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
-        int code = getErrorCode(mongoBulkWriteException);
+        var code = getErrorCode(mongoBulkWriteException);
         return new BatchUpdateException(
                 EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION, null, code, updateCounts, mongoBulkWriteException);
     }
 
     private static int getErrorCode(final MongoBulkWriteException mongoBulkWriteException) {
-        List<BulkWriteError> writeErrors = mongoBulkWriteException.getWriteErrors();
+        var writeErrors = mongoBulkWriteException.getWriteErrors();
         // Since we are executing an ordered bulk write, there will be at most one BulkWriteError.
         return writeErrors.isEmpty() ? 0 : writeErrors.get(0).getCode();
     }
@@ -397,8 +408,7 @@ class MongoStatement implements StatementAdapter {
 
     private static void checkDeleteElements(final BsonDocument deleteDocument) throws SQLFeatureNotSupportedException {
         if (deleteDocument.size() > SUPPORTED_DELETE_COMMAND_ELEMENTS.size()) {
-            List<String> unSupportedElements =
-                    getUnsupportedElements(deleteDocument, SUPPORTED_DELETE_COMMAND_ELEMENTS);
+            var unSupportedElements = getUnsupportedElements(deleteDocument, SUPPORTED_DELETE_COMMAND_ELEMENTS);
             throw new SQLFeatureNotSupportedException(
                     format("Unsupported elements in delete command: %s", unSupportedElements));
         }
@@ -406,8 +416,7 @@ class MongoStatement implements StatementAdapter {
 
     private static void checkUpdateElements(final BsonDocument updateDocument) throws SQLFeatureNotSupportedException {
         if (updateDocument.size() > SUPPORTED_UPDATE_COMMAND_ELEMENTS.size()) {
-            List<String> unSupportedElements =
-                    getUnsupportedElements(updateDocument, SUPPORTED_UPDATE_COMMAND_ELEMENTS);
+            var unSupportedElements = getUnsupportedElements(updateDocument, SUPPORTED_UPDATE_COMMAND_ELEMENTS);
             throw new SQLFeatureNotSupportedException(
                     format("Unsupported elements in update command: %s", unSupportedElements));
         }
