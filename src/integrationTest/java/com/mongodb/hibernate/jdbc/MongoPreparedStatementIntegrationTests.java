@@ -644,15 +644,62 @@ class MongoPreparedStatementIntegrationTests {
         @ValueSource(strings = {"findAndModify", "aggregate", "bulkWrite"})
         void testNotSupportedCommands(String commandName) {
             doWorkAwareOfAutoCommit(connection -> {
-                try (PreparedStatement findAndModify = connection.prepareStatement(format(
+                try (PreparedStatement pstm = connection.prepareStatement(format(
                         """
                         {
-                            findAndModify: "books"
+                          %s: "books"
                         }""",
                         commandName))) {
                     SQLFeatureNotSupportedException exception =
-                            assertThrows(SQLFeatureNotSupportedException.class, findAndModify::executeUpdate);
-                    assertThat(exception.getMessage()).contains("findAndModify");
+                            assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
+                    assertThat(exception.getMessage()).contains(commandName);
+                }
+            });
+        }
+
+        @Test
+        void testNotSupportedUpdateElements() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        format(
+                                """
+                                    {
+                                    update: "books",
+                                    updates: [
+                                        {
+                                            q: { author: { $eq: "Leo Tolstoy" } },
+                                            u: { $set: { outOfStock: true } },
+                                            multi: true,
+                                            hint: { _id: 1 }
+                                        }
+                                    ]
+                                }"""))) {
+                    SQLFeatureNotSupportedException exception =
+                            assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
+                    assertThat(exception.getMessage()).isEqualTo("Unsupported elements in update command: [hint]");
+                }
+            });
+        }
+
+        @Test
+        void testNotSupportedDeleteElements() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        format(
+                                """
+                                    {
+                                    delete: "books",
+                                    deletes: [
+                                        {
+                                            q: { author: { $eq: "Leo Tolstoy" } },
+                                            limit: 0,
+                                            hint: { _id: 1 }
+                                        }
+                                    ]
+                                }"""))) {
+                    SQLFeatureNotSupportedException exception =
+                            assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
+                    assertThat(exception.getMessage()).isEqualTo("Unsupported elements in delete command: [hint]");
                 }
             });
         }

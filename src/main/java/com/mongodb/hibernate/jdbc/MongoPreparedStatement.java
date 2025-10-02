@@ -21,7 +21,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
 
-import com.mongodb.MongoBulkWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -29,7 +28,6 @@ import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
-import java.sql.BatchUpdateException;
 import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
@@ -55,10 +53,10 @@ import org.bson.types.ObjectId;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
+    private static final int[] EMPTY_BATCH_RESULT = new int[0];
     private final BsonDocument command;
     private final List<BsonDocument> batchCommands;
     private final List<ParameterValueSetter> parameterValueSetters;
-    private static final int[] EMPTY_BATCH_RESULT = new int[0];
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
@@ -83,6 +81,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
+        checkUpdateOperation(command);
         return executeUpdateCommand(command);
     }
 
@@ -206,7 +205,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        checkAllParametersSet(); // TODO first check that all parameters are set for the previous batch.
+        checkAllParametersSet();
+        checkUpdateOperation(command);
         batchCommands.add(command.clone());
     }
 
@@ -224,13 +224,11 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             return EMPTY_BATCH_RESULT;
         }
         try {
-            executeBulkWrite(batchCommands);
+            executeBulkWrite(batchCommands, ExecutionType.BATCH);
             var rowCounts = new int[batchCommands.size()];
             // We cannot determine the actual number of rows affected for each command in the batch.
             Arrays.fill(rowCounts, Statement.SUCCESS_NO_INFO);
             return rowCounts;
-        } catch (MongoBulkWriteException mongoBulkWriteException) {
-            throw createBatchUpdateException(mongoBulkWriteException, command.getFirstKey());
         } finally {
             batchCommands.clear();
         }
@@ -392,13 +390,5 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 }
             }
         }
-    }
-
-    static BatchUpdateException createBatchUpdateException(
-            final MongoBulkWriteException mongoBulkWriteException, final String commandName) {
-        int updateCount = getUpdateCount(commandName, mongoBulkWriteException.getWriteResult());
-        int[] updateCounts = new int[updateCount];
-        Arrays.fill(updateCounts, SUCCESS_NO_INFO);
-        return new BatchUpdateException(mongoBulkWriteException.getMessage(), updateCounts, mongoBulkWriteException);
     }
 }

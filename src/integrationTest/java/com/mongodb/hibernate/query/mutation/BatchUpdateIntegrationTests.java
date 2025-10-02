@@ -25,6 +25,7 @@ import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.List;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.SessionImplementor;
@@ -32,7 +33,6 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = BatchUpdateIntegrationTests.Item.class)
@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Test;
 class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
 
     private static final String COLLECTION_NAME = "items";
-    private static final int BATCH_COUNT = 5;
+    private static final int ENTITIES_TO_PERSIST_COUNT = 5;
 
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> collection;
@@ -51,41 +51,9 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Test
-    // TODO remove this test.We should forbid native mutation queries with batching
-    void testNativeInsertMutationQuery() {
-        getSessionFactoryScope().inTransaction(session -> {
-            session.createNativeMutationQuery(
-                            """
-                            {
-                              "insert": "items",
-                              "ordered": true,
-                              "documents": [
-                                { "_id": 101, "string": "native101"},
-                                { "_id": 102, "string": "native102"}
-                              ]
-                            }
-                            """)
-                    .executeUpdate();
-
-            assertActualCommand(
-                    parse(
-                            """
-                            {
-                              "insert": "items",
-                              "ordered": true,
-                              "documents": [
-                                { "_id": 101, "string": "native101"},
-                                { "_id": 102, "string": "native102"}
-                              ]
-                            }
-                            """));
-        });
-    }
-
-    @Test
     void testBatchInsert() {
         getSessionFactoryScope().inTransaction(session -> {
-            for (int i = 1; i <= BATCH_COUNT; i++) {
+            for (int i = 1; i <= ENTITIES_TO_PERSIST_COUNT; i++) {
                 session.persist(new Item(i, String.valueOf(i)));
             }
             session.flush();
@@ -116,7 +84,7 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
         });
 
         assertThat(collection.find())
-                .containsExactlyElementsOf(java.util.List.of(
+                .containsExactlyElementsOf(List.of(
                         BsonDocument.parse("{ _id: 1, string: '1' }"),
                         BsonDocument.parse("{ _id: 2, string: '2' }"),
                         BsonDocument.parse("{ _id: 3, string: '3' }"),
@@ -124,93 +92,86 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
                         BsonDocument.parse("{ _id: 5, string: '5' }")));
     }
 
-    @Nested
-    class BatchUpdateTests {
-        @Test
-        void testBatchUpdate() {
-            getSessionFactoryScope().inTransaction(session -> {
-                insertTestData(session);
-                for (int i = 1; i <= BATCH_COUNT; i++) {
-                    Item item = session.find(Item.class, i);
-                    item.string = "u" + i;
-                }
-                session.flush();
-                assertActualCommand(
-                        parse(
-                                """
-                                {
-                                  "update": "items",
-                                  "ordered": true,
-                                  "updates": [
-                                    { "q": { "_id": { "$eq": 1 } }, "u": { "$set": { "string": "u1" } }, "multi": true },
-                                    { "q": { "_id": { "$eq": 2 } }, "u": { "$set": { "string": "u2" } }, "multi": true },
-                                    { "q": { "_id": { "$eq": 3 } }, "u": { "$set": { "string": "u3" } }, "multi": true }
-                                  ]
-                                }
-                                """),
-                        parse(
-                                """
-                                {
-                                  "update": "items",
-                                  "ordered": true,
-                                  "updates": [
-                                    { "q": { "_id": { "$eq": 4 } }, "u": { "$set": { "string": "u4" } }, "multi": true },
-                                    { "q": { "_id": { "$eq": 5 } }, "u": { "$set": { "string": "u5" } }, "multi": true }
-                                  ]
-                                }
-                                """));
-            });
+    @Test
+    void testBatchUpdate() {
+        getSessionFactoryScope().inTransaction(session -> {
+            insertTestData(session);
+            for (int i = 1; i <= ENTITIES_TO_PERSIST_COUNT; i++) {
+                Item item = session.find(Item.class, i);
+                item.string = "u" + i;
+            }
+            session.flush();
+            assertActualCommand(
+                    parse(
+                            """
+                            {
+                              "update": "items",
+                              "ordered": true,
+                              "updates": [
+                                { "q": { "_id": { "$eq": 1 } }, "u": { "$set": { "string": "u1" } }, "multi": true },
+                                { "q": { "_id": { "$eq": 2 } }, "u": { "$set": { "string": "u2" } }, "multi": true },
+                                { "q": { "_id": { "$eq": 3 } }, "u": { "$set": { "string": "u3" } }, "multi": true }
+                              ]
+                            }
+                            """),
+                    parse(
+                            """
+                            {
+                              "update": "items",
+                              "ordered": true,
+                              "updates": [
+                                { "q": { "_id": { "$eq": 4 } }, "u": { "$set": { "string": "u4" } }, "multi": true },
+                                { "q": { "_id": { "$eq": 5 } }, "u": { "$set": { "string": "u5" } }, "multi": true }
+                              ]
+                            }
+                            """));
+        });
 
-            assertThat(collection.find())
-                    .containsExactlyElementsOf(java.util.List.of(
-                            BsonDocument.parse("{ _id: 1, string: 'u1' }"),
-                            BsonDocument.parse("{ _id: 2, string: 'u2' }"),
-                            BsonDocument.parse("{ _id: 3, string: 'u3' }"),
-                            BsonDocument.parse("{ _id: 4, string: 'u4' }"),
-                            BsonDocument.parse("{ _id: 5, string: 'u5' }")));
-        }
+        assertThat(collection.find())
+                .containsExactlyElementsOf(java.util.List.of(
+                        BsonDocument.parse("{ _id: 1, string: 'u1' }"),
+                        BsonDocument.parse("{ _id: 2, string: 'u2' }"),
+                        BsonDocument.parse("{ _id: 3, string: 'u3' }"),
+                        BsonDocument.parse("{ _id: 4, string: 'u4' }"),
+                        BsonDocument.parse("{ _id: 5, string: 'u5' }")));
     }
 
-    @Nested
-    class BatchDeleteTests {
+    @Test
+    void testBatchDelete() {
+        getSessionFactoryScope().inTransaction(session -> {
+            insertTestData(session);
+            for (int i = 1; i <= ENTITIES_TO_PERSIST_COUNT; i++) {
+                var item = session.find(Item.class, i);
+                session.remove(item);
+            }
+            session.flush();
+            assertActualCommand(
+                    parse(
+                            """
+                            {
+                                "delete": "items",
+                                "ordered": true,
+                                "deletes": [
+                                    {"q": {"_id": {"$eq": 1}}, "limit": 0},
+                                    {"q": {"_id": {"$eq": 2}}, "limit": 0},
+                                    {"q": {"_id": {"$eq": 3}}, "limit": 0}
+                                ]
+                            }
+                            """),
+                    parse(
+                            """
+                            {
+                                "delete": "items",
+                                "ordered": true,
+                                "deletes": [
+                                    {"q": {"_id": {"$eq": 4}}, "limit": 0},
+                                    {"q": {"_id": {"$eq": 5}}, "limit": 0}
+                                ]
+                            }
+                            """));
+        });
 
-        @Test
-        void testBatchDelete() {
-            getSessionFactoryScope().inTransaction(session -> {
-                insertTestData(session);
-                for (int i = 1; i <= BATCH_COUNT; i++) {
-                    var item = session.find(Item.class, i);
-                    session.remove(item);
-                }
-                session.flush();
-                assertActualCommand(
-                        parse(
-                                """
-                                {
-                                    "delete": "items",
-                                    "ordered": true,
-                                    "deletes": [
-                                        {"q": {"_id": {"$eq": 1}}, "limit": 0},
-                                        {"q": {"_id": {"$eq": 2}}, "limit": 0},
-                                        {"q": {"_id": {"$eq": 3}}, "limit": 0}
-                                    ]
-                                }
-                                """),
-                        parse(
-                                """
-                                {
-                                    "delete": "items",
-                                    "ordered": true,
-                                    "deletes": [
-                                        {"q": {"_id": {"$eq": 4}}, "limit": 0}
-                                        {"q": {"_id": {"$eq": 5}}, "limit": 0}
-                                    ]
-                                }
-                                """));
-            });
-
-            assertThat(collection.find()).isEmpty();
-        }
+        assertThat(collection.find()).isEmpty();
     }
 
     private void insertTestData(final SessionImplementor session) {

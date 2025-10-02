@@ -16,9 +16,10 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.assertions.Assertions.fail;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
@@ -29,19 +30,20 @@ import com.mongodb.MongoExecutionTimeoutException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoTimeoutException;
+import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.DeleteManyModel;
 import com.mongodb.client.model.DeleteOneModel;
-import com.mongodb.client.model.DeleteOptions;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -49,7 +51,9 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLTimeoutException;
 import java.sql.SQLWarning;
+import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +63,9 @@ import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
 
+    private static final List<String> SUPPORTED_UPDATE_COMMAND_ELEMENTS = List.of("q", "u", "multi");
+    private static final List<String> SUPPORTED_DELETE_COMMAND_ELEMENTS = List.of("q", "limit");
+    private static final String EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION = "Failed to execute operation";
     private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
     private final ClientSession clientSession;
@@ -87,12 +94,11 @@ class MongoStatement implements StatementAdapter {
     }
 
     ResultSet executeQueryCommand(BsonDocument command) throws SQLException {
+        var mongoCommand = getCommandType(command);
         try {
             startTransactionIfNeeded();
-
-            var collectionName = command.getString("aggregate").getValue();
-            var collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
-
+            checkQueryOperation(command);
+            var collection = getCollection(mongoCommand, command);
             var pipeline = command.getArray("pipeline").stream()
                     .map(BsonValue::asDocument)
                     .toList();
@@ -101,8 +107,8 @@ class MongoStatement implements StatementAdapter {
 
             return resultSet = new MongoResultSet(
                     collection.aggregate(clientSession, pipeline).cursor(), fieldNames);
-        } catch (RuntimeException e) {
-            throw new SQLException("Failed to execute query", e);
+        } catch (Exception exception) {
+            throw handleException(exception, mongoCommand, ExecutionType.QUERY);
         }
     }
 
@@ -141,42 +147,28 @@ class MongoStatement implements StatementAdapter {
         checkClosed();
         closeLastOpenResultSet();
         var command = parse(mql);
+        checkUpdateOperation(command);
         return executeUpdateCommand(command);
     }
 
     int executeUpdateCommand(BsonDocument command) throws SQLException {
-        try {
-            var bulkWriteResult = executeBulkWrite(singletonList(command));
-            return getUpdateCount(command.getFirstKey(), bulkWriteResult);
-        } catch (MongoBulkWriteException mongoBulkWriteException) {
-            throw new SQLException(mongoBulkWriteException.getMessage(), mongoBulkWriteException);
-        }
+        return executeBulkWrite(singletonList(command), ExecutionType.UPDATE);
     }
 
-    BulkWriteResult executeBulkWrite(List<? extends BsonDocument> commandBatch) throws SQLException {
-        startTransactionIfNeeded();
+    int executeBulkWrite(List<? extends BsonDocument> commandBatch, ExecutionType executionType) throws SQLException {
         var firstDocumentInBatch = commandBatch.get(0);
-        var commandName = assertNotNull(firstDocumentInBatch.getFirstKey());
-        var collectionName =
-                assertNotNull(firstDocumentInBatch.getString(commandName).getValue());
-        MongoCollection<BsonDocument> collection = mongoDatabase.getCollection(collectionName, BsonDocument.class);
-
+        var commandType = getCommandType(firstDocumentInBatch);
+        var collection = getCollection(commandType, firstDocumentInBatch);
         try {
+            startTransactionIfNeeded();
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
             for (var command : commandBatch) {
-                assertTrue(collectionName.equals(command.getString(commandName).getValue()));
-                convertToWriteModels(command, commandName, writeModels);
+                convertToWriteModels(commandType, command, writeModels);
             }
-            return collection.bulkWrite(clientSession, writeModels);
-        } catch (MongoSocketReadTimeoutException
-                | MongoSocketWriteTimeoutException
-                | MongoTimeoutException
-                | MongoExecutionTimeoutException mongoTimeoutException) {
-            throw new SQLTimeoutException(mongoTimeoutException.getMessage(), mongoTimeoutException);
-        } catch (MongoBulkWriteException mongoBulkWriteException) {
-            throw mongoBulkWriteException;
-        } catch (RuntimeException runtimeException) {
-            throw new SQLException("Failed to execute update", runtimeException);
+            var bulkWriteResult = collection.bulkWrite(clientSession, writeModels);
+            return getUpdateCount(commandType, bulkWriteResult);
+        } catch (Exception exception) {
+            throw handleException(exception, commandType, executionType);
         }
     }
 
@@ -255,6 +247,24 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
+    private void checkQueryOperation(BsonDocument command) throws SQLFeatureNotSupportedException {
+        CommandType commandType = getCommandType(command);
+        if (commandType != CommandType.AGGREGATE) {
+            throw new SQLFeatureNotSupportedException(
+                    format("Unsupported command for query operation: %s", commandType.getCommandName()));
+        }
+    }
+
+    void checkUpdateOperation(BsonDocument command) throws SQLException {
+        CommandType commandType = getCommandType(command);
+        if (commandType != CommandType.INSERT
+                && commandType != CommandType.UPDATE
+                && commandType != CommandType.DELETE) {
+            throw new SQLFeatureNotSupportedException(
+                    format("Unsupported command for batch operation: %s", commandType.getCommandName()));
+        }
+    }
+
     static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
         try {
             return BsonDocument.parse(mql);
@@ -273,60 +283,108 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    static int getUpdateCount(final String commandName, final BulkWriteResult bulkWriteResult) {
-        return switch (commandName) {
-            case "insert" -> bulkWriteResult.getInsertedCount();
-            case "update" -> bulkWriteResult.getModifiedCount();
-            case "delete" -> bulkWriteResult.getDeletedCount();
-            default -> throw new FeatureNotSupportedException("Unsupported command: " + commandName);
-        };
+    static CommandType getCommandType(BsonDocument command) throws SQLFeatureNotSupportedException {
+        // The first key is always the command name, e.g. "insert", "update", "delete".
+        return CommandType.fromString(assertNotNull(command.getFirstKey()));
+    }
+
+    private MongoCollection<BsonDocument> getCollection(CommandType commandType, BsonDocument command) {
+        var collectionName =
+                assertNotNull(command.getString(commandType.getCommandName()).getValue());
+        return mongoDatabase.getCollection(collectionName, BsonDocument.class);
+    }
+
+    private static SQLException handleException(
+            Exception exception, CommandType commandType, ExecutionType executionType) {
+
+        if (exception instanceof SQLException sqlException) {
+            return sqlException;
+        }
+        if (exception instanceof MongoSocketReadTimeoutException
+                || exception instanceof MongoSocketWriteTimeoutException
+                || exception instanceof MongoTimeoutException
+                || exception instanceof MongoExecutionTimeoutException) {
+            return new SQLTimeoutException(
+                    format("Timeout while waiting for %s operation to complete", MONGO_DBMS_NAME), exception);
+        }
+
+        if (exception instanceof MongoBulkWriteException mongoBulkWriteException) {
+            if (executionType == ExecutionType.BATCH) {
+                return createBatchUpdateException(mongoBulkWriteException, commandType);
+            } else {
+                return new SQLException(
+                        EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION,
+                        null,
+                        getErrorCode(mongoBulkWriteException),
+                        mongoBulkWriteException);
+            }
+        }
+
+        return new SQLException(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION, exception);
+    }
+
+    static BatchUpdateException createBatchUpdateException(
+            MongoBulkWriteException mongoBulkWriteException, CommandType commandType) {
+        int updateCount = getUpdateCount(commandType, mongoBulkWriteException.getWriteResult());
+        int[] updateCounts = new int[updateCount];
+        Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
+        int code = getErrorCode(mongoBulkWriteException);
+        return new BatchUpdateException(
+                EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION, null, code, updateCounts, mongoBulkWriteException);
+    }
+
+    private static int getErrorCode(final MongoBulkWriteException mongoBulkWriteException) {
+        List<BulkWriteError> writeErrors = mongoBulkWriteException.getWriteErrors();
+        // Since we are executing an ordered bulk write, there will be at most one BulkWriteError.
+        return writeErrors.isEmpty() ? 0 : writeErrors.get(0).getCode();
     }
 
     private static void convertToWriteModels(
-            final BsonDocument command,
-            final String commandName,
-            final Collection<WriteModel<BsonDocument>> writeModels)
+            CommandType commandType, BsonDocument command, Collection<WriteModel<BsonDocument>> writeModels)
             throws SQLFeatureNotSupportedException {
-        switch (commandName) {
-            case "insert":
+        switch (commandType) {
+            case INSERT:
                 var documents = command.getArray("documents");
                 for (var insertDocument : documents) {
                     writeModels.add(createInsertModel(insertDocument.asDocument()));
                 }
                 break;
-            case "update":
+            case UPDATE:
                 var updates = command.getArray("updates").getValues();
                 for (var updateDocument : updates) {
                     writeModels.add(createUpdateModel(updateDocument.asDocument()));
                 }
                 break;
-            case "delete":
+            case DELETE:
                 var deletes = command.getArray("deletes");
                 for (var deleteDocument : deletes) {
                     writeModels.add(createDeleteModel(deleteDocument.asDocument()));
                 }
                 break;
             default:
-                throw new SQLFeatureNotSupportedException("Unsupported command: " + commandName);
+                throw fail();
         }
     }
 
-    private static WriteModel<BsonDocument> createInsertModel(final BsonDocument document) {
-        return new InsertOneModel<>(document);
+    private static WriteModel<BsonDocument> createInsertModel(final BsonDocument insertDocument) {
+        return new InsertOneModel<>(insertDocument);
     }
 
-    private static WriteModel<BsonDocument> createDeleteModel(final BsonDocument deleteDocument) {
+    private static WriteModel<BsonDocument> createDeleteModel(final BsonDocument deleteDocument)
+            throws SQLFeatureNotSupportedException {
+        checkDeleteElements(deleteDocument);
         var isSingleDelete = deleteDocument.getNumber("limit").intValue() == 1;
         var queryFilter = deleteDocument.getDocument("q");
 
         if (isSingleDelete) {
-            new DeleteOptions();
             return new DeleteOneModel<>(queryFilter);
         }
         return new DeleteManyModel<>(queryFilter);
     }
 
-    private static WriteModel<BsonDocument> createUpdateModel(final BsonDocument updateDocument) {
+    private static WriteModel<BsonDocument> createUpdateModel(final BsonDocument updateDocument)
+            throws SQLFeatureNotSupportedException {
+        checkUpdateElements(updateDocument);
         var isMulti = updateDocument.getBoolean("multi").getValue();
         var queryFilter = updateDocument.getDocument("q");
         var updatePipeline = updateDocument.getDocument("u");
@@ -335,5 +393,72 @@ class MongoStatement implements StatementAdapter {
             return new UpdateManyModel<>(queryFilter, updatePipeline);
         }
         return new UpdateOneModel<>(queryFilter, updatePipeline);
+    }
+
+    private static void checkDeleteElements(final BsonDocument deleteDocument) throws SQLFeatureNotSupportedException {
+        if (deleteDocument.size() > SUPPORTED_DELETE_COMMAND_ELEMENTS.size()) {
+            List<String> unSupportedElements =
+                    getUnsupportedElements(deleteDocument, SUPPORTED_DELETE_COMMAND_ELEMENTS);
+            throw new SQLFeatureNotSupportedException(
+                    format("Unsupported elements in delete command: %s", unSupportedElements));
+        }
+    }
+
+    private static void checkUpdateElements(final BsonDocument updateDocument) throws SQLFeatureNotSupportedException {
+        if (updateDocument.size() > SUPPORTED_UPDATE_COMMAND_ELEMENTS.size()) {
+            List<String> unSupportedElements =
+                    getUnsupportedElements(updateDocument, SUPPORTED_UPDATE_COMMAND_ELEMENTS);
+            throw new SQLFeatureNotSupportedException(
+                    format("Unsupported elements in update command: %s", unSupportedElements));
+        }
+    }
+
+    private static List<String> getUnsupportedElements(
+            final BsonDocument deleteDocument, final List<String> supportedElements) {
+        return deleteDocument.keySet().stream()
+                .filter((key) -> !supportedElements.contains(key))
+                .toList();
+    }
+
+    static int getUpdateCount(CommandType commandType, BulkWriteResult bulkWriteResult) {
+        return switch (commandType) {
+            case INSERT -> bulkWriteResult.getInsertedCount();
+            case UPDATE -> bulkWriteResult.getModifiedCount();
+            case DELETE -> bulkWriteResult.getDeletedCount();
+            default -> throw fail();
+        };
+    }
+
+    enum CommandType {
+        INSERT("insert"),
+        UPDATE("update"),
+        DELETE("delete"),
+        AGGREGATE("aggregate");
+
+        private final String commandName;
+
+        CommandType(String commandName) {
+            this.commandName = commandName;
+        }
+
+        String getCommandName() {
+            return commandName;
+        }
+
+        static CommandType fromString(String commandName) throws SQLFeatureNotSupportedException {
+            return switch (commandName) {
+                case "insert" -> INSERT;
+                case "update" -> UPDATE;
+                case "delete" -> DELETE;
+                case "aggregate" -> AGGREGATE;
+                default -> throw new SQLFeatureNotSupportedException(format("Unsupported command: %s", commandName));
+            };
+        }
+    }
+
+    enum ExecutionType {
+        UPDATE,
+        BATCH,
+        QUERY
     }
 }

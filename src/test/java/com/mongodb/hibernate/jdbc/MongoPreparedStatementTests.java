@@ -17,7 +17,11 @@
 package com.mongodb.hibernate.jdbc;
 
 import static java.sql.Statement.SUCCESS_NO_INFO;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatException;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Named.named;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,8 +39,15 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoException;
+import com.mongodb.MongoExecutionTimeoutException;
+import com.mongodb.MongoOperationTimeoutException;
+import com.mongodb.MongoSocketReadTimeoutException;
+import com.mongodb.MongoSocketWriteTimeoutException;
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.ServerAddress;
 import com.mongodb.bulk.BulkWriteError;
+import com.mongodb.bulk.BulkWriteInsert;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
@@ -52,13 +64,14 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.SQLTimeoutException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -72,6 +85,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -164,117 +180,252 @@ class MongoPreparedStatementTests {
     }
 
     @Nested
-    class ExecuteBatchThrows {
+    class ExecuteMethodThrowsSqlExceptionTests {
+        private static final String DUMMY_EXCEPTION_MESSAGE = "Test message";
+        private static final ServerAddress DUMMY_SERVER_ADDRESS = new ServerAddress("localhost");
 
-        static final String BULK_WRITE_ERROR_MESSAGE = "Test message";
+        private static final BulkWriteError BULK_WRITE_ERROR =
+                new BulkWriteError(10, DUMMY_EXCEPTION_MESSAGE, new BsonDocument(), 0);
+        private static final BulkWriteResult BULK_WRITE_RESULT = BulkWriteResult.acknowledged(
+                1, 0, 2, 3, emptyList(), List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 2)))));
+        private static final MongoBulkWriteException MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS =
+                new MongoBulkWriteException(
+                        BULK_WRITE_RESULT, List.of(BULK_WRITE_ERROR), null, DUMMY_SERVER_ADDRESS, emptySet());
+        private static final MongoBulkWriteException MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS =
+                new MongoBulkWriteException(BULK_WRITE_RESULT, emptyList(), null, DUMMY_SERVER_ADDRESS, emptySet());
 
-        @Mock
-        BulkWriteResult bulkWriteResult;
+        private static final String MQL_ITEMS_AGGREGATE =
+                """
+                {
+                    aggregate: "items",
+                    pipeline: [
+                        { $match: { _id: 1 } },
+                        { $project: { _id: 0 } }
+                    ]
+                }
+                """;
+
+        private static final String MQL_ITEMS_INSERT =
+                """
+                {
+                    insert: "items",
+                    documents: [
+                        { _id: 1 }
+                    ]
+                }
+                """;
+        private static final String MQL_ITEMS_UPDATE =
+                """
+                {
+                    update: "items",
+                    updates: [
+                        { q: { _id: 1 }, u: { $set: { touched: true } }, multi: false }
+                    ]
+                }
+                """;
+        private static final String MQL_ITEMS_DELETE =
+                """
+                {
+                    delete: "items",
+                    deletes: [
+                        { q: { _id: 1 }, limit: 1 }
+                    ]
+                }
+                """;
 
         @BeforeEach
         void beforeEach() {
             doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
-            BulkWriteError bulkWriteError = new BulkWriteError(10, BULK_WRITE_ERROR_MESSAGE, new BsonDocument(), 0);
-            List<BulkWriteError> writeErrors = List.of(bulkWriteError);
+        }
 
-            MongoBulkWriteException mongoBulkWriteException = new MongoBulkWriteException(
-                    bulkWriteResult, writeErrors, null, new ServerAddress("localhost"), Set.of("label"));
+        private static Stream<Arguments> exceptions() {
+            return Stream.of(
+                    Arguments.of(new MongoException(DUMMY_EXCEPTION_MESSAGE)),
+                    Arguments.of(new RuntimeException(DUMMY_EXCEPTION_MESSAGE)));
+        }
 
+        @ParameterizedTest(name = "testExecuteQueryThrowsSqlException: exception={0}")
+        @MethodSource("exceptions")
+        void testExecuteQueryThrowsSqlExceptionWhenExceptionOccurs(Exception exception) throws SQLException {
+            doThrow(exception).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            assertExecuteThrowsSqlException(MQL_ITEMS_AGGREGATE, MongoPreparedStatement::executeQuery, exception);
+        }
+
+        @ParameterizedTest(name = "testExecuteUpdateThrowsSqlException: exception={0}")
+        @MethodSource("exceptions")
+        void testExecuteUpdateThrowsSqlExceptionWhenExceptionOccurs(Exception exception) throws SQLException {
+            doThrow(exception).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteThrowsSqlException(MQL_ITEMS_INSERT, MongoPreparedStatement::executeUpdate, exception);
+        }
+
+        @ParameterizedTest(name = "testExecuteUpdateThrowsSqlException: exception={0}")
+        @MethodSource("exceptions")
+        void testExecuteBatchThrowsSqlExceptionWhenExceptionOccurs(Exception exception) throws SQLException {
+            doThrow(exception).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteThrowsSqlException(
+                    MQL_ITEMS_INSERT,
+                    mongoPreparedStatement -> {
+                        mongoPreparedStatement.addBatch();
+                        mongoPreparedStatement.executeBatch();
+                    },
+                    exception);
+        }
+
+        private static Stream<Arguments> argumentsForExecuteUpdate() {
+            return Stream.of(
+                    Arguments.of(named("insert", MQL_ITEMS_INSERT), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
+                    Arguments.of(named("update", MQL_ITEMS_UPDATE), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
+                    Arguments.of(named("delete", MQL_ITEMS_DELETE), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
+                    Arguments.of(named("insert", MQL_ITEMS_INSERT), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS),
+                    Arguments.of(named("update", MQL_ITEMS_UPDATE), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS),
+                    Arguments.of(named("delete", MQL_ITEMS_DELETE), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS));
+        }
+
+        @ParameterizedTest(name = "testUpdateThrowsSqlException: commandName={0}, exception={1}")
+        @MethodSource("argumentsForExecuteUpdate")
+        void testExecuteUpdateThrowsSqlExceptionWhenMongoBulkWriteExceptionOccurs(
+                String mql, MongoBulkWriteException mongoBulkWriteException) throws SQLException {
             doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-        }
-
-        @Test
-        void testBatchInsert() throws SQLException {
-            doReturn(1).when(bulkWriteResult).getInsertedCount();
-
-            String mql =
-                    """
-                    {
-                        insert: "items",
-                        documents: [
-                            { _id: { $undefined: true } }
-                        ]
-                    }
-                    """;
-
             try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
-                mongoPreparedStatement.setInt(1, 1);
-                mongoPreparedStatement.addBatch();
-                mongoPreparedStatement.addBatch();
-
-                BatchUpdateException batchUpdateException =
-                        assertThrows(BatchUpdateException.class, mongoPreparedStatement::executeBatch);
-
-                int[] updateCounts = batchUpdateException.getUpdateCounts();
-                assertEquals(1, updateCounts.length);
-                assertTrue(batchUpdateException.getMessage().contains(BULK_WRITE_ERROR_MESSAGE));
-                assertEquals(0, batchUpdateException.getErrorCode());
-                assertUpdateCounts(updateCounts);
+                assertThatExceptionOfType(SQLException.class)
+                        .isThrownBy(mongoPreparedStatement::executeUpdate)
+                        .withCause(mongoBulkWriteException)
+                        .satisfies(sqlException -> {
+                            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+                            assertAll(
+                                    () -> assertNull(sqlException.getSQLState()),
+                                    () -> assertEquals(vendorCodeError, sqlException.getErrorCode()));
+                        });
             }
         }
 
-        @Test
-        void testBatchUpdate() throws SQLException {
-            doReturn(1).when(bulkWriteResult).getModifiedCount();
+        private static Stream<Arguments> argumentsForExecuteBatch() {
+            return Stream.of(
+                    Arguments.of(
+                            named("insert", MQL_ITEMS_INSERT),
+                            MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS,
+                            BULK_WRITE_RESULT.getInsertedCount()),
+                    Arguments.of(
+                            named("update", MQL_ITEMS_UPDATE),
+                            MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS,
+                            BULK_WRITE_RESULT.getModifiedCount()),
+                    Arguments.of(
+                            named("delete", MQL_ITEMS_DELETE),
+                            MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS,
+                            BULK_WRITE_RESULT.getDeletedCount()),
+                    Arguments.of(
+                            named("insert", MQL_ITEMS_INSERT),
+                            MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS,
+                            BULK_WRITE_RESULT.getInsertedCount()),
+                    Arguments.of(
+                            named("update", MQL_ITEMS_UPDATE),
+                            MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS,
+                            BULK_WRITE_RESULT.getModifiedCount()),
+                    Arguments.of(
+                            named("delete", MQL_ITEMS_DELETE),
+                            MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS,
+                            BULK_WRITE_RESULT.getDeletedCount()));
+        }
 
-            String mql =
-                    """
-                    {
-                        update: "items",
-                        updates: [
-                            { q: { _id: { $undefined: true } }, u: { $set: { touched: true } }, multi: false }
-                        ]
-                    }
-                    """;
-
+        @ParameterizedTest(name = "testBatchUpdateException: commandName={0}, exception={1}")
+        @MethodSource("argumentsForExecuteBatch")
+        void testExecuteBatchThrowsBatchUpdateExceptionWhenMongoBulkWriteExceptionOccurs(
+                String mql, MongoBulkWriteException mongoBulkWriteException, int expectedUpdateCountLength)
+                throws SQLException {
+            doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
             try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
-                mongoPreparedStatement.setInt(1, 1);
                 mongoPreparedStatement.addBatch();
-                mongoPreparedStatement.addBatch();
-
-                BatchUpdateException batchUpdateException =
-                        assertThrows(BatchUpdateException.class, mongoPreparedStatement::executeBatch);
-
-                int[] updateCounts = batchUpdateException.getUpdateCounts();
-                assertEquals(1, updateCounts.length);
-                assertTrue(batchUpdateException.getMessage().contains(BULK_WRITE_ERROR_MESSAGE));
-                assertEquals(0, batchUpdateException.getErrorCode());
-                assertUpdateCounts(updateCounts);
+                assertThatExceptionOfType(BatchUpdateException.class)
+                        .isThrownBy(mongoPreparedStatement::executeBatch)
+                        .withCause(mongoBulkWriteException)
+                        .satisfies(batchUpdateException -> {
+                            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+                            assertAll(
+                                    () -> assertUpdateCounts(
+                                            batchUpdateException.getUpdateCounts(), expectedUpdateCountLength),
+                                    () -> assertNull(batchUpdateException.getSQLState()),
+                                    () -> assertEquals(vendorCodeError, batchUpdateException.getErrorCode()));
+                        });
             }
         }
 
-        @Test
-        void testBatchDelete() throws SQLException {
-            doReturn(1).when(bulkWriteResult).getDeletedCount();
+        private static Stream<MongoException> timeoutExceptions() {
+            RuntimeException dummyCause = new RuntimeException();
+            return Stream.of(
+                    new MongoExecutionTimeoutException(DUMMY_EXCEPTION_MESSAGE),
+                    new MongoSocketReadTimeoutException(DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
+                    new MongoSocketWriteTimeoutException(DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
+                    new MongoTimeoutException(DUMMY_EXCEPTION_MESSAGE),
+                    new MongoOperationTimeoutException(DUMMY_EXCEPTION_MESSAGE));
+        }
 
-            String mql =
-                    """
-                    {
-                        delete: "items",
-                        deletes: [
-                            { q: { _id: { $undefined: true } }, limit: 1 }
-                        ]
-                    }
-                    """;
-
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
-                mongoPreparedStatement.setInt(1, 1);
-                mongoPreparedStatement.addBatch();
-                mongoPreparedStatement.addBatch();
-
-                BatchUpdateException batchUpdateException =
-                        assertThrows(BatchUpdateException.class, mongoPreparedStatement::executeBatch);
-
-                int[] updateCounts = batchUpdateException.getUpdateCounts();
-                assertEquals(1, updateCounts.length);
-                assertTrue(batchUpdateException.getMessage().contains(BULK_WRITE_ERROR_MESSAGE));
-                assertNull(batchUpdateException.getSQLState());
-                assertEquals(0, batchUpdateException.getErrorCode());
-                assertUpdateCounts(updateCounts);
+        @ParameterizedTest(
+                name =
+                        "SQLTimeoutException is thrown when timeout exception occurs in executeQuery. Parameters: timeoutException={0}")
+        @MethodSource("timeoutExceptions")
+        void testExecuteQuerySqlTimeoutException(MongoException timeoutException) throws SQLException {
+            doThrow(timeoutException).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_AGGREGATE)) {
+                assertThatException()
+                        .isThrownBy(mongoPreparedStatement::executeQuery)
+                        .isInstanceOf(SQLTimeoutException.class)
+                        .withCause(timeoutException);
             }
         }
 
-        private static void assertUpdateCounts(final int[] updateCounts) {
+        @ParameterizedTest(
+                name =
+                        "SQLTimeoutException is thrown when timeout exception occurs in executeUpdate. Parameters: timeoutException={0}")
+        @MethodSource("timeoutExceptions")
+        void testExecuteUpdateSqlTimeoutException(MongoException timeoutException) throws SQLException {
+            doThrow(timeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
+                assertThatException()
+                        .isThrownBy(mongoPreparedStatement::executeUpdate)
+                        .isInstanceOf(SQLTimeoutException.class)
+                        .withCause(timeoutException);
+            }
+        }
+
+        @ParameterizedTest(
+                name =
+                        "SQLTimeoutException is thrown when timeout exception occurs in executeBatch. Parameters: timeoutException={0}")
+        @MethodSource("timeoutExceptions")
+        void testExecuteBatchSqlTimeoutException(MongoException timeoutException) throws SQLException {
+            doThrow(timeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
+                mongoPreparedStatement.addBatch();
+                assertThatException()
+                        .isThrownBy(mongoPreparedStatement::executeBatch)
+                        .isInstanceOf(SQLTimeoutException.class)
+                        .withCause(timeoutException);
+            }
+        }
+
+        private void assertExecuteThrowsSqlException(
+                String mql, SqlConsumer<MongoPreparedStatement> executeConsumer, Exception expectedCause)
+                throws SQLException {
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+                assertThatExceptionOfType(SQLException.class)
+                        .isThrownBy(() -> executeConsumer.accept(mongoPreparedStatement))
+                        .withCause(expectedCause)
+                        .satisfies(sqlException -> {
+                            assertAll(
+                                    () -> assertNull(sqlException.getSQLState()),
+                                    () -> assertEquals(0, sqlException.getErrorCode()));
+                        });
+            }
+        }
+
+        private static Integer getVendorCodeError(final MongoBulkWriteException mongoBulkWriteException) {
+            return mongoBulkWriteException.getWriteErrors().stream()
+                    .map(BulkWriteError::getCode)
+                    .findFirst()
+                    .orElse(0);
+        }
+
+        private static void assertUpdateCounts(final int[] updateCounts, int expectedUpdateCountsLength) {
+            assertEquals(expectedUpdateCountsLength, updateCounts.length);
             for (int count : updateCounts) {
                 assertEquals(SUCCESS_NO_INFO, count);
             }
@@ -416,5 +567,9 @@ class MongoPreparedStatementTests {
     private static void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
+    }
+
+    interface SqlConsumer<T> {
+        void accept(T t) throws SQLException;
     }
 }

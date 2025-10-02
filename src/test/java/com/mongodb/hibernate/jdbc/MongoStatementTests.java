@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -31,6 +30,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
@@ -43,7 +43,6 @@ import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.function.BiConsumer;
 import org.bson.BsonDocument;
-import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,6 +56,9 @@ class MongoStatementTests {
 
     @Mock
     private MongoDatabase mongoDatabase;
+
+    @Mock
+    private MongoCollection<BsonDocument> mongoCollection;
 
     @Mock
     private ClientSession clientSession;
@@ -133,13 +135,13 @@ class MongoStatementTests {
                 }""";
 
         @Mock
-        MongoCollection<BsonDocument> mongoCollection;
-
-        @Mock
         AggregateIterable<BsonDocument> aggregateIterable;
 
         @Mock
         MongoCursor<BsonDocument> mongoCursor;
+
+        @Mock
+        BulkWriteResult bulkWriteResult;
 
         private ResultSet lastOpenResultSet;
 
@@ -161,9 +163,10 @@ class MongoStatementTests {
 
         @Test
         void testExecuteUpdate() throws SQLException {
-            doReturn(Document.parse("{n: 10}"))
-                    .when(mongoDatabase)
-                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            doReturn(10).when(bulkWriteResult).getModifiedCount();
+
             mongoStatement.executeUpdate(exampleUpdateMql);
             assertTrue(lastOpenResultSet.isClosed());
         }
@@ -171,12 +174,6 @@ class MongoStatementTests {
         @Test
         void testExecute() throws SQLException {
             assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.execute(exampleUpdateMql));
-            assertTrue(lastOpenResultSet.isClosed());
-        }
-
-        @Test
-        void testExecuteBatch() throws SQLException {
-            assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.executeBatch());
             assertTrue(lastOpenResultSet.isClosed());
         }
     }
@@ -227,9 +224,9 @@ class MongoStatementTests {
 
         @Test
         void testSQLExceptionThrownWhenDBAccessFailed() {
-
             var dbAccessException = new RuntimeException();
-            doThrow(dbAccessException).when(mongoDatabase).runCommand(same(clientSession), any(BsonDocument.class));
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doThrow(dbAccessException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
             String mql =
                     """
                     {
@@ -281,9 +278,6 @@ class MongoStatementTests {
                 () -> assertThrowsClosedException(mongoStatement::getResultSet),
                 () -> assertThrowsClosedException(mongoStatement::getMoreResults),
                 () -> assertThrowsClosedException(mongoStatement::getUpdateCount),
-                () -> assertThrowsClosedException(() -> mongoStatement.addBatch(exampleUpdateMql)),
-                () -> assertThrowsClosedException(mongoStatement::clearBatch),
-                () -> assertThrowsClosedException(mongoStatement::executeBatch),
                 () -> assertThrowsClosedException(mongoStatement::getConnection),
                 () -> assertThrowsClosedException(() -> mongoStatement.isWrapperFor(MongoStatement.class)));
     }
