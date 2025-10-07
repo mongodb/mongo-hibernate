@@ -16,6 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.assertions.Assertions.fail;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
+import static java.lang.Math.max;
+import static java.lang.String.format;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toCollection;
+
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
 import com.mongodb.MongoException;
@@ -35,10 +44,6 @@ import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
-import org.bson.BsonDocument;
-import org.bson.BsonValue;
-import org.jspecify.annotations.Nullable;
-
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -55,15 +60,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
-import static com.mongodb.assertions.Assertions.fail;
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
-import static java.lang.Math.max;
-import static java.lang.String.format;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toCollection;
+import org.bson.BsonDocument;
+import org.bson.BsonValue;
+import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
 
@@ -409,35 +408,27 @@ class MongoStatement implements StatementAdapter {
         };
     }
 
-    private static SQLException handleException(RuntimeException exception,
-                                                CommandType commandType,
-                                                ExecutionType executionType) {
+    private static SQLException handleException(
+            RuntimeException exception, CommandType commandType, ExecutionType executionType) {
         int errorCode = getErrorCode(exception);
         return switch (executionType) {
             case BATCH -> handleBatchException(exception, commandType, errorCode);
             case QUERY, UPDATE -> {
                 if (exception instanceof MongoException mongoException) {
                     Exception handledException = handleMongoException(mongoException, errorCode);
-                    yield toSqlException(
-                            errorCode,
-                            handledException);
+                    yield toSqlException(errorCode, handledException);
                 }
                 yield toSqlException(DEFAULT_ERROR_CODE, exception);
             }
         };
     }
 
-    private static SQLException handleBatchException(RuntimeException exception,
-                                                     CommandType commandType,
-                                                     int errorCode) {
+    private static SQLException handleBatchException(
+            RuntimeException exception, CommandType commandType, int errorCode) {
         if (exception instanceof MongoException mongo) {
             Exception cause = handleMongoException(mongo, errorCode);
             if (exception instanceof MongoBulkWriteException bulkWriteException) {
-                return createBatchUpdateException(
-                        cause,
-                        bulkWriteException.getWriteResult(),
-                        errorCode,
-                        commandType);
+                return createBatchUpdateException(cause, bulkWriteException.getWriteResult(), errorCode, commandType);
             }
             return toBatchUpdateException(errorCode, cause);
         }
@@ -465,14 +456,10 @@ class MongoStatement implements StatementAdapter {
         return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exception);
     }
 
-    private static Exception handleMongoException(final MongoException exceptionToHandle,
-                                                  final int errorCode) {
+    private static Exception handleMongoException(final MongoException exceptionToHandle, final int errorCode) {
         Exception exception;
         if (isTimeoutException(exceptionToHandle)) {
-            exception = new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT,
-                    null,
-                    errorCode,
-                    exceptionToHandle);
+            exception = new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
         } else {
             exception = handleByErrorCode(exceptionToHandle, errorCode);
         }
@@ -483,11 +470,8 @@ class MongoStatement implements StatementAdapter {
     }
 
     private static SQLException toBatchUpdateException(final int errorCode, final Exception exception) {
-        return withCause(new BatchUpdateException(
-                        EXCEPTION_MESSAGE_BATCH_FAILED,
-                        null,
-                        errorCode,
-                        EMPTY_BATCH_RESULT),
+        return withCause(
+                new BatchUpdateException(EXCEPTION_MESSAGE_BATCH_FAILED, null, errorCode, EMPTY_BATCH_RESULT),
                 exception);
     }
 
@@ -499,20 +483,14 @@ class MongoStatement implements StatementAdapter {
         return exception;
     }
 
-    private static Exception handleByErrorCode(final MongoException mongoException,
-                                               int errorCode) {
+    private static Exception handleByErrorCode(final MongoException mongoException, int errorCode) {
         ErrorCategory errorCategory = ErrorCategory.fromErrorCode(errorCode);
         return switch (errorCategory) {
-            case DUPLICATE_KEY -> new SQLIntegrityConstraintViolationException(
-                    EXCEPTION_MESSAGE_OPERATION_FAILED,
-                    null,
-                    errorCode,
-                    mongoException);
-            case EXECUTION_TIMEOUT -> new SQLTimeoutException(
-                    EXCEPTION_MESSAGE_TIMEOUT,
-                    null,
-                    errorCode,
-                    mongoException);
+            case DUPLICATE_KEY ->
+                new SQLIntegrityConstraintViolationException(
+                        EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, mongoException);
+            case EXECUTION_TIMEOUT ->
+                new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, mongoException);
             case UNCATEGORIZED -> mongoException;
         };
     }
@@ -525,25 +503,20 @@ class MongoStatement implements StatementAdapter {
     }
 
     private static BatchUpdateException createBatchUpdateException(
-            Exception cause,
-            BulkWriteResult bulkWriteResult,
-            int errorCode,
-            CommandType commandType) {
+            Exception cause, BulkWriteResult bulkWriteResult, int errorCode, CommandType commandType) {
         var updateCount = getUpdateCount(commandType, bulkWriteResult);
         var updateCounts = new int[updateCount];
         Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
-        return withCause(new BatchUpdateException(
-                        EXCEPTION_MESSAGE_BATCH_FAILED,
-                        null,
-                        errorCode,
-                        updateCounts),
-                cause);
+        return withCause(
+                new BatchUpdateException(EXCEPTION_MESSAGE_BATCH_FAILED, null, errorCode, updateCounts), cause);
     }
 
     private static int getErrorCode(final MongoBulkWriteException mongoBulkWriteException) {
         var writeErrors = mongoBulkWriteException.getWriteErrors();
         // Since we are executing an ordered bulk write, there will be at most one BulkWriteError.
-        return writeErrors.isEmpty() ? DEFAULT_ERROR_CODE : writeErrors.get(DEFAULT_ERROR_CODE).getCode();
+        return writeErrors.isEmpty()
+                ? DEFAULT_ERROR_CODE
+                : writeErrors.get(DEFAULT_ERROR_CODE).getCode();
     }
 
     enum CommandType {
