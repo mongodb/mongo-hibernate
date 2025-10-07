@@ -682,51 +682,53 @@ class MongoPreparedStatementIntegrationTests {
             });
         }
 
-       @ParameterizedTest(name = "test not supported update elements. Parameters: option={0}")
+        @ParameterizedTest(name = "test not supported update elements. Parameters: option={0}")
         @ValueSource(strings = {"hint", "collation", "arrayFilters", "sort", "upsert", "c"})
         void testNotSupportedUpdateElements(String unsupportedElement) {
             doWorkAwareOfAutoCommit(connection -> {
-                try (PreparedStatement pstm = connection.prepareStatement(
-                        format(
-                                """
-                                    {
-                                    update: "books",
-                                    updates: [
-                                        {
-                                            q: { author: { $eq: "Leo Tolstoy" } },
-                                            u: { $set: { outOfStock: true } },
-                                            multi: true,
-                                            %s: { _id: 1 }
-                                        }
-                                    ]
-                                }""", unsupportedElement))) {
+                try (PreparedStatement pstm = connection.prepareStatement(format(
+                        """
+                            {
+                            update: "books",
+                            updates: [
+                                {
+                                    q: { author: { $eq: "Leo Tolstoy" } },
+                                    u: { $set: { outOfStock: true } },
+                                    multi: true,
+                                    %s: { _id: 1 }
+                                }
+                            ]
+                        }""",
+                        unsupportedElement))) {
                     SQLFeatureNotSupportedException exception =
                             assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage()).isEqualTo(format("Unsupported elements in update command: [%s]", unsupportedElement));
+                    assertThat(exception.getMessage())
+                            .isEqualTo(format("Unsupported elements in update command: [%s]", unsupportedElement));
                 }
             });
         }
 
-       @ParameterizedTest(name = "test not supported delete elements. Parameters: option={0}")
+        @ParameterizedTest(name = "test not supported delete elements. Parameters: option={0}")
         @ValueSource(strings = {"hint", "collation"})
         void testNotSupportedDeleteElements(String unsupportedElement) {
             doWorkAwareOfAutoCommit(connection -> {
-                try (PreparedStatement pstm = connection.prepareStatement(
-                        format(
-                                """
-                                    {
-                                    delete: "books",
-                                    deletes: [
-                                        {
-                                            q: { author: { $eq: "Leo Tolstoy" } },
-                                            limit: 0,
-                                            %s: { _id: 1 }
-                                        }
-                                    ]
-                                }""", unsupportedElement))) {
+                try (PreparedStatement pstm = connection.prepareStatement(format(
+                        """
+                            {
+                            delete: "books",
+                            deletes: [
+                                {
+                                    q: { author: { $eq: "Leo Tolstoy" } },
+                                    limit: 0,
+                                    %s: { _id: 1 }
+                                }
+                            ]
+                        }""",
+                        unsupportedElement))) {
                     SQLFeatureNotSupportedException exception =
                             assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage()).isEqualTo(format("Unsupported elements in delete command: [%s]", unsupportedElement));
+                    assertThat(exception.getMessage())
+                            .isEqualTo(format("Unsupported elements in delete command: [%s]", unsupportedElement));
                 }
             });
         }

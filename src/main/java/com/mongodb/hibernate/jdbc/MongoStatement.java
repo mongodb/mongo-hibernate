@@ -425,8 +425,8 @@ class MongoStatement implements StatementAdapter {
 
     private static SQLException handleBatchException(
             RuntimeException exception, CommandType commandType, int errorCode) {
-        if (exception instanceof MongoException mongo) {
-            Exception cause = handleMongoException(mongo, errorCode);
+        if (exception instanceof MongoException mongoException) {
+            Exception cause = handleMongoException(mongoException, errorCode);
             if (exception instanceof MongoBulkWriteException bulkWriteException) {
                 return createBatchUpdateException(cause, bulkWriteException.getWriteResult(), errorCode, commandType);
             }
@@ -436,8 +436,8 @@ class MongoStatement implements StatementAdapter {
     }
 
     private static int getErrorCode(final RuntimeException runtimeException) {
-        if (runtimeException instanceof MongoBulkWriteException bulk) {
-            return getErrorCode(bulk);
+        if (runtimeException instanceof MongoBulkWriteException mongoBulkWriteException) {
+            return getErrorCode(mongoBulkWriteException);
         }
         if (runtimeException instanceof MongoException mongoException) {
             return max(DEFAULT_ERROR_CODE, mongoException.getCode());
@@ -461,7 +461,7 @@ class MongoStatement implements StatementAdapter {
         if (isTimeoutException(exceptionToHandle)) {
             exception = new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
         } else {
-            exception = handleByErrorCode(exceptionToHandle, errorCode);
+            exception = handleByErrorCode(errorCode, exceptionToHandle);
         }
         if (exceptionToHandle.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)) {
             return toSqlTransientException(errorCode, exception);
@@ -483,15 +483,14 @@ class MongoStatement implements StatementAdapter {
         return exception;
     }
 
-    private static Exception handleByErrorCode(final MongoException mongoException, int errorCode) {
+    private static Exception handleByErrorCode(int errorCode, final MongoException cause) {
         ErrorCategory errorCategory = ErrorCategory.fromErrorCode(errorCode);
         return switch (errorCategory) {
             case DUPLICATE_KEY ->
                 new SQLIntegrityConstraintViolationException(
-                        EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, mongoException);
-            case EXECUTION_TIMEOUT ->
-                new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, mongoException);
-            case UNCATEGORIZED -> mongoException;
+                        EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, cause);
+            case EXECUTION_TIMEOUT -> new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, cause);
+            case UNCATEGORIZED -> cause;
         };
     }
 
