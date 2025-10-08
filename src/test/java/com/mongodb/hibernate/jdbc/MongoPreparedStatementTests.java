@@ -708,8 +708,4 @@ class MongoPreparedStatementTests {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
     }
-
-    interface SqlConsumer<T> {
-        void accept(T t) throws SQLException;
-    }
 }
