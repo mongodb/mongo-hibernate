@@ -66,7 +66,6 @@ import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLTimeoutException;
-import java.sql.SQLTransientException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
@@ -253,11 +252,6 @@ class MongoPreparedStatementTests {
                     );
         }
 
-        private static Stream<MongoException> transientTimeoutExceptions() {
-            return timeoutExceptions()
-                    .peek(mongoException -> mongoException.addLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL));
-        }
-
         private static Stream<MongoException> constraintViolationExceptions() {
             return Stream.of(
                     new MongoException(11000, DUMMY_EXCEPTION_MESSAGE),
@@ -268,13 +262,6 @@ class MongoPreparedStatementTests {
         private static Stream<MongoException> genericMongoExceptions() {
             return Stream.of(
                     new MongoException(-3, DUMMY_EXCEPTION_MESSAGE), new MongoException(5000, DUMMY_EXCEPTION_MESSAGE));
-        }
-
-        private static Stream<MongoException> genericTransientMongoExceptions() {
-            return Stream.of(
-                            new MongoException(-3, DUMMY_EXCEPTION_MESSAGE),
-                            new MongoException(5000, DUMMY_EXCEPTION_MESSAGE))
-                    .peek(mongoException -> mongoException.addLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL));
         }
 
         @ParameterizedTest(name = "test executeBatch MongoException. Parameters: Parameters: exception: {0}")
@@ -308,43 +295,6 @@ class MongoPreparedStatementTests {
                     sqlException -> assertGenericMongoException(mongoException, sqlException));
         }
 
-        @ParameterizedTest(name = "test executeBatch transient MongoException. Parameters: Parameters: exception: {0}")
-        @MethodSource("genericTransientMongoExceptions")
-        void testExecuteBatchTransientMongoException(MongoException mongoException) throws SQLException {
-            int expectedErrorCode = max(0, mongoException.getCode());
-            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-
-            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
-                assertAll(
-                        () -> {
-                            SQLTransientException sqlTransientException =
-                                    assertInstanceOf(SQLTransientException.class, batchUpdateException.getCause());
-                            assertEquals(mongoException, sqlTransientException.getCause());
-                        },
-                        () -> assertEquals(expectedErrorCode, batchUpdateException.getErrorCode()),
-                        () -> assertUpdateCounts(batchUpdateException.getUpdateCounts(), 0),
-                        () -> assertNull(batchUpdateException.getSQLState()));
-            });
-        }
-
-        @ParameterizedTest(name = "test executeUpdate transient MongoException. Parameters: Parameters: exception: {0}")
-        @MethodSource("genericTransientMongoExceptions")
-        void testExecuteUpdateTransientMongoException(MongoException mongoException) throws SQLException {
-            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            assertExecuteUpdateThrowsSqlException(sqlException -> {
-                assertGenericTransientMongoException(mongoException, sqlException);
-            });
-        }
-
-        @ParameterizedTest(name = "test executeQuery transient MongoException. Parameters: Parameters: exception: {0}")
-        @MethodSource("genericTransientMongoExceptions")
-        void testExecuteQueryTransientMongoException(MongoException mongoException) throws SQLException {
-            doThrow(mongoException).when(mongoCollection).aggregate(eq(clientSession), anyList());
-            assertExecuteQueryThrowsSqlException(sqlException -> {
-                assertGenericTransientMongoException(mongoException, sqlException);
-            });
-        }
-
         @ParameterizedTest(name = "test executeUpdate timeout exception. Parameters: Parameters: exception: {0}")
         @MethodSource("timeoutExceptions")
         void testExecuteUpdateTimeoutException(MongoException mongoTimeoutException) throws SQLException {
@@ -359,24 +309,6 @@ class MongoPreparedStatementTests {
             doThrow(mongoTimeoutException).when(mongoCollection).aggregate(eq(clientSession), anyList());
             assertExecuteQueryThrowsSqlException(
                     sqlException -> assertTimeoutException(mongoTimeoutException, sqlException));
-        }
-
-        @ParameterizedTest(name = "test executeUpdate transient timeout exception. Parameters: exception: {0}")
-        @MethodSource("transientTimeoutExceptions")
-        void testExecuteUpdateTransientTimeoutException(MongoException mongoTransientTimeoutException)
-                throws SQLException {
-            doThrow(mongoTransientTimeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            assertExecuteUpdateThrowsSqlException(
-                    sqlException -> assertTransientTimeoutException(mongoTransientTimeoutException, sqlException));
-        }
-
-        @ParameterizedTest(name = "test executeQuery transient timeout exception. Parameters: exception: {0}")
-        @MethodSource("transientTimeoutExceptions")
-        void testExecuteQueryTransientTimeoutException(MongoException mongoTransientTimeoutException)
-                throws SQLException {
-            doThrow(mongoTransientTimeoutException).when(mongoCollection).aggregate(eq(clientSession), anyList());
-            assertExecuteQueryThrowsSqlException(
-                    sqlException -> assertTransientTimeoutException(mongoTransientTimeoutException, sqlException));
         }
 
         @ParameterizedTest(name = "test executeUpdate constraint violation. Parameters: exception: {0}")
@@ -425,28 +357,6 @@ class MongoPreparedStatementTests {
                         () -> {
                             SQLTimeoutException sqlTimeoutException =
                                     assertInstanceOf(SQLTimeoutException.class, batchUpdateException.getCause());
-                            assertEquals(expectedErrorCode, sqlTimeoutException.getErrorCode());
-                            assertEquals(mongoTimeoutException, sqlTimeoutException.getCause());
-                        },
-                        () -> assertUpdateCounts(batchUpdateException.getUpdateCounts(), 0),
-                        () -> assertNull(batchUpdateException.getSQLState()));
-            });
-        }
-
-        @ParameterizedTest(name = "test executeBatch transient timeout exception. Parameters: exception: {0}")
-        @MethodSource("transientTimeoutExceptions")
-        void testExecuteBatchTransientTimeoutException(MongoException mongoTimeoutException) throws SQLException {
-            doThrow(mongoTimeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
-                int expectedErrorCode = max(0, mongoTimeoutException.getCode());
-                assertAll(
-                        () -> assertEquals(expectedErrorCode, batchUpdateException.getErrorCode()),
-                        () -> {
-                            SQLTransientException sqlTransientException =
-                                    assertInstanceOf(SQLTransientException.class, batchUpdateException.getCause());
-                            assertEquals(expectedErrorCode, sqlTransientException.getErrorCode());
-                            SQLTimeoutException sqlTimeoutException =
-                                    assertInstanceOf(SQLTimeoutException.class, sqlTransientException.getCause());
                             assertEquals(expectedErrorCode, sqlTimeoutException.getErrorCode());
                             assertEquals(mongoTimeoutException, sqlTimeoutException.getCause());
                         },
@@ -592,40 +502,6 @@ class MongoPreparedStatementTests {
                     () -> assertThat((Throwable) sqlException).isExactlyInstanceOf(SQLException.class),
                     () -> assertEquals(cause, sqlException.getCause()),
                     () -> assertEquals(0, sqlException.getErrorCode()),
-                    () -> assertNull(sqlException.getSQLState()));
-        }
-
-        private static void assertTransientTimeoutException(
-                final MongoException mongoTransientTimeoutException, final SQLException sqlException) {
-            int expectedErrorCode = max(0, mongoTransientTimeoutException.getCode());
-            assertAll(
-                    () -> assertEquals(expectedErrorCode, sqlException.getErrorCode()),
-                    () -> {
-                        SQLTransientException sqlTransientException =
-                                assertInstanceOf(SQLTransientException.class, sqlException);
-                        assertEquals(expectedErrorCode, sqlTransientException.getErrorCode());
-                        assertNull(sqlTransientException.getSQLState());
-                        SQLTimeoutException sqlTimeoutException =
-                                assertInstanceOf(SQLTimeoutException.class, sqlTransientException.getCause());
-                        assertEquals(expectedErrorCode, sqlTimeoutException.getErrorCode());
-                        assertNull(sqlTimeoutException.getSQLState());
-                        assertEquals(mongoTransientTimeoutException, sqlTimeoutException.getCause());
-                    },
-                    () -> assertNull(sqlException.getSQLState()));
-        }
-
-        private static void assertGenericTransientMongoException(
-                final MongoException mongoException, final SQLException sqlException) {
-            int expectedErrorCode = max(0, mongoException.getCode());
-            assertAll(
-                    () -> assertEquals(expectedErrorCode, sqlException.getErrorCode()),
-                    () -> {
-                        SQLTransientException sqlTransientException =
-                                assertInstanceOf(SQLTransientException.class, sqlException);
-                        assertEquals(expectedErrorCode, sqlTransientException.getErrorCode());
-                        assertNull(sqlTransientException.getSQLState());
-                        assertEquals(mongoException, sqlTransientException.getCause());
-                    },
                     () -> assertNull(sqlException.getSQLState()));
         }
 

@@ -52,7 +52,6 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLTimeoutException;
-import java.sql.SQLTransientException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -445,10 +444,6 @@ class MongoStatement implements StatementAdapter {
         return DEFAULT_ERROR_CODE;
     }
 
-    private static SQLTransientException toSqlTransientException(final int errorCode, Exception cause) {
-        return withCause(new SQLTransientException("Transient exception occurred", null, errorCode), cause);
-    }
-
     private static SQLException toSqlException(final int errorCode, final Exception exception) {
         if (exception instanceof SQLException sqlException) {
             return sqlException;
@@ -457,16 +452,10 @@ class MongoStatement implements StatementAdapter {
     }
 
     private static Exception handleMongoException(final MongoException exceptionToHandle, final int errorCode) {
-        Exception exception;
         if (isTimeoutException(exceptionToHandle)) {
-            exception = new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
-        } else {
-            exception = handleByErrorCode(errorCode, exceptionToHandle);
+            return new SQLTimeoutException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
         }
-        if (exceptionToHandle.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)) {
-            return toSqlTransientException(errorCode, exception);
-        }
-        return exception;
+        return handleByErrorCode(errorCode, exceptionToHandle);
     }
 
     private static SQLException toBatchUpdateException(final int errorCode, final Exception exception) {
@@ -475,12 +464,12 @@ class MongoStatement implements StatementAdapter {
                 exception);
     }
 
-    private static <T extends Exception> T withCause(T exception, final Exception cause) {
-        exception.initCause(cause);
-        if (exception instanceof SQLException sqlException) {
-            sqlException.setNextException(sqlException);
+    private static <T extends SQLException> T withCause(T sqlException, final Exception cause) {
+        sqlException.initCause(cause);
+        if (cause instanceof SQLException sqlExceptionCause) {
+            sqlException.setNextException(sqlExceptionCause);
         }
-        return exception;
+        return sqlException;
     }
 
     private static Exception handleByErrorCode(int errorCode, final MongoException cause) {
