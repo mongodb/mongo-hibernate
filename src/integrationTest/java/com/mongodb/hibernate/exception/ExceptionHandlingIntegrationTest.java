@@ -46,8 +46,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(MongoExtension.class)
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
-public class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrationTest {
-
+class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrationTest {
     private static final String COLLECTION_NAME = "items";
 
     @InjectMongoCollection(COLLECTION_NAME)

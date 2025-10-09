@@ -24,7 +24,7 @@ import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.junit.jupiter.api.AfterEach;
 
-public class AbstractExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
+class AbstractExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
     private static final String FAIL_COMMAND_NAME = "failCommand";
 
     @InjectMongoClient
