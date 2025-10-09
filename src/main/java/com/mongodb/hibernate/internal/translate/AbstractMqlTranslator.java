@@ -101,6 +101,7 @@ import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
+import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
@@ -130,6 +131,7 @@ import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.ExtractUnit;
 import org.hibernate.sql.ast.tree.expression.Format;
+import org.hibernate.sql.ast.tree.expression.FunctionExpression;
 import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.expression.Literal;
@@ -169,6 +171,7 @@ import org.hibernate.sql.ast.tree.predicate.Junction;
 import org.hibernate.sql.ast.tree.predicate.LikePredicate;
 import org.hibernate.sql.ast.tree.predicate.NegatedPredicate;
 import org.hibernate.sql.ast.tree.predicate.NullnessPredicate;
+import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.predicate.SelfRenderingPredicate;
 import org.hibernate.sql.ast.tree.predicate.ThruthnessPredicate;
 import org.hibernate.sql.ast.tree.select.QueryGroup;
@@ -694,7 +697,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             var fieldPath = acceptAndYield(fieldReferences.get(0), FIELD_PATH);
             var assignedValue = assignment.getAssignedValue();
             if (!isValueExpression(assignedValue)) {
-                throw new FeatureNotSupportedException();
+                throw new FeatureNotSupportedException(
+                        getUnsupportedUpdateValueAssignmentMessage(fieldPath, assignedValue));
             }
             var fieldValue = acceptAndYield(assignedValue, VALUE);
             fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
@@ -1203,6 +1207,21 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         @Override
         public void appendSql(String fragment) {
             throw new FeatureNotSupportedException();
+        }
+    }
+
+    private String getUnsupportedUpdateValueAssignmentMessage(final String fieldPath, Expression assignedValue) {
+        if (assignedValue instanceof FunctionExpression ex) {
+            return "Function expression [%s] as update assignment value for field path [%s] are not supported"
+                    .formatted(ex.getFunctionName(), fieldPath);
+        } else if (assignedValue instanceof Predicate) {
+            return "Predicate expressions as update assignment value for field path [%s] are not supported"
+                    .formatted(fieldPath);
+        } else if (assignedValue instanceof SqmPathInterpretation) {
+            return "Path expressions as update assignment value for field path [%s] are not supported"
+                    .formatted(fieldPath);
+        } else {
+            return "Update assignment value for field path [%s] is not supported".formatted(fieldPath);
         }
     }
 }
