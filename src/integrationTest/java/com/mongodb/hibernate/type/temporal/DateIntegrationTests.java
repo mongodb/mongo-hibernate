@@ -27,6 +27,7 @@ class DateIntegrationTests {
     void unsupported() {
         assertAll(
                 () -> assertNotSupported(new UnsupportedItems.ItemWithId<Date>() {}.getClass()),
+                () -> assertNotSupported(new UnsupportedItems.ItemWithFlattenedEmbeddableId<Date>() {}.getClass()),
                 () -> assertNotSupported(new UnsupportedItems.ItemWithBasicPersistentAttribute<Date>() {}.getClass()),
                 () -> assertNotSupported(new UnsupportedItems.ItemWithArrayPersistentAttribute<Date>() {}.getClass()),
                 () -> assertNotSupported(
@@ -47,17 +48,22 @@ class DateIntegrationTests {
                         new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
                                 Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithBasicPersistentAttribute<Date>() {}.getClass()),
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
+                                Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithArrayPersistentAttribute<Date>() {}.getClass()),
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
+                                Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithCollectionPersistentAttribute<Date>() {}.getClass()),
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
+                                Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithBasicPersistentAttribute<Date>() {}.getClass()),
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
+                                Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithArrayPersistentAttribute<Date>() {}.getClass()),
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
+                                Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithCollectionPersistentAttribute<
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 Date>() {}.getClass()));
     }
 }

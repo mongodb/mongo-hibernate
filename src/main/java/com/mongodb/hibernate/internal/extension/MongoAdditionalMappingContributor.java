@@ -90,8 +90,8 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         });
     }
 
-    private static void checkPropertyTypes(final PersistentClass persistentClass) {
-        forbidTemporalTypes(persistentClass, persistentClass.getIdentifierProperty());
+    private static void checkPropertyTypes(PersistentClass persistentClass) {
+        forbidTemporalTypes(persistentClass, persistentClass.getIdentifierProperty(), new StringJoiner("."));
         persistentClass.getProperties().forEach(property -> {
             forbidTemporalTypes(persistentClass, property, new StringJoiner("."));
         });
@@ -159,27 +159,6 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                             : "%s: the persistent attribute [%s] has type [%s] that is not supported",
                     persistentClass,
                     propertyPath,
-                    classToCheck.getTypeName()));
-        }
-    }
-
-    private static void forbidTemporalTypes(PersistentClass persistentClass, Property property) {
-        var persistentAttributeType = property.getType();
-        var pluralPersistentAttribute = false;
-        Class<?> classToCheck;
-        if (persistentAttributeType instanceof BasicPluralType<?, ?> pluralPersistentAttributeType) {
-            pluralPersistentAttribute = true;
-            classToCheck = pluralPersistentAttributeType.getElementType().getJavaType();
-        } else {
-            classToCheck = persistentAttributeType.getReturnedClass();
-        }
-        if (UNSUPPORTED_TEMPORAL_TYPES.contains(classToCheck)) {
-            throw new FeatureNotSupportedException(format(
-                    pluralPersistentAttribute
-                            ? "%s: the plural persistent attribute [%s] has element type [%s] that is not supported"
-                            : "%s: the persistent attribute [%s] has type [%s] that is not supported",
-                    persistentClass,
-                    property.getName(),
                     classToCheck.getTypeName()));
         }
     }

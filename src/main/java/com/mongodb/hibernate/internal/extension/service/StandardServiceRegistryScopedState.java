@@ -90,16 +90,6 @@ public final class StandardServiceRegistryScopedState implements Service {
             return mongoConfigurationBuilder.build();
         }
 
-        private static void forbidTemporalConfiguration(final Map<String, Object> configurationValues) {
-            var forbiddenConfigurationPropertyNames = Set.of(JAVA_TIME_USE_DIRECT_JDBC, PREFERRED_INSTANT_JDBC_TYPE);
-            for (var forbiddenConfigurationPropertyName : forbiddenConfigurationPropertyNames) {
-                if (configurationValues.containsKey(forbiddenConfigurationPropertyName)) {
-                    throw new HibernateException(
-                            format("Configuration property [%s] is not supported", JAVA_TIME_USE_DIRECT_JDBC));
-                }
-            }
-        }
-
         private @Nullable MongoConfigurationContributor getMongoConfigurationContributor(
                 ServiceRegistryImplementor serviceRegistry) {
             MongoConfigurationContributor result = null;
@@ -112,6 +102,16 @@ public final class StandardServiceRegistryScopedState implements Service {
                 // TODO-HIBERNATE-43 `LOGGER.debug("{} is not detected", ..., e)`
             }
             return result;
+        }
+
+        private static void forbidTemporalConfiguration(Map<String, Object> configurationValues) {
+            var forbiddenConfigurationPropertyNames = Set.of(JAVA_TIME_USE_DIRECT_JDBC, PREFERRED_INSTANT_JDBC_TYPE);
+            for (var forbiddenConfigurationPropertyName : forbiddenConfigurationPropertyNames) {
+                if (configurationValues.containsKey(forbiddenConfigurationPropertyName)) {
+                    throw new HibernateException(
+                            format("Configuration property [%s] is not supported", JAVA_TIME_USE_DIRECT_JDBC));
+                }
+            }
         }
     }
 }

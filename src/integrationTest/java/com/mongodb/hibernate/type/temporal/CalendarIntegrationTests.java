@@ -34,6 +34,7 @@ class CalendarIntegrationTests {
     void unsupported() {
         assertAll(
                 () -> assertNotSupported(new UnsupportedItems.ItemWithId<Calendar>() {}.getClass()),
+                () -> assertNotSupported(new UnsupportedItems.ItemWithFlattenedEmbeddableId<Calendar>() {}.getClass()),
                 () -> assertNotSupported(
                         new UnsupportedItems.ItemWithBasicPersistentAttribute<Calendar>() {}.getClass()),
                 () -> assertNotSupported(
@@ -57,19 +58,22 @@ class CalendarIntegrationTests {
                         new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
                                 Calendar>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithBasicPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithArrayPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithCollectionPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithBasicPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
                                 Calendar>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithArrayPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
                                 Calendar>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithCollectionPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
+                                Calendar>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
+                                Calendar>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
+                                Calendar>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 Calendar>() {}.getClass()));
     }
 
@@ -115,22 +119,25 @@ class CalendarIntegrationTests {
             @Id int id, EmbeddableNestedWithCollectionPersistentAttribute v) {}
 
     @Entity
-    record ItemWithStructWithBasicPersistentAttribute(@Id int id, StructWithBasicPersistentAttribute v) {}
+    record ItemWithAggregateEmbeddableWithBasicPersistentAttribute(@Id int id, StructWithBasicPersistentAttribute v) {}
 
     @Entity
-    record ItemWithStructWithArrayPersistentAttribute(@Id int id, StructWithArrayPersistentAttribute v) {}
+    record ItemWithAggregateEmbeddableWithArrayPersistentAttribute(@Id int id, StructWithArrayPersistentAttribute v) {}
 
     @Entity
-    record ItemWithStructWithCollectionPersistentAttribute(@Id int id, StructWithCollectionPersistentAttribute v) {}
+    record ItemWithAggregateEmbeddableWithCollectionPersistentAttribute(
+            @Id int id, StructWithCollectionPersistentAttribute v) {}
 
     @Entity
-    record ItemWithNestedStructWithBasicPersistentAttribute(@Id int id, StructNestedWithBasicPersistentAttribute v) {}
+    record ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute(
+            @Id int id, StructNestedWithBasicPersistentAttribute v) {}
 
     @Entity
-    record ItemWithNestedStructWithArrayPersistentAttribute(@Id int id, StructNestedWithArrayPersistentAttribute v) {}
+    record ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute(
+            @Id int id, StructNestedWithArrayPersistentAttribute v) {}
 
     @Entity
-    record ItemWithNestedStructWithCollectionPersistentAttribute(
+    record ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute(
             @Id int id, StructNestedCollectionPersistenceAttribute v) {}
 
     @Embeddable

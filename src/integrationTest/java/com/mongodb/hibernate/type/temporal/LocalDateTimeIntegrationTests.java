@@ -28,6 +28,8 @@ class LocalDateTimeIntegrationTests {
         assertAll(
                 () -> assertNotSupported(new UnsupportedItems.ItemWithId<LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithFlattenedEmbeddableId<LocalDateTime>() {}.getClass()),
+                () -> assertNotSupported(
                         new UnsupportedItems.ItemWithBasicPersistentAttribute<LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
                         new UnsupportedItems.ItemWithArrayPersistentAttribute<LocalDateTime>() {}.getClass()),
@@ -52,20 +54,22 @@ class LocalDateTimeIntegrationTests {
                         new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
                                 LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithBasicPersistentAttribute<LocalDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithArrayPersistentAttribute<LocalDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithCollectionPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
                                 LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithBasicPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
                                 LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithArrayPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithCollectionPersistentAttribute<
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
+                                LocalDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
+                                LocalDateTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalDateTime>() {}.getClass()));
     }
 }

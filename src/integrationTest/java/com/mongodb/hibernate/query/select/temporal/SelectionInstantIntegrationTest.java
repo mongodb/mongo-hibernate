@@ -155,7 +155,7 @@ class SelectionInstantIntegrationTest
                 Arguments.of(getTestItems(3, 2, 1), Item.class), Arguments.of(getTestItems(3, 2, 1), Item.class));
     }
 
-    @Entity
+    @Entity(name = "Item")
     @Table(name = COLLECTION_NAME)
     static class Item {
         @Id

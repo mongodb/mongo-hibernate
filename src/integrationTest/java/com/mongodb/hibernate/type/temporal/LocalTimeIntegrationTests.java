@@ -27,6 +27,7 @@ class LocalTimeIntegrationTests {
     void unsupported() {
         assertAll(
                 () -> assertNotSupported(new UnsupportedItems.ItemWithId<LocalTime>() {}.getClass()),
+                () -> assertNotSupported(new UnsupportedItems.ItemWithFlattenedEmbeddableId<LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
                         new UnsupportedItems.ItemWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
@@ -50,20 +51,22 @@ class LocalTimeIntegrationTests {
                         new UnsupportedItems.ItemWithNestedEmbeddableWithCollectionPersistentAttribute<
                                 LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithStructWithCollectionPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithBasicPersistentAttribute<
                                 LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithBasicPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithArrayPersistentAttribute<
                                 LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithArrayPersistentAttribute<
+                        new UnsupportedItems.ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new UnsupportedItems.ItemWithNestedStructWithCollectionPersistentAttribute<
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
+                                LocalTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
+                                LocalTime>() {}.getClass()),
+                () -> assertNotSupported(
+                        new UnsupportedItems.ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalTime>() {}.getClass()));
     }
 }

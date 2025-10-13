@@ -360,7 +360,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
             assertThrows(IdWithDollar.class, '$');
         }
 
-        private static void assertThrows(Class<?> annotatedClass, final char unsupportedCharacter) {
+        private static void assertThrows(Class<?> annotatedClass, char unsupportedCharacter) {
             assertThatThrownBy(() -> new MetadataSources()
                             .addAnnotatedClass(annotatedClass)
                             .buildMetadata())
