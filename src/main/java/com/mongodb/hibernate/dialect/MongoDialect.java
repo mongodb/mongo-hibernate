@@ -43,9 +43,16 @@ import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.sql.ast.spi.SqlAppender;
+import org.hibernate.sql.model.MutationOperation;
+import org.hibernate.sql.model.ValuesAnalysis;
+import org.hibernate.sql.model.internal.OptionalTableUpdate;
+import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
@@ -263,7 +270,19 @@ public class MongoDialect extends Dialect {
     }
 
     @Override
-    public void appendDatetimeFormat(SqlAppender appender, String format) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
+    public MutationOperation createOptionalTableUpdateOperation(
+            EntityMutationTarget mutationTarget,
+            OptionalTableUpdate optionalTableUpdate,
+            SessionFactoryImplementor factory) {
+        return new OptionalTableUpdateOperation(mutationTarget, optionalTableUpdate, factory) {
+            @Override
+            public void performMutation(
+                    JdbcValueBindings jdbcValueBindings,
+                    ValuesAnalysis valuesAnalysis,
+                    SharedSessionContractImplementor session) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
+            }
+        };
     }
 }
