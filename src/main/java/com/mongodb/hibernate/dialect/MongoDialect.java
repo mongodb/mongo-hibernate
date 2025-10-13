@@ -20,6 +20,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.Sealed;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
@@ -30,25 +31,24 @@ import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Calendar;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.TimeZoneSupport;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
-import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.hibernate.sql.ast.spi.SqlAppender;
-import org.hibernate.sql.model.MutationOperation;
-import org.hibernate.sql.model.ValuesAnalysis;
-import org.hibernate.sql.model.internal.OptionalTableUpdate;
-import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
+import org.hibernate.type.SqlTypes;
+import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
+import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -64,21 +64,12 @@ import org.jspecify.annotations.Nullable;
  * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-exp-functions">HQL
  * functions</a> see {@link #initializeFunctionRegistry(FunctionContributions)}.
  */
-public final class MongoDialect extends Dialect {
+@Sealed
+public class MongoDialect extends Dialect {
     private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
-    }
-
-    @Override
-    public TimeZoneSupport getTimeZoneSupport() {
-        return TimeZoneSupport.NONE;
-    }
-
-    @Override
-    public void appendDatetimeFormat(final SqlAppender appender, final String format) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
     }
 
     /**
@@ -126,6 +117,7 @@ public final class MongoDialect extends Dialect {
         contributeObjectIdType(typeContributions);
         typeContributions.contributeJdbcTypeConstructor(MongoArrayJdbcType.Constructor.INSTANCE);
         typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
+        contributeInstantType(typeContributions);
     }
 
     private void contributeObjectIdType(TypeContributions typeContributions) {
@@ -141,6 +133,17 @@ public final class MongoDialect extends Dialect {
                                 "unused from %s.contributeObjectIdType for SQL type code [%d]",
                                 MongoDialect.class.getSimpleName(), objectIdTypeCode),
                         this));
+    }
+
+    /**
+     * This makes Hibernate ORM use {@link PreparedStatement#setObject(int, Object,
+     * int)}/{@link ResultSet#getObject(int, Class)} instead of {@link PreparedStatement#setTimestamp(int, Timestamp,
+     * Calendar)}/{@link ResultSet#getTimestamp(int, Calendar)} when storing/reading values of the {@link Instant} type,
+     * without the need to rely on {@link AvailableSettings#JAVA_TIME_USE_DIRECT_JDBC}.
+     */
+    private static void contributeInstantType(TypeContributions typeContributions) {
+        var jdbcTypeRegistry = typeContributions.getTypeConfiguration().getJdbcTypeRegistry();
+        jdbcTypeRegistry.addDescriptor(SqlTypes.TIMESTAMP_UTC, TimestampUtcAsInstantJdbcType.INSTANCE);
     }
 
     @Override
@@ -260,19 +263,7 @@ public final class MongoDialect extends Dialect {
     }
 
     @Override
-    public MutationOperation createOptionalTableUpdateOperation(
-            EntityMutationTarget mutationTarget,
-            OptionalTableUpdate optionalTableUpdate,
-            SessionFactoryImplementor factory) {
-        return new OptionalTableUpdateOperation(mutationTarget, optionalTableUpdate, factory) {
-            @Override
-            public void performMutation(
-                    JdbcValueBindings jdbcValueBindings,
-                    ValuesAnalysis valuesAnalysis,
-                    SharedSessionContractImplementor session) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
-            }
-        };
+    public void appendDatetimeFormat(SqlAppender appender, String format) {
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
     }
 }

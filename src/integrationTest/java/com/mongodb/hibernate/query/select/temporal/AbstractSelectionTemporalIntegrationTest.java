@@ -31,15 +31,15 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @BeforeEach
     void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> getData().forEach(session::persist));
+        getSessionFactoryScope().inTransaction(session -> getSeedData().forEach(session::persist));
         getTestCommandListener().clear();
     }
 
-    abstract List<I> getData();
+    abstract List<I> getSeedData();
 
-    @ParameterizedTest(name = "testComparisonByEq: temporal={0}, expectedItems={2}, expectedRender={3}, timeZone={1}")
+    @ParameterizedTest(name = "testComparisonByEq: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByEq(T temporal, List<I> expectedItems, String expectedRender, Class<I> tClass) {
+    void testComparisonByEq(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
         assertSelectionQuery(
                 "from Item where temporal = :t",
                 tClass,
@@ -64,14 +64,14 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                             }
                           ]
                         }""",
-                        expectedRender),
+                        expectedRenderResult),
                 expectedItems,
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testComparisonByNe: temporal={0}, expectedItems={2}, expectedRender={3}, timeZone={1}")
+    @ParameterizedTest(name = "testComparisonByNe: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByNe(T temporal, List<I> expectedItems, String expectedRender, Class<I> tClass) {
+    void testComparisonByNe(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
         assertSelectionQuery(
                 "from Item where temporal != :t",
                 tClass,
@@ -96,14 +96,14 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                             }
                           ]
                         }""",
-                        expectedRender),
+                        expectedRenderResult),
                 expectedItems,
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testComparisonByLt: timeZone={1}, expectedItems={2}, expectedRender={3}")
+    @ParameterizedTest(name = "testComparisonByLt: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByLt(T temporal, List<I> expectedItems, String expectedRender, Class<I> tClass) {
+    void testComparisonByLt(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
         assertSelectionQuery(
                 "from Item where temporal < :t",
                 tClass,
@@ -128,14 +128,14 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                             }
                           ]
                         }""",
-                        expectedRender),
+                        expectedRenderResult),
                 expectedItems,
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testComparisonByLte: timeZone={1}, expectedItems={2}, expectedRender={3}")
+    @ParameterizedTest(name = "testComparisonByLte: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByLte(T temporal, List<I> expectedItems, String expectedRender, Class<I> tClass) {
+    void testComparisonByLte(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
         assertSelectionQuery(
                 "from Item where temporal <= :t",
                 tClass,
@@ -160,14 +160,14 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                             }
                           ]
                         }""",
-                        expectedRender),
+                        expectedRenderResult),
                 expectedItems,
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testComparisonByGt: timeZone={1}, expectedItems={2}, expectedRender={3}")
+    @ParameterizedTest(name = "testComparisonByGt: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByGt(T temporal, List<I> expectedItems, String expectedRender, Class<I> tClass) {
+    void testComparisonByGt(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
         assertSelectionQuery(
                 "from Item where temporal > :t",
                 tClass,
@@ -192,14 +192,14 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                             }
                           ]
                         }""",
-                        expectedRender),
+                        expectedRenderResult),
                 expectedItems,
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testComparisonByGte: timeZone={1}, expectedItems={2}, expectedRender={3}")
+    @ParameterizedTest(name = "testComparisonByGte: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByGte(T temporal, List<I> expectedItems, String expectedRender, Class<I> tClass) {
+    void testComparisonByGte(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
         assertSelectionQuery(
                 "from Item where temporal >= :t",
                 tClass,
@@ -224,12 +224,12 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                             }
                           ]
                         }""",
-                        expectedRender),
+                        expectedRenderResult),
                 expectedItems,
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testOrderByAsc: timeZone={1}, expectedItems={2}")
+    @ParameterizedTest(name = "testOrderByAsc: expectedItems={0}")
     @MethodSource
     void testOrderByAsc(List<I> expectedItems, Class<I> tClass) {
         assertSelectionQuery(
@@ -256,7 +256,7 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
                 Set.of(COLLECTION_NAME));
     }
 
-    @ParameterizedTest(name = "testOrderByDesc: timeZone={1}, expectedItems={2}")
+    @ParameterizedTest(name = "testOrderByDesc: expectedItems={0}")
     @MethodSource
     void testOrderByDesc(List<I> expectedItems, Class<I> tClass) {
         assertSelectionQuery(

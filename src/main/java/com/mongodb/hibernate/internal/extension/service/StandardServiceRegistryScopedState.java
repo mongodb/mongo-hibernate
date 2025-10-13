@@ -28,6 +28,7 @@ import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.io.Serial;
 import java.util.Map;
+import java.util.Set;
 import org.hibernate.HibernateException;
 import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
@@ -71,19 +72,6 @@ public final class StandardServiceRegistryScopedState implements Service {
             });
         }
 
-        private static void forbidTemporalConfiguration(final Map<String, Object> configurationValues) {
-            Object enabled = configurationValues.get(JAVA_TIME_USE_DIRECT_JDBC);
-            if (enabled instanceof Boolean && (Boolean) enabled) {
-                throw new HibernateException(
-                        format("Configuration property [%s] is not supported", JAVA_TIME_USE_DIRECT_JDBC));
-            }
-
-            if (configurationValues.get(PREFERRED_INSTANT_JDBC_TYPE) != null) {
-                throw new HibernateException(
-                        format("Configuration property [%s] is not supported", PREFERRED_INSTANT_JDBC_TYPE));
-            }
-        }
-
         private MongoConfiguration createMongoConfiguration(
                 Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
             var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
@@ -100,6 +88,16 @@ public final class StandardServiceRegistryScopedState implements Service {
                 mongoConfigurationContributor.configure(mongoConfigurationBuilder);
             }
             return mongoConfigurationBuilder.build();
+        }
+
+        private static void forbidTemporalConfiguration(final Map<String, Object> configurationValues) {
+            var forbiddenConfigurationPropertyNames = Set.of(JAVA_TIME_USE_DIRECT_JDBC, PREFERRED_INSTANT_JDBC_TYPE);
+            for (var forbiddenConfigurationPropertyName : forbiddenConfigurationPropertyNames) {
+                if (configurationValues.containsKey(forbiddenConfigurationPropertyName)) {
+                    throw new HibernateException(
+                            format("Configuration property [%s] is not supported", JAVA_TIME_USE_DIRECT_JDBC));
+                }
+            }
         }
 
         private @Nullable MongoConfigurationContributor getMongoConfigurationContributor(

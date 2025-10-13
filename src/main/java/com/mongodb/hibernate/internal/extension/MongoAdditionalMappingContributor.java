@@ -25,16 +25,17 @@ import static java.lang.String.format;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.StringJoiner;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.ResourceStreamLocator;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
@@ -44,6 +45,8 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Value;
+import org.hibernate.type.BasicPluralType;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
@@ -53,16 +56,17 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      */
     private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
 
-    private static final Set<Class<?>> UNSUPPORTED_TEMPORAL_TYPES = new HashSet<>(List.of(
+    private static final Set<Class<?>> UNSUPPORTED_TEMPORAL_TYPES = Set.of(
             Calendar.class,
+            Time.class,
             Date.class,
             java.sql.Date.class,
-            java.sql.Timestamp.class,
-            Time.class,
+            Timestamp.class,
             LocalTime.class,
             LocalDateTime.class,
             ZonedDateTime.class,
-            OffsetTime.class));
+            OffsetTime.class,
+            OffsetDateTime.class);
 
     public MongoAdditionalMappingContributor() {}
 
@@ -87,8 +91,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     }
 
     private static void checkPropertyTypes(final PersistentClass persistentClass) {
+        forbidTemporalTypes(persistentClass, persistentClass.getIdentifierProperty());
         persistentClass.getProperties().forEach(property -> {
-            forbidTemporalTypes(persistentClass, property);
+            forbidTemporalTypes(persistentClass, property, new StringJoiner("."));
         });
     }
 
@@ -130,12 +135,52 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         });
     }
 
-    private static void forbidTemporalTypes(final PersistentClass persistentClass, final Property property) {
-        Class<?> persistenceAttributeType = property.getType().getReturnedClass();
-        if (UNSUPPORTED_TEMPORAL_TYPES.contains(persistenceAttributeType)) {
+    private static void forbidTemporalTypes(
+            PersistentClass persistentClass, Property property, StringJoiner propertyPath) {
+        propertyPath.add(property.getName());
+        Value value = property.getValue();
+        var persistentAttributeType = value.getType();
+        var pluralPersistentAttribute = false;
+        Class<?> classToCheck = persistentAttributeType.getReturnedClass();
+        if (persistentAttributeType instanceof BasicPluralType<?, ?> pluralPersistentAttributeType) {
+            pluralPersistentAttribute = true;
+            classToCheck = pluralPersistentAttributeType.getElementType().getJavaType();
+        } else {
+            if (value instanceof Component componentPersistentAttributeType) {
+                componentPersistentAttributeType.getProperties().forEach(componentProperty -> {
+                    forbidTemporalTypes(persistentClass, componentProperty, propertyPath);
+                });
+            }
+        }
+        if (UNSUPPORTED_TEMPORAL_TYPES.contains(classToCheck)) {
             throw new FeatureNotSupportedException(format(
-                    "%s: the persistent attribute [%s] has type [%s] that is not supported",
-                    persistentClass, property.getName(), property.getType()));
+                    pluralPersistentAttribute
+                            ? "%s: the plural persistent attribute [%s] has element type [%s] that is not supported"
+                            : "%s: the persistent attribute [%s] has type [%s] that is not supported",
+                    persistentClass,
+                    propertyPath,
+                    classToCheck.getTypeName()));
+        }
+    }
+
+    private static void forbidTemporalTypes(PersistentClass persistentClass, Property property) {
+        var persistentAttributeType = property.getType();
+        var pluralPersistentAttribute = false;
+        Class<?> classToCheck;
+        if (persistentAttributeType instanceof BasicPluralType<?, ?> pluralPersistentAttributeType) {
+            pluralPersistentAttribute = true;
+            classToCheck = pluralPersistentAttributeType.getElementType().getJavaType();
+        } else {
+            classToCheck = persistentAttributeType.getReturnedClass();
+        }
+        if (UNSUPPORTED_TEMPORAL_TYPES.contains(classToCheck)) {
+            throw new FeatureNotSupportedException(format(
+                    pluralPersistentAttribute
+                            ? "%s: the plural persistent attribute [%s] has element type [%s] that is not supported"
+                            : "%s: the persistent attribute [%s] has type [%s] that is not supported",
+                    persistentClass,
+                    property.getName(),
+                    classToCheck.getTypeName()));
         }
     }
 

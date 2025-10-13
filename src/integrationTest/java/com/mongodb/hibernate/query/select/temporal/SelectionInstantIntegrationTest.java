@@ -35,7 +35,7 @@ class SelectionInstantIntegrationTest
             new Item(2, Instant.parse("2025-05-04T14:30:15Z")),
             new Item(3, Instant.parse("2025-12-04T23:59:59Z")));
 
-    private static List<Item> getTestingItems(int... ids) {
+    private static List<Item> getTestItems(int... ids) {
         return Arrays.stream(ids)
                 .mapToObj(id -> ITEMS.stream()
                         .filter(c -> c.id == id)
@@ -45,69 +45,69 @@ class SelectionInstantIntegrationTest
     }
 
     @Override
-    List<Item> getData() {
+    List<Item> getSeedData() {
         return ITEMS;
     }
 
-    public static Stream<Arguments> testComparisonByEq() {
+    static Stream<Arguments> testComparisonByEq() {
         return Stream.of(
                 Arguments.of(
                         Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(1),
+                        getTestItems(1),
                         """
                         {"$date": "2025-01-04T10:05:01Z"}""",
                         Item.class),
                 Arguments.of(
                         Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(1),
-                        """
-                        {"$date": "2025-01-04T10:05:01Z"}""",
-                        Item.class));
-    }
-
-    public static Stream<Arguments> testComparisonByNe() {
-        return Stream.of(
-                Arguments.of(
-                        Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(2, 3),
-                        """
-                        {"$date": "2025-01-04T10:05:01Z"}""",
-                        Item.class),
-                Arguments.of(
-                        Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(2, 3),
+                        getTestItems(1),
                         """
                         {"$date": "2025-01-04T10:05:01Z"}""",
                         Item.class));
     }
 
-    public static Stream<Arguments> testComparisonByLt() {
+    static Stream<Arguments> testComparisonByNe() {
+        return Stream.of(
+                Arguments.of(
+                        Instant.parse("2025-01-04T10:05:01Z"),
+                        getTestItems(2, 3),
+                        """
+                        {"$date": "2025-01-04T10:05:01Z"}""",
+                        Item.class),
+                Arguments.of(
+                        Instant.parse("2025-01-04T10:05:01Z"),
+                        getTestItems(2, 3),
+                        """
+                        {"$date": "2025-01-04T10:05:01Z"}""",
+                        Item.class));
+    }
+
+    static Stream<Arguments> testComparisonByLt() {
         return Stream.of(
                 Arguments.of(
                         Instant.parse("2025-12-04T23:59:59Z"),
-                        getTestingItems(1, 2),
+                        getTestItems(1, 2),
                         """
                         {"$date": "2025-12-04T23:59:59Z"}""",
                         Item.class),
                 Arguments.of(
                         Instant.parse("2025-12-04T23:59:59Z"),
-                        getTestingItems(1, 2),
+                        getTestItems(1, 2),
                         """
                         {"$date": "2025-12-04T23:59:59Z"}""",
                         Item.class));
     }
 
-    public static Stream<Arguments> testComparisonByLte() {
+    static Stream<Arguments> testComparisonByLte() {
         return Stream.of(
                 Arguments.of(
                         Instant.parse("2025-12-04T23:59:59Z"),
-                        getTestingItems(1, 2, 3),
+                        getTestItems(1, 2, 3),
                         """
                         {"$date": "2025-12-04T23:59:59Z"}""",
                         Item.class),
                 Arguments.of(
                         Instant.parse("2025-12-04T23:59:59Z"),
-                        getTestingItems(1, 2, 3),
+                        getTestItems(1, 2, 3),
                         """
                         {"$date": "2025-12-04T23:59:59Z"}""",
                         Item.class));
@@ -117,45 +117,45 @@ class SelectionInstantIntegrationTest
         return Stream.of(
                 Arguments.of(
                         Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(2, 3),
+                        getTestItems(2, 3),
                         """
                         {"$date": "2025-01-04T10:05:01Z"}""",
                         Item.class),
                 Arguments.of(
                         Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(2, 3),
+                        getTestItems(2, 3),
                         """
                         {"$date": "2025-01-04T10:05:01Z"}""",
                         Item.class));
     }
 
-    public static Stream<Arguments> testComparisonByGte() {
+    static Stream<Arguments> testComparisonByGte() {
         return Stream.of(
                 Arguments.of(
                         Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(1, 2, 3),
+                        getTestItems(1, 2, 3),
                         """
                         {"$date": "2025-01-04T10:05:01Z"}""",
                         Item.class),
                 Arguments.of(
                         Instant.parse("2025-01-04T10:05:01Z"),
-                        getTestingItems(1, 2, 3),
+                        getTestItems(1, 2, 3),
                         """
                         {"$date": "2025-01-04T10:05:01Z"}""",
                         Item.class));
     }
 
-    public static Stream<Arguments> testOrderByAsc() {
+    static Stream<Arguments> testOrderByAsc() {
         return Stream.of(
-                Arguments.of(getTestingItems(1, 2, 3), Item.class), Arguments.of(getTestingItems(1, 2, 3), Item.class));
+                Arguments.of(getTestItems(1, 2, 3), Item.class), Arguments.of(getTestItems(1, 2, 3), Item.class));
     }
 
-    public static Stream<Arguments> testOrderByDesc() {
+    static Stream<Arguments> testOrderByDesc() {
         return Stream.of(
-                Arguments.of(getTestingItems(3, 2, 1), Item.class), Arguments.of(getTestingItems(3, 2, 1), Item.class));
+                Arguments.of(getTestItems(3, 2, 1), Item.class), Arguments.of(getTestItems(3, 2, 1), Item.class));
     }
 
-    @Entity(name = "Item")
+    @Entity
     @Table(name = COLLECTION_NAME)
     static class Item {
         @Id

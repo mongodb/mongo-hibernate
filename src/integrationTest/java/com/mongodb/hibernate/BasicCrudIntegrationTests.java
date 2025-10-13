@@ -281,7 +281,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testDynamicUpdate() {
             sessionFactoryScope.inTransaction(session -> {
-                var item = new ItemDynamicallyUpdated(1, true, true, Instant.parse("2024-01-01T10:00:00Z"));
+                var item = new ItemDynamicallyUpdated(1, true, true);
                 session.persist(item);
                 session.flush();
                 item.primitiveBoolean = false;
@@ -293,8 +293,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     {
                         _id: 1,
                         primitiveBoolean: false,
-                        boxedBoolean: false,
-                        instant: {$date: "2024-01-01T10:00:00Z"}
+                        boxedBoolean: false
                     }
                     """);
         }
@@ -302,11 +301,10 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testDynamicUpdateWithNullFieldValues() {
             sessionFactoryScope.inTransaction(session -> {
-                var item = new ItemDynamicallyUpdated(1, false, true, Instant.parse("2024-01-01T10:00:00Z"));
+                var item = new ItemDynamicallyUpdated(1, false, true);
                 session.persist(item);
                 session.flush();
                 item.boxedBoolean = null;
-                item.instant = null;
             });
 
             assertCollectionContainsExactly(
@@ -314,8 +312,7 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     {
                         _id: 1,
                         primitiveBoolean: false,
-                        boxedBoolean: null,
-                        instant: null
+                        boxedBoolean: null
                     }
                     """);
         }
@@ -442,15 +439,13 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
         boolean primitiveBoolean;
         Boolean boxedBoolean;
-        Instant instant;
 
         ItemDynamicallyUpdated() {}
 
-        ItemDynamicallyUpdated(int id, boolean primitiveBoolean, Boolean boxedBoolean, Instant instant) {
+        ItemDynamicallyUpdated(int id, boolean primitiveBoolean, Boolean boxedBoolean) {
             this.id = id;
             this.primitiveBoolean = primitiveBoolean;
             this.boxedBoolean = boxedBoolean;
-            this.instant = instant;
         }
     }
 }

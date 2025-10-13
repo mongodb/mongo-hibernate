@@ -20,14 +20,12 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doAndTerminateTransaction;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWithSpecifiedAutoCommit;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mongodb.client.MongoCollection;
@@ -38,15 +36,9 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Random;
-import java.util.TimeZone;
 import java.util.function.Function;
-import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -58,9 +50,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(MongoExtension.class)
 class MongoPreparedStatementIntegrationTests {
@@ -129,128 +118,6 @@ class MongoPreparedStatementIntegrationTests {
                             () -> assertNull(rs.getString(4)),
                             () -> assertEquals("Anna Karenina", rs.getString(5)));
                     assertFalse(rs.next());
-                }
-            }
-        });
-    }
-
-    static Stream<Arguments> supportedTimeZones() {
-        return Stream.of(
-                        TimeZone.getTimeZone("UTC"),
-                        TimeZone.getTimeZone("Etc/UTC"),
-                        TimeZone.getTimeZone("GMT"),
-                        TimeZone.getTimeZone("Etc/GMT+0"))
-                .flatMap(timeZone -> Stream.of(
-                        Arguments.of(
-                                timeZone,
-                                new Timestamp(toUtc(LocalDateTime.parse("-1500-01-01T10:15:12.783"))),
-                                new Timestamp(toUtc(LocalDateTime.parse("-1500-01-01T10:15:12.783")))),
-                        Arguments.of(
-                                timeZone,
-                                new Timestamp(toUtc(LocalDateTime.parse("1970-01-01T10:11:15.783"))),
-                                new Timestamp(toUtc(LocalDateTime.parse("1970-01-01T10:11:15.783"))))));
-    }
-
-    @ParameterizedTest
-    @MethodSource
-    void supportedTimeZones(TimeZone timeZone, Timestamp timestampToSave, Timestamp expectedTimeStampToRead)
-            throws SQLException {
-        withSystemTimeZone(TimeZone.getTimeZone("GMT+5"), () -> {
-            doWorkAwareOfAutoCommit(connection -> {
-                try (var pstmt = connection.prepareStatement(
-                        """
-                        {
-                            insert: "books",
-                            documents: [
-                                {
-                                    _id: 1,
-                                    timestamp: { $undefined: true }
-                                }
-                            ]
-                        }""")) {
-
-                    withSystemTimeZone(
-                            timeZone, () -> pstmt.setTimestamp(1, timestampToSave, Calendar.getInstance(timeZone)));
-
-                    pstmt.executeUpdate();
-                }
-            });
-
-            doWorkAwareOfAutoCommit(connection -> {
-                try (var pstmt = connection.prepareStatement(
-                        """
-                        {
-                            aggregate: "books",
-                            pipeline: [
-                                { $match: { _id: { $eq: { $undefined: true } } } },
-                                { $project:
-                                    {
-                                        _id: 0,
-                                        timestamp: 1
-                                    }
-                                }
-                            ]
-                        }""")) {
-
-                    pstmt.setInt(1, 1);
-                    try (var rs = pstmt.executeQuery()) {
-
-                        assertTrue(rs.next());
-                        withSystemTimeZone(
-                                timeZone,
-                                () -> assertEquals(
-                                        expectedTimeStampToRead,
-                                        rs.getTimestamp(1, Calendar.getInstance(timeZone)),
-                                        "timestamp with Calendar mismatch"));
-                        assertFalse(rs.next());
-                    }
-                }
-            });
-        });
-    }
-
-    static Stream<TimeZone> unsupportedTimeZones() {
-        return Stream.of(
-                TimeZone.getTimeZone("GMT+1"),
-                TimeZone.getTimeZone("Europe/Berlin"),
-                TimeZone.getTimeZone("America/New_York"),
-                TimeZone.getTimeZone("Asia/Tokyo"));
-    }
-
-    @ParameterizedTest
-    @MethodSource("unsupportedTimeZones")
-    void testTimestampSetAndGetWithUnsupportedTimeZone(TimeZone timeZone) {
-        doWorkAwareOfAutoCommit(connection -> {
-            try (var pstmt = connection.prepareStatement(
-                    """
-                    {
-                        insert: "books",
-                        documents: [
-                            { _id: 999, timestamp: { $undefined: true } }
-                        ]
-                    }""")) {
-                assertThrows(
-                        java.sql.SQLFeatureNotSupportedException.class,
-                        () -> pstmt.setTimestamp(
-                                1, new Timestamp(System.currentTimeMillis()), Calendar.getInstance(timeZone)));
-            }
-        });
-
-        doWorkAwareOfAutoCommit(connection -> {
-            try (var pstmt = connection.prepareStatement(
-                    """
-                    {
-                        aggregate: "books",
-                        pipeline: [
-                            { $match: { _id: { $eq: { $undefined: true } } } },
-                            { $project: { _id: 0, timestamp: 1 } }
-                        ]
-                    }""")) {
-                pstmt.setInt(1, 1000);
-                try (var rs = pstmt.executeQuery()) {
-                    assertThrows(
-                            java.sql.SQLFeatureNotSupportedException.class,
-                            () -> rs.getTimestamp(1, Calendar.getInstance(timeZone)));
                 }
             }
         });
@@ -539,23 +406,5 @@ class MongoPreparedStatementIntegrationTests {
 
     void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
         doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
-    }
-
-    public static void withSystemTimeZone(TimeZone timeZone, SqlExecutable executable) throws SQLException {
-        TimeZone originalTimeZone = TimeZone.getDefault();
-        TimeZone.setDefault(timeZone);
-        try {
-            executable.execute();
-        } finally {
-            TimeZone.setDefault(originalTimeZone);
-        }
-    }
-
-    private static int convertMillisToNanos(int millis) {
-        return Math.toIntExact(MILLISECONDS.toNanos(millis));
-    }
-
-    private static long toUtc(final LocalDateTime localDateTime) {
-        return localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
     }
 }
