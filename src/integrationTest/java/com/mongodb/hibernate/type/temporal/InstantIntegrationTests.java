@@ -33,7 +33,6 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Struct;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -159,7 +158,6 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
         @Id
         int id;
 
-        @JdbcTypeCode(value = 93)
         Instant instant;
 
         Collection<Instant> instantCollection;
