@@ -49,6 +49,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
@@ -284,5 +285,10 @@ public class MongoDialect extends Dialect {
                         "TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
             }
         };
+    }
+
+    @Override
+    public void appendDatetimeFormat(SqlAppender appender, String format) {
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
     }
 }
