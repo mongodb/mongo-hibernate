@@ -566,8 +566,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
     class Unsupported {
         /**
          * We do not support this due to what seem to be a Hibernate ORM bug: <a
-         * href="https://hibernate.zulipchat.com/#narrow/channel/132096-hibernate-user/topic/Issue.20with.20an.20entity.20native.20query.20when.20there.20is.20a.20struct/near/539186127">
-         * Issue with an entity native query when there is a struct</a>.
+         * href="https://hibernate.atlassian.net/browse/HHH-19866">Entity native query incorrectly handles
+         * AggregateSupport.preferSelectAggregateMapping that returns true</a>.
          *
          * @see #testEntity()
          */
