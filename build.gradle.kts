@@ -52,10 +52,14 @@ tasks.withType<Javadoc> {
         docEncoding("UTF-8")
         addBooleanOption("html5", true)
         addBooleanOption("-allow-script-in-comments", true)
+        // TODO-HIBERNATE-129 addStringOption("-link-modularity-mismatch", "info")
         links =
             listOf(
                 "https://docs.oracle.com/en/java/javase/17/docs/api/",
-                "https://docs.jboss.org/hibernate/orm/6.6/javadocs/",
+                "https://jakarta.ee/specifications/persistence/3.1/apidocs/",
+                "https://docs.hibernate.org/orm/6.6/javadocs/",
+                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/bson/",
+                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-core/",
                 "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-sync/")
     }
 }
@@ -180,6 +184,10 @@ dependencies {
 
     api(libs.hibernate.core)
     api(libs.mongo.java.driver.sync)
+    // We need the `libs.findbugs.jsr` dependency to stop `javadoc` from emitting
+    // `warning: unknown enum constant When.MAYBE`
+    //   `reason: class file for javax.annotation.meta.When not found`.
+    compileOnly(libs.findbugs.jsr)
     implementation(libs.sl4j.api)
 }
 
