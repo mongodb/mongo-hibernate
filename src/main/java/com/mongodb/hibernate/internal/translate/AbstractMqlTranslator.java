@@ -1210,15 +1210,15 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    private String getUnsupportedUpdateValueAssignmentMessage(final String fieldPath, Expression assignedValue) {
+    private static String getUnsupportedUpdateValueAssignmentMessage(final String fieldPath, Expression assignedValue) {
         if (assignedValue instanceof FunctionExpression ex) {
-            return "Function expression [%s] as update assignment value for field path [%s] are not supported"
+            return "Function expression [%s] as update assignment value for field path [%s] is not supported"
                     .formatted(ex.getFunctionName(), fieldPath);
         } else if (assignedValue instanceof Predicate) {
-            return "Predicate expressions as update assignment value for field path [%s] are not supported"
+            return "Predicate expression as update assignment value for field path [%s] is not supported"
                     .formatted(fieldPath);
         } else if (assignedValue instanceof SqmPathInterpretation) {
-            return "Path expressions as update assignment value for field path [%s] are not supported"
+            return "Path expression as update assignment value for field path [%s] is not supported"
                     .formatted(fieldPath);
         } else {
             return "Update assignment value for field path [%s] is not supported".formatted(fieldPath);
