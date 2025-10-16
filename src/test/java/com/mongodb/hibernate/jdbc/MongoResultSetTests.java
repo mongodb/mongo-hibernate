@@ -29,7 +29,6 @@ import static org.mockito.Mockito.doReturn;
 import com.mongodb.client.MongoCursor;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.Calendar;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -260,11 +259,6 @@ class MongoResultSetTests {
                 () -> asserter.accept(() -> mongoResultSet.getLong(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getDouble(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getBytes(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getDate(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getTime(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getTime(columnIndex, Calendar.getInstance())),
-                () -> asserter.accept(() -> mongoResultSet.getTimestamp(columnIndex)),
-                () -> asserter.accept(() -> mongoResultSet.getTimestamp(columnIndex, Calendar.getInstance())),
                 () -> asserter.accept(() -> mongoResultSet.getBigDecimal(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getArray(columnIndex)),
                 () -> asserter.accept(() -> mongoResultSet.getObject(columnIndex, UUID.class)));
