@@ -215,7 +215,7 @@ publishing {
             from(components["java"])
             pom {
                 name = "MongoDB Extension for Hibernate ORM"
-                description = "An extension providing native MongoDB support to Hibernate ORM"
+                description = "An extension providing MongoDB support to Hibernate ORM"
                 url = "https://www.mongodb.com/"
                 licenses {
                     license {
