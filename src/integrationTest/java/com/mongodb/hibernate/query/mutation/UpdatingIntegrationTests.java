@@ -240,7 +240,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     hql,
                     query -> {},
                     FeatureNotSupportedException.class,
-                    "Function expression [upper] as update assignment value for field path [title] are not supported");
+                    "Function expression [upper] as update assignment value for field path [title] is not supported");
         }
 
         @Test
@@ -250,7 +250,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     hql,
                     query -> {},
                     FeatureNotSupportedException.class,
-                    "Predicate expressions as update assignment value for field path [outOfStock] are not supported");
+                    "Predicate expression as update assignment value for field path [outOfStock] is not supported");
         }
 
         @Test
@@ -260,7 +260,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     hql,
                     query -> {},
                     FeatureNotSupportedException.class,
-                    "Path expressions as update assignment value for field path [publishYear] are not supported");
+                    "Path expression as update assignment value for field path [publishYear] is not supported");
         }
     }
 }
