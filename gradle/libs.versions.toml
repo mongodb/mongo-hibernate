@@ -18,8 +18,9 @@ assertj = "3.27.3"
 google-errorprone-core = "2.36.0"
 nullaway = "0.12.4"
 jspecify = "1.0.0"
-hibernate-orm = "6.6.25.Final"
-mongo-java-driver-sync = "5.3.1"
+hibernate-orm = "6.6.25.Final" # Remember to update javadoc links
+mongo-java-driver-sync = "5.3.1" # Remember to update javadoc links
+findbugs-jsr = "3.0.2"
 slf4j-api = "2.0.16"
 logback-classic = "1.5.16"
 mockito = "5.16.0"
@@ -30,6 +31,7 @@ plugin-errorprone = "4.1.0"
 plugin-buildconfig = "5.5.4"
 plugin-palantir = "2.58.0"
 plugin-ktfmt = "0.54"
+plugin-nexus-publish = "2.0.0"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -40,6 +42,7 @@ google-errorprone-core = { module = "com.google.errorprone:error_prone_core", ve
 hibernate-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-orm" }
 hibernate-testing = { module = "org.hibernate.orm:hibernate-testing", version.ref = "hibernate-orm" }
 mongo-java-driver-sync = { module = "org.mongodb:mongodb-driver-sync", version.ref = "mongo-java-driver-sync" }
+findbugs-jsr = { module = "com.google.code.findbugs:jsr305", version.ref = "findbugs-jsr" }
 sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
@@ -51,3 +54,4 @@ test-common = ["junit-jupiter", "assertj", "logback-classic"]
 [plugins]
 errorprone = { id = "net.ltgt.errorprone", version.ref = "plugin-errorprone" }
 buildconfig = { id = "com.github.gmazzo.buildconfig", version.ref = "plugin-buildconfig" }
+nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "plugin-nexus-publish" }
