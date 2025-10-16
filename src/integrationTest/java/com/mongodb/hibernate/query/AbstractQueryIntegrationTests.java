@@ -19,7 +19,7 @@ package com.mongodb.hibernate.query;
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;

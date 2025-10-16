@@ -41,6 +41,7 @@ import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.Date;
+import java.sql.JDBCType;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -199,6 +200,13 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
+    public @Nullable Object getObject(int columnIndex) throws SQLException {
+        checkClosed();
+        checkColumnIndex(columnIndex);
+        return getValue(columnIndex, bsonValue -> assertNotNull(ValueConversions.toDomainValue(bsonValue)));
+    }
+
+    @Override
     public <T> @Nullable T getObject(int columnIndex, Class<T> type) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
@@ -208,8 +216,8 @@ final class MongoResultSet implements ResultSetAdapter {
         } else if (type.equals(BsonDocument.class)) {
             value = getValue(columnIndex, ValueConversions::toBsonDocumentDomainValue);
         } else {
-            throw new SQLFeatureNotSupportedException(
-                    format("Type [%s] for a column with index [%d] is not supported", type, columnIndex));
+            throw new SQLFeatureNotSupportedException(format(
+                    "Type [%s] for the column with index [%d] is not supported", type.getTypeName(), columnIndex));
         }
         return type.cast(value);
     }
@@ -223,7 +231,17 @@ final class MongoResultSet implements ResultSetAdapter {
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of native query tickets");
+        // Hibernate ORM calls this method once per `columnLabel` for a given instance of `MongoResultSet`,
+        // which is why not having an index for `fieldNames` seems fine,
+        // assuming that the number of columns is not too large.
+        // If we ever introduce an index, it should be built lazily, because whether the `findColumn` method
+        // is going to be called or not is not known in advance.
+        for (int i = 0; i < fieldNames.size(); i++) {
+            if (fieldNames.get(i).equals(columnLabel)) {
+                return i + 1;
+            }
+        }
+        throw new SQLException(format("Unknown column label [%s]", columnLabel));
     }
 
     @Override
@@ -247,6 +265,10 @@ final class MongoResultSet implements ResultSetAdapter {
         return Objects.requireNonNullElse(getValue(columnIndex, toJavaConverter), defaultValue);
     }
 
+    /**
+     * @param toJavaConverter A {@linkplain ValueConversions#isNull(Object) null value} is never passed to the
+     *     {@link SqlFunction#apply(Object)} method of {@code toJavaConverter}.
+     */
     private <T> @Nullable T getValue(int columnIndex, SqlFunction<BsonValue, T> toJavaConverter) throws SQLException {
         try {
             var key = getKey(columnIndex);
@@ -267,7 +289,48 @@ final class MongoResultSet implements ResultSetAdapter {
         }
     }
 
-    private static final class MongoResultSetMetadata implements ResultSetMetaDataAdapter {}
+    private final class MongoResultSetMetadata implements ResultSetMetaDataAdapter {
+        private static final int SIZE_PRECISION_SCALE_NOT_APPLICABLE = 0;
+
+        @Override
+        public int getColumnCount() {
+            return fieldNames.size();
+        }
+
+        @Override
+        public int getColumnDisplaySize(int column) {
+            return SIZE_PRECISION_SCALE_NOT_APPLICABLE;
+        }
+
+        @Override
+        public String getColumnLabel(int column) {
+            return getKey(column);
+        }
+
+        @Override
+        public int getPrecision(int column) {
+            return SIZE_PRECISION_SCALE_NOT_APPLICABLE;
+        }
+
+        @Override
+        public int getScale(int column) {
+            return SIZE_PRECISION_SCALE_NOT_APPLICABLE;
+        }
+
+        @Override
+        public int getColumnType(int column) {
+            // Hibernate ORM calls this method once per `column` for a given instance of `MongoResultSet`,
+            // which is why inferring the type based on the fetched data is not an option in principle:
+            // if the value of the `column` in the first row happens to be BSON `Null`,
+            // then we cannot infer the actual type.
+            return JDBCType.OTHER.getVendorTypeNumber();
+        }
+
+        @Override
+        public String getColumnTypeName(int column) {
+            return JDBCType.OTHER.getName();
+        }
+    }
 
     private interface SqlFunction<T, R> {
         R apply(T t) throws SQLException;

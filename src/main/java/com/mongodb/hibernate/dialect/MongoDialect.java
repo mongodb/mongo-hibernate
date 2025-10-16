@@ -26,7 +26,6 @@ import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesF
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
-import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
@@ -119,7 +118,7 @@ public final class MongoDialect extends Dialect {
     private void contributeObjectIdType(TypeContributions typeContributions) {
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
         typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
-        var objectIdTypeCode = MqlType.OBJECT_ID.getVendorTypeNumber();
+        var objectIdTypeCode = ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber();
         typeContributions
                 .getTypeConfiguration()
                 .getDdlTypeRegistry()

@@ -16,17 +16,26 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.client.model.Aggregates.project;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.MAPPING_FOR_ITEM;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
+import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import jakarta.persistence.ColumnResult;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.SqlResultSetMapping;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import org.bson.BsonDocument;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -43,10 +52,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
             BasicCrudIntegrationTests.ItemDynamicallyUpdated.class,
         })
 @ExtendWith(MongoExtension.class)
-class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
-    private static final String COLLECTION_NAME = "items";
+public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    @InjectMongoCollection(COLLECTION_NAME)
+    @InjectMongoCollection(Item.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -348,29 +356,58 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
 
+    /**
+     * This class should have persistent attributes of all the <a
+     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic">basic
+     * types</a> we support. When adding more persistent attributes to this class, we should do similar changes to
+     * {@link EmbeddableIntegrationTests.Plural}/{@link StructAggregateEmbeddableIntegrationTests.Plural},
+     * {@link EmbeddableIntegrationTests.ArraysAndCollections}/{@link StructAggregateEmbeddableIntegrationTests.ArraysAndCollections},
+     * {@link ArrayAndCollectionIntegrationTests.ItemWithArrayAndCollectionValues}.
+     */
     @Entity
-    @Table(name = COLLECTION_NAME)
-    static class Item {
-        @Id
-        int id;
+    @Table(name = Item.COLLECTION_NAME)
+    @SqlResultSetMapping(
+            name = MAPPING_FOR_ITEM,
+            columns = {
+                @ColumnResult(name = ID_FIELD_NAME),
+                @ColumnResult(name = "primitiveChar", type = char.class),
+                @ColumnResult(name = "primitiveInt"),
+                @ColumnResult(name = "primitiveLong"),
+                @ColumnResult(name = "primitiveDouble"),
+                @ColumnResult(name = "primitiveBoolean"),
+                @ColumnResult(name = "boxedChar", type = Character.class),
+                @ColumnResult(name = "boxedInt"),
+                @ColumnResult(name = "boxedLong"),
+                @ColumnResult(name = "boxedDouble"),
+                @ColumnResult(name = "boxedBoolean"),
+                @ColumnResult(name = "string"),
+                @ColumnResult(name = "bigDecimal"),
+                @ColumnResult(name = "objectId")
+            })
+    public static class Item {
+        public static final String COLLECTION_NAME = "items";
+        public static final String MAPPING_FOR_ITEM = "Item";
 
-        char primitiveChar;
-        int primitiveInt;
-        long primitiveLong;
-        double primitiveDouble;
-        boolean primitiveBoolean;
-        Character boxedChar;
-        Integer boxedInt;
-        Long boxedLong;
-        Double boxedDouble;
-        Boolean boxedBoolean;
-        String string;
-        BigDecimal bigDecimal;
-        ObjectId objectId;
+        @Id
+        public int id;
+
+        public char primitiveChar;
+        public int primitiveInt;
+        public long primitiveLong;
+        public double primitiveDouble;
+        public boolean primitiveBoolean;
+        public Character boxedChar;
+        public Integer boxedInt;
+        public Long boxedLong;
+        public Double boxedDouble;
+        public Boolean boxedBoolean;
+        public String string;
+        public BigDecimal bigDecimal;
+        public ObjectId objectId;
 
         Item() {}
 
-        Item(
+        public Item(
                 int id,
                 char primitiveChar,
                 int primitiveInt,
@@ -400,10 +437,28 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             this.bigDecimal = bigDecimal;
             this.objectId = objectId;
         }
+
+        public static Bson projectAll() {
+            return project(include(
+                    ID_FIELD_NAME,
+                    "primitiveChar",
+                    "primitiveInt",
+                    "primitiveLong",
+                    "primitiveDouble",
+                    "primitiveBoolean",
+                    "boxedChar",
+                    "boxedInt",
+                    "boxedLong",
+                    "boxedDouble",
+                    "boxedBoolean",
+                    "string",
+                    "bigDecimal",
+                    "objectId"));
+        }
     }
 
     @Entity
-    @Table(name = COLLECTION_NAME)
+    @Table(name = Item.COLLECTION_NAME)
     static class ItemDynamicallyUpdated {
         @Id
         int id;
