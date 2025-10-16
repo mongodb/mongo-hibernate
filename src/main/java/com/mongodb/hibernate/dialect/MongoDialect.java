@@ -30,8 +30,14 @@ import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Collection;
+import org.bson.types.ObjectId;
+import org.hibernate.annotations.Struct;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
@@ -46,6 +52,7 @@ import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
+import org.hibernate.type.WrapperArrayHandling;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
@@ -57,6 +64,79 @@ import org.jspecify.annotations.Nullable;
  * document DB and speaks <i>MQL</i> (MongoDB Query Language), but it is still possible to integrate with Hibernate by
  * creating a JDBC adaptor on top of <a href="https://www.mongodb.com/docs/drivers/java/sync/current/">MongoDB Java
  * Driver</a>.
+ *
+ * <table>
+ *     <caption>Default type mapping</caption>
+ *     <thead>
+ *         <tr>
+ *             <th>Java type</th>
+ *             <th><a href="https://www.mongodb.com/docs/manual/reference/bson-types/">BSON type</a></th>
+ *         </tr>
+ *     </thead>
+ *     <tbody>
+ *         <tr>
+ *             <td><a href="https://docs.oracle.com/javase/specs/jls/se17/html/jls-4.html#jls-4.1">null type</a></td>
+ *             <td>BSON {@code Null}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@code byte[]}</td>
+ *             <td>BSON {@code Binary data} with subtype 0</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@code char}, {@link Character}, {@link String}, {@code char[]}</td>
+ *             <td>BSON {@code String}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@code int}, {@link Integer}</td>
+ *             <td>BSON {@code 32-bit integer}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@code long}, {@link Long}</td>
+ *             <td>BSON {@code 64-bit integer}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@code double}, {@link Double}</td>
+ *             <td>BSON {@code Double}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@code boolean}, {@link Boolean}</td>
+ *             <td>BSON {@code Boolean}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@link BigDecimal}</td>
+ *             <td>BSON {@code Decimal128}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@link ObjectId}</td>
+ *             <td>BSON {@code ObjectId}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@link Instant}</td>
+ *             <td>BSON {@code Date}</td>
+ *         </tr>
+ *         <tr>
+ *             <td>{@link Struct} <a href="https://docs.hibernate.org/orm/6.6/userguide/html_single/#embeddable-mapping-aggregate">aggregate embeddable</a></td>
+ *             <td>
+ *                 BSON {@code Object}
+ *
+ *                 <p>Field values are mapped as per this table.
+ *             </td>
+ *         </tr>
+ *         <tr>
+ *             <td>
+ *                 array, {@link Collection} (or a subtype supported by Hibernate ORM),
+ *                 except for {@code byte[]}, {@code char[]}
+ *
+ *                 <p>Note that {@link Character}{@code []} requires setting {@value AvailableSettings#WRAPPER_ARRAY_HANDLING} to {@link WrapperArrayHandling#ALLOW}.
+ *             </td>
+ *             <td>
+ *                 BSON {@code Array}
+ *
+ *                 <p>Array elements are mapped as per this table.
+ *             </td>
+ *         </tr>
+ *     </tbody>
+ * </table>
  *
  * <p>For the documentation on the supported <a
  * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-exp-functions">HQL
@@ -225,7 +305,7 @@ public final class MongoDialect extends Dialect {
      *                     </li>
      *                     <li>
      *                         The second argument must not be an HQL path expression.
-     *                         Also, it must be an array and not be a {@link java.util.Collection} when specified as
+     *                         Also, it must be an array and not be a {@link Collection} when specified as
      *                         {@linkplain org.hibernate.query.SelectionQuery#setParameter(String, Object) query parameter}.
      *                     </li>
      *                 </ul>
