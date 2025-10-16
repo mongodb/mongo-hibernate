@@ -44,6 +44,7 @@ functions:
 
   bootstrap-mongo-orchestration:
     - command: subprocess.exec
+      type: test
       params:
         binary: bash
         include_expansions_in_env:
@@ -54,6 +55,7 @@ functions:
           - ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
     # run-orchestration generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
+      type: test
       params:
         file: mo-expansion.yml
 
@@ -93,11 +95,11 @@ post:
 #######################################
 tasks:
   - name: static-analysis
-    type: test
     tags:
       - pr
     commands:
       - command: subprocess.exec
+        type: test
         params:
           working_dir: src
           binary: bash
@@ -107,11 +109,11 @@ tasks:
             - static-checks.sh
 
   - name: run-unit-tests
-    type: test
     tags:
       - pr
     commands:
       - command: subprocess.exec
+        type: test
         params:
           working_dir: src
           binary: bash
@@ -121,12 +123,12 @@ tasks:
             - run-unit-tests.sh
 
   - name: run-integration-tests
-    type: test
     tags:
       - pr
     commands:
       - func: bootstrap-mongo-orchestration
       - command: subprocess.exec
+        type: test
         params:
           working_dir: src
           binary: bash
@@ -134,6 +136,44 @@ tasks:
             - .evergreen
           args:
             - run-integration-tests.sh
+
+  - name: publish-snapshot
+    depends_on:
+      - variant: static-checks
+        name: static-analysis
+    commands:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_to_path:
+            - .evergreen
+          env:
+            NEXUS_USERNAME: ${nexus_username}
+            NEXUS_PASSWORD: ${nexus_password}
+            SIGNING_PASSWORD: ${signing_password}
+            SIGNING_KEY: ${signing_key}
+            RELEASE: "false"
+          args:
+            - .evergreen/publish.sh
+
+  - name: publish-release
+    git_tag_only: true
+    commands:
+      - command: subprocess.exec
+        params:
+          working_dir: src
+          binary: bash
+          add_to_path:
+            - .evergreen
+          env:
+            NEXUS_USERNAME: ${nexus_username}
+            NEXUS_PASSWORD: ${nexus_password}
+            SIGNING_PASSWORD: ${signing_password}
+            SIGNING_KEY: ${signing_key}
+            RELEASE: "true"
+          args:
+            - .evergreen/publish.sh
 
 ########################################
 #              Axes                    #
@@ -199,3 +239,15 @@ buildvariants:
       - pr
     tasks:
       - name: run-integration-tests
+
+  - name: publish-snapshot
+    display_name: "Publish Snapshot"
+    run_on: rhel80-small
+    tasks:
+      - name: publish-snapshot
+
+  - name: publish-release
+    display_name: "Publish Release"
+    run_on: rhel80-small
+    tasks:
+      - name: publish-release
