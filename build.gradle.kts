@@ -214,8 +214,8 @@ publishing {
             artifactId = "mongodb-hibernate"
             from(components["java"])
             pom {
-                name = "MongoDB Hibernate Extension"
-                description = "A MongoDB Extension of Hibernate ORM"
+                name = "MongoDB Extension for Hibernate ORM"
+                description = "An extension providing native MongoDB support to Hibernate ORM"
                 url = "https://www.mongodb.com/"
                 licenses {
                     license {
