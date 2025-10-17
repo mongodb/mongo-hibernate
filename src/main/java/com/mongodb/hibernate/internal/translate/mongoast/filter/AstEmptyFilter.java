@@ -19,19 +19,14 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import org.bson.BsonWriter;
 
 /**
- * See <a href="https://www.mongodb.com/docs/manual/reference/glossary/#std-term-query-predicate">query predicate</a>,
- * <a href="https://www.mongodb.com/docs/manual/tutorial/query-documents/">Query Documents</a>.
+ * Matches all documents.
  *
- * @see AstEmptyFilter
+ * @see AstFieldOperationFilter for specifying a concrete filter to match documents.
  */
-public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
+public record AstEmptyFilter() implements AstFilter {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
-        {
-            writer.writeName(fieldPath);
-            filterOperation.render(writer);
-        }
         writer.writeEndDocument();
     }
 }

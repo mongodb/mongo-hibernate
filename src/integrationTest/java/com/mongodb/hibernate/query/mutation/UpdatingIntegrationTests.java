@@ -228,4 +228,91 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 """)),
                 Set.of(Book.COLLECTION_NAME));
     }
+
+    @Test
+    void testUpdateNoFilter() {
+        assertMutationQuery(
+                "update Book set title = :newTitle",
+                q -> q.setParameter("newTitle", "Uknkown"),
+                5,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {},
+                       "u": {
+                         "$set": {
+                           "title": "Uknkown"
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                mongoCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "Uknkown",
+                                  "outOfStock": true,
+                                  "publishYear": 1869,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Uknkown",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Uknkown",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "Uknkown",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "Uknkown",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
 }
