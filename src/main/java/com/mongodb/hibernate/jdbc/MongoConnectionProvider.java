@@ -40,7 +40,7 @@ import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link ConnectionProvider} for the MongoDB Hibernate Extension.
+ * A {@link ConnectionProvider} for the MongoDB Extension for Hibernate ORM.
  *
  * <p>All the work done via a {@link Connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from this
  * {@linkplain ConnectionProvider} is done within the same {@link ClientSession}.
