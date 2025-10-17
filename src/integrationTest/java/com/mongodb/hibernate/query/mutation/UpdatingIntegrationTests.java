@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.query.mutation;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
@@ -25,6 +26,7 @@ import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
@@ -314,5 +316,38 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 }
                                 """)),
                 Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Nested
+    class Unsupported {
+        @Test
+        void testFunctionExpressionAssignment() {
+            var hql = "update Book b set b.title = upper(b.title) where b.id = 1";
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "Function expression [upper] as update assignment value for field path [title] is not supported");
+        }
+
+        @Test
+        void testPredicateExpressionAssignment() {
+            var hql = "update Book b set b.outOfStock = (b.publishYear > 2000) where b.id = 2";
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "Predicate expression as update assignment value for field path [outOfStock] is not supported");
+        }
+
+        @Test
+        void testPathExpressionAssignment() {
+            var hql = "update Book b set b.publishYear = b.isbn13 where b.id = 3";
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "Path expression as update assignment value for field path [publishYear] is not supported");
+        }
     }
 }

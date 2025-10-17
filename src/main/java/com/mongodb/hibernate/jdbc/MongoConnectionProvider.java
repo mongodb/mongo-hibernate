@@ -56,7 +56,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
     private static final long serialVersionUID = 1L;
 
     private @Nullable StandardServiceRegistryScopedState standardServiceRegistryScopedState;
-    private @Nullable MongoClient mongoClient;
+    private transient @Nullable MongoClient mongoClient;
 
     @Override
     public Connection getConnection() throws SQLException {
