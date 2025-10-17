@@ -35,10 +35,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
@@ -52,15 +54,16 @@ import org.bson.types.ObjectId;
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
-
+    private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        this.command = MongoStatement.parse(mql);
-        this.parameterValueSetters = new ArrayList<>();
+        command = MongoStatement.parse(mql);
+        commandBatch = new ArrayList<>();
+        parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -77,6 +80,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
+        checkSupportedUpdateCommand(command);
         return executeUpdateCommand(command);
     }
 
@@ -200,7 +204,33 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        checkAllParametersSet();
+        commandBatch.add(command.clone());
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        commandBatch.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        closeLastOpenResultSet();
+        if (commandBatch.isEmpty()) {
+            return EMPTY_BATCH_RESULT;
+        }
+        checkSupportedBatchCommand(commandBatch.get(0));
+        try {
+            executeBulkWrite(commandBatch, ExecutionType.BATCH);
+            var updateCounts = new int[commandBatch.size()];
+            // We cannot determine the actual number of rows affected for each command in the batch.
+            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
+            return updateCounts;
+        } finally {
+            commandBatch.clear();
+        }
     }
 
     @Override
