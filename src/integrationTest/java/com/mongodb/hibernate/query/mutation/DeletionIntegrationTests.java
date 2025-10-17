@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.query.mutation;
 
+import static java.util.Collections.emptyList;
+
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
@@ -191,6 +193,27 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                                   "price": null
                                 }
                                 """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Test
+    void testDeleteNoFilter() {
+        assertMutationQuery(
+                "delete from Book",
+                5,
+                """
+                {
+                   "delete": "books",
+                   "deletes": [
+                     {
+                       "q": {},
+                       "limit": 0
+                     }
+                   ]
+                }
+                """,
+                mongoCollection,
+                emptyList(),
                 Set.of(Book.COLLECTION_NAME));
     }
 }
