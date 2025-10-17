@@ -30,6 +30,8 @@ import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
@@ -39,6 +41,9 @@ import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.GenericJDBCException;
+import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
@@ -262,5 +267,26 @@ public final class MongoDialect extends Dialect {
                         "TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
             }
         };
+    }
+
+    @Override
+    public SQLExceptionConversionDelegate buildSQLExceptionConversionDelegate() {
+        return (sqlException, exceptionMessage, mql) -> {
+            SQLException rootCauseSqlException = getSqlRootCause(sqlException);
+            if (rootCauseSqlException instanceof SQLIntegrityConstraintViolationException) {
+                return new ConstraintViolationException(
+                        exceptionMessage, sqlException, ConstraintViolationException.ConstraintKind.UNIQUE, mql);
+            }
+
+            throw new GenericJDBCException(exceptionMessage, sqlException, mql);
+        };
+    }
+
+    public static SQLException getSqlRootCause(SQLException sqlException) {
+        SQLException toProcess = sqlException;
+        while (toProcess.getNextException() != null) {
+            toProcess = toProcess.getNextException();
+        }
+        return toProcess;
     }
 }
