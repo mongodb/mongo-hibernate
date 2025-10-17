@@ -1,4 +1,4 @@
-# MongoDB Hibernate Extension
+# MongoDB Extension for Hibernate ORM
 
 This product enables applications to use databases managed by the [MongoDB](https://www.mongodb.com/) DBMS
 via [Hibernate ORM](https://hibernate.org/orm/).
