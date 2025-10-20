@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-/** The MongoDB Hibernate Extension package. */
+/** The MongoDB Extension for Hibernate ORM package. */
 @NullMarked
 package com.mongodb.hibernate;
 
