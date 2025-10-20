@@ -39,7 +39,7 @@ class SelectionInstantIntegrationTest
         return Arrays.stream(ids)
                 .mapToObj(id -> ITEMS.stream()
                         .filter(c -> c.id == id)
-                        .findFirst()
+                        .findAny()
                         .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
                 .toList();
     }
