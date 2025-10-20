@@ -127,7 +127,7 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
     @MethodSource("instantPersistAndReadParameters")
     void testRoundTripSessionTzsNotEqual(
             ZoneId sessionWriteTimeZone, ZoneId sessionReadTimeZone, Instant toSave, Instant toRead) throws Exception {
-        ZoneId systemTimeZone = ZoneId.of(ZONE_OFFSET);
+        var systemTimeZone = ZoneId.of(ZONE_OFFSET);
         var instantItem = new Item(1, toSave);
 
         withSystemTimeZone(
