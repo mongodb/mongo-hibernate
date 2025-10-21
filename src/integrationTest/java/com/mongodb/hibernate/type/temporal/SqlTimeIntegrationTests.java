@@ -53,15 +53,13 @@ class SqlTimeIntegrationTests {
                         new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<Time>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<Time>() {}.getClass()),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<Time>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<Time>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<Time>() {}.getClass()));
+                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<Time>() {}.getClass()));
     }
 }

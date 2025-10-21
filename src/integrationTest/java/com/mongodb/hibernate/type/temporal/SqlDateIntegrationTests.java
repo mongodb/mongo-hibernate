@@ -53,8 +53,7 @@ class SqlDateIntegrationTests {
                         new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<Date>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<Date>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<Date>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<Date>() {}.getClass()),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
@@ -63,7 +62,6 @@ class SqlDateIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<Date>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<Date>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<Date>() {}.getClass()));
+                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<Date>() {}.getClass()));
     }
 }

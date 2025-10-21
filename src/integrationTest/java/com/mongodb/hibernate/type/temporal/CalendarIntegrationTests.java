@@ -56,9 +56,7 @@ class CalendarIntegrationTests {
                         new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<Calendar>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<
-                                Calendar>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<Calendar>() {}.getClass()),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
@@ -68,9 +66,7 @@ class CalendarIntegrationTests {
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
-                                Calendar>() {}.getClass()));
+                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<Calendar>() {}.getClass()));
     }
 
     static void assertNotSupported(Class<?> entityClass) {

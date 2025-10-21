@@ -141,7 +141,7 @@ final class UnsupportedItems {
     }
 
     @Entity
-    static class ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<T> {
+    static class ItemWithCollectionOfAggregateEmbeddable<T> {
         @Id
         int id;
 
@@ -173,11 +173,11 @@ final class UnsupportedItems {
     }
 
     @Entity
-    static class ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<T> {
+    static class ItemWithNestedCollectionOfAggregateEmbeddable<T> {
         @Id
         int id;
 
-        AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> v;
+        AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<T> v;
     }
 
     @Embeddable
@@ -246,9 +246,9 @@ final class UnsupportedItems {
         AggregateEmbeddableWithCollectionPersistentAttribute<T> v;
     }
 
-    @Struct(name = "AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute")
+    @Struct(name = "AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute")
     @Embeddable
-    static class AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> {
+    static class AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<T> {
         Collection<AggregateEmbeddableWithBasicPersistentAttribute<T>> v;
     }
 }

@@ -54,9 +54,7 @@ class LocalTimeIntegrationTests {
                         new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<
-                                LocalTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<LocalTime>() {}.getClass()),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
@@ -66,8 +64,6 @@ class LocalTimeIntegrationTests {
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
-                                LocalTime>() {}.getClass()));
+                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<LocalTime>() {}.getClass()));
     }
 }

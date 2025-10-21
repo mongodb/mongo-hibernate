@@ -56,9 +56,7 @@ class OffsetTimeIntegrationTests {
                         new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<OffsetTime>() {}.getClass()),
                 () -> assertNotSupported(
                         new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<OffsetTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<
-                                OffsetTime>() {}.getClass()),
+                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<OffsetTime>() {}.getClass()),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
@@ -69,7 +67,6 @@ class OffsetTimeIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 OffsetTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
-                                OffsetTime>() {}.getClass()));
+                        new ItemWithNestedCollectionOfAggregateEmbeddable<OffsetTime>() {}.getClass()));
     }
 }
