@@ -246,7 +246,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                        "q": {},
                        "u": {
                          "$set": {
-                           "title": "Uknkown"
+                           "title": "Unknown"
                          }
                        }
                      }
@@ -259,7 +259,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 """
                                 {
                                   "_id": 1,
-                                  "title": "Uknkown",
+                                  "title": "Unknown",
                                   "outOfStock": true,
                                   "publishYear": 1869,
                                   "isbn13": null,
@@ -271,7 +271,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 """
                                 {
                                   "_id": 2,
-                                  "title": "Uknkown",
+                                  "title": "Unknown",
                                   "outOfStock": false,
                                   "publishYear": 1866,
                                   "isbn13": null,
@@ -283,7 +283,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 """
                                 {
                                   "_id": 3,
-                                  "title": "Uknkown",
+                                  "title": "Unknown",
                                   "outOfStock": false,
                                   "publishYear": 1877,
                                   "isbn13": null,
@@ -295,7 +295,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 """
                                 {
                                   "_id": 4,
-                                  "title": "Uknkown",
+                                  "title": "Unknown",
                                   "outOfStock": false,
                                   "publishYear": 1880,
                                   "isbn13": null,
@@ -307,7 +307,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 """
                                 {
                                   "_id": 5,
-                                  "title": "Uknkown",
+                                  "title": "Unknown",
                                   "outOfStock": false,
                                   "publishYear": 2025,
                                   "isbn13": null,
