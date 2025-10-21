@@ -28,6 +28,7 @@ import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.BatchUpdateException;
 import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
@@ -231,6 +232,22 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         } finally {
             commandBatch.clear();
         }
+    }
+
+    private void checkSupportedBatchCommand(BsonDocument command) throws SQLException {
+        var commandType = getCommandType(command);
+        if (commandType == CommandType.AGGREGATE) {
+            // The method executeBatch throws a BatchUpdateException if any of the commands in the batch attempts to
+            // return a result set.
+            throw new BatchUpdateException(
+                    format(
+                            "Commands returning result set are not supported. Received command: %s",
+                            commandType.getCommandName()),
+                    null,
+                    NO_ERROR_CODE,
+                    null);
+        }
+        checkSupportedUpdateCommand(commandType);
     }
 
     @Override

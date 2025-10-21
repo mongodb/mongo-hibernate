@@ -268,11 +268,9 @@ class MongoPreparedStatementIntegrationTests {
                     pstm.addBatch();
                     assertThatExceptionOfType(BatchUpdateException.class)
                             .isThrownBy(pstm::executeBatch)
-                            .satisfies(batchUpdateException -> {
-                                assertNull(batchUpdateException.getUpdateCounts());
-                                assertNull(batchUpdateException.getSQLState());
-                                assertEquals(0, batchUpdateException.getErrorCode());
-                            });
+                            .returns(null, BatchUpdateException::getUpdateCounts)
+                            .returns(null, BatchUpdateException::getSQLState)
+                            .returns(0, BatchUpdateException::getErrorCode);
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
