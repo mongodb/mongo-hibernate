@@ -718,7 +718,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private AstFilter createAstFilter(final AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
         var restriction = updateOrDeleteStatement.getRestriction();
-        return restriction == null ? new AstEmptyFilter() : acceptAndYield(restriction, FILTER);
+        return restriction == null ? AstEmptyFilter.INSTANCE : acceptAndYield(restriction, FILTER);
     }
 
     @Override

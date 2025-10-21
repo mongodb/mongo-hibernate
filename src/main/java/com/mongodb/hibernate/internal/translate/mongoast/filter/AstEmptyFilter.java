@@ -21,9 +21,13 @@ import org.bson.BsonWriter;
 /**
  * Matches all documents.
  *
- * @see AstFieldOperationFilter for specifying a concrete filter to match documents.
+ * {@link AstFieldOperationFilter} is used for specifying a concrete filter to match documents.
  */
-public record AstEmptyFilter() implements AstFilter {
+public final class AstEmptyFilter implements AstFilter {
+    public static final AstEmptyFilter INSTANCE = new AstEmptyFilter();
+
+    private AstEmptyFilter() {}
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

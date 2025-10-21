@@ -196,7 +196,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             Set<String> expectedAffectedCollections) {
         assertMutationQuery(
                 hql,
-                mutationQuery -> {},
+                null,
                 expectedMutationCount,
                 expectedMql,
                 collection,

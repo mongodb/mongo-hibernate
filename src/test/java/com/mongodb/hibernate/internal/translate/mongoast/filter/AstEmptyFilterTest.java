@@ -24,7 +24,7 @@ class AstEmptyFilterTests {
 
     @Test
     void testRendering() {
-        var astFieldOperationFilter = new AstEmptyFilter();
+        var astFieldOperationFilter = AstEmptyFilter.INSTANCE;
         var expectedJson = "{}";
         assertRendering(expectedJson, astFieldOperationFilter);
     }

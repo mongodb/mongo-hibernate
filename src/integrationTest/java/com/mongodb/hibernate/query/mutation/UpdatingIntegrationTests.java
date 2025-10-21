@@ -235,7 +235,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
     void testUpdateNoFilter() {
         assertMutationQuery(
                 "update Book set title = :newTitle",
-                q -> q.setParameter("newTitle", "Uknkown"),
+                q -> q.setParameter("newTitle", "Unknown"),
                 5,
                 """
                 {
