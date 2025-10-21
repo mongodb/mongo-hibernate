@@ -40,19 +40,19 @@ public final class ObjectIdJdbcType implements JdbcType {
     private static final long serialVersionUID = 1L;
 
     public static final ObjectIdJdbcType INSTANCE = new ObjectIdJdbcType();
-    public static final SQLType MQL_TYPE = MqlType.OBJECT_ID;
+    public static final SQLType SQL_TYPE = MqlType.OBJECT_ID;
     private static final ObjectIdJavaType JAVA_TYPE = ObjectIdJavaType.INSTANCE;
 
     private ObjectIdJdbcType() {}
 
     @Override
     public int getJdbcTypeCode() {
-        return MQL_TYPE.getVendorTypeNumber();
+        return SQL_TYPE.getVendorTypeNumber();
     }
 
     @Override
     public String getFriendlyName() {
-        return MQL_TYPE.getName();
+        return SQL_TYPE.getName();
     }
 
     @Override

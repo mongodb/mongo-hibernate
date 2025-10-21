@@ -185,7 +185,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         BsonValue value;
-        if (targetSqlType == ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber()) {
+        if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
             value = toBsonValue(assertInstanceOf(x, ObjectId.class));
         } else if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             value = assertInstanceOf(x, BsonDocument.class);

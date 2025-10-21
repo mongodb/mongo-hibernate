@@ -118,7 +118,7 @@ public final class MongoDialect extends Dialect {
     private void contributeObjectIdType(TypeContributions typeContributions) {
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
         typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
-        var objectIdTypeCode = ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber();
+        var objectIdTypeCode = ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber();
         typeContributions
                 .getTypeConfiguration()
                 .getDdlTypeRegistry()
