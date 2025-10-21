@@ -69,7 +69,7 @@ class CalendarIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 Calendar>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
                                 Calendar>() {}.getClass()));
     }
 

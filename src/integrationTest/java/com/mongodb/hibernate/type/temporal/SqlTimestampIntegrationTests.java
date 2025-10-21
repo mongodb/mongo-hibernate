@@ -64,10 +64,7 @@ class SqlTimestampIntegrationTests {
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<Timestamp>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
-                                Timestamp>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
                                 Timestamp>() {}.getClass()));
     }
 }

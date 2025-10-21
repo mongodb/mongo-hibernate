@@ -67,7 +67,7 @@ class LocalTimeIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
                                 LocalTime>() {}.getClass()));
     }
 }

@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -60,7 +61,7 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     .mapToObj(id -> testingContacts.stream()
                             .filter(c -> c.id == id)
                             .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
+                            .orElseThrow(() -> fail("id does not exist: " + id)))
                     .toList();
         }
 

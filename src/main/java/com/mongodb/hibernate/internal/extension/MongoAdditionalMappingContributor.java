@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.extension;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
@@ -43,12 +44,11 @@ import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.mapping.AggregateColumn;
-import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
-import org.hibernate.mapping.Value;
 import org.hibernate.type.BasicPluralType;
+import org.hibernate.type.ComponentType;
 
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
@@ -58,7 +58,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      */
     private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
 
-    private static final Set<Class<?>> UNSUPPORTED_TEMPORAL_TYPES = Set.of(
+    private static final Set<Class<?>> UNSUPPORTED_TYPES = Set.of(
             Calendar.class,
             Time.class,
             Date.class,
@@ -93,9 +93,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     }
 
     private static void checkPropertyTypes(PersistentClass persistentClass) {
-        forbidTemporalTypes(persistentClass, persistentClass.getIdentifierProperty(), new StringJoiner("."));
+        checkPropertyType(persistentClass, persistentClass.getIdentifierProperty(), new StringJoiner("."));
         persistentClass.getProperties().forEach(property -> {
-            forbidTemporalTypes(persistentClass, property, new StringJoiner("."));
+            checkPropertyType(persistentClass, property, new StringJoiner("."));
         });
     }
 
@@ -137,44 +137,43 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         });
     }
 
-    private static void forbidTemporalTypes(
+    private static void checkPropertyType(
             PersistentClass persistentClass, Property property, StringJoiner propertyPath) {
         propertyPath.add(property.getName());
-        Value value = property.getValue();
-        var persistentAttributeType = value.getType();
-        var pluralPersistentAttribute = false;
-        Class<?> classToCheck = persistentAttributeType.getReturnedClass();
-        if (persistentAttributeType instanceof BasicPluralType<?, ?> pluralPersistentAttributeType) {
-            pluralPersistentAttribute = true;
-            classToCheck = pluralPersistentAttributeType.getElementType().getJavaType();
-            forbidTemporalTypesInAggregateEmbeddableAsCollectionType(persistentClass, propertyPath, value);
-        } else if (value instanceof Component componentValue) {
-            componentValue.getProperties().forEach(componentProperty -> {
-                forbidTemporalTypes(persistentClass, componentProperty, propertyPath);
-            });
+        var value = property.getValue();
+        var type = value.getType();
+        if (type instanceof BasicPluralType<?, ?> pluralType) {
+            var columns = value.getColumns();
+            assertTrue(columns.size() == 1);
+            if (columns.get(0) instanceof AggregateColumn aggregateColumn) {
+                checkComponentPropertyTypes(persistentClass, aggregateColumn.getComponent(), propertyPath);
+            } else {
+                forbidTemporalTypes(persistentClass, pluralType.getElementType().getJavaType(), true, propertyPath);
+            }
+        } else if (type instanceof ComponentType) {
+            checkComponentPropertyTypes(persistentClass, assertInstanceOf(value, Component.class), propertyPath);
+        } else {
+            forbidTemporalTypes(persistentClass, type.getReturnedClass(), false, propertyPath);
         }
+    }
 
-        if (UNSUPPORTED_TEMPORAL_TYPES.contains(classToCheck)) {
+    private static void checkComponentPropertyTypes(
+            PersistentClass persistentClass, Component component, StringJoiner propertyPath) {
+        component
+                .getProperties()
+                .forEach(componentProperty -> checkPropertyType(persistentClass, componentProperty, propertyPath));
+    }
+
+    private static void forbidTemporalTypes(
+            PersistentClass persistentClass, Class<?> typeToCheck, boolean plural, StringJoiner propertyPath) {
+        if (UNSUPPORTED_TYPES.contains(typeToCheck)) {
             throw new FeatureNotSupportedException(format(
-                    pluralPersistentAttribute
+                    plural
                             ? "%s: the plural persistent attribute [%s] has element type [%s] that is not supported"
                             : "%s: the persistent attribute [%s] has type [%s] that is not supported",
                     persistentClass,
                     propertyPath,
-                    classToCheck.getTypeName()));
-        }
-    }
-
-    private static void forbidTemporalTypesInAggregateEmbeddableAsCollectionType(
-            PersistentClass persistentClass, StringJoiner propertyPath, Value value) {
-        if (value instanceof BasicValue basicValue
-                && basicValue.getColumn() instanceof AggregateColumn aggregateColumn) {
-            Component componentValueOfCollection = aggregateColumn.getComponent();
-            if (componentValueOfCollection != null) {
-                componentValueOfCollection.getProperties().forEach(componentProperty -> {
-                    forbidTemporalTypes(persistentClass, componentProperty, propertyPath);
-                });
-            }
+                    typeToCheck.getTypeName()));
         }
     }
 

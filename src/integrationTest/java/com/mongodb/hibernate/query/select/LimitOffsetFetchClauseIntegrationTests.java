@@ -83,7 +83,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                 .mapToObj(id -> testingBooks.stream()
                         .filter(c -> c.id == id)
                         .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
+                        .orElseThrow(() -> fail("id does not exist: " + id)))
                 .toList();
     }
 

@@ -72,7 +72,7 @@ class OffsetDateTimeIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 OffsetDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
                                 OffsetDateTime>() {}.getClass()));
     }
 }

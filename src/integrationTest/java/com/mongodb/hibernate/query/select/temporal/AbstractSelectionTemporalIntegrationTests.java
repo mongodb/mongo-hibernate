@@ -25,7 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQueryIntegrationTests {
+abstract class AbstractSelectionTemporalIntegrationTests<I, T> extends AbstractQueryIntegrationTests {
 
     static final String COLLECTION_NAME = "items";
 
@@ -37,12 +37,14 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     abstract List<I> getSeedData();
 
+    abstract Class<I> getItemClass();
+
     @ParameterizedTest(name = "testComparisonByEq: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByEq(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
+    void testComparisonByEq(T temporal, List<I> expectedItems, String expectedRenderResult) {
         assertSelectionQuery(
                 "from Item where temporal = :t",
-                tClass,
+                getItemClass(),
                 q -> q.setParameter("t", temporal),
                 format(
                         """
@@ -71,10 +73,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testComparisonByNe: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByNe(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
+    void testComparisonByNe(T temporal, List<I> expectedItems, String expectedRenderResult) {
         assertSelectionQuery(
                 "from Item where temporal != :t",
-                tClass,
+                getItemClass(),
                 q -> q.setParameter("t", temporal),
                 format(
                         """
@@ -103,10 +105,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testComparisonByLt: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByLt(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
+    void testComparisonByLt(T temporal, List<I> expectedItems, String expectedRenderResult) {
         assertSelectionQuery(
                 "from Item where temporal < :t",
-                tClass,
+                getItemClass(),
                 q -> q.setParameter("t", temporal),
                 format(
                         """
@@ -135,10 +137,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testComparisonByLte: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByLte(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
+    void testComparisonByLte(T temporal, List<I> expectedItems, String expectedRenderResult) {
         assertSelectionQuery(
                 "from Item where temporal <= :t",
-                tClass,
+                getItemClass(),
                 q -> q.setParameter("t", temporal),
                 format(
                         """
@@ -167,10 +169,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testComparisonByGt: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByGt(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
+    void testComparisonByGt(T temporal, List<I> expectedItems, String expectedRenderResult) {
         assertSelectionQuery(
                 "from Item where temporal > :t",
-                tClass,
+                getItemClass(),
                 q -> q.setParameter("t", temporal),
                 format(
                         """
@@ -199,10 +201,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testComparisonByGte: temporal={0}, expectedItems={1}, expectedRenderResult={2}")
     @MethodSource
-    void testComparisonByGte(T temporal, List<I> expectedItems, String expectedRenderResult, Class<I> tClass) {
+    void testComparisonByGte(T temporal, List<I> expectedItems, String expectedRenderResult) {
         assertSelectionQuery(
                 "from Item where temporal >= :t",
-                tClass,
+                getItemClass(),
                 q -> q.setParameter("t", temporal),
                 format(
                         """
@@ -231,10 +233,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testOrderByAsc: expectedItems={0}")
     @MethodSource
-    void testOrderByAsc(List<I> expectedItems, Class<I> tClass) {
+    void testOrderByAsc(List<I> expectedItems) {
         assertSelectionQuery(
                 "from Item ORDER BY temporal ASC",
-                tClass,
+                getItemClass(),
                 """
                 {
                   "aggregate": "items",
@@ -258,10 +260,10 @@ abstract class AbstractSelectionTemporalIntegrationTest<I, T> extends AbstractQu
 
     @ParameterizedTest(name = "testOrderByDesc: expectedItems={0}")
     @MethodSource
-    void testOrderByDesc(List<I> expectedItems, Class<I> tClass) {
+    void testOrderByDesc(List<I> expectedItems) {
         assertSelectionQuery(
                 "from Item ORDER BY temporal DESC",
-                tClass,
+                getItemClass(),
                 """
                 {
                   "aggregate": "items",

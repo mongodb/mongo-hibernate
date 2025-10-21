@@ -72,7 +72,7 @@ class LocalDateTimeIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
                                 LocalDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
                                 LocalDateTime>() {}.getClass()));
     }
 }

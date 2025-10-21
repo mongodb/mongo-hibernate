@@ -53,7 +53,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class InstantIntegrationTests implements SessionFactoryScopeAware {
 
     private static final TimeZone ORIGINAL_JVM_TIMEZONE = TimeZone.getDefault();
-    private static final String ZONE_OFFSET = "+11:13";
+    private static final String ZONE_OFFSET_ID = "+11:13";
     private SessionFactoryScope sessionFactoryScope;
 
     @Override
@@ -92,14 +92,14 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
 
     @ParameterizedTest(name = "testRoundTripSessionTzsEqual: Write(sys={0}, sess={1}). Read(sys={0}, sess={1})")
     @MethodSource("instantPersistAndReadParameters")
-    void testRoundTripSessionTzsEqual(ZoneId systemDefaultTimeZone, ZoneId jdbcTimeZone, Instant toSave, Instant toRead)
+    void testRoundTripSessionTzsEqual(ZoneId systemTimeZone, ZoneId sessionTimeZone, Instant toSave, Instant toRead)
             throws Exception {
         var instantItem = new Item(1, toSave);
         withSystemTimeZone(
-                systemDefaultTimeZone, () -> inTransaction(jdbcTimeZone, session -> session.persist(instantItem)));
+                systemTimeZone, () -> inTransaction(sessionTimeZone, session -> session.persist(instantItem)));
         var loadedInstantItem = withSystemTimeZone(
-                systemDefaultTimeZone,
-                () -> fromTransaction(jdbcTimeZone, session -> session.find(Item.class, instantItem.id)));
+                systemTimeZone,
+                () -> fromTransaction(sessionTimeZone, session -> session.find(Item.class, instantItem.id)));
 
         var expectedItem = new Item(1, toRead);
         assertEq(expectedItem, loadedInstantItem);
@@ -122,12 +122,12 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @ParameterizedTest(
-            name = "testRoundTripSessionTzsNotEqual:" + "Write(sys=" + ZONE_OFFSET + ", sess={0}). Read(sys="
-                    + ZONE_OFFSET + ", sess={1})")
+            name = "testRoundTripSessionTzsNotEqual:" + "Write(sys=" + ZONE_OFFSET_ID + ", sess={0}). Read(sys="
+                    + ZONE_OFFSET_ID + ", sess={1})")
     @MethodSource("instantPersistAndReadParameters")
     void testRoundTripSessionTzsNotEqual(
             ZoneId sessionWriteTimeZone, ZoneId sessionReadTimeZone, Instant toSave, Instant toRead) throws Exception {
-        var systemTimeZone = ZoneId.of(ZONE_OFFSET);
+        var systemTimeZone = ZoneId.of(ZONE_OFFSET_ID);
         var instantItem = new Item(1, toSave);
 
         withSystemTimeZone(

@@ -22,6 +22,12 @@ import jakarta.persistence.Id;
 import java.util.Collection;
 import org.hibernate.annotations.Struct;
 
+/**
+ * NOTE: List of unsupported entities could include an entity with an array of aggregate embeddables (and the same case
+ * with nested aggregate embeddables). Hibernate ORM currently maps such arrays as {@link org.hibernate.type.BasicType}
+ * instead of {@link org.hibernate.type.BasicArrayType} when the element type is a parameterized generic class. For
+ * non-parameterized entities this mapping works; therefore these use cases are omitted from testing.
+ */
 final class UnsupportedItems {
 
     private UnsupportedItems() {}
@@ -163,11 +169,11 @@ final class UnsupportedItems {
         @Id
         int id;
 
-        AggregateEmbeddableNestedCollectionPersistenceAttribute<T> v;
+        AggregateEmbeddableNestedWithCollectionPersistentAttribute<T> v;
     }
 
     @Entity
-    static class ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<T> {
+    static class ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<T> {
         @Id
         int id;
 
@@ -234,9 +240,9 @@ final class UnsupportedItems {
         AggregateEmbeddableWithArrayPersistentAttribute<T> v;
     }
 
-    @Struct(name = "AggregateEmbeddableNestedCollectionPersistenceAttribute")
+    @Struct(name = "AggregateEmbeddableNestedWithCollectionPersistentAttribute")
     @Embeddable
-    static class AggregateEmbeddableNestedCollectionPersistenceAttribute<T> {
+    static class AggregateEmbeddableNestedWithCollectionPersistentAttribute<T> {
         AggregateEmbeddableWithCollectionPersistentAttribute<T> v;
     }
 

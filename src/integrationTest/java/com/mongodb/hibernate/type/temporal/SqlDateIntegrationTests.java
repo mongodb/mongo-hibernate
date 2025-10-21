@@ -64,7 +64,6 @@ class SqlDateIntegrationTests {
                 () -> assertNotSupported(
                         new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<Date>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
-                                Date>() {}.getClass()));
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<Date>() {}.getClass()));
     }
 }

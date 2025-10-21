@@ -69,10 +69,7 @@ class ZonedDateTimeIntegrationTests {
                         new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
                                 ZonedDateTime>() {}.getClass()),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
-                                ZonedDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddableWithPersistentAttribute<
+                        new ItemWithNestedCollectionOfAggregateEmbeddablePersistentAttribute<
                                 ZonedDateTime>() {}.getClass()));
     }
 }
