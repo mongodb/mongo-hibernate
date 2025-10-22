@@ -165,25 +165,25 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
     }
 
     @Override
     public @Nullable ResultSet getResultSet() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
     }
 
     @Override
     public boolean getMoreResults() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
     }
 
     @Override
     public int getUpdateCount() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of index and unique constraint creation");
+        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
     }
 
     @Override

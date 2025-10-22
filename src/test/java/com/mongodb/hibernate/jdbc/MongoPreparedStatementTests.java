@@ -125,8 +125,8 @@ class MongoPreparedStatementTests {
                 preparedStatement.setInt(3, 1);
                 preparedStatement.setBoolean(4, true);
                 preparedStatement.setString(5, "array element");
-                preparedStatement.setObject(6, new ObjectId(1, 2), ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber());
-                preparedStatement.setObject(7, new ObjectId(2, 0), ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(6, new ObjectId(1, 2), ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(7, new ObjectId(2, 0), ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber());
 
                 preparedStatement.executeUpdate();
 
