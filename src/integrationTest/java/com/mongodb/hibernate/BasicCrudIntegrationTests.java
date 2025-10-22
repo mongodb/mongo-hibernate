@@ -18,6 +18,7 @@ package com.mongodb.hibernate;
 
 import static com.mongodb.client.model.Aggregates.project;
 import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.CONSTRUCTOR_MAPPING_FOR_ITEM;
 import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.MAPPING_FOR_ITEM;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
@@ -29,6 +30,7 @@ import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTest
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.ColumnResult;
+import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.SqlResultSetMapping;
@@ -367,6 +369,27 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     @Entity
     @Table(name = Item.COLLECTION_NAME)
     @SqlResultSetMapping(
+            name = CONSTRUCTOR_MAPPING_FOR_ITEM,
+            classes =
+                    @ConstructorResult(
+                            targetClass = Item.class,
+                            columns = {
+                                @ColumnResult(name = ID_FIELD_NAME, type = int.class),
+                                @ColumnResult(name = "primitiveChar", type = char.class),
+                                @ColumnResult(name = "primitiveInt", type = int.class),
+                                @ColumnResult(name = "primitiveLong", type = long.class),
+                                @ColumnResult(name = "primitiveDouble", type = double.class),
+                                @ColumnResult(name = "primitiveBoolean", type = boolean.class),
+                                @ColumnResult(name = "boxedChar", type = Character.class),
+                                @ColumnResult(name = "boxedInt", type = Integer.class),
+                                @ColumnResult(name = "boxedLong", type = Long.class),
+                                @ColumnResult(name = "boxedDouble", type = Double.class),
+                                @ColumnResult(name = "boxedBoolean", type = Boolean.class),
+                                @ColumnResult(name = "string", type = String.class),
+                                @ColumnResult(name = "bigDecimal", type = BigDecimal.class),
+                                @ColumnResult(name = "objectId", type = ObjectId.class)
+                            }))
+    @SqlResultSetMapping(
             name = MAPPING_FOR_ITEM,
             columns = {
                 @ColumnResult(name = ID_FIELD_NAME),
@@ -386,6 +409,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             })
     public static class Item {
         public static final String COLLECTION_NAME = "items";
+        public static final String CONSTRUCTOR_MAPPING_FOR_ITEM = "ConstructorItem";
         public static final String MAPPING_FOR_ITEM = "Item";
 
         @Id
