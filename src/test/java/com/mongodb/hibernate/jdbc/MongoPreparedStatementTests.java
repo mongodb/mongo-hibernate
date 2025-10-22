@@ -16,45 +16,71 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static java.lang.Math.max;
+import static java.sql.Statement.SUCCESS_NO_INFO;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatObject;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Named.named;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
+import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoException;
+import com.mongodb.MongoExecutionTimeoutException;
+import com.mongodb.MongoOperationTimeoutException;
+import com.mongodb.MongoSocketReadTimeoutException;
+import com.mongodb.MongoSocketWriteTimeoutException;
+import com.mongodb.MongoTimeoutException;
+import com.mongodb.ServerAddress;
+import com.mongodb.bulk.BulkWriteError;
+import com.mongodb.bulk.BulkWriteInsert;
+import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.BatchUpdateException;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.SQLTimeoutException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
+import org.assertj.core.api.ThrowingConsumer;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
-import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -62,6 +88,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -73,6 +102,9 @@ class MongoPreparedStatementTests {
 
     @Mock
     private MongoDatabase mongoDatabase;
+
+    @Mock
+    MongoCollection<BsonDocument> mongoCollection;
 
     @Mock
     private ClientSession clientSession;
@@ -108,15 +140,16 @@ class MongoPreparedStatementTests {
     class ParameterValueSettingTests {
 
         @Captor
-        private ArgumentCaptor<BsonDocument> commandCaptor;
+        private ArgumentCaptor<List<WriteModel<BsonDocument>>> commandCaptor;
 
         @Test
         @DisplayName("Happy path when all parameters are provided values")
         void testSuccess() throws SQLException {
+            BulkWriteResult bulkWriteResult = Mockito.mock(BulkWriteResult.class);
 
-            doReturn(Document.parse("{ok: 1.0, n: 1}"))
-                    .when(mongoDatabase)
-                    .runCommand(eq(clientSession), any(BsonDocument.class));
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+            doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            doReturn(1).when(bulkWriteResult).getInsertedCount();
 
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
 
@@ -130,24 +163,401 @@ class MongoPreparedStatementTests {
 
                 preparedStatement.executeUpdate();
 
-                verify(mongoDatabase).runCommand(eq(clientSession), commandCaptor.capture());
-                var command = commandCaptor.getValue();
+                verify(mongoCollection).bulkWrite(eq(clientSession), commandCaptor.capture());
+                var writeModels = commandCaptor.getValue();
+                assertEquals(1, writeModels.size());
                 var expectedDoc = new BsonDocument()
-                        .append("insert", new BsonString("items"))
+                        .append("string1", new BsonString("s1"))
+                        .append("string2", new BsonString("s2"))
+                        .append("int32", new BsonInt32(1))
+                        .append("boolean", BsonBoolean.TRUE)
                         .append(
-                                "documents",
-                                new BsonArray(List.of(new BsonDocument()
-                                        .append("string1", new BsonString("s1"))
-                                        .append("string2", new BsonString("s2"))
-                                        .append("int32", new BsonInt32(1))
-                                        .append("boolean", BsonBoolean.TRUE)
-                                        .append(
-                                                "stringAndObjectId",
-                                                new BsonArray(List.of(
-                                                        new BsonString("array element"),
-                                                        new BsonObjectId(new ObjectId(1, 2)))))
-                                        .append("objectId", new BsonObjectId(new ObjectId(2, 0))))));
-                assertEquals(expectedDoc, command);
+                                "stringAndObjectId",
+                                new BsonArray(
+                                        List.of(new BsonString("array element"), new BsonObjectId(new ObjectId(1, 2)))))
+                        .append("objectId", new BsonObjectId(new ObjectId(2, 0)));
+                assertInstanceOf(InsertOneModel.class, writeModels.get(0));
+                assertEquals(expectedDoc, ((InsertOneModel<BsonDocument>) writeModels.get(0)).getDocument());
+            }
+        }
+    }
+
+    @Nested
+    class ExecuteMethodThrowsSqlExceptionTests {
+        private static final String DUMMY_EXCEPTION_MESSAGE = "Test message";
+        private static final ServerAddress DUMMY_SERVER_ADDRESS = new ServerAddress("localhost");
+
+        private static final BulkWriteError BULK_WRITE_ERROR =
+                new BulkWriteError(10, DUMMY_EXCEPTION_MESSAGE, new BsonDocument(), 0);
+        private static final BulkWriteResult BULK_WRITE_RESULT = BulkWriteResult.acknowledged(
+                1, 0, 2, 3, emptyList(), List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 2)))));
+        private static final MongoBulkWriteException MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS =
+                new MongoBulkWriteException(
+                        BULK_WRITE_RESULT, List.of(BULK_WRITE_ERROR), null, DUMMY_SERVER_ADDRESS, emptySet());
+        private static final MongoBulkWriteException MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS =
+                new MongoBulkWriteException(BULK_WRITE_RESULT, emptyList(), null, DUMMY_SERVER_ADDRESS, emptySet());
+
+        private static final String MQL_ITEMS_AGGREGATE =
+                """
+                {
+                    aggregate: "items",
+                    pipeline: [
+                        { $match: { _id: 1 } },
+                        { $project: { _id: 0 } }
+                    ]
+                }
+                """;
+
+        private static final String MQL_ITEMS_INSERT =
+                """
+                {
+                    insert: "items",
+                    documents: [
+                        { _id: 1 }
+                    ]
+                }
+                """;
+        private static final String MQL_ITEMS_UPDATE =
+                """
+                {
+                    update: "items",
+                    updates: [
+                        { q: { _id: 1 }, u: { $set: { touched: true } }, multi: false }
+                    ]
+                }
+                """;
+        private static final String MQL_ITEMS_DELETE =
+                """
+                {
+                    delete: "items",
+                    deletes: [
+                        { q: { _id: 1 }, limit: 1 }
+                    ]
+                }
+                """;
+
+        @BeforeEach
+        void beforeEach() {
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+        }
+
+        private static Stream<MongoException> timeoutExceptions() {
+            var dummyCause = new RuntimeException();
+            return Stream.of(
+                    new MongoExecutionTimeoutException(1, DUMMY_EXCEPTION_MESSAGE),
+                    new MongoSocketReadTimeoutException(DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
+                    new MongoSocketWriteTimeoutException(DUMMY_EXCEPTION_MESSAGE, DUMMY_SERVER_ADDRESS, dummyCause),
+                    new MongoTimeoutException(DUMMY_EXCEPTION_MESSAGE),
+                    new MongoOperationTimeoutException(DUMMY_EXCEPTION_MESSAGE),
+                    new MongoException(50, DUMMY_EXCEPTION_MESSAGE) // 50 is a timeout error code
+                    );
+        }
+
+        private static Stream<MongoException> constraintViolationExceptions() {
+            return Stream.of(
+                    new MongoException(11000, DUMMY_EXCEPTION_MESSAGE),
+                    new MongoException(11001, DUMMY_EXCEPTION_MESSAGE),
+                    new MongoException(12582, DUMMY_EXCEPTION_MESSAGE));
+        }
+
+        private static Stream<MongoException> genericMongoExceptions() {
+            return Stream.of(
+                    new MongoException(-3, DUMMY_EXCEPTION_MESSAGE), new MongoException(5000, DUMMY_EXCEPTION_MESSAGE));
+        }
+
+        @ParameterizedTest(name = "test executeBatch MongoException. Parameters: Parameters: mongoException: {0}")
+        @MethodSource("genericMongoExceptions")
+        void testExecuteBatchMongoException(MongoException mongoException) throws SQLException {
+            int expectedErrorCode = max(0, mongoException.getCode());
+            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+
+            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
+                assertThatObject(batchUpdateException)
+                        .returns(expectedErrorCode, BatchUpdateException::getErrorCode)
+                        .returns(null, BatchUpdateException::getSQLState)
+                        .returns(mongoException, SQLException::getCause)
+                        .satisfies(exception -> {
+                            assertUpdateCounts(batchUpdateException.getUpdateCounts(), 0);
+                        });
+            });
+        }
+
+        @ParameterizedTest(name = "test executeUpdate MongoException. Parameters: Parameters: mongoException: {0}")
+        @MethodSource("genericMongoExceptions")
+        void testExecuteUpdateMongoException(MongoException mongoException) throws SQLException {
+            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteUpdateThrowsSqlException(
+                    sqlException -> assertGenericMongoException(sqlException, mongoException));
+        }
+
+        @ParameterizedTest(name = "test executeUQuery MongoException. Parameters: Parameters: mongoException: {0}")
+        @MethodSource("genericMongoExceptions")
+        void testExecuteQueryMongoException(MongoException mongoException) throws SQLException {
+            doThrow(mongoException).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            assertExecuteQueryThrowsSqlException(
+                    sqlException -> assertGenericMongoException(sqlException, mongoException));
+        }
+
+        @ParameterizedTest(
+                name = "test executeUpdate timeout exception. Parameters: Parameters: mongoTimeoutException: {0}")
+        @MethodSource("timeoutExceptions")
+        void testExecuteUpdateTimeoutException(MongoException mongoTimeoutException) throws SQLException {
+            doThrow(mongoTimeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteUpdateThrowsSqlException(
+                    sqlException -> assertTimeoutException(mongoTimeoutException, sqlException));
+        }
+
+        @ParameterizedTest(name = "test executeQuery timeout exception. Parameters: mongoTimeoutException: {0}")
+        @MethodSource("timeoutExceptions")
+        void testExecuteQueryTimeoutException(MongoException mongoTimeoutException) throws SQLException {
+            doThrow(mongoTimeoutException).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            assertExecuteQueryThrowsSqlException(
+                    sqlException -> assertTimeoutException(mongoTimeoutException, sqlException));
+        }
+
+        @ParameterizedTest(name = "test executeUpdate constraint violation. Parameters: mongoException: {0}")
+        @MethodSource("constraintViolationExceptions")
+        void testExecuteUpdateConstraintViolationException(MongoException mongoException) throws SQLException {
+            int expectedErrorCode = mongoException.getCode();
+            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+
+            assertExecuteUpdateThrowsSqlException(sqlException -> {
+                assertConstraintViolationException(mongoException, sqlException, expectedErrorCode);
+            });
+        }
+
+        @ParameterizedTest(name = "test executeQuery constraint violation. Parameters: mongoException: {0}")
+        @MethodSource("constraintViolationExceptions")
+        void testExecuteQueryConstraintViolationException(MongoException mongoException) throws SQLException {
+            int expectedErrorCode = mongoException.getCode();
+            doThrow(mongoException).when(mongoCollection).aggregate(eq(clientSession), anyList());
+
+            assertExecuteQueryThrowsSqlException(sqlException -> {
+                assertConstraintViolationException(mongoException, sqlException, expectedErrorCode);
+            });
+        }
+
+        private static void assertConstraintViolationException(
+                final MongoException mongoException, final SQLException sqlException, final int expectedErrorCode) {
+            assertThatObject(sqlException)
+                    .asInstanceOf(type(SQLIntegrityConstraintViolationException.class))
+                    .returns(expectedErrorCode, SQLIntegrityConstraintViolationException::getErrorCode)
+                    .returns(null, SQLIntegrityConstraintViolationException::getSQLState)
+                    .returns(mongoException, SQLIntegrityConstraintViolationException::getCause);
+        }
+
+        @ParameterizedTest(name = "test executeBatch timeout exception. Parameters: mongoTimeoutException: {0}")
+        @MethodSource("timeoutExceptions")
+        void testExecuteBatchTimeoutException(MongoException mongoTimeoutException) throws SQLException {
+            doThrow(mongoTimeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
+                int expectedErrorCode = max(0, mongoTimeoutException.getCode());
+                assertThatObject(batchUpdateException)
+                        .returns(expectedErrorCode, BatchUpdateException::getErrorCode)
+                        .returns(null, BatchUpdateException::getSQLState)
+                        .satisfies(ex -> {
+                            assertUpdateCounts(ex.getUpdateCounts(), 0);
+                        })
+                        .extracting(SQLException::getCause)
+                        .asInstanceOf(type(SQLTimeoutException.class))
+                        .returns(expectedErrorCode, SQLTimeoutException::getErrorCode)
+                        .returns(mongoTimeoutException, SQLTimeoutException::getCause);
+            });
+        }
+
+        @ParameterizedTest(name = "test executeBatch constraint violation. Parameters: mongoException: {0}")
+        @MethodSource("constraintViolationExceptions")
+        void testExecuteBatchConstraintViolationException(MongoException mongoException) throws SQLException {
+            int expectedErrorCode = mongoException.getCode();
+            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+
+            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
+                assertThatObject(batchUpdateException)
+                        .returns(expectedErrorCode, BatchUpdateException::getErrorCode)
+                        .returns(null, BatchUpdateException::getSQLState)
+                        .satisfies(ex -> {
+                            assertUpdateCounts(ex.getUpdateCounts(), 0);
+                        })
+                        .extracting(SQLException::getCause)
+                        .asInstanceOf(type(SQLIntegrityConstraintViolationException.class))
+                        .returns(expectedErrorCode, SQLIntegrityConstraintViolationException::getErrorCode)
+                        .returns(mongoException, SQLIntegrityConstraintViolationException::getCause);
+            });
+        }
+
+        @Test
+        void testExecuteBatchRuntimeExceptionCause() throws SQLException {
+            RuntimeException runtimeException = new RuntimeException();
+            doThrow(runtimeException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
+                assertThatObject(batchUpdateException)
+                        .returns(0, BatchUpdateException::getErrorCode)
+                        .returns(null, BatchUpdateException::getSQLState)
+                        .returns(runtimeException, BatchUpdateException::getCause)
+                        .satisfies(ex -> {
+                            assertUpdateCounts(ex.getUpdateCounts(), 0);
+                        });
+            });
+        }
+
+        @Test
+        void testExecuteUpdateRuntimeExceptionCause() throws SQLException {
+            RuntimeException runtimeException = new RuntimeException();
+            doThrow(runtimeException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            assertExecuteUpdateThrowsSqlException(
+                    sqlException -> assertGenericException(sqlException, runtimeException));
+        }
+
+        @Test
+        void testExecuteQueryRuntimeExceptionCause() throws SQLException {
+            RuntimeException runtimeException = new RuntimeException();
+            doThrow(runtimeException).when(mongoCollection).aggregate(eq(clientSession), anyList());
+            assertExecuteQueryThrowsSqlException(
+                    sqlException -> assertGenericException(sqlException, runtimeException));
+        }
+
+        private static Stream<Arguments> bulkWriteExceptionsForExecuteUpdate() {
+            return Stream.of(
+                    Arguments.of(named("insert", MQL_ITEMS_INSERT), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
+                    Arguments.of(named("update", MQL_ITEMS_UPDATE), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
+                    Arguments.of(named("delete", MQL_ITEMS_DELETE), MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS),
+                    Arguments.of(named("insert", MQL_ITEMS_INSERT), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS),
+                    Arguments.of(named("update", MQL_ITEMS_UPDATE), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS),
+                    Arguments.of(named("delete", MQL_ITEMS_DELETE), MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS));
+        }
+
+        @ParameterizedTest(
+                name = "test executeUpdate MongoBulkWriteException. Parameters: commandName={0}, exception={1}")
+        @MethodSource("bulkWriteExceptionsForExecuteUpdate")
+        void testExecuteUpdateMongoBulkWriteException(String mql, MongoBulkWriteException mongoBulkWriteException)
+                throws SQLException {
+            doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+                assertThatExceptionOfType(SQLException.class)
+                        .isThrownBy(mongoPreparedStatement::executeUpdate)
+                        .withCause(mongoBulkWriteException)
+                        .returns(vendorCodeError, SQLException::getErrorCode)
+                        .returns(null, SQLException::getSQLState);
+            }
+        }
+
+        private static Stream<Arguments> bulkWriteExceptionsForExecuteBatch() {
+            return Stream.of(
+                    Arguments.of(
+                            named("insert", MQL_ITEMS_INSERT),
+                            MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS,
+                            BULK_WRITE_RESULT.getInsertedCount()),
+                    Arguments.of(
+                            named("update", MQL_ITEMS_UPDATE),
+                            MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS,
+                            BULK_WRITE_RESULT.getModifiedCount()),
+                    Arguments.of(
+                            named("delete", MQL_ITEMS_DELETE),
+                            MONGO_BULK_WRITE_EXCEPTION_NO_ERRORS,
+                            BULK_WRITE_RESULT.getDeletedCount()),
+                    Arguments.of(
+                            named("insert", MQL_ITEMS_INSERT),
+                            MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS,
+                            BULK_WRITE_RESULT.getInsertedCount()),
+                    Arguments.of(
+                            named("update", MQL_ITEMS_UPDATE),
+                            MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS,
+                            BULK_WRITE_RESULT.getModifiedCount()),
+                    Arguments.of(
+                            named("delete", MQL_ITEMS_DELETE),
+                            MONGO_BULK_WRITE_EXCEPTION_WITH_ERRORS,
+                            BULK_WRITE_RESULT.getDeletedCount()));
+        }
+
+        @ParameterizedTest(
+                name = "test executeBatch MongoBulkWriteException. Parameters: commandName={0}, exception={1}")
+        @MethodSource("bulkWriteExceptionsForExecuteBatch")
+        void testExecuteBatchMongoBulkWriteException(
+                String mql, MongoBulkWriteException mongoBulkWriteException, int expectedUpdateCountLength)
+                throws SQLException {
+            doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+                mongoPreparedStatement.addBatch();
+                assertThatExceptionOfType(BatchUpdateException.class)
+                        .isThrownBy(mongoPreparedStatement::executeBatch)
+                        .withCause(mongoBulkWriteException)
+                        .returns(vendorCodeError, BatchUpdateException::getErrorCode)
+                        .returns(null, BatchUpdateException::getSQLState)
+                        .satisfies(ex -> {
+                            assertUpdateCounts(ex.getUpdateCounts(), expectedUpdateCountLength);
+                        });
+            }
+        }
+
+        private static void assertGenericException(final SQLException sqlException, RuntimeException cause) {
+            assertThatObject(sqlException)
+                    .isExactlyInstanceOf(SQLException.class)
+                    .returns(0, SQLException::getErrorCode)
+                    .returns(null, SQLException::getSQLState)
+                    .returns(cause, SQLException::getCause);
+        }
+
+        private static void assertGenericMongoException(final SQLException sqlException, final MongoException cause) {
+            int expectedErrorCode = max(0, cause.getCode());
+            assertThatObject(sqlException)
+                    .isExactlyInstanceOf(SQLException.class)
+                    .returns(expectedErrorCode, SQLException::getErrorCode)
+                    .returns(null, SQLException::getSQLState)
+                    .returns(cause, SQLException::getCause);
+        }
+
+        private static void assertTimeoutException(
+                final MongoException mongoTimeoutException, final SQLException sqlException) {
+            int expectedErrorCode = max(0, mongoTimeoutException.getCode());
+            assertThatObject(sqlException)
+                    .asInstanceOf(type(SQLTimeoutException.class))
+                    .returns(expectedErrorCode, SQLTimeoutException::getErrorCode)
+                    .returns(null, SQLTimeoutException::getSQLState)
+                    .returns(mongoTimeoutException, SQLTimeoutException::getCause);
+        }
+
+        private void assertExecuteBatchThrowsSqlException(ThrowingConsumer<BatchUpdateException> asserter)
+                throws SQLException {
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
+                mongoPreparedStatement.addBatch();
+                assertThatExceptionOfType(BatchUpdateException.class)
+                        .isThrownBy(mongoPreparedStatement::executeBatch)
+                        .satisfies(asserter);
+            }
+        }
+
+        private void assertExecuteUpdateThrowsSqlException(ThrowingConsumer<SQLException> asserter)
+                throws SQLException {
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
+                assertThatExceptionOfType(SQLException.class)
+                        .isThrownBy(mongoPreparedStatement::executeUpdate)
+                        .satisfies(asserter);
+            }
+        }
+
+        private void assertExecuteQueryThrowsSqlException(ThrowingConsumer<SQLException> asserter) throws SQLException {
+            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_AGGREGATE)) {
+                assertThatExceptionOfType(SQLException.class)
+                        .isThrownBy(mongoPreparedStatement::executeQuery)
+                        .satisfies(asserter);
+            }
+        }
+
+        private static Integer getVendorCodeError(final MongoBulkWriteException mongoBulkWriteException) {
+            return mongoBulkWriteException.getWriteErrors().stream()
+                    .map(BulkWriteError::getCode)
+                    .findFirst()
+                    .orElse(0);
+        }
+
+        private static void assertUpdateCounts(final int[] updateCounts, int expectedUpdateCountsLength) {
+            assertEquals(expectedUpdateCountsLength, updateCounts.length);
+            for (int count : updateCounts) {
+                assertEquals(SUCCESS_NO_INFO, count);
             }
         }
     }
@@ -208,10 +618,13 @@ class MongoPreparedStatementTests {
 
         @Test
         void testExecuteUpdate() throws SQLException {
-            doReturn(Document.parse("{n: 10}"))
-                    .when(mongoDatabase)
-                    .runCommand(eq(clientSession), any(BsonDocument.class));
-            mongoPreparedStatement.executeUpdate();
+            assertThrows(SQLException.class, () -> mongoPreparedStatement.executeUpdate());
+            assertTrue(lastOpenResultSet.isClosed());
+        }
+
+        @Test
+        void testExecuteBatch() throws SQLException {
+            mongoPreparedStatement.executeBatch();
             assertTrue(lastOpenResultSet.isClosed());
         }
     }

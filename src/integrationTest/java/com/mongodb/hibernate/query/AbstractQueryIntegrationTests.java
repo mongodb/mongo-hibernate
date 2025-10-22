@@ -128,7 +128,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             }
             var resultList = selectionQuery.getResultList();
 
-            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
 
             resultListVerifier.accept(resultList);
 
@@ -178,13 +178,13 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 expectedExceptionMessageParameters);
     }
 
-    protected void assertActualCommand(BsonDocument expectedCommand) {
+    protected void assertActualCommandsInOrder(BsonDocument... expectedCommands) {
         var capturedCommands = testCommandListener.getStartedCommands();
-
-        assertThat(capturedCommands)
-                .singleElement()
-                .asInstanceOf(InstanceOfAssertFactories.MAP)
-                .containsAllEntriesOf(expectedCommand);
+        assertThat(capturedCommands).hasSize(expectedCommands.length);
+        for (int i = 0; i < expectedCommands.length; i++) {
+            BsonDocument actual = capturedCommands.get(i);
+            assertThat(actual).asInstanceOf(InstanceOfAssertFactories.MAP).containsAllEntriesOf(expectedCommands[i]);
+        }
     }
 
     protected void assertMutationQuery(
@@ -218,7 +218,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 queryPostProcessor.accept(query);
             }
             var mutationCount = query.executeUpdate();
-            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
             assertThat(mutationCount).isEqualTo(expectedMutationCount);
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);

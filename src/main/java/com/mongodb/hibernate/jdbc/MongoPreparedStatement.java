@@ -28,6 +28,7 @@ import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.BatchUpdateException;
 import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
@@ -35,10 +36,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
@@ -52,15 +55,16 @@ import org.bson.types.ObjectId;
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
-
+    private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        this.command = MongoStatement.parse(mql);
-        this.parameterValueSetters = new ArrayList<>();
+        command = MongoStatement.parse(mql);
+        commandBatch = new ArrayList<>();
+        parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -77,6 +81,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
+        checkSupportedUpdateCommand(command);
         return executeUpdateCommand(command);
     }
 
@@ -200,7 +205,49 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        checkAllParametersSet();
+        commandBatch.add(command.clone());
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        commandBatch.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        closeLastOpenResultSet();
+        if (commandBatch.isEmpty()) {
+            return EMPTY_BATCH_RESULT;
+        }
+        checkSupportedBatchCommand(commandBatch.get(0));
+        try {
+            executeBulkWrite(commandBatch, ExecutionType.BATCH);
+            var updateCounts = new int[commandBatch.size()];
+            // We cannot determine the actual number of rows affected for each command in the batch.
+            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
+            return updateCounts;
+        } finally {
+            commandBatch.clear();
+        }
+    }
+
+    private void checkSupportedBatchCommand(BsonDocument command) throws SQLException {
+        var commandType = getCommandType(command);
+        if (commandType == CommandType.AGGREGATE) {
+            // The method executeBatch throws a BatchUpdateException if any of the commands in the batch attempts to
+            // return a result set.
+            throw new BatchUpdateException(
+                    format(
+                            "Commands returning result set are not supported. Received command: %s",
+                            commandType.getCommandName()),
+                    null,
+                    NO_ERROR_CODE,
+                    null);
+        }
+        checkSupportedUpdateCommand(commandType);
     }
 
     @Override
