@@ -664,9 +664,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
         var excludeId = false;
         for (var fieldName : fieldNames) {
             fieldsWithoutExclusions.remove(fieldName);
-            if (fieldName.equals(ID_FIELD_NAME)) {
-                excludeId = true;
-            }
+            excludeId |= fieldName.equals(ID_FIELD_NAME);
         }
         return excludeId
                 ? project(fields(Projections.excludeId(), fieldsWithoutExclusions))
