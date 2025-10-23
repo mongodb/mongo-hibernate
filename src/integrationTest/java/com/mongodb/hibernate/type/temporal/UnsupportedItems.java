@@ -247,7 +247,7 @@ final class UnsupportedItems {
         AggregateEmbeddableWithCollectionPersistentAttribute<T> v;
     }
 
-    @Struct(name = "AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute")
+    @Struct(name = "AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute")
     @Embeddable
     static class AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> {
         Collection<AggregateEmbeddableWithBasicPersistentAttribute<T>> v;
