@@ -24,6 +24,9 @@ import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.util.Map;
 import org.hibernate.HibernateException;
@@ -38,7 +41,7 @@ public final class StandardServiceRegistryScopedState implements Service {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private final MongoConfiguration config;
+    private final transient MongoConfiguration config;
 
     @VisibleForTesting(otherwise = PRIVATE)
     public StandardServiceRegistryScopedState(MongoConfiguration config) {
@@ -47,6 +50,12 @@ public final class StandardServiceRegistryScopedState implements Service {
 
     public MongoConfiguration getConfiguration() {
         return config;
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        throw new NotSerializableException(
+                "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
     public static final class ServiceContributor implements org.hibernate.service.spi.ServiceContributor {
