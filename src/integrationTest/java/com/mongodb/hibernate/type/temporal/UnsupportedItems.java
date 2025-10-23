@@ -26,8 +26,8 @@ import org.hibernate.type.descriptor.java.JavaType;
 /**
  * NOTE: An entity with a field that is an array of aggregate embeddables (and the same case with nested aggregate
  * embeddables) is not included in the unsupported-items test set. Hibernate ORM currently maps such arrays as
- * {@link org.hibernate.type.BasicType} instead of {@link org.hibernate.type.BasicArrayType} when the component type
- * of the array is a parameterized type, which causes validation not to catch the unsupported {@link JavaType} usage.
+ * {@link org.hibernate.type.BasicType} instead of {@link org.hibernate.type.BasicArrayType} when the component type of
+ * the array is a parameterized type, which causes validation not to catch the unsupported {@link JavaType} usage.
  */
 final class UnsupportedItems {
 
