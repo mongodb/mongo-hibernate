@@ -231,6 +231,93 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                 Set.of(Book.COLLECTION_NAME));
     }
 
+    @Test
+    void testUpdateNoFilter() {
+        assertMutationQuery(
+                "update Book set title = :newTitle",
+                q -> q.setParameter("newTitle", "Unknown"),
+                5,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {},
+                       "u": {
+                         "$set": {
+                           "title": "Unknown"
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                mongoCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "Unknown",
+                                  "outOfStock": true,
+                                  "publishYear": 1869,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
     @Nested
     class Unsupported {
         @Test

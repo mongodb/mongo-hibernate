@@ -188,6 +188,23 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
 
     protected void assertMutationQuery(
             String hql,
+            int expectedMutationCount,
+            String expectedMql,
+            MongoCollection<BsonDocument> collection,
+            Iterable<? extends BsonDocument> expectedDocuments,
+            Set<String> expectedAffectedCollections) {
+        assertMutationQuery(
+                hql,
+                null,
+                expectedMutationCount,
+                expectedMql,
+                collection,
+                expectedDocuments,
+                expectedAffectedCollections);
+    }
+
+    protected void assertMutationQuery(
+            String hql,
             Consumer<MutationQuery> queryPostProcessor,
             int expectedMutationCount,
             String expectedMql,
