@@ -21,12 +21,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import java.util.Collection;
 import org.hibernate.annotations.Struct;
+import org.hibernate.type.descriptor.java.JavaType;
 
 /**
- * NOTE: List of unsupported entities could include an entity with an array of aggregate embeddables (and the same case
- * with nested aggregate embeddables). Hibernate ORM currently maps such arrays as {@link org.hibernate.type.BasicType}
- * instead of {@link org.hibernate.type.BasicArrayType} when the element type is a parameterized generic class. For
- * non-parameterized entities this mapping works; therefore these use cases are omitted from testing.
+ * NOTE: An entity with a field that is an array of aggregate embeddables (and the same case with nested aggregate
+ * embeddables) is not included in the unsupported-items test set. Hibernate ORM currently maps such arrays as
+ * {@link org.hibernate.type.BasicType} instead of {@link org.hibernate.type.BasicArrayType} when the component type is
+ * a parameterized type, which causes validation not to catch the unsupported {@link JavaType} usage.
  */
 final class UnsupportedItems {
 
@@ -177,7 +178,7 @@ final class UnsupportedItems {
         @Id
         int id;
 
-        AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<T> v;
+        AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> v;
     }
 
     @Embeddable
@@ -248,7 +249,7 @@ final class UnsupportedItems {
 
     @Struct(name = "AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute")
     @Embeddable
-    static class AggregateEmbeddableWithCollectionOfAggregateEmbeddableWithBasicPersistentAttribute<T> {
+    static class AggregateEmbeddableWithCollectionOfAggregateEmbeddablePersistentAttribute<T> {
         Collection<AggregateEmbeddableWithBasicPersistentAttribute<T>> v;
     }
 }

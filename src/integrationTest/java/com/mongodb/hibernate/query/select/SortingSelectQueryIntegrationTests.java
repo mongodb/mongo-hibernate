@@ -60,7 +60,7 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         return Arrays.stream(ids)
                 .mapToObj(id -> testingBooks.stream()
                         .filter(c -> c.id == id)
-                        .findFirst()
+                        .findAny()
                         .orElseThrow(() -> fail("id does not exist: " + id)))
                 .toList();
     }

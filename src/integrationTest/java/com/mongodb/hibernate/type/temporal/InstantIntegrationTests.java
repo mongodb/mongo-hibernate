@@ -109,13 +109,13 @@ class InstantIntegrationTests implements SessionFactoryScopeAware {
             name = "testRoundTripWriteAndReadPathTzsNotEqual: Write(sys={0}, sess={0}). Read(sys={1}, sess={1})")
     @MethodSource("instantPersistAndReadParameters")
     void testRoundTripWriteAndReadPathTzsNotEqual(
-            ZoneId writeTimeZonePath, ZoneId readTimeZonePath, Instant toSave, Instant toRead) throws Exception {
+            ZoneId writePathTimeZone, ZoneId readPathTimeZone, Instant toSave, Instant toRead) throws Exception {
         var instantItem = new Item(1, toSave);
         withSystemTimeZone(
-                writeTimeZonePath, () -> inTransaction(writeTimeZonePath, session -> session.persist(instantItem)));
+                writePathTimeZone, () -> inTransaction(writePathTimeZone, session -> session.persist(instantItem)));
         var loadedInstantItem = withSystemTimeZone(
-                readTimeZonePath,
-                () -> fromTransaction(readTimeZonePath, session -> session.find(Item.class, instantItem.id)));
+                readPathTimeZone,
+                () -> fromTransaction(readPathTimeZone, session -> session.find(Item.class, instantItem.id)));
 
         var expectedItem = new Item(1, toRead);
         assertEq(expectedItem, loadedInstantItem);
