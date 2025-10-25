@@ -673,9 +673,9 @@ class MongoPreparedStatementIntegrationTests {
                           %s: "books"
                         }""",
                         commandName))) {
-                    SQLFeatureNotSupportedException exception =
-                            assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage()).contains(commandName);
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessageContaining(commandName);
                 }
             });
         }
