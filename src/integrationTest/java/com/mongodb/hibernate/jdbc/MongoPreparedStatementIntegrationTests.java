@@ -723,10 +723,9 @@ class MongoPreparedStatementIntegrationTests {
                             ]
                         }""",
                         unsupportedElement))) {
-                    SQLFeatureNotSupportedException exception =
-                            assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage())
-                            .isEqualTo(format("Unsupported elements in delete command: [%s]", unsupportedElement));
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage("Unsupported elements in delete command: [%s]".formatted(unsupportedElement));
                 }
             });
         }
