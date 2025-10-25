@@ -698,10 +698,9 @@ class MongoPreparedStatementIntegrationTests {
                             ]
                         }""",
                         unsupportedElement))) {
-                    SQLFeatureNotSupportedException exception =
-                            assertThrows(SQLFeatureNotSupportedException.class, pstm::executeUpdate);
-                    assertThat(exception.getMessage())
-                            .isEqualTo(format("Unsupported elements in update command: [%s]", unsupportedElement));
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage("Unsupported elements in update command: [%s]".formatted(unsupportedElement));
                 }
             });
         }
