@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,8 +60,8 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         return Arrays.stream(ids)
                 .mapToObj(id -> testingBooks.stream()
                         .filter(c -> c.id == id)
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
+                        .findAny()
+                        .orElseThrow(() -> fail("id does not exist: " + id)))
                 .toList();
     }
 

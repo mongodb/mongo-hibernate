@@ -43,6 +43,7 @@ import jakarta.persistence.SqlResultSetMapping;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.sql.SQLFeatureNotSupportedException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -101,6 +102,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[] {null, "str"},
                 new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                new Instant[] {Instant.parse("2007-12-03T10:15:30Z"), null},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
@@ -112,6 +114,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 asList("str", null),
                 asList(BigDecimal.valueOf(10.1), null),
                 asList(null, new ObjectId("000000000000000000000001")),
+                asList(Instant.parse("2007-12-03T10:15:30Z"), null),
                 asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -132,6 +135,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     strings: [null, "str"],
                     bigDecimals: [null, {$numberDecimal: "10.1"}],
                     objectIds: [{$oid: "000000000000000000000001"}, null],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddables: [{a: 1}, null],
                     charsCollection: ["s", "t", null, "r"],
                     intsCollection: [null, 5],
@@ -141,6 +145,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddablesCollection: [{a: 1}, null]
                 }
                 """);
@@ -174,6 +179,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     strings: [null, "str"],
                     bigDecimals: [null, {$numberDecimal: "10.1"}],
                     objectIds: [{$oid: "000000000000000000000002"}, null],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddables: [{a: 1}, null],
                     charsCollection: ["s", "t", null, "r"],
                     intsCollection: [null, 5],
@@ -183,6 +189,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddablesCollection: [{a: 1}, null]
                 }
                 """);
@@ -209,7 +216,9 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[0],
                 new BigDecimal[0],
                 new ObjectId[0],
+                new Instant[0],
                 new StructAggregateEmbeddableIntegrationTests.Single[0],
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
@@ -238,6 +247,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     strings: [],
                     bigDecimals: [],
                     objectIds: [],
+                    instants: [],
                     structAggregateEmbeddables: [],
                     charsCollection: [],
                     intsCollection: [],
@@ -247,6 +257,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: [],
                     bigDecimalsCollection: [],
                     objectIdsCollection: [],
+                    instantsCollection: [],
                     structAggregateEmbeddablesCollection: []
                 }
                 """);
@@ -274,7 +285,9 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 null,
                 null,
                 null,
+                null,
                 (Collection<Character>) null,
+                null,
                 null,
                 null,
                 null,
@@ -302,6 +315,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     strings: null,
                     bigDecimals: null,
                     objectIds: null,
+                    instants: null,
                     structAggregateEmbeddables: null,
                     charsCollection: null,
                     intsCollection: null,
@@ -311,6 +325,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection: null,
                     bigDecimalsCollection: null,
                     objectIdsCollection: null,
+                    instantsCollection: null,
                     structAggregateEmbeddablesCollection: null
                 }
                 """);
@@ -336,6 +351,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 new String[] {"str"},
                 new BigDecimal[] {BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001")},
+                new Instant[] {Instant.parse("2007-12-03T10:15:30Z")},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1)
                 },
@@ -347,6 +363,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 List.of("str"),
                 List.of(BigDecimal.valueOf(10.1)),
                 List.of(new ObjectId("000000000000000000000001")),
+                List.of(Instant.parse("2007-12-03T10:15:30Z")),
                 List.of(new StructAggregateEmbeddableIntegrationTests.Single(1)));
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1, new ArraysAndCollections[] {arraysAndCollections}, List.of());
@@ -370,6 +387,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         strings: ["str"],
                         bigDecimals: [{$numberDecimal: "10.1"}],
                         objectIds: [{$oid: "000000000000000000000001"}],
+                        instants: [{"$date": "2007-12-03T10:15:30Z"}],
                         structAggregateEmbeddables: [{a: 1}],
                         charsCollection: ["s", "t", "r"],
                         intsCollection: [5],
@@ -379,6 +397,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: ["str"],
                         bigDecimalsCollection: [{$numberDecimal: "10.1"}],
                         objectIdsCollection: [{$oid: "000000000000000000000001"}],
+                        instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
                         structAggregateEmbeddablesCollection: [{a: 1}]
                     }],
                     structAggregateEmbeddablesCollection: []
@@ -415,6 +434,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         strings: ["str"],
                         bigDecimals: [{$numberDecimal: "10.1"}],
                         objectIds: [{$oid: "000000000000000000000001"}],
+                        instants: [{"$date": "2007-12-03T10:15:30Z"}],
                         structAggregateEmbeddables: [{a: 1}],
                         charsCollection: ["s", "t", "r"],
                         intsCollection: [5],
@@ -424,6 +444,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: ["str"],
                         bigDecimalsCollection: [{$numberDecimal: "10.1"}],
                         objectIdsCollection: [{$oid: "000000000000000000000001"}],
+                        instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}],
                         structAggregateEmbeddablesCollection: [{a: 1}]
                     }]
                 }
@@ -442,7 +463,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     public void testArrayAndCollectionValuesOfEmptyStructAggregateEmbeddables() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
         var item = new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 1,
                 new ArraysAndCollections[] {emptyStructAggregateEmbeddable},
@@ -467,6 +488,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         strings: null,
                         bigDecimals: null,
                         objectIds: null,
+                        instants: null,
                         structAggregateEmbeddables: null,
                         charsCollection: null,
                         intsCollection: null,
@@ -476,6 +498,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: null,
                         bigDecimalsCollection: null,
                         objectIdsCollection: null,
+                        instantsCollection: null,
                         structAggregateEmbeddablesCollection: null
                     }],
                     structAggregateEmbeddablesCollection: [{
@@ -493,6 +516,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         strings: null,
                         bigDecimals: null,
                         objectIds: null,
+                        instants: null,
                         structAggregateEmbeddables: null,
                         charsCollection: null,
                         intsCollection: null,
@@ -502,6 +526,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                         stringsCollection: null,
                         bigDecimalsCollection: null,
                         objectIdsCollection: null,
+                        instantsCollection: null,
                         structAggregateEmbeddablesCollection: null
                     }]
                 }
@@ -539,6 +564,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                                 @ColumnResult(name = "strings", type = String[].class),
                                 @ColumnResult(name = "bigDecimals", type = BigDecimal[].class),
                                 @ColumnResult(name = "objectIds", type = ObjectId[].class),
+                                @ColumnResult(name = "instants", type = Instant[].class),
                                 @ColumnResult(
                                         name = "structAggregateEmbeddables",
                                         type = StructAggregateEmbeddableIntegrationTests.Single[].class),
@@ -550,6 +576,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                                 @ColumnResult(name = "stringsCollection", type = String[].class),
                                 @ColumnResult(name = "bigDecimalsCollection", type = BigDecimal[].class),
                                 @ColumnResult(name = "objectIdsCollection", type = ObjectId[].class),
+                                @ColumnResult(name = "instantsCollection", type = Instant[].class),
                                 @ColumnResult(
                                         name = "structAggregateEmbeddablesCollection",
                                         type = StructAggregateEmbeddableIntegrationTests.Single[].class)
@@ -572,6 +599,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 @ColumnResult(name = "strings", type = String[].class),
                 @ColumnResult(name = "bigDecimals", type = BigDecimal[].class),
                 @ColumnResult(name = "objectIds", type = ObjectId[].class),
+                @ColumnResult(name = "instants", type = Instant[].class),
                 @ColumnResult(
                         name = "structAggregateEmbeddables",
                         type = StructAggregateEmbeddableIntegrationTests.Single[].class),
@@ -583,6 +611,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 @ColumnResult(name = "stringsCollection", type = String[].class),
                 @ColumnResult(name = "bigDecimalsCollection", type = BigDecimal[].class),
                 @ColumnResult(name = "objectIdsCollection", type = ObjectId[].class),
+                @ColumnResult(name = "instantsCollection", type = Instant[].class),
                 @ColumnResult(
                         name = "structAggregateEmbeddablesCollection",
                         type = StructAggregateEmbeddableIntegrationTests.Single[].class)
@@ -608,6 +637,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         String[] strings;
         BigDecimal[] bigDecimals;
         ObjectId[] objectIds;
+        Instant[] instants;
         StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables;
         Collection<Character> charsCollection;
         Collection<Integer> intsCollection;
@@ -617,6 +647,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         Collection<String> stringsCollection;
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
+        Collection<Instant> instantsCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
 
         ItemWithArrayAndCollectionValues() {}
@@ -637,6 +668,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 String[] strings,
                 BigDecimal[] bigDecimals,
                 ObjectId[] objectIds,
+                Instant[] instants,
                 StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
                 Collection<Character> charsCollection,
                 Collection<Integer> intsCollection,
@@ -646,6 +678,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 Collection<String> stringsCollection,
                 Collection<BigDecimal> bigDecimalsCollection,
                 Collection<ObjectId> objectIdsCollection,
+                Collection<Instant> instantsCollection,
                 Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
             this.id = id;
             this.bytes = bytes;
@@ -662,6 +695,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
             this.strings = strings;
             this.bigDecimals = bigDecimals;
             this.objectIds = objectIds;
+            this.instants = instants;
             this.structAggregateEmbeddables = structAggregateEmbeddables;
             this.charsCollection = charsCollection;
             this.intsCollection = intsCollection;
@@ -671,6 +705,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
             this.stringsCollection = stringsCollection;
             this.bigDecimalsCollection = bigDecimalsCollection;
             this.objectIdsCollection = objectIdsCollection;
+            this.instantsCollection = instantsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
         }
 
@@ -690,6 +725,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 String[] strings,
                 BigDecimal[] bigDecimals,
                 ObjectId[] objectIds,
+                Instant[] instants,
                 StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
                 Character[] charsCollection,
                 Integer[] intsCollection,
@@ -699,6 +735,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                 String[] stringsCollection,
                 BigDecimal[] bigDecimalsCollection,
                 ObjectId[] objectIdsCollection,
+                Instant[] instantsCollection,
                 StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddablesCollection) {
             this(
                     id,
@@ -716,6 +753,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     strings,
                     bigDecimals,
                     objectIds,
+                    instants,
                     structAggregateEmbeddables,
                     charsCollection == null ? null : asList(charsCollection),
                     intsCollection == null ? null : new HashSet<>(asList(intsCollection)),
@@ -725,6 +763,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     stringsCollection == null ? null : asList(stringsCollection),
                     bigDecimalsCollection == null ? null : asList(bigDecimalsCollection),
                     objectIdsCollection == null ? null : asList(objectIdsCollection),
+                    instantsCollection == null ? null : asList(instantsCollection),
                     structAggregateEmbeddablesCollection == null ? null : asList(structAggregateEmbeddablesCollection));
         }
 
@@ -745,6 +784,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     "strings",
                     "bigDecimals",
                     "objectIds",
+                    "instants",
                     "structAggregateEmbeddables",
                     "charsCollection",
                     "intsCollection",
@@ -754,6 +794,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     "stringsCollection",
                     "bigDecimalsCollection",
                     "objectIdsCollection",
+                    "instantsCollection",
                     "structAggregateEmbeddablesCollection"));
         }
     }

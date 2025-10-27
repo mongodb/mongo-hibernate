@@ -28,18 +28,15 @@ import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
-import java.sql.Date;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -160,35 +157,17 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
-    public void setDate(int parameterIndex, Date x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTime(int parameterIndex, Time x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
         BsonValue value;
-        if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
-            value = toBsonValue(assertInstanceOf(x, ObjectId.class));
-        } else if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+        if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             value = assertInstanceOf(x, BsonDocument.class);
+        } else if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
+            value = toBsonValue(assertInstanceOf(x, ObjectId.class));
+        } else if (targetSqlType == JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber()
+                && x instanceof Instant instant) {
+            value = toBsonValue(instant);
         } else {
             throw new SQLFeatureNotSupportedException(format(
                     "Parameter value [%s] of SQL type [%d] with index [%d] is not supported",
@@ -208,27 +187,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, toBsonValue(x));
-    }
-
-    @Override
-    public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
     }
 
     @Override

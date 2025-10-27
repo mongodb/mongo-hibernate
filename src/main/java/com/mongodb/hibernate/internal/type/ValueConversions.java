@@ -30,10 +30,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.time.Instant;
 import java.util.ArrayList;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
@@ -79,6 +81,8 @@ public final class ValueConversions {
         } else if (value instanceof char[] v) {
             return toBsonValue(v);
         } else if (value instanceof ObjectId v) {
+            return toBsonValue(v);
+        } else if (value instanceof Instant v) {
             return toBsonValue(v);
         } else if (value instanceof Object[] v) {
             return arrayToBsonValue(v);
@@ -150,6 +154,10 @@ public final class ValueConversions {
         return new BsonObjectId(value);
     }
 
+    public static BsonDateTime toBsonValue(Instant instant) {
+        return new BsonDateTime(instant.toEpochMilli());
+    }
+
     public static BsonArray toBsonValue(java.sql.Array value) throws SQLFeatureNotSupportedException {
         Object contents;
         try {
@@ -189,6 +197,8 @@ public final class ValueConversions {
         } else if (value instanceof BsonBinary v) {
             return toDomainValue(v);
         } else if (value instanceof BsonObjectId v) {
+            return toDomainValue(v);
+        } else if (value instanceof BsonDateTime v) {
             return toDomainValue(v);
         } else if (value instanceof BsonArray v && domainType.isArray()) {
             return toDomainValue(v, assertNotNull(domainType.getComponentType()));
@@ -283,6 +293,11 @@ public final class ValueConversions {
         return domainType.cast(result);
     }
 
+    /** @see #toBsonValue(char[]) */
+    private static char[] toDomainValue(BsonString value) throws SQLFeatureNotSupportedException {
+        return uncheckedToDomainValue(value, String.class).toCharArray();
+    }
+
     /** @see #toBsonValue(char) */
     private static char toDomainValue(String value) {
         assertTrue(value.length() == 1);
@@ -308,6 +323,14 @@ public final class ValueConversions {
         return value.getValue();
     }
 
+    public static Instant toInstantDomainValue(BsonValue value) {
+        return toDomainValue(value.asDateTime());
+    }
+
+    private static Instant toDomainValue(BsonDateTime value) {
+        return Instant.ofEpochMilli(value.getValue());
+    }
+
     public static MongoArray toArrayDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {
         return new MongoArray(toDomainValue(value.asArray(), UnknownDomainClass.class));
     }
@@ -322,11 +345,6 @@ public final class ValueConversions {
             Array.set(result, i, element);
         }
         return result;
-    }
-
-    /** @see #toBsonValue(char[]) */
-    private static char[] toDomainValue(BsonString value) throws SQLFeatureNotSupportedException {
-        return uncheckedToDomainValue(value, String.class).toCharArray();
     }
 
     private static SQLFeatureNotSupportedException exceptionDomainTypeUnsupportedOrMustBeExplicit(

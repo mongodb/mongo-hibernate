@@ -49,6 +49,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Tuple;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import org.bson.BsonArray;
@@ -113,7 +114,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 true,
                 "str",
                 BigDecimal.valueOf(10.1),
-                new ObjectId("000000000000000000000001"));
+                new ObjectId("000000000000000000000001"),
+                Instant.parse("2024-01-01T10:00:00Z"));
         itemWithFlattenedValue = new ItemWithFlattenedValue(
                 2,
                 new EmbeddableIntegrationTests.Plural(
@@ -129,7 +131,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                         true,
                         "str",
                         BigDecimal.valueOf(10.1),
-                        new ObjectId("000000000000000000000001")));
+                        new ObjectId("000000000000000000000001"),
+                        Instant.parse("2024-01-01T10:00:00Z")));
         itemWithFlattenedValueHavingArraysAndCollections = new ItemWithFlattenedValueHavingArraysAndCollections(
                 3,
                 new EmbeddableIntegrationTests.ArraysAndCollections(
@@ -147,6 +150,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                         new String[] {null, "str"},
                         new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                         new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                        new Instant[] {Instant.parse("2007-12-03T10:15:30Z"), null},
                         new StructAggregateEmbeddableIntegrationTests.Single[] {
                             new StructAggregateEmbeddableIntegrationTests.Single(1), null
                         },
@@ -158,6 +162,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                         asList("str", null),
                         asList(BigDecimal.valueOf(10.1), null),
                         asList(null, new ObjectId("000000000000000000000001")),
+                        asList(Instant.parse("2007-12-03T10:15:30Z"), null),
                         asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null)));
         itemWithNestedValue = new ItemWithNestedValue(
                 4,
@@ -174,7 +179,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                         true,
                         "str",
                         BigDecimal.valueOf(10.1),
-                        new ObjectId("000000000000000000000001")));
+                        new ObjectId("000000000000000000000001"),
+                        Instant.parse("2007-12-03T10:15:30Z")));
         var arraysAndCollections = new StructAggregateEmbeddableIntegrationTests.ArraysAndCollections(
                 new byte[] {2, 3},
                 new char[] {'s', 't', 'r'},
@@ -190,6 +196,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 new String[] {null, "str"},
                 new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                new Instant[] {Instant.parse("2007-12-03T10:15:30Z"), null},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
@@ -201,6 +208,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 asList("str", null),
                 asList(BigDecimal.valueOf(10.1), null),
                 asList(null, new ObjectId("000000000000000000000001")),
+                asList(Instant.parse("2007-12-03T10:15:30Z"), null),
                 asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null));
         itemWithNestedValueHavingArraysAndCollections =
                 new ItemWithNestedValueHavingArraysAndCollections(5, arraysAndCollections);
@@ -220,6 +228,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 new String[] {null, "str"},
                 new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                 new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                new Instant[] {Instant.parse("2007-12-03T10:15:30Z"), null},
                 new StructAggregateEmbeddableIntegrationTests.Single[] {
                     new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
@@ -231,6 +240,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 asList("str", null),
                 asList(BigDecimal.valueOf(10.1), null),
                 asList(null, new ObjectId("000000000000000000000001")),
+                asList(Instant.parse("2007-12-03T10:15:30Z"), null),
                 asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null));
         itemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections =
                 new ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
@@ -342,7 +352,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                 item.boxedBoolean,
                                 item.string,
                                 item.bigDecimal,
-                                item.objectId
+                                item.objectId,
+                                item.instant
                             },
                             session.createNativeQuery(mql, Object[].class).getSingleResult());
                 },
@@ -419,7 +430,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                                 (Boolean) tuple[10],
                                                 (String) tuple[11],
                                                 (BigDecimal) tuple[12],
-                                                (ObjectId) tuple[13]))
+                                                (ObjectId) tuple[13],
+                                                (Instant) tuple[14]))
                                         .getSingleResult()));
             });
         }
@@ -455,7 +467,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                                 (Boolean) tuple[9],
                                                 (String) tuple[10],
                                                 (BigDecimal) tuple[11],
-                                                (ObjectId) tuple[12]))
+                                                (ObjectId) tuple[12],
+                                                (Instant) tuple[13]))
                                         .getSingleResult()));
             });
         }
@@ -500,17 +513,19 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                                         (String[]) tuple[11],
                                                         (BigDecimal[]) tuple[12],
                                                         (ObjectId[]) tuple[13],
-                                                        (StructAggregateEmbeddableIntegrationTests.Single[]) tuple[14],
-                                                        asList((Character[]) tuple[15]),
-                                                        new HashSet<>(asList((Integer[]) tuple[16])),
-                                                        asList((Long[]) tuple[17]),
-                                                        asList((Double[]) tuple[18]),
-                                                        asList((Boolean[]) tuple[19]),
-                                                        asList((String[]) tuple[20]),
-                                                        asList((BigDecimal[]) tuple[21]),
-                                                        asList((ObjectId[]) tuple[22]),
+                                                        (Instant[]) tuple[14],
+                                                        (StructAggregateEmbeddableIntegrationTests.Single[]) tuple[15],
+                                                        asList((Character[]) tuple[16]),
+                                                        new HashSet<>(asList((Integer[]) tuple[17])),
+                                                        asList((Long[]) tuple[18]),
+                                                        asList((Double[]) tuple[19]),
+                                                        asList((Boolean[]) tuple[20]),
+                                                        asList((String[]) tuple[21]),
+                                                        asList((BigDecimal[]) tuple[22]),
+                                                        asList((ObjectId[]) tuple[23]),
+                                                        asList((Instant[]) tuple[24]),
                                                         asList((StructAggregateEmbeddableIntegrationTests.Single[])
-                                                                tuple[23])))
+                                                                tuple[25])))
                                         .getSingleResult()));
             });
         }
@@ -551,16 +566,18 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                                 (String[]) tuple[12],
                                                 (BigDecimal[]) tuple[13],
                                                 (ObjectId[]) tuple[14],
-                                                (StructAggregateEmbeddableIntegrationTests.Single[]) tuple[15],
-                                                asList((Character[]) tuple[16]),
-                                                new HashSet<>(asList((Integer[]) tuple[17])),
-                                                asList((Long[]) tuple[18]),
-                                                asList((Double[]) tuple[19]),
-                                                asList((Boolean[]) tuple[20]),
-                                                asList((String[]) tuple[21]),
-                                                asList((BigDecimal[]) tuple[22]),
-                                                asList((ObjectId[]) tuple[23]),
-                                                asList((StructAggregateEmbeddableIntegrationTests.Single[]) tuple[24])))
+                                                (Instant[]) tuple[15],
+                                                (StructAggregateEmbeddableIntegrationTests.Single[]) tuple[16],
+                                                asList((Character[]) tuple[17]),
+                                                new HashSet<>(asList((Integer[]) tuple[18])),
+                                                asList((Long[]) tuple[19]),
+                                                asList((Double[]) tuple[20]),
+                                                asList((Boolean[]) tuple[21]),
+                                                asList((String[]) tuple[22]),
+                                                asList((BigDecimal[]) tuple[23]),
+                                                asList((ObjectId[]) tuple[24]),
+                                                asList((Instant[]) tuple[25]),
+                                                asList((StructAggregateEmbeddableIntegrationTests.Single[]) tuple[26])))
                                         .getSingleResult()));
             });
         }
@@ -691,7 +708,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                 @ColumnResult(name = "boxedBoolean", type = Boolean.class),
                                 @ColumnResult(name = "string", type = String.class),
                                 @ColumnResult(name = "bigDecimal", type = BigDecimal.class),
-                                @ColumnResult(name = "objectId", type = ObjectId.class)
+                                @ColumnResult(name = "objectId", type = ObjectId.class),
+                                @ColumnResult(name = "instant", type = Instant.class),
                             }))
     @SqlResultSetMapping(
             name = ItemWithFlattenedValue.MAPPING_FOR_FLATTENED_VALUE,
@@ -708,7 +726,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 @ColumnResult(name = "boxedBoolean"),
                 @ColumnResult(name = "string"),
                 @ColumnResult(name = "bigDecimal"),
-                @ColumnResult(name = "objectId")
+                @ColumnResult(name = "objectId"),
+                @ColumnResult(name = "instant", type = Instant.class),
             })
     static class ItemWithFlattenedValue {
         static final String CONSTRUCTOR_MAPPING_FOR_FLATTENED_VALUE = "ConstructorFlattenedValue";
@@ -757,6 +776,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                 @ColumnResult(name = "strings", type = String[].class),
                                 @ColumnResult(name = "bigDecimals", type = BigDecimal[].class),
                                 @ColumnResult(name = "objectIds", type = ObjectId[].class),
+                                @ColumnResult(name = "instants", type = Instant[].class),
                                 @ColumnResult(
                                         name = "structAggregateEmbeddables",
                                         type = StructAggregateEmbeddableIntegrationTests.Single[].class),
@@ -768,6 +788,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                 @ColumnResult(name = "stringsCollection", type = String[].class),
                                 @ColumnResult(name = "bigDecimalsCollection", type = BigDecimal[].class),
                                 @ColumnResult(name = "objectIdsCollection", type = ObjectId[].class),
+                                @ColumnResult(name = "instantsCollection", type = Instant[].class),
                                 @ColumnResult(
                                         name = "structAggregateEmbeddablesCollection",
                                         type = StructAggregateEmbeddableIntegrationTests.Single[].class)
@@ -789,6 +810,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 @ColumnResult(name = "strings", type = String[].class),
                 @ColumnResult(name = "bigDecimals", type = BigDecimal[].class),
                 @ColumnResult(name = "objectIds", type = ObjectId[].class),
+                @ColumnResult(name = "instants", type = Instant[].class),
                 @ColumnResult(
                         name = "structAggregateEmbeddables",
                         type = StructAggregateEmbeddableIntegrationTests.Single[].class),
@@ -800,6 +822,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                 @ColumnResult(name = "stringsCollection", type = String[].class),
                 @ColumnResult(name = "bigDecimalsCollection", type = BigDecimal[].class),
                 @ColumnResult(name = "objectIdsCollection", type = ObjectId[].class),
+                @ColumnResult(name = "instantsCollection", type = Instant[].class),
                 @ColumnResult(
                         name = "structAggregateEmbeddablesCollection",
                         type = StructAggregateEmbeddableIntegrationTests.Single[].class)

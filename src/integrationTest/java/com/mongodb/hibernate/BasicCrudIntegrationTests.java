@@ -36,6 +36,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.SqlResultSetMapping;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import org.bson.BsonDocument;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -84,7 +85,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     true,
                     "str",
                     BigDecimal.valueOf(10.1),
-                    new ObjectId("000000000000000000000001"))));
+                    new ObjectId("000000000000000000000001"),
+                    Instant.parse("2024-01-01T10:00:00Z"))));
             assertCollectionContainsExactly(
                     """
                     {
@@ -101,7 +103,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: true,
                         string: "str",
                         bigDecimal: {$numberDecimal: "10.1"},
-                        objectId: {$oid: "000000000000000000000001"}
+                        objectId: {$oid: "000000000000000000000001"},
+                        instant: {$date: "2024-01-01T10:00:00Z"}
                     }
                     """);
         }
@@ -115,6 +118,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     Long.MAX_VALUE,
                     Double.MAX_VALUE,
                     true,
+                    null,
                     null,
                     null,
                     null,
@@ -139,7 +143,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: null,
                         string: null,
                         bigDecimal: null,
-                        objectId: null
+                        objectId: null,
+                        instant: null
                     }
                     """);
         }
@@ -166,7 +171,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     true,
                     "str",
                     BigDecimal.valueOf(10.1),
-                    new ObjectId("000000000000000000000001"))));
+                    new ObjectId("000000000000000000000001"),
+                    Instant.parse("2024-01-01T10:00:00Z"))));
             assertThat(mongoCollection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
@@ -198,7 +204,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         true,
                         "str",
                         BigDecimal.valueOf(10.1),
-                        new ObjectId("000000000000000000000001"));
+                        new ObjectId("000000000000000000000001"),
+                        Instant.parse("2024-01-01T10:00:00Z"));
                 session.persist(item);
                 session.flush();
                 item.primitiveBoolean = false;
@@ -221,7 +228,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: false,
                         string: "str",
                         bigDecimal: {$numberDecimal: "10.1"},
-                        objectId: {$oid: "000000000000000000000001"}
+                        objectId: {$oid: "000000000000000000000001"},
+                        instant: {$date: "2024-01-01T10:00:00Z"}
                     }
                     """);
         }
@@ -243,7 +251,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         true,
                         "str",
                         BigDecimal.valueOf(10.1),
-                        new ObjectId("000000000000000000000001"));
+                        new ObjectId("000000000000000000000001"),
+                        Instant.parse("2024-01-01T10:00:00Z"));
                 session.persist(item);
                 session.flush();
                 item.boxedChar = null;
@@ -254,6 +263,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 item.string = null;
                 item.bigDecimal = null;
                 item.objectId = null;
+                item.instant = null;
             });
 
             assertCollectionContainsExactly(
@@ -272,7 +282,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                         boxedBoolean: null,
                         string: null,
                         bigDecimal: null,
-                        objectId: null
+                        objectId: null,
+                        instant: null
                     }
                     """);
         }
@@ -336,7 +347,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     true,
                     "str",
                     BigDecimal.valueOf(10.1),
-                    new ObjectId("000000000000000000000001"));
+                    new ObjectId("000000000000000000000001"),
+                    Instant.parse("2024-01-01T10:00:00Z"));
             sessionFactoryScope.inTransaction(session -> session.persist(item));
 
             var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
@@ -346,7 +358,21 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testFindByPrimaryKeyWithNullFieldValues() {
             var item = new Item(
-                    1, 'c', 1, Long.MAX_VALUE, Double.MAX_VALUE, true, null, null, null, null, null, null, null, null);
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
             sessionFactoryScope.inTransaction(session -> session.persist(item));
 
             var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
@@ -387,7 +413,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                                 @ColumnResult(name = "boxedBoolean", type = Boolean.class),
                                 @ColumnResult(name = "string", type = String.class),
                                 @ColumnResult(name = "bigDecimal", type = BigDecimal.class),
-                                @ColumnResult(name = "objectId", type = ObjectId.class)
+                                @ColumnResult(name = "objectId", type = ObjectId.class),
+                                @ColumnResult(name = "instant", type = Instant.class),
                             }))
     @SqlResultSetMapping(
             name = MAPPING_FOR_ITEM,
@@ -405,7 +432,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 @ColumnResult(name = "boxedBoolean"),
                 @ColumnResult(name = "string"),
                 @ColumnResult(name = "bigDecimal"),
-                @ColumnResult(name = "objectId")
+                @ColumnResult(name = "objectId"),
+                @ColumnResult(name = "instant")
             })
     public static class Item {
         public static final String COLLECTION_NAME = "items";
@@ -428,6 +456,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         public String string;
         public BigDecimal bigDecimal;
         public ObjectId objectId;
+        public Instant instant;
 
         Item() {}
 
@@ -445,7 +474,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                 Boolean boxedBoolean,
                 String string,
                 BigDecimal bigDecimal,
-                ObjectId objectId) {
+                ObjectId objectId,
+                Instant instant) {
             this.id = id;
             this.primitiveChar = primitiveChar;
             this.primitiveInt = primitiveInt;
@@ -460,6 +490,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
             this.string = string;
             this.bigDecimal = bigDecimal;
             this.objectId = objectId;
+            this.instant = instant;
         }
 
         public static Bson projectAll() {
@@ -477,7 +508,8 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
                     "boxedBoolean",
                     "string",
                     "bigDecimal",
-                    "objectId"));
+                    "objectId",
+                    "instant"));
         }
     }
 
