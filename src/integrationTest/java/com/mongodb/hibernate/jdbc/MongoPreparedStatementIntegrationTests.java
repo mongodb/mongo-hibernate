@@ -283,8 +283,7 @@ class MongoPreparedStatementIntegrationTests {
         void testEmptyBatch() {
             doWorkAwareOfAutoCommit(connection -> {
                 try (var pstmt = connection.prepareStatement(INSERT_MQL)) {
-                    var updateCounts = pstmt.executeBatch();
-                    assertEquals(0, updateCounts.length);
+                    assertExecuteBatch(pstmt, 0);
                 } catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
