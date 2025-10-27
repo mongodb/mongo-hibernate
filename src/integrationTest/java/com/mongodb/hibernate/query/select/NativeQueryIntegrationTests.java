@@ -252,6 +252,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
      * See <a
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-entity-query">Entity
      * queries</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
+     *
+     * @see Unsupported#testEntityWithAggregateEmbeddableValue()
      */
     @Test
     void testEntity() {
@@ -620,33 +622,27 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
         void testEntityWithAggregateEmbeddableValue() {
             sessionFactoryScope.inSession(session -> {
                 assertAll(
-                        () -> assertThatThrownBy(() -> {
-                                    var mql = mql(
-                                            COLLECTION_NAME,
-                                            List.of(
-                                                    match(eq(itemWithNestedValue.id)),
-                                                    ItemWithNestedValue.projectAll()));
-                                    assertEq(
-                                            itemWithFlattenedValue,
-                                            session.createNativeQuery(mql, ItemWithNestedValue.class)
-                                                    .getSingleResult());
-                                })
-                                .hasRootCauseInstanceOf(SQLException.class)
-                                .hasMessageContaining("Not supported"),
-                        () -> assertThatThrownBy(() -> {
-                                    var mql = mql(
-                                            COLLECTION_NAME,
-                                            List.of(
-                                                    match(eq(itemWithNestedValueHavingArraysAndCollections.id)),
-                                                    ItemWithNestedValueHavingArraysAndCollections.projectAll()));
-                                    assertEq(
-                                            itemWithFlattenedValueHavingArraysAndCollections,
-                                            session.createNativeQuery(
-                                                            mql, ItemWithNestedValueHavingArraysAndCollections.class)
-                                                    .getSingleResult());
-                                })
-                                .hasRootCauseInstanceOf(SQLException.class)
-                                .hasMessageContaining("Not supported"));
+                        () -> {
+                            var mql = mql(
+                                    COLLECTION_NAME,
+                                    List.of(match(eq(itemWithNestedValue.id)), ItemWithNestedValue.projectAll()));
+                            assertThatThrownBy(() -> session.createNativeQuery(mql, ItemWithNestedValue.class)
+                                            .getSingleResult())
+                                    .hasRootCauseInstanceOf(SQLException.class)
+                                    .hasMessageContaining("Not supported");
+                        },
+                        () -> {
+                            var mql = mql(
+                                    COLLECTION_NAME,
+                                    List.of(
+                                            match(eq(itemWithNestedValueHavingArraysAndCollections.id)),
+                                            ItemWithNestedValueHavingArraysAndCollections.projectAll()));
+                            assertThatThrownBy(() -> session.createNativeQuery(
+                                                    mql, ItemWithNestedValueHavingArraysAndCollections.class)
+                                            .getSingleResult())
+                                    .hasRootCauseInstanceOf(SQLException.class)
+                                    .hasMessageContaining("Not supported");
+                        });
             });
         }
     }
