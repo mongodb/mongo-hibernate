@@ -39,6 +39,7 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.BasicCrudIntegrationTests.Item;
 import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.ColumnResult;
 import jakarta.persistence.ConstructorResult;
@@ -646,7 +647,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                             assertThatThrownBy(() -> session.createNativeQuery(mql, ItemWithNestedValue.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining("Not supported");
+                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
                         },
                         () -> {
                             var mql = mql(
@@ -658,7 +659,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                                     mql, ItemWithNestedValueHavingArraysAndCollections.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining("Not supported");
+                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
                         });
             });
         }

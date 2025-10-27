@@ -16,10 +16,13 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import jakarta.persistence.Entity;
@@ -37,8 +40,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@DomainModel(annotatedClasses = {SimpleSelectQueryIntegrationTests.Contact.class, Book.class})
+@DomainModel(
+        annotatedClasses = {
+            SimpleSelectQueryIntegrationTests.Contact.class,
+            Book.class,
+            SimpleSelectQueryIntegrationTests.Unsupported.ItemWithNestedValue.class
+        })
 class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
+    @Test
+    void testQueryPlanCacheIsSupported() {
+        getSessionFactoryScope().inTransaction(session -> assertThatCode(
+                        () -> session.createSelectionQuery("from Contact", Contact.class)
+                                .setQueryPlanCacheable(true)
+                                .getResultList())
+                .doesNotThrowAnyException());
+    }
 
     @Nested
     class QueryTests {
@@ -643,7 +659,7 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class FeatureNotSupportedTests {
+    class Unsupported {
         @Test
         void testComparisonBetweenFieldAndNonValueNotSupported1() {
             assertSelectQueryFailure(
@@ -702,12 +718,36 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testQueryPlanCacheIsSupported() {
-            getSessionFactoryScope().inTransaction(session -> assertThatCode(
-                            () -> session.createSelectionQuery("from Contact", Contact.class)
-                                    .setQueryPlanCacheable(true)
-                                    .getResultList())
-                    .doesNotThrowAnyException());
+        void testStructAggregateEmbeddablePathExpressionSelection() {
+            assertSelectQueryFailure(
+                    "select nested.a from ItemWithNestedValue",
+                    int.class,
+                    FeatureNotSupportedException.class,
+                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionComparison() {
+            assertSelectQueryFailure(
+                    "from ItemWithNestedValue where nested.a = 0",
+                    ItemWithNestedValue.class,
+                    FeatureNotSupportedException.class,
+                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+        }
+
+        @Entity(name = "ItemWithNestedValue")
+        @Table(name = COLLECTION_NAME)
+        static class ItemWithNestedValue {
+            @Id
+            int id;
+
+            StructAggregateEmbeddableIntegrationTests.Single nested;
+
+            ItemWithNestedValue() {}
+
+            ItemWithNestedValue(StructAggregateEmbeddableIntegrationTests.Single nested) {
+                this.nested = nested;
+            }
         }
     }
 

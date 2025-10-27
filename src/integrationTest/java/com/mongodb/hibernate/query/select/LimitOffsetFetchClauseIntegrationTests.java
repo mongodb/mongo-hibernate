@@ -460,7 +460,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class FeatureNotSupportedTests {
+    class Unsupported {
 
         @ParameterizedTest
         @EnumSource(value = FetchClauseType.class, mode = EXCLUDE, names = "ROWS_ONLY")
