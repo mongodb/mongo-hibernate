@@ -18,7 +18,7 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.hibernate.cfg.AvailableSettings.QUERY_PLAN_CACHE_ENABLED;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
