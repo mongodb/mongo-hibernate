@@ -29,7 +29,7 @@ import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +39,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  * Assumes that all tests that use this {@linkplain ExtendWith#value() extension} run <a
  * href="https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution">sequentially</a>.
  */
-public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback {
+public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
 
     private static final BsonDocument DISABLE_FAIL_POINT_FAIL_COMMAND = BsonDocument.parse(
             """
@@ -69,18 +69,18 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
         }
     }
 
+    @Override
+    public void afterAll(ExtensionContext context) {
+        disableFailPoint();
+        STATE.mongoDatabase().drop();
+    }
+
     /**
      * {@linkplain MongoDatabase#drop() Drops} the {@link MongoConfigurator#databaseName(String) database}, thus
      * dropping all {@linkplain InjectMongoCollection collections}.
      */
     @Override
     public void beforeEach(ExtensionContext context) {
-        disableFailPoint();
-        STATE.mongoDatabase().drop();
-    }
-
-    @AfterEach
-    void afterEach() {
         disableFailPoint();
         STATE.mongoDatabase().drop();
     }
