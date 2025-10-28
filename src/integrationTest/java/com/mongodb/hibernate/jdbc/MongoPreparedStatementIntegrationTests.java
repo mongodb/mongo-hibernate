@@ -358,8 +358,6 @@ class MongoPreparedStatementIntegrationTests {
                 try (var pstmt = connection.prepareStatement(INSERT_MQL)) {
                     var updateCounts = pstmt.executeBatch();
                     assertEquals(0, updateCounts.length);
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
                 }
             });
 
