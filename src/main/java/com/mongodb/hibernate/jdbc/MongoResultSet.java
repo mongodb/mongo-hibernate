@@ -40,13 +40,10 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import java.math.BigDecimal;
 import java.sql.Array;
-import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.util.Calendar;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.bson.BsonDocument;
@@ -150,41 +147,6 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
-    public @Nullable Date getDate(int columnIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public @Nullable Time getTime(int columnIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public @Nullable Time getTime(int columnIndex, Calendar cal) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public @Nullable Timestamp getTimestamp(int columnIndex) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public @Nullable Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-        checkClosed();
-        checkColumnIndex(columnIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
     public @Nullable BigDecimal getBigDecimal(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
@@ -207,6 +169,8 @@ final class MongoResultSet implements ResultSetAdapter {
             value = getValue(columnIndex, ValueConversions::toObjectIdDomainValue);
         } else if (type.equals(BsonDocument.class)) {
             value = getValue(columnIndex, ValueConversions::toBsonDocumentDomainValue);
+        } else if (type.equals(Instant.class)) {
+            value = getValue(columnIndex, ValueConversions::toInstantDomainValue);
         } else {
             throw new SQLFeatureNotSupportedException(
                     format("Type [%s] for a column with index [%d] is not supported", type, columnIndex));

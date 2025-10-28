@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,16 @@
  * limitations under the License.
  */
 
-/** The MongoDB Extension for Hibernate ORM package. */
-@NullMarked
-package com.mongodb.hibernate;
+package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import org.jspecify.annotations.NullMarked;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
+
+import org.junit.jupiter.api.Test;
+
+class AstEmptyFilterTests {
+
+    @Test
+    void testRendering() {
+        assertRendering("{}", AstEmptyFilter.INSTANCE);
+    }
+}
