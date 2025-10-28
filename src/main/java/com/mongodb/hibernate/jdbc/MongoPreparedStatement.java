@@ -73,7 +73,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
-        return executeQueryCommand(command);
+        return executeQuery(command);
     }
 
     @Override
@@ -82,7 +82,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         closeLastOpenResultSet();
         checkAllParametersSet();
         checkSupportedUpdateCommand(command);
-        return executeUpdateCommand(command);
+        return executeUpdate(command);
     }
 
     private void checkAllParametersSet() throws SQLException {
@@ -218,13 +218,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public int[] executeBatch() throws SQLException {
         checkClosed();
-        closeLastOpenResultSet();
-        if (commandBatch.isEmpty()) {
-            return EMPTY_BATCH_RESULT;
-        }
-        checkSupportedBatchCommand(commandBatch.get(0));
         try {
-            executeBulkWrite(commandBatch, ExecutionType.BATCH);
+            closeLastOpenResultSet();
+            if (commandBatch.isEmpty()) {
+                return EMPTY_BATCH_RESULT;
+            }
+            checkSupportedBatchCommand(commandBatch.get(0));
+            executeBatch(commandBatch);
             var updateCounts = new int[commandBatch.size()];
             // We cannot determine the actual number of rows affected for each command in the batch.
             Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
@@ -234,20 +234,22 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         }
     }
 
+    /** @throws BatchUpdateException if any of the commands in the batch attempts to return a result set. */
     private void checkSupportedBatchCommand(BsonDocument command) throws SQLException {
-        var commandType = getCommandType(command);
-        if (commandType == CommandType.AGGREGATE) {
-            // The method executeBatch throws a BatchUpdateException if any of the commands in the batch attempts to
-            // return a result set.
+        var commandDescription = getCommandDescription(command);
+        if (commandDescription.returnsResultSet()) {
             throw new BatchUpdateException(
                     format(
-                            "Commands returning result set are not supported. Received command: %s",
-                            commandType.getCommandName()),
+                            "Commands returning result set are not allowed. Received command: %s",
+                            commandDescription.getCommandName()),
                     null,
                     NO_ERROR_CODE,
                     null);
         }
-        checkSupportedUpdateCommand(commandType);
+        if (!commandDescription.isUpdate()) {
+            throw new SQLFeatureNotSupportedException(
+                    format("Unsupported command for batch operation: %s", commandDescription.getCommandName()));
+        }
     }
 
     @Override
