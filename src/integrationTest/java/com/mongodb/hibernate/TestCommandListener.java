@@ -30,7 +30,7 @@ public final class TestCommandListener implements CommandListener, Service {
 
     static TestCommandListener INSTANCE = new TestCommandListener();
 
-    private final List<BsonDocument> startedCommands = new ArrayList<>();
+    private final transient List<BsonDocument> startedCommands = new ArrayList<>();
 
     private TestCommandListener() {}
 
