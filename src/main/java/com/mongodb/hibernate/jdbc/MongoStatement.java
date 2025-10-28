@@ -74,9 +74,8 @@ class MongoStatement implements StatementAdapter {
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_TIMEOUT = "Timeout while waiting for operation to complete";
     static final int NO_ERROR_CODE = 0;
-    static final int[] EMPTY_BATCH_RESULT = new int[0];
 
-    @Nullable private static final String NULL_SQL_STATE = null;
+    @Nullable static final String NULL_SQL_STATE = null;
 
     private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
@@ -357,7 +356,7 @@ class MongoStatement implements StatementAdapter {
             // successfully or failed.
             return cause;
         }
-        return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exceptionToHandle);
+        return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
     }
 
     private static SQLException handleQueryOrUpdateException(RuntimeException exceptionToHandle) {
@@ -365,24 +364,25 @@ class MongoStatement implements StatementAdapter {
         if (exceptionToHandle instanceof MongoException mongoException) {
             return handleMongoException(errorCode, mongoException);
         }
-        return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exceptionToHandle);
+        return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
     }
 
     private static SQLException handleMongoException(int errorCode, MongoException exceptionToHandle) {
         if (isTimeoutException(exceptionToHandle)) {
-            return new SQLException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
+            return new SQLException(EXCEPTION_MESSAGE_TIMEOUT, NULL_SQL_STATE, errorCode, exceptionToHandle);
         }
         var errorCategory = ErrorCategory.fromErrorCode(errorCode);
         return switch (errorCategory) {
             case DUPLICATE_KEY ->
                 new SQLIntegrityConstraintViolationException(
-                        EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exceptionToHandle);
+                        EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
             // TODO-HIBERNATE-132 EXECUTION_TIMEOUT code is returned from the server. Do we know how many commands were
             // executed
             // successfully so we can return it as BatchUpdateException?
-            case EXECUTION_TIMEOUT -> new SQLException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
+            case EXECUTION_TIMEOUT ->
+                new SQLException(EXCEPTION_MESSAGE_TIMEOUT, NULL_SQL_STATE, errorCode, exceptionToHandle);
             case UNCATEGORIZED ->
-                new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exceptionToHandle);
+                new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
         };
     }
 

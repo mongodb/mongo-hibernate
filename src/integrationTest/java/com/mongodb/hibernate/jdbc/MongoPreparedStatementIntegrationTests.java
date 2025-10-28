@@ -788,7 +788,7 @@ class MongoPreparedStatementIntegrationTests {
                             .isInstanceOf(SQLSyntaxErrorException.class)
                             .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
                             .cause()
-                            .hasMessageContaining("Document does not contain key updates");
+                            .hasMessage("Document does not contain key updates");
                 }
             });
         }
@@ -831,7 +831,7 @@ class MongoPreparedStatementIntegrationTests {
                             .isInstanceOf(SQLSyntaxErrorException.class)
                             .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
                             .cause()
-                            .hasMessageContaining("Document does not contain key deletes");
+                            .hasMessage("Document does not contain key deletes");
                 }
             });
         }
@@ -881,7 +881,7 @@ class MongoPreparedStatementIntegrationTests {
                             .isInstanceOf(SQLSyntaxErrorException.class)
                             .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
                             .cause()
-                            .hasMessageContaining("Document does not contain key documents");
+                            .hasMessage("Document does not contain key documents");
                 }
             });
         }
@@ -944,8 +944,7 @@ class MongoPreparedStatementIntegrationTests {
                             .isInstanceOf(SQLSyntaxErrorException.class)
                             .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
                             .cause()
-                            .hasMessageContaining(
-                                    "Document does not contain key %s".formatted(getFieldName(fieldToRemove)));
+                            .hasMessage("Document does not contain key %s".formatted(getFieldName(fieldToRemove)));
                 }
             });
         }
@@ -996,8 +995,7 @@ class MongoPreparedStatementIntegrationTests {
                             .isInstanceOf(SQLSyntaxErrorException.class)
                             .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
                             .cause()
-                            .hasMessageContaining(
-                                    "Document does not contain key %s".formatted(getFieldName(fieldToRemove)));
+                            .hasMessage("Document does not contain key %s".formatted(getFieldName(fieldToRemove)));
                 }
             });
         }

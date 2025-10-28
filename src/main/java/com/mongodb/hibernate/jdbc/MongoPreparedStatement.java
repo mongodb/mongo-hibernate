@@ -54,14 +54,15 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private final BsonDocument command;
     private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
+    private static final int[] EMPTY_BATCH_RESULT = new int[0];
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        command = MongoStatement.parse(mql);
-        commandBatch = new ArrayList<>();
-        parameterValueSetters = new ArrayList<>();
+        this.command = MongoStatement.parse(mql);
+        this.commandBatch = new ArrayList<>();
+        this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -218,12 +219,11 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         var commandDescription = getCommandDescription(command);
         if (commandDescription.returnsResultSet()) {
             throw new BatchUpdateException(
-                    format(
-                            "Commands returning result set are not allowed. Received command: %s",
-                            commandDescription.getCommandName()),
-                    null,
+                    "Commands returning result set are not allowed. Received command: %s"
+                            .formatted(commandDescription.getCommandName()),
+                    NULL_SQL_STATE,
                     NO_ERROR_CODE,
-                    null);
+                    EMPTY_BATCH_RESULT);
         }
         if (!commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
