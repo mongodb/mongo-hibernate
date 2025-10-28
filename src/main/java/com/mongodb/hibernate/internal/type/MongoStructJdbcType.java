@@ -27,6 +27,9 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -58,7 +61,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
     public static final MongoStructJdbcType INSTANCE = new MongoStructJdbcType();
     public static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
 
-    private final @Nullable EmbeddableMappingType embeddableMappingType;
+    private final transient @Nullable EmbeddableMappingType embeddableMappingType;
     private final @Nullable String structTypeName;
 
     private MongoStructJdbcType() {
@@ -204,6 +207,12 @@ public final class MongoStructJdbcType implements StructJdbcType {
     @Override
     public <X> ValueExtractor<X> getExtractor(JavaType<X> javaType) {
         return new Extractor<>(javaType);
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        throw new NotSerializableException(
+                "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
     /** Thread-safe. */
