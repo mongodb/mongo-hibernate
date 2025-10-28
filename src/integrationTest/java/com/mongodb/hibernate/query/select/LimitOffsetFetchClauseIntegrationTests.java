@@ -19,8 +19,8 @@ package com.mongodb.hibernate.query.select;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
-import static org.hibernate.cfg.QuerySettings.QUERY_PLAN_CACHE_ENABLED;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.QUERY_PLAN_CACHE_ENABLED;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import com.mongodb.hibernate.dialect.MongoDialect;
@@ -460,7 +460,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class FeatureNotSupportedTests {
+    class Unsupported {
 
         @ParameterizedTest
         @EnumSource(value = FetchClauseType.class, mode = EXCLUDE, names = "ROWS_ONLY")

@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.embeddable;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static java.util.Arrays.asList;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
+import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -64,8 +66,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
-    private static final String COLLECTION_NAME = "items";
-
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -432,8 +432,32 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Test
     public void testFlattenedValueHavingNullArraysAndCollections() {
         var emptyEmbeddable = new ArraysAndCollections(
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                (List<Character>) null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
         var item = new ItemWithFlattenedValueHavingArraysAndCollections(1, emptyEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -601,8 +625,9 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
-    record Plural(
+    public record Plural(
             char primitiveChar,
             int primitiveInt,
             long primitiveLong,
@@ -634,8 +659,9 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
-    static class ArraysAndCollections {
+    public static class ArraysAndCollections {
         byte[] bytes;
         char[] chars;
         int[] ints;
@@ -665,7 +691,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
 
         ArraysAndCollections() {}
 
-        ArraysAndCollections(
+        public ArraysAndCollections(
                 byte[] bytes,
                 char[] chars,
                 int[] ints,
@@ -718,6 +744,62 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             this.objectIdsCollection = objectIdsCollection;
             this.instantsCollection = instantsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+        }
+
+        ArraysAndCollections(
+                byte[] bytes,
+                char[] chars,
+                int[] ints,
+                long[] longs,
+                double[] doubles,
+                boolean[] booleans,
+                Character[] boxedChars,
+                Integer[] boxedInts,
+                Long[] boxedLongs,
+                Double[] boxedDoubles,
+                Boolean[] boxedBooleans,
+                String[] strings,
+                BigDecimal[] bigDecimals,
+                ObjectId[] objectIds,
+                Instant[] instants,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
+                Character[] charsCollection,
+                Integer[] intsCollection,
+                Long[] longsCollection,
+                Double[] doublesCollection,
+                Boolean[] booleansCollection,
+                String[] stringsCollection,
+                BigDecimal[] bigDecimalsCollection,
+                ObjectId[] objectIdsCollection,
+                Instant[] instantsCollection,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddablesCollection) {
+            this(
+                    bytes,
+                    chars,
+                    ints,
+                    longs,
+                    doubles,
+                    booleans,
+                    boxedChars,
+                    boxedInts,
+                    boxedLongs,
+                    boxedDoubles,
+                    boxedBooleans,
+                    strings,
+                    bigDecimals,
+                    objectIds,
+                    instants,
+                    structAggregateEmbeddables,
+                    charsCollection == null ? null : asList(charsCollection),
+                    intsCollection == null ? null : new HashSet<>(asList(intsCollection)),
+                    longsCollection == null ? null : asList(longsCollection),
+                    doublesCollection == null ? null : asList(doublesCollection),
+                    booleansCollection == null ? null : asList(booleansCollection),
+                    stringsCollection == null ? null : asList(stringsCollection),
+                    bigDecimalsCollection == null ? null : asList(bigDecimalsCollection),
+                    objectIdsCollection == null ? null : asList(objectIdsCollection),
+                    instantsCollection == null ? null : asList(instantsCollection),
+                    structAggregateEmbeddablesCollection == null ? null : asList(structAggregateEmbeddablesCollection));
         }
     }
 
