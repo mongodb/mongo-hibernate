@@ -162,20 +162,25 @@ class MongoStatement implements StatementAdapter {
         return executeUpdate(command);
     }
 
-    void executeBatch(List<? extends BsonDocument> commandBatch) throws SQLException {
+    int[] executeBatch(List<? extends BsonDocument> commandBatch) throws SQLException {
         var firstCommandInBatch = commandBatch.get(0);
+        int commandBatchSize = commandBatch.size();
         var commandDescription = getCommandDescription(firstCommandInBatch);
         var collection = getCollection(commandDescription, firstCommandInBatch);
         WriteModelsToCommandMapper writeModelsToCommandMapper = null;
         try {
             startTransactionIfNeeded();
-            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatch.size());
-            writeModelsToCommandMapper = new WriteModelsToCommandMapper(commandBatch.size());
+            var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatchSize);
+            writeModelsToCommandMapper = new WriteModelsToCommandMapper(commandBatchSize);
             for (BsonDocument command : commandBatch) {
                 WriteModelConverter.convertToWriteModels(commandDescription, command, writeModels);
                 writeModelsToCommandMapper.add(writeModels.size());
             }
             collection.bulkWrite(clientSession, writeModels);
+            var updateCounts = new int[commandBatchSize];
+            // We cannot determine the actual number of rows affected for each command in the batch.
+            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
+            return updateCounts;
         } catch (RuntimeException exception) {
             throw handleBatchException(exception, writeModelsToCommandMapper);
         }

@@ -35,11 +35,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -204,11 +202,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 return EMPTY_BATCH_RESULT;
             }
             checkSupportedBatchCommand(commandBatch.get(0));
-            executeBatch(commandBatch);
-            var updateCounts = new int[commandBatch.size()];
-            // We cannot determine the actual number of rows affected for each command in the batch.
-            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
-            return updateCounts;
+            return executeBatch(commandBatch);
         } finally {
             commandBatch.clear();
         }
