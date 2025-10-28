@@ -474,7 +474,7 @@ class MongoPreparedStatementTests {
             }
         }
 
-        private static void assertGenericException(final SQLException sqlException, RuntimeException cause) {
+        private static void assertGenericException(SQLException sqlException, RuntimeException cause) {
             assertThatObject(sqlException)
                     .isExactlyInstanceOf(SQLException.class)
                     .returns(0, SQLException::getErrorCode)
@@ -482,7 +482,7 @@ class MongoPreparedStatementTests {
                     .returns(cause, SQLException::getCause);
         }
 
-        private static void assertGenericMongoException(final SQLException sqlException, final MongoException cause) {
+        private static void assertGenericMongoException(SQLException sqlException, MongoException cause) {
             assertThatObject(sqlException)
                     .isExactlyInstanceOf(SQLException.class)
                     .returns(cause.getCode(), SQLException::getErrorCode)
@@ -491,7 +491,7 @@ class MongoPreparedStatementTests {
         }
 
         private static void assertConstraintViolationException(
-                final MongoException mongoException, final SQLException sqlException, final int expectedErrorCode) {
+                MongoException mongoException, SQLException sqlException, int expectedErrorCode) {
             assertThatObject(sqlException)
                     .asInstanceOf(type(SQLIntegrityConstraintViolationException.class))
                     .returns(expectedErrorCode, SQLIntegrityConstraintViolationException::getErrorCode)
@@ -536,15 +536,14 @@ class MongoPreparedStatementTests {
             }
         }
 
-        private static void assertUpdateCounts(final int[] actualUpdateCounts, int expectedUpdateCountsLength) {
+        private static void assertUpdateCounts(int[] actualUpdateCounts, int expectedUpdateCountsLength) {
             assertEquals(expectedUpdateCountsLength, actualUpdateCounts.length);
             for (int count : actualUpdateCounts) {
                 assertEquals(SUCCESS_NO_INFO, count);
             }
         }
 
-        private static MongoBulkWriteException createMongoBulkWriteException(
-                final int errorCode, final int failedModelIndex) {
+        private static MongoBulkWriteException createMongoBulkWriteException(int errorCode, int failedModelIndex) {
             return new MongoBulkWriteException(
                     BULK_WRITE_RESULT,
                     List.of(new BulkWriteError(
@@ -554,7 +553,7 @@ class MongoPreparedStatementTests {
                     emptySet());
         }
 
-        private static MongoBulkWriteException createMongoBulkWriteException(final int failedModelIndex) {
+        private static MongoBulkWriteException createMongoBulkWriteException(int failedModelIndex) {
             return new MongoBulkWriteException(
                     BULK_WRITE_RESULT,
                     List.of(new BulkWriteError(
@@ -564,7 +563,7 @@ class MongoPreparedStatementTests {
                     emptySet());
         }
 
-        private static Integer getVendorCodeError(final MongoBulkWriteException mongoBulkWriteException) {
+        private static Integer getVendorCodeError(MongoBulkWriteException mongoBulkWriteException) {
             return mongoBulkWriteException.getWriteErrors().stream()
                     .map(BulkWriteError::getCode)
                     .findFirst()

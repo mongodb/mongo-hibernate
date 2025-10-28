@@ -1017,17 +1017,17 @@ class MongoPreparedStatementIntegrationTests {
                     .containsExactlyElementsOf(expectedDocuments);
         }
 
-        private static String getFieldName(final String unsupportedField) {
+        private static String getFieldName(String unsupportedField) {
             return BsonDocument.parse("{" + unsupportedField + "}").getFirstKey();
         }
 
-        private String toExtendedJson(final String mql) {
+        private String toExtendedJson(String mql) {
             return BsonDocument.parse(mql).toJson(EXTENDED_JSON_WRITER_SETTINGS);
         }
     }
 
     private void assertInvalidMql(
-            final String mql, SqlConsumer<PreparedStatement> executor, String expectedExceptionMessage) {
+            String mql, SqlConsumer<PreparedStatement> executor, String expectedExceptionMessage) {
         doWorkAwareOfAutoCommit(connection -> {
             try (PreparedStatement pstm = connection.prepareStatement(mql)) {
                 assertThatThrownBy(() -> executor.accept(pstm))

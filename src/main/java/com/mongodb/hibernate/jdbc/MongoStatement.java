@@ -368,7 +368,7 @@ class MongoStatement implements StatementAdapter {
         return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exceptionToHandle);
     }
 
-    private static SQLException handleMongoException(final int errorCode, final MongoException exceptionToHandle) {
+    private static SQLException handleMongoException(int errorCode, MongoException exceptionToHandle) {
         if (isTimeoutException(exceptionToHandle)) {
             return new SQLException(EXCEPTION_MESSAGE_TIMEOUT, null, errorCode, exceptionToHandle);
         }
@@ -386,7 +386,7 @@ class MongoStatement implements StatementAdapter {
         };
     }
 
-    private static int getErrorCode(final RuntimeException runtimeException) {
+    private static int getErrorCode(RuntimeException runtimeException) {
         if (runtimeException instanceof MongoBulkWriteException mongoBulkWriteException) {
             var writeErrors = mongoBulkWriteException.getWriteErrors();
             if (writeErrors.isEmpty()) {
@@ -426,7 +426,7 @@ class MongoStatement implements StatementAdapter {
                 cause);
     }
 
-    private static <T extends SQLException> T withCause(T sqlException, final Exception cause) {
+    private static <T extends SQLException> T withCause(T sqlException, Exception cause) {
         sqlException.initCause(cause);
         if (cause instanceof SQLException sqlExceptionCause) {
             sqlException.setNextException(sqlExceptionCause);
@@ -434,7 +434,7 @@ class MongoStatement implements StatementAdapter {
         return sqlException;
     }
 
-    private static boolean isTimeoutException(final MongoException exception) {
+    private static boolean isTimeoutException(MongoException exception) {
         // We do not check for `MongoExecutionTimeoutException` and `MongoOperationTimeoutException` here,
         // because it is handled via error codes.
         return exception instanceof MongoSocketReadTimeoutException
