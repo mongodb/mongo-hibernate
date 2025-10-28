@@ -288,7 +288,7 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    void checkSupportedUpdateCommand(BsonDocument command)
+    static void checkSupportedUpdateCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         CommandDescription commandDescription = getCommandDescription(command);
         if (!commandDescription.isUpdate()) {
