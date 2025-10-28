@@ -279,7 +279,7 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    private void checkSupportedQueryCommand(BsonDocument command)
+    private static void checkSupportedQueryCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
         if (commandDescription.isUpdate()) {
