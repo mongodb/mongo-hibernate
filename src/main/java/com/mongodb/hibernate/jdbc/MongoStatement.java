@@ -76,7 +76,7 @@ class MongoStatement implements StatementAdapter {
     static final int NO_ERROR_CODE = 0;
     static final int[] EMPTY_BATCH_RESULT = new int[0];
 
-    @Nullable public static final String NULL_SQL_STATE = null;
+    @Nullable private static final String NULL_SQL_STATE = null;
 
     private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
@@ -353,9 +353,8 @@ class MongoStatement implements StatementAdapter {
                         errorCode, cause, bulkWriteException, assertNotNull(writeModelsToCommandMapper));
             }
             // TODO-HIBERNATE-132 BatchUpdateException is thrown when one of the commands fails to execute properly.
-            // When
-            // exception is not of MongoBulkWriteException, we are not sure if any command was executed successfully or
-            // failed.
+            // When exception is not of MongoBulkWriteException, we are not sure if any command was executed
+            // successfully or failed.
             return cause;
         }
         return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, null, errorCode, exceptionToHandle);
