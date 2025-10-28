@@ -140,7 +140,7 @@ class MongoStatement implements StatementAdapter {
         var key = specification.getKey();
         var value = specification.getValue();
         var exclude = (value.isBoolean() && !value.asBoolean().getValue())
-                || (value.isNumber() && value.asNumber().intValue() == NO_ERROR_CODE);
+                || (value.isNumber() && value.asNumber().intValue() == 0);
         if (exclude && !key.equals(ID_FIELD_NAME)) {
             throw new RuntimeException(format(
                     "Exclusions are not allowed in `$project` specifications, except for the [%s] field: [%s, %s]",
