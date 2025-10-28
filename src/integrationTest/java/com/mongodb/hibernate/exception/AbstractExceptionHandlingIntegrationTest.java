@@ -18,14 +18,14 @@ package com.mongodb.hibernate.exception;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.junit.InjectMongoClient;
+import com.mongodb.hibernate.junit.MongoExtension;
 import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(MongoExtension.class)
 class AbstractExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
-    private static final String FAIL_COMMAND_NAME = "failCommand";
 
     @InjectMongoClient
     private static MongoClient mongoClient;
@@ -38,26 +38,19 @@ class AbstractExceptionHandlingIntegrationTest implements SessionFactoryScopeAwa
     }
 
     static void configureFailPointErrorCode(int errorCode) {
-        BsonDocument failPointCommand = BsonDocument.parse("{"
-                + "  configureFailPoint: \"failCommand\","
-                + "  mode: { times: 1 },"
-                + "  data: {"
-                + "    failCommands: [\"insert\"],"
-                + "    errorCode: " + errorCode
-                + "    errorLabels: [\"TransientTransactionError\"]"
-                + "  }"
-                + "}");
+        BsonDocument failPointCommand = BsonDocument.parse(
+                """
+                {
+                  configureFailPoint: "failCommand",
+                  mode: { times: 1 },
+                  data: {
+                    failCommands: ["insert"],
+                    errorCode: %d
+                    errorLabels: ["TransientTransactionError"]
+                  }
+                }
+                """
+                        .formatted(errorCode));
         mongoClient.getDatabase("admin").runCommand(failPointCommand);
-    }
-
-    private static void disableFailPoint(final String failPoint) {
-        BsonDocument failPointDocument =
-                new BsonDocument("configureFailPoint", new BsonString(failPoint)).append("mode", new BsonString("off"));
-        mongoClient.getDatabase("admin").runCommand(failPointDocument);
-    }
-
-    @AfterEach
-    void tearDown() {
-        disableFailPoint(FAIL_COMMAND_NAME);
     }
 }

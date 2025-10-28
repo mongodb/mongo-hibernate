@@ -28,7 +28,6 @@ import jakarta.persistence.Table;
 import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
-import java.sql.SQLTimeoutException;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.exception.ConstraintViolationException;
@@ -43,11 +42,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@ExtendWith(MongoExtension.class)
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
 class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrationTest {
     private static final String COLLECTION_NAME = "items";
+    private static final String EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION = "Failed to execute operation";
+    private static final String EXCEPTION_MESSAGE_TIMEOUT = "Timeout while waiting for operation to complete";
 
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -61,7 +61,7 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                     });
                 })
                 .isInstanceOf(ConstraintViolationException.class)
-                .hasMessageContaining("Failed to execute operation")
+                .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
                 .cause()
                 .isInstanceOf(SQLIntegrityConstraintViolationException.class)
                 .hasRootCauseInstanceOf(MongoException.class);
@@ -77,7 +77,7 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                     });
                 })
                 .isInstanceOf(GenericJDBCException.class)
-                .hasMessageContaining("Failed to execute operation")
+                .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
                 .cause()
                 .isInstanceOf(SQLException.class)
                 .hasRootCauseInstanceOf(MongoException.class);
@@ -92,9 +92,9 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                     });
                 })
                 .isInstanceOf(GenericJDBCException.class)
-                .hasMessageContaining("Timeout while waiting for operation to complete")
+                .hasMessageContaining(EXCEPTION_MESSAGE_TIMEOUT)
                 .cause()
-                .isInstanceOf(SQLTimeoutException.class)
+                .isExactlyInstanceOf(SQLException.class)
                 .hasRootCauseInstanceOf(MongoException.class);
     }
 
@@ -104,8 +104,6 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
     @SessionFactory(exportSchema = false)
     @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
     class Batch extends AbstractExceptionHandlingIntegrationTest {
-
-        private static final String EXCEPTION_MESSAGE = "Batch execution failed";
 
         @Test
         void testConstraintViolationExceptionThrown() {
@@ -117,7 +115,7 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                         });
                     })
                     .isInstanceOf(ConstraintViolationException.class)
-                    .hasMessageContaining(EXCEPTION_MESSAGE)
+                    .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
                     .cause()
                     .isInstanceOf(BatchUpdateException.class)
                     .cause()
@@ -136,9 +134,9 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                         });
                     })
                     .isInstanceOf(GenericJDBCException.class)
-                    .hasMessageContaining(EXCEPTION_MESSAGE)
+                    .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
                     .cause()
-                    .isInstanceOf(BatchUpdateException.class)
+                    .isExactlyInstanceOf(SQLException.class)
                     .hasRootCauseInstanceOf(MongoException.class);
         }
 
@@ -152,11 +150,9 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                         });
                     })
                     .isInstanceOf(GenericJDBCException.class)
-                    .hasMessageContaining("Batch execution failed]")
+                    .hasMessageContaining(EXCEPTION_MESSAGE_TIMEOUT)
                     .cause()
-                    .isInstanceOf(BatchUpdateException.class)
-                    .cause()
-                    .isInstanceOf(SQLTimeoutException.class)
+                    .isExactlyInstanceOf(SQLException.class)
                     .hasRootCauseInstanceOf(MongoException.class);
         }
     }
