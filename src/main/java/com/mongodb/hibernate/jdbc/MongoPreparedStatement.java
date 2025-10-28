@@ -46,13 +46,15 @@ import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
     private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
-    private static final int[] EMPTY_BATCH_RESULT = new int[0];
+
+    private static final int @Nullable [] NULL_UPDATE_COUNTS = null;
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
@@ -209,7 +211,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     /** @throws BatchUpdateException if any of the commands in the batch attempts to return a result set. */
-    private void checkSupportedBatchCommand(BsonDocument command) throws SQLException {
+    private void checkSupportedBatchCommand(BsonDocument command)
+            throws SQLFeatureNotSupportedException, BatchUpdateException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
         if (commandDescription.returnsResultSet()) {
             throw new BatchUpdateException(
@@ -217,11 +220,11 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                             .formatted(commandDescription.getCommandName()),
                     NULL_SQL_STATE,
                     NO_ERROR_CODE,
-                    EMPTY_BATCH_RESULT);
+                    NULL_UPDATE_COUNTS);
         }
         if (!commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
-                    format("Unsupported command for batch operation: %s", commandDescription.getCommandName()));
+                    "Unsupported command for batch operation: %s".formatted(commandDescription.getCommandName()));
         }
     }
 

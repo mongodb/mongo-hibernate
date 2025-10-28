@@ -33,7 +33,6 @@ import com.mongodb.MongoException;
 import com.mongodb.MongoSocketReadTimeoutException;
 import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoTimeoutException;
-import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
@@ -74,6 +73,7 @@ class MongoStatement implements StatementAdapter {
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_TIMEOUT = "Timeout while waiting for operation to complete";
     static final int NO_ERROR_CODE = 0;
+    static final int[] EMPTY_BATCH_RESULT = new int[0];
 
     @Nullable static final String NULL_SQL_STATE = null;
 
@@ -177,13 +177,17 @@ class MongoStatement implements StatementAdapter {
                 writeModelsToCommandMapper.add(writeModels.size());
             }
             collection.bulkWrite(clientSession, writeModels);
-            var updateCounts = new int[commandBatchSize];
-            // We cannot determine the actual number of rows affected for each command in the batch.
-            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
-            return updateCounts;
+            return createUpdateCounts(commandBatchSize);
         } catch (RuntimeException exception) {
             throw handleBatchException(exception, writeModelsToCommandMapper);
         }
+    }
+
+    private static int[] createUpdateCounts(int updateCountsSize) {
+        // We cannot determine the actual number of rows affected for each command in the batch.
+        var updateCounts = new int[updateCountsSize];
+        Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
+        return updateCounts;
     }
 
     int executeUpdate(BsonDocument command) throws SQLException {
@@ -275,15 +279,17 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    private void checkSupportedQueryCommand(BsonDocument command) throws SQLException {
+    private void checkSupportedQueryCommand(BsonDocument command)
+            throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
         if (commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
-                    format("Unsupported command for query operation: %s", commandDescription.getCommandName()));
+                    "Unsupported command for query operation: %s".formatted(commandDescription.getCommandName()));
         }
     }
 
-    void checkSupportedUpdateCommand(BsonDocument command) throws SQLException {
+    void checkSupportedUpdateCommand(BsonDocument command)
+            throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         CommandDescription commandDescription = getCommandDescription(command);
         if (!commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
@@ -310,7 +316,8 @@ class MongoStatement implements StatementAdapter {
     }
 
     /** The first key is always the command name, e.g. "insert", "update", "delete". */
-    static CommandDescription getCommandDescription(BsonDocument command) throws SQLException {
+    static CommandDescription getCommandDescription(BsonDocument command)
+            throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         String commandName;
         try {
             commandName = command.getFirstKey();
@@ -382,8 +389,7 @@ class MongoStatement implements StatementAdapter {
                 new SQLIntegrityConstraintViolationException(
                         EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
             // TODO-HIBERNATE-132 EXECUTION_TIMEOUT code is returned from the server. Do we know how many commands were
-            // executed
-            // successfully so we can return it as BatchUpdateException?
+            // executed successfully so we can return it as BatchUpdateException?
             case EXECUTION_TIMEOUT ->
                 new SQLException(EXCEPTION_MESSAGE_TIMEOUT, NULL_SQL_STATE, errorCode, exceptionToHandle);
             case UNCATEGORIZED ->
@@ -412,31 +418,28 @@ class MongoStatement implements StatementAdapter {
 
     private static BatchUpdateException createBatchUpdateException(
             int errorCode,
-            Exception cause,
+            SQLException sqlCause,
             MongoBulkWriteException mongoBulkWriteException,
             WriteModelsToCommandMapper writeModelsToCommandMapper) {
-        List<BulkWriteError> writeErrors = mongoBulkWriteException.getWriteErrors();
-        var updateCount = 0;
+        var updateCounts = calculateBatchUpdateCounts(mongoBulkWriteException, writeModelsToCommandMapper);
+        var batchUpdateException = new BatchUpdateException(
+                EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, updateCounts, sqlCause);
+        batchUpdateException.setNextException(sqlCause);
+        return batchUpdateException;
+    }
+
+    private static int[] calculateBatchUpdateCounts(
+            MongoBulkWriteException mongoBulkWriteException, WriteModelsToCommandMapper writeModelsToCommandMapper) {
+        var writeErrors = mongoBulkWriteException.getWriteErrors();
         var writeConcernError = mongoBulkWriteException.getWriteConcernError();
         if (writeConcernError == null) {
             if (!writeErrors.isEmpty()) {
                 var failedModelIndex = writeErrors.get(0).getIndex();
-                updateCount = writeModelsToCommandMapper.findCommandIndex(failedModelIndex);
+                var commandIndex = writeModelsToCommandMapper.findCommandIndex(failedModelIndex);
+                return createUpdateCounts(commandIndex);
             }
         }
-        var updateCounts = new int[updateCount];
-        Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
-        return withCause(
-                new BatchUpdateException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, updateCounts),
-                cause);
-    }
-
-    private static <T extends SQLException> T withCause(T sqlException, Exception cause) {
-        sqlException.initCause(cause);
-        if (cause instanceof SQLException sqlExceptionCause) {
-            sqlException.setNextException(sqlExceptionCause);
-        }
-        return sqlException;
+        return EMPTY_BATCH_RESULT;
     }
 
     private static boolean isTimeoutException(MongoException exception) {
@@ -491,7 +494,7 @@ class MongoStatement implements StatementAdapter {
                 case "update" -> UPDATE;
                 case "delete" -> DELETE;
                 case "aggregate" -> AGGREGATE;
-                default -> throw new SQLFeatureNotSupportedException(format("Unsupported command: %s", commandName));
+                default -> throw new SQLFeatureNotSupportedException("Unsupported command: %s".formatted(commandName));
             };
         }
     }
@@ -564,13 +567,13 @@ class MongoStatement implements StatementAdapter {
                 // We force exception here because the field is mandatory.
                 updateStatement.getDocument("u");
             }
-            if (!(updateModification instanceof BsonDocument uDocument)) {
+            if (!(updateModification instanceof BsonDocument updateDocument)) {
                 throw new SQLFeatureNotSupportedException("Only document type is supported as value for field: [u]");
             }
             if (isMulti) {
-                return new UpdateManyModel<>(filter, uDocument);
+                return new UpdateManyModel<>(filter, updateDocument);
             }
-            return new UpdateOneModel<>(filter, uDocument);
+            return new UpdateOneModel<>(filter, updateDocument);
         }
 
         private static WriteModel<BsonDocument> createDeleteModel(
@@ -608,10 +611,10 @@ class MongoStatement implements StatementAdapter {
                 CommandDescription commandDescription,
                 String exceptionMessage,
                 Set<String> supportedCommandFields,
-                Iterator<String> fieldIterator)
+                Iterator<String> fieldNameIterator)
                 throws SQLFeatureNotSupportedException {
-            while (fieldIterator.hasNext()) {
-                var field = fieldIterator.next();
+            while (fieldNameIterator.hasNext()) {
+                var field = fieldNameIterator.next();
                 if (!supportedCommandFields.contains(field)) {
                     throw new SQLFeatureNotSupportedException(
                             exceptionMessage.formatted(commandDescription.getCommandName(), field));
@@ -625,20 +628,20 @@ class MongoStatement implements StatementAdapter {
         /** The cumulative counts of write models for each command in the batch (prefix sum). */
         private final int[] cumulativeCounts;
 
-        private int index;
+        private int cumulativeCountIndex;
 
         private WriteModelsToCommandMapper(int commandCount) {
             this.cumulativeCounts = new int[commandCount];
-            this.index = 0;
+            this.cumulativeCountIndex = 0;
         }
 
         private void add(int cumulativeWriteModelCount) {
-            assertFalse(index >= cumulativeCounts.length);
-            cumulativeCounts[index++] = cumulativeWriteModelCount;
+            assertFalse(cumulativeCountIndex >= cumulativeCounts.length);
+            cumulativeCounts[cumulativeCountIndex++] = cumulativeWriteModelCount;
         }
 
         private int findCommandIndex(int writeModelIndex) {
-            assertTrue(index >= cumulativeCounts.length);
+            assertTrue(cumulativeCountIndex == cumulativeCounts.length);
             int lo = 0, hi = cumulativeCounts.length;
             while (lo < hi) {
                 var mid = (lo + hi) >>> 1;
