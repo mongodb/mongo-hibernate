@@ -108,16 +108,15 @@ class MongoStatement implements StatementAdapter {
     }
 
     ResultSet executeQuery(BsonDocument command) throws SQLException {
-        var commandDescription = getCommandDescription(command);
         try {
-            startTransactionIfNeeded();
+            var commandDescription = getCommandDescription(command);
             var collection = getCollection(commandDescription, command);
             var pipeline = command.getArray("pipeline").stream()
                     .map(BsonValue::asDocument)
                     .toList();
             var fieldNames = getFieldNamesFromProjectStage(
                     pipeline.get(pipeline.size() - 1).getDocument("$project"));
-
+            startTransactionIfNeeded();
             return resultSet = new MongoResultSet(
                     collection.aggregate(clientSession, pipeline).cursor(), fieldNames);
         } catch (RuntimeException exception) {
@@ -166,19 +165,19 @@ class MongoStatement implements StatementAdapter {
     }
 
     int[] executeBatch(List<? extends BsonDocument> commandBatch) throws SQLException {
-        var firstCommandInBatch = commandBatch.get(0);
-        var commandBatchSize = commandBatch.size();
-        var commandDescription = getCommandDescription(firstCommandInBatch);
-        var collection = getCollection(commandDescription, firstCommandInBatch);
         WriteModelsToCommandMapper writeModelsToCommandMapper = null;
         try {
-            startTransactionIfNeeded();
+            var firstCommandInBatch = commandBatch.get(0);
+            var commandBatchSize = commandBatch.size();
+            var commandDescription = getCommandDescription(firstCommandInBatch);
+            var collection = getCollection(commandDescription, firstCommandInBatch);
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatchSize);
             writeModelsToCommandMapper = new WriteModelsToCommandMapper(commandBatchSize);
             for (var command : commandBatch) {
                 WriteModelConverter.convertToWriteModels(commandDescription, command, writeModels);
                 writeModelsToCommandMapper.add(writeModels.size());
             }
+            startTransactionIfNeeded();
             collection.bulkWrite(clientSession, writeModels);
             return createUpdateCounts(commandBatchSize);
         } catch (RuntimeException exception) {
@@ -194,12 +193,12 @@ class MongoStatement implements StatementAdapter {
     }
 
     int executeUpdate(BsonDocument command) throws SQLException {
-        var commandDescription = getCommandDescription(command);
-        var collection = getCollection(commandDescription, command);
         try {
-            startTransactionIfNeeded();
+            var commandDescription = getCommandDescription(command);
+            var collection = getCollection(commandDescription, command);
             var writeModels = new ArrayList<WriteModel<BsonDocument>>();
             WriteModelConverter.convertToWriteModels(commandDescription, command, writeModels);
+            startTransactionIfNeeded();
             var bulkWriteResult = collection.bulkWrite(clientSession, writeModels);
             return getUpdateCount(commandDescription, bulkWriteResult);
         } catch (RuntimeException exception) {
