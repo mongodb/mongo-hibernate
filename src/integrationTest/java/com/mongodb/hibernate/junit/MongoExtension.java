@@ -38,6 +38,11 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 /**
  * Assumes that all tests that use this {@linkplain ExtendWith#value() extension} run <a
  * href="https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution">sequentially</a>.
+ *
+ * <p>The {@linkplain MongoConfigurator#databaseName(String) database} is dropped
+ * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test. The fail points are disabled
+ * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
+ * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests.
  */
 public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
 
