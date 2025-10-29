@@ -71,6 +71,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
+        checkSupportedQueryCommand(command);
         return executeQuery(command);
     }
 
@@ -211,7 +212,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     /** @throws BatchUpdateException if any of the commands in the batch attempts to return a result set. */
-    private void checkSupportedBatchCommand(BsonDocument command)
+    private static void checkSupportedBatchCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, BatchUpdateException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
         if (commandDescription.returnsResultSet()) {

@@ -16,10 +16,10 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.assertions.Assertions.assertFalse;
-import static com.mongodb.assertions.Assertions.assertNotNull;
-import static com.mongodb.assertions.Assertions.assertTrue;
-import static com.mongodb.assertions.Assertions.fail;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
+import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
@@ -75,7 +75,7 @@ class MongoStatement implements StatementAdapter {
     static final int NO_ERROR_CODE = 0;
     static final int[] EMPTY_BATCH_RESULT = new int[0];
 
-    @Nullable static final String NULL_SQL_STATE = null;
+    static final String @Nullable NULL_SQL_STATE = null;
 
     private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
@@ -164,7 +164,7 @@ class MongoStatement implements StatementAdapter {
 
     int[] executeBatch(List<? extends BsonDocument> commandBatch) throws SQLException {
         var firstCommandInBatch = commandBatch.get(0);
-        int commandBatchSize = commandBatch.size();
+        var commandBatchSize = commandBatch.size();
         var commandDescription = getCommandDescription(firstCommandInBatch);
         var collection = getCollection(commandDescription, firstCommandInBatch);
         WriteModelsToCommandMapper writeModelsToCommandMapper = null;
@@ -172,7 +172,7 @@ class MongoStatement implements StatementAdapter {
             startTransactionIfNeeded();
             var writeModels = new ArrayList<WriteModel<BsonDocument>>(commandBatchSize);
             writeModelsToCommandMapper = new WriteModelsToCommandMapper(commandBatchSize);
-            for (BsonDocument command : commandBatch) {
+            for (var command : commandBatch) {
                 WriteModelConverter.convertToWriteModels(commandDescription, command, writeModels);
                 writeModelsToCommandMapper.add(writeModels.size());
             }
@@ -444,16 +444,20 @@ class MongoStatement implements StatementAdapter {
 
     private static boolean isTimeoutException(MongoException exception) {
         // We do not check for `MongoExecutionTimeoutException` and `MongoOperationTimeoutException` here,
-        // because it is handled via error codes.
+        // because they are handled via error codes.
         return exception instanceof MongoSocketReadTimeoutException
                 || exception instanceof MongoSocketWriteTimeoutException
                 || exception instanceof MongoTimeoutException;
     }
 
     enum CommandDescription {
+        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/insert/">{@code insert}</a>. */
         INSERT("insert", false, true),
+        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>. */
         UPDATE("update", false, true),
+        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/delete/">{@code delete}</a>. */
         DELETE("delete", false, true),
+        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/aggregate/">{@code aggregate}</a>. */
         AGGREGATE("aggregate", true, false);
 
         private final String commandName;
@@ -471,9 +475,9 @@ class MongoStatement implements StatementAdapter {
         }
 
         /**
-         * Indicates whether the command is used in {@code executeUpdate(...)} or {@code executeBatch()} methods.
+         * Indicates whether the command may be used in {@code executeUpdate(...)} or {@code executeBatch()} methods.
          *
-         * @return true if the command is used in update operations, false if it is used in query operations.
+         * @return true if the command may be used in update operations, false if it is used in query operations.
          */
         boolean isUpdate() {
             return isUpdate;
@@ -500,8 +504,10 @@ class MongoStatement implements StatementAdapter {
     }
 
     private static class WriteModelConverter {
-        private static final String UNSUPPORTED_MESSAGE_STATEMENT_FIELD = "Unsupported field in %s statement: [%s]";
-        private static final String UNSUPPORTED_MESSAGE_COMMAND_FIELD = "Unsupported field in %s command: [%s]";
+        private static final String UNSUPPORTED_MESSAGE_TEMPLATE_STATEMENT_FIELD =
+                "Unsupported field in [%s] statement: [%s]";
+        private static final String UNSUPPORTED_MESSAGE_TEMPLATE_COMMAND_FIELD =
+                "Unsupported field in [%s] command: [%s]";
 
         private static final Set<String> SUPPORTED_INSERT_COMMAND_FIELDS = Set.of("documents");
 
