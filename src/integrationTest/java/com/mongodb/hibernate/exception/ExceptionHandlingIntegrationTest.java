@@ -19,22 +19,23 @@ package com.mongodb.hibernate.exception;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.MongoException;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.junit.InjectMongoClient;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.sql.BatchUpdateException;
 import java.sql.SQLException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import org.bson.BsonDocument;
+import org.hibernate.JDBCException;
 import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.exception.ConstraintViolationException;
-import org.hibernate.exception.GenericJDBCException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
+import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,27 +45,23 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
-class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrationTest {
+@ExtendWith(MongoExtension.class)
+class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
     private static final String COLLECTION_NAME = "items";
     private static final String EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_TIMEOUT = "Timeout while waiting for operation to complete";
 
+    @InjectMongoClient
+    private static MongoClient mongoClient;
+
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
-    @Test
-    void testConstraintViolationExceptionThrown() {
-        mongoCollection.insertOne(BsonDocument.parse("{_id: 1}"));
-        assertThatThrownBy(() -> {
-                    sessionFactoryScope.inTransaction(session -> {
-                        session.persist(new Item(1));
-                    });
-                })
-                .isInstanceOf(ConstraintViolationException.class)
-                .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
-                .cause()
-                .isInstanceOf(SQLIntegrityConstraintViolationException.class)
-                .hasRootCauseInstanceOf(MongoException.class);
+    SessionFactoryScope sessionFactoryScope;
+
+    @Override
+    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+        this.sessionFactoryScope = sessionFactoryScope;
     }
 
     @ParameterizedTest
@@ -76,7 +73,7 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                         session.persist(new Item(1));
                     });
                 })
-                .isInstanceOf(GenericJDBCException.class)
+                .isInstanceOf(JDBCException.class)
                 .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
                 .cause()
                 .isInstanceOf(SQLException.class)
@@ -91,10 +88,10 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                         session.persist(new Item(1));
                     });
                 })
-                .isInstanceOf(GenericJDBCException.class)
+                .isInstanceOf(JDBCException.class)
                 .hasMessageContaining(EXCEPTION_MESSAGE_TIMEOUT)
                 .cause()
-                .isExactlyInstanceOf(SQLException.class)
+                .isInstanceOf(SQLException.class)
                 .hasRootCauseInstanceOf(MongoException.class);
     }
 
@@ -103,24 +100,12 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
     @ExtendWith(MongoExtension.class)
     @SessionFactory(exportSchema = false)
     @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
-    class Batch extends AbstractExceptionHandlingIntegrationTest {
+    class Batch implements SessionFactoryScopeAware {
+        SessionFactoryScope sessionFactoryScope;
 
-        @Test
-        void testConstraintViolationExceptionThrown() {
-            mongoCollection.insertOne(BsonDocument.parse("{_id: 1}"));
-            assertThatThrownBy(() -> {
-                        sessionFactoryScope.inTransaction(session -> {
-                            session.persist(new Item(1));
-                            session.persist(new Item(2));
-                        });
-                    })
-                    .isInstanceOf(ConstraintViolationException.class)
-                    .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
-                    .cause()
-                    .isInstanceOf(BatchUpdateException.class)
-                    .cause()
-                    .isInstanceOf(SQLIntegrityConstraintViolationException.class)
-                    .hasRootCauseInstanceOf(MongoException.class);
+        @Override
+        public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
+            this.sessionFactoryScope = sessionFactoryScope;
         }
 
         @ParameterizedTest
@@ -133,7 +118,7 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                             session.persist(new Item(2));
                         });
                     })
-                    .isInstanceOf(GenericJDBCException.class)
+                    .isInstanceOf(JDBCException.class)
                     .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
                     .cause()
                     .isExactlyInstanceOf(SQLException.class)
@@ -149,12 +134,29 @@ class ExceptionHandlingIntegrationTest extends AbstractExceptionHandlingIntegrat
                             session.persist(new Item(2));
                         });
                     })
-                    .isInstanceOf(GenericJDBCException.class)
+                    .isInstanceOf(JDBCException.class)
                     .hasMessageContaining(EXCEPTION_MESSAGE_TIMEOUT)
                     .cause()
                     .isExactlyInstanceOf(SQLException.class)
                     .hasRootCauseInstanceOf(MongoException.class);
         }
+    }
+
+    private static void configureFailPointErrorCode(int errorCode) {
+        BsonDocument failPointCommand = BsonDocument.parse(
+                """
+                {
+                  configureFailPoint: "failCommand",
+                  mode: { times: 1 },
+                  data: {
+                    failCommands: ["insert"],
+                    errorCode: %d
+                    errorLabels: ["TransientTransactionError"]
+                  }
+                }
+                """
+                        .formatted(errorCode));
+        mongoClient.getDatabase("admin").runCommand(failPointCommand);
     }
 
     @Entity

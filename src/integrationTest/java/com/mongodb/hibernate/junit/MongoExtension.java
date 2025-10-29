@@ -40,19 +40,22 @@ import org.junit.jupiter.api.extension.ExtensionContext;
  * href="https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution">sequentially</a>.
  *
  * <p>The {@linkplain MongoConfigurator#databaseName(String) database} is dropped
- * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test. The fail points are disabled
+ * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
+ * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests. The fail points are disabled
  * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
  * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests.
  */
 public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
 
-    private static final BsonDocument DISABLE_FAIL_POINT_FAIL_COMMAND = BsonDocument.parse(
+    /** Disables {@code failCommand} fail point. */
+    private static final BsonDocument DISABLE_FAIL_POINT_COMMAND = BsonDocument.parse(
             """
             {
               "configureFailPoint": "failCommand",
               "mode": "off"
             }
             """);
+
     private static final State STATE = State.create();
 
     /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}. */
@@ -85,9 +88,10 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
      * dropping all {@linkplain InjectMongoCollection collections}.
      */
     @Override
-    public void beforeEach(ExtensionContext context) {
-        disableFailPoint();
-        STATE.mongoDatabase().drop();
+    @SuppressWarnings("try")
+    public void beforeEach(ExtensionContext context) throws Exception {
+        try (AutoCloseable disableFilPoint = MongoExtension::disableFailPoint;
+                AutoCloseable dropDatabase = () -> STATE.mongoDatabase().drop()) {}
     }
 
     private record State(MongoClient mongoClient, MongoDatabase mongoDatabase, MongoDatabase adminDatabase) {
@@ -108,6 +112,6 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
     }
 
     private static void disableFailPoint() {
-        STATE.adminDatabase().runCommand(DISABLE_FAIL_POINT_FAIL_COMMAND);
+        STATE.adminDatabase().runCommand(DISABLE_FAIL_POINT_COMMAND);
     }
 }
