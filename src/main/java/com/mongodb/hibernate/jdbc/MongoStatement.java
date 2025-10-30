@@ -436,9 +436,8 @@ class MongoStatement implements StatementAdapter {
             MongoBulkWriteException mongoBulkWriteException,
             WriteModelsToCommandMapper writeModelsToCommandMapper) {
         var updateCounts = calculateBatchUpdateCounts(mongoBulkWriteException, writeModelsToCommandMapper);
-        var batchUpdateException = new BatchUpdateException(
+        return new BatchUpdateException(
                 exceptionMessage, NULL_SQL_STATE, errorCode, updateCounts, mongoBulkWriteException);
-        return batchUpdateException;
     }
 
     private static int[] calculateBatchUpdateCounts(
