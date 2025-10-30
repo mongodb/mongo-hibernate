@@ -533,7 +533,7 @@ class MongoStatement implements StatementAdapter {
 
         private WriteModelConverter() {}
 
-        private static void convertToWriteModels(
+        static void convertToWriteModels(
                 CommandDescription commandDescription,
                 BsonDocument command,
                 Collection<WriteModel<BsonDocument>> writeModels)
@@ -648,17 +648,17 @@ class MongoStatement implements StatementAdapter {
 
         private int cumulativeCountIndex;
 
-        private WriteModelsToCommandMapper(int commandCount) {
+        WriteModelsToCommandMapper(int commandCount) {
             this.cumulativeCounts = new int[commandCount];
             this.cumulativeCountIndex = 0;
         }
 
-        private void add(int cumulativeWriteModelCount) {
+        void add(int cumulativeWriteModelCount) {
             assertFalse(cumulativeCountIndex >= cumulativeCounts.length);
             cumulativeCounts[cumulativeCountIndex++] = cumulativeWriteModelCount;
         }
 
-        private int findCommandIndex(int writeModelIndex) {
+        int findCommandIndex(int writeModelIndex) {
             assertTrue(cumulativeCountIndex == cumulativeCounts.length);
             var lo = 0;
             var hi = cumulativeCounts.length;
