@@ -224,12 +224,6 @@ class MongoStatement implements StatementAdapter {
     }
 
     @Override
-    public void cancel() throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
-    }
-
-    @Override
     public @Nullable SQLWarning getWarnings() throws SQLException {
         checkClosed();
         return null;
@@ -264,13 +258,6 @@ class MongoStatement implements StatementAdapter {
     public int getUpdateCount() throws SQLException {
         checkClosed();
         throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
-    }
-
-    @Override
-    public void addBatch(String mql) throws SQLException {
-        checkClosed();
-        MongoAggregateSupport.checkSupported(mql);
-        throw new SQLFeatureNotSupportedException();
     }
 
     @Override

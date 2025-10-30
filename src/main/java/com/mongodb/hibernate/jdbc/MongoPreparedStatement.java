@@ -23,7 +23,6 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
@@ -345,12 +344,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
      *
      * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
      */
-    private static void checkComparatorNotComparingWithNullValues(BsonDocument document) {
+    private static void checkComparatorNotComparingWithNullValues(BsonDocument document)
+            throws SQLFeatureNotSupportedException {
         var comparisonOperators = Set.of("$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
         for (var entry : document.entrySet()) {
             var value = entry.getValue();
             if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
-                throw new FeatureNotSupportedException(
+                throw new SQLFeatureNotSupportedException(
                         "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
             }
             if (value instanceof BsonDocument documentValue) {
