@@ -47,15 +47,12 @@ import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.ObjectId;
-import org.jspecify.annotations.Nullable;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
     private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
-
-    private static final int @Nullable [] NULL_UPDATE_COUNTS = null;
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
@@ -204,7 +201,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         try {
             closeLastOpenResultSet();
             if (commandBatch.isEmpty()) {
-                return EMPTY_BATCH_RESULT;
+                return EMPTY_UPDATE_COUNTS;
             }
             checkSupportedBatchCommand(commandBatch.get(0));
             return executeBatch(commandBatch);
@@ -217,17 +214,17 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     private static void checkSupportedBatchCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, BatchUpdateException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
-        if (commandDescription.returnsResultSet()) {
+        if (commandDescription.isQuery()) {
             throw new BatchUpdateException(
                     "Commands returning result set are not allowed. Received command: %s"
                             .formatted(commandDescription.getCommandName()),
                     NULL_SQL_STATE,
                     NO_ERROR_CODE,
-                    NULL_UPDATE_COUNTS);
+                    EMPTY_UPDATE_COUNTS);
         }
         if (!commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
-                    "Unsupported command for batch operation: %s".formatted(commandDescription.getCommandName()));
+                    "Unsupported command for executeBatch: %s".formatted(commandDescription.getCommandName()));
         }
     }
 

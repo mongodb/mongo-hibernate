@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.bson.BSONException;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -272,11 +273,11 @@ class MongoPreparedStatementIntegrationTests {
         assertInvalidMql(
                 """
                 {
-                    insert: {}
+                    aggregate: {}
                 }""",
                 PreparedStatement::executeQuery,
                 """
-                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+                Invalid MQL. Collection name is missing [{"aggregate": {}}]""");
     }
 
     @Test
@@ -304,6 +305,42 @@ class MongoPreparedStatementIntegrationTests {
                 },
                 """
                 Invalid MQL. Collection name is missing [{"insert": {}}]""");
+    }
+
+    @Test
+    void testAbsentRequiredAggregateCommandField() {
+        doWorkAwareOfAutoCommit(connection -> {
+            String mql =
+                    """
+                        {
+                        aggregate: "books"
+                    }""";
+            try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .isInstanceOf(BSONException.class)
+                        .hasMessage("Document does not contain key pipeline");
+            }
+        });
+    }
+
+    @Test
+    void testAbsentRequiredProjectAggregationPipelineStage() {
+        doWorkAwareOfAutoCommit(connection -> {
+            String mql =
+                    """
+                        {
+                        aggregate: "books",
+                        "pipeline": []
+                    }""";
+            try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(toExtendedJson(mql)));
+            }
+        });
     }
 
     @Nested
@@ -343,7 +380,7 @@ class MongoPreparedStatementIntegrationTests {
                     pstm.addBatch();
                     assertThatExceptionOfType(BatchUpdateException.class)
                             .isThrownBy(pstm::executeBatch)
-                            .returns(null, BatchUpdateException::getUpdateCounts)
+                            .returns(new int[0], BatchUpdateException::getUpdateCounts)
                             .returns(null, BatchUpdateException::getSQLState)
                             .returns(0, BatchUpdateException::getErrorCode);
                 }
@@ -769,7 +806,7 @@ class MongoPreparedStatementIntegrationTests {
                                 .formatted(unsupportedField))) {
                     assertThatThrownBy(pstm::executeUpdate)
                             .isInstanceOf(SQLFeatureNotSupportedException.class)
-                            .hasMessage("Unsupported field in update command: [%s]"
+                            .hasMessage("Unsupported field in [update] command: [%s]"
                                     .formatted(getFieldName(unsupportedField)));
                 }
             });
@@ -812,7 +849,7 @@ class MongoPreparedStatementIntegrationTests {
                                 .formatted(unsupportedField))) {
                     assertThatThrownBy(pstm::executeUpdate)
                             .isInstanceOf(SQLFeatureNotSupportedException.class)
-                            .hasMessage("Unsupported field in delete command: [%s]"
+                            .hasMessage("Unsupported field in [delete] command: [%s]"
                                     .formatted(getFieldName(unsupportedField)));
                 }
             });
@@ -862,7 +899,7 @@ class MongoPreparedStatementIntegrationTests {
                                 .formatted(unsupportedField))) {
                     assertThatThrownBy(pstm::executeUpdate)
                             .isInstanceOf(SQLFeatureNotSupportedException.class)
-                            .hasMessage("Unsupported field in insert command: [%s]"
+                            .hasMessage("Unsupported field in [insert] command: [%s]"
                                     .formatted(getFieldName(unsupportedField)));
                 }
             });
@@ -888,14 +925,14 @@ class MongoPreparedStatementIntegrationTests {
 
         private static Stream<Arguments> unsupportedUpdateStatementFields() {
             return Stream.of(
-                    of("hint: {}", "Unsupported field in update statement: [hint]"),
-                    of("hint: \"a\"", "Unsupported field in update statement: [hint]"),
-                    of("collation: {}", "Unsupported field in update statement: [collation]"),
-                    of("arrayFilters: []", "Unsupported field in update statement: [arrayFilters]"),
-                    of("sort: {}", "Unsupported field in update statement: [sort]"),
-                    of("upsert: true", "Unsupported field in update statement: [upsert]"),
+                    of("hint: {}", "Unsupported field in [update] statement: [hint]"),
+                    of("hint: \"a\"", "Unsupported field in [update] statement: [hint]"),
+                    of("collation: {}", "Unsupported field in [update] statement: [collation]"),
+                    of("arrayFilters: []", "Unsupported field in [update] statement: [arrayFilters]"),
+                    of("sort: {}", "Unsupported field in [update] statement: [sort]"),
+                    of("upsert: true", "Unsupported field in [update] statement: [upsert]"),
                     of("u: []", "Only document type is supported as value for field: [u]"),
-                    of("c: {}", "Unsupported field in update statement: [c]"));
+                    of("c: {}", "Unsupported field in [update] statement: [c]"));
         }
 
         @ParameterizedTest(name = "test not supported update statement field. Parameters: option={0}")
@@ -968,7 +1005,7 @@ class MongoPreparedStatementIntegrationTests {
                                 .formatted(unsupportedField))) {
                     assertThatThrownBy(pstm::executeUpdate)
                             .isInstanceOf(SQLFeatureNotSupportedException.class)
-                            .hasMessage("Unsupported field in delete statement: [%s]"
+                            .hasMessage("Unsupported field in [delete] statement: [%s]"
                                     .formatted(getFieldName(unsupportedField)));
                 }
             });
@@ -1012,14 +1049,6 @@ class MongoPreparedStatementIntegrationTests {
             assertThat(mongoCollection.find().sort(Sorts.ascending(ID_FIELD_NAME)))
                     .containsExactlyElementsOf(expectedDocuments);
         }
-
-        private static String getFieldName(String unsupportedField) {
-            return BsonDocument.parse("{" + unsupportedField + "}").getFirstKey();
-        }
-
-        private String toExtendedJson(String mql) {
-            return BsonDocument.parse(mql).toJson(EXTENDED_JSON_WRITER_SETTINGS);
-        }
     }
 
     private void assertInvalidMql(
@@ -1039,6 +1068,14 @@ class MongoPreparedStatementIntegrationTests {
 
     void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
         doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
+    }
+
+    private static String getFieldName(String unsupportedField) {
+        return BsonDocument.parse("{" + unsupportedField + "}").getFirstKey();
+    }
+
+    private String toExtendedJson(String mql) {
+        return BsonDocument.parse(mql).toJson(EXTENDED_JSON_WRITER_SETTINGS);
     }
 
     interface SqlConsumer<T> {

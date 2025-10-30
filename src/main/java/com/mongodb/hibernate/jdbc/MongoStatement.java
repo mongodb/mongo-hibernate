@@ -51,7 +51,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
@@ -72,11 +71,13 @@ import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
-    private static final String EXCEPTION_MESSAGE_TIMEOUT = "Timeout while waiting for operation to complete";
+    private static final String EXCEPTION_MESSAGE_OPERATION_TIMED_OUT =
+            "Timeout while waiting for operation to complete";
     static final int NO_ERROR_CODE = 0;
-    static final int[] EMPTY_BATCH_RESULT = new int[0];
+    static final int[] EMPTY_UPDATE_COUNTS = new int[0];
 
-    static final String @Nullable NULL_SQL_STATE = null;
+    static final @Nullable String NULL_SQL_STATE = null;
+    private static final String EXCEPTION_MESSAGE_PREFIX_INVALID_MQL = "Invalid MQL";
 
     private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
@@ -114,13 +115,19 @@ class MongoStatement implements StatementAdapter {
             var pipeline = command.getArray("pipeline").stream()
                     .map(BsonValue::asDocument)
                     .toList();
+            var projectStageIndex = pipeline.size() - 1;
+            if (pipeline.isEmpty()) {
+                throw createSyntaxErrorException("%s. $project stage is missing [%s]", command);
+            }
             var fieldNames = getFieldNamesFromProjectStage(
-                    pipeline.get(pipeline.size() - 1).getDocument("$project"));
+                    pipeline.get(projectStageIndex).getDocument("$project"));
             startTransactionIfNeeded();
             return resultSet = new MongoResultSet(
                     collection.aggregate(clientSession, pipeline).cursor(), fieldNames);
+        } catch (BSONException bsonException) {
+            throw createSyntaxErrorException("%s: [%s]", command, bsonException);
         } catch (RuntimeException exception) {
-            throw handleQueryOrUpdateException(exception);
+            throw handleExecuteQueryOrUpdateException(exception);
         }
     }
 
@@ -164,7 +171,7 @@ class MongoStatement implements StatementAdapter {
         return executeUpdate(command);
     }
 
-    int[] executeBatch(List<? extends BsonDocument> commandBatch) throws SQLException {
+    int[] executeBatch(List<BsonDocument> commandBatch) throws SQLException {
         WriteModelsToCommandMapper writeModelsToCommandMapper = null;
         try {
             var firstCommandInBatch = commandBatch.get(0);
@@ -181,7 +188,7 @@ class MongoStatement implements StatementAdapter {
             collection.bulkWrite(clientSession, writeModels);
             return createUpdateCounts(commandBatchSize);
         } catch (RuntimeException exception) {
-            throw handleBatchException(exception, writeModelsToCommandMapper);
+            throw handleExecuteBatchException(exception, writeModelsToCommandMapper);
         }
     }
 
@@ -202,7 +209,7 @@ class MongoStatement implements StatementAdapter {
             var bulkWriteResult = collection.bulkWrite(clientSession, writeModels);
             return getUpdateCount(commandDescription, bulkWriteResult);
         } catch (RuntimeException exception) {
-            throw handleQueryOrUpdateException(exception);
+            throw handleExecuteQueryOrUpdateException(exception);
         }
     }
 
@@ -289,21 +296,21 @@ class MongoStatement implements StatementAdapter {
         }
     }
 
-    private static void checkSupportedQueryCommand(BsonDocument command)
+    static void checkSupportedQueryCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
         if (commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
-                    "Unsupported command for query operation: %s".formatted(commandDescription.getCommandName()));
+                    "Unsupported command for executeQuery: %s".formatted(commandDescription.getCommandName()));
         }
     }
 
     static void checkSupportedUpdateCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         CommandDescription commandDescription = getCommandDescription(command);
-        if (!commandDescription.isUpdate()) {
+        if (commandDescription.isQuery()) {
             throw new SQLFeatureNotSupportedException(
-                    "Unsupported command for update operation: %s".formatted(commandDescription.getCommandName()));
+                    "Unsupported command for executeUpdate: %s".formatted(commandDescription.getCommandName()));
         }
     }
 
@@ -311,7 +318,7 @@ class MongoStatement implements StatementAdapter {
         try {
             return BsonDocument.parse(mql);
         } catch (RuntimeException e) {
-            throw new SQLSyntaxErrorException("Invalid MQL: [%s]".formatted(mql), e);
+            throw new SQLSyntaxErrorException("%s: [%s]".formatted(EXCEPTION_MESSAGE_PREFIX_INVALID_MQL, mql), e);
         }
     }
 
@@ -332,12 +339,9 @@ class MongoStatement implements StatementAdapter {
         try {
             commandName = command.getFirstKey();
         } catch (NoSuchElementException exception) {
-            throw new SQLSyntaxErrorException(
-                    "Invalid MQL. Command name is missing: [%s]"
-                            .formatted(command.toJson(EXTENDED_JSON_WRITER_SETTINGS)),
-                    exception);
+            throw createSyntaxErrorException("%s. Command name is missing: [%s]", command, exception);
         }
-        return CommandDescription.fromString(commandName);
+        return CommandDescription.of(commandName);
     }
 
     private MongoCollection<BsonDocument> getCollection(CommandDescription commandDescription, BsonDocument command)
@@ -347,10 +351,7 @@ class MongoStatement implements StatementAdapter {
         try {
             collectionName = command.getString(commandName);
         } catch (BsonInvalidOperationException exception) {
-            throw new SQLSyntaxErrorException(
-                    "Invalid MQL. Collection name is missing [%s]"
-                            .formatted(command.toJson(EXTENDED_JSON_WRITER_SETTINGS)),
-                    exception);
+            throw createSyntaxErrorException("%s. Collection name is missing [%s]", command, exception);
         }
         return mongoDatabase.getCollection(collectionName.getValue(), BsonDocument.class);
     }
@@ -364,46 +365,37 @@ class MongoStatement implements StatementAdapter {
         };
     }
 
-    private static SQLException handleBatchException(
+    private static SQLException handleExecuteBatchException(
             RuntimeException exceptionToHandle, @Nullable WriteModelsToCommandMapper writeModelsToCommandMapper) {
         var errorCode = getErrorCode(exceptionToHandle);
-        if (exceptionToHandle instanceof MongoException mongoException) {
-            var cause = handleMongoException(errorCode, mongoException);
-            if (mongoException instanceof MongoBulkWriteException bulkWriteException) {
-                return createBatchUpdateException(
-                        errorCode, cause, bulkWriteException, assertNotNull(writeModelsToCommandMapper));
-            }
-            // TODO-HIBERNATE-132 BatchUpdateException is thrown when one of the commands fails to execute properly.
-            // When exception is not of MongoBulkWriteException, we are not sure if any command was executed
-            // successfully or failed.
-            return cause;
+        String exceptionMessage = getExceptionMessage(errorCode, exceptionToHandle);
+        if (exceptionToHandle instanceof MongoBulkWriteException bulkWriteException) {
+            return createBatchUpdateException(
+                    exceptionMessage, errorCode, bulkWriteException, assertNotNull(writeModelsToCommandMapper));
         }
-        return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
+
+        // TODO-HIBERNATE-132 BatchUpdateException is thrown when one of the commands fails to execute properly.
+        // When exception is not of MongoBulkWriteException, we are not sure if any command was executed
+        // successfully or failed.
+        return new SQLException(exceptionMessage, NULL_SQL_STATE, errorCode, exceptionToHandle);
     }
 
-    private static SQLException handleQueryOrUpdateException(RuntimeException exceptionToHandle) {
+    private static SQLException handleExecuteQueryOrUpdateException(RuntimeException exceptionToHandle) {
         var errorCode = getErrorCode(exceptionToHandle);
-        if (exceptionToHandle instanceof MongoException mongoException) {
-            return handleMongoException(errorCode, mongoException);
-        }
-        return new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
+        String exceptionMessage = getExceptionMessage(errorCode, exceptionToHandle);
+        return new SQLException(exceptionMessage, NULL_SQL_STATE, errorCode, exceptionToHandle);
     }
 
-    private static SQLException handleMongoException(int errorCode, MongoException exceptionToHandle) {
-        if (isTimeoutException(exceptionToHandle)) {
-            return new SQLException(EXCEPTION_MESSAGE_TIMEOUT, NULL_SQL_STATE, errorCode, exceptionToHandle);
+    private static String getExceptionMessage(int errorCode, RuntimeException exceptionToHandle) {
+        if (exceptionToHandle instanceof MongoException mongoException && isTimeoutException(mongoException)) {
+            return EXCEPTION_MESSAGE_OPERATION_TIMED_OUT;
         }
         var errorCategory = ErrorCategory.fromErrorCode(errorCode);
         return switch (errorCategory) {
-            case DUPLICATE_KEY ->
-                new SQLIntegrityConstraintViolationException(
-                        EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
+            case DUPLICATE_KEY, UNCATEGORIZED -> EXCEPTION_MESSAGE_OPERATION_FAILED;
             // TODO-HIBERNATE-132 EXECUTION_TIMEOUT code is returned from the server. Do we know how many commands were
             // executed successfully so we can return it as BatchUpdateException?
-            case EXECUTION_TIMEOUT ->
-                new SQLException(EXCEPTION_MESSAGE_TIMEOUT, NULL_SQL_STATE, errorCode, exceptionToHandle);
-            case UNCATEGORIZED ->
-                new SQLException(EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, exceptionToHandle);
+            case EXECUTION_TIMEOUT -> EXCEPTION_MESSAGE_OPERATION_TIMED_OUT;
         };
     }
 
@@ -426,15 +418,28 @@ class MongoStatement implements StatementAdapter {
         return NO_ERROR_CODE;
     }
 
+    private static SQLSyntaxErrorException createSyntaxErrorException(
+            String exceptionMessageTemplate, BsonDocument command, @Nullable Exception cause) {
+        return new SQLSyntaxErrorException(
+                exceptionMessageTemplate.formatted(
+                        EXCEPTION_MESSAGE_PREFIX_INVALID_MQL, command.toJson(EXTENDED_JSON_WRITER_SETTINGS)),
+                command.toJson(),
+                cause);
+    }
+
+    private static SQLSyntaxErrorException createSyntaxErrorException(
+            String exceptionMessageTemplate, BsonDocument command) {
+        return createSyntaxErrorException(exceptionMessageTemplate, command, null);
+    }
+
     private static BatchUpdateException createBatchUpdateException(
+            String exceptionMessage,
             int errorCode,
-            SQLException sqlCause,
             MongoBulkWriteException mongoBulkWriteException,
             WriteModelsToCommandMapper writeModelsToCommandMapper) {
         var updateCounts = calculateBatchUpdateCounts(mongoBulkWriteException, writeModelsToCommandMapper);
         var batchUpdateException = new BatchUpdateException(
-                EXCEPTION_MESSAGE_OPERATION_FAILED, NULL_SQL_STATE, errorCode, updateCounts, sqlCause);
-        batchUpdateException.setNextException(sqlCause);
+                exceptionMessage, NULL_SQL_STATE, errorCode, updateCounts, mongoBulkWriteException);
         return batchUpdateException;
     }
 
@@ -443,13 +448,12 @@ class MongoStatement implements StatementAdapter {
         var writeErrors = mongoBulkWriteException.getWriteErrors();
         var writeConcernError = mongoBulkWriteException.getWriteConcernError();
         if (writeConcernError == null) {
-            if (!writeErrors.isEmpty()) {
-                var failedModelIndex = writeErrors.get(0).getIndex();
-                var commandIndex = writeModelsToCommandMapper.findCommandIndex(failedModelIndex);
-                return createUpdateCounts(commandIndex);
-            }
+            assertTrue(writeErrors.size() == 1);
+            var failedModelIndex = writeErrors.get(0).getIndex();
+            var failedCommandIndexInBatch = writeModelsToCommandMapper.findCommandIndex(failedModelIndex);
+            return createUpdateCounts(failedCommandIndexInBatch);
         }
-        return EMPTY_BATCH_RESULT;
+        return EMPTY_UPDATE_COUNTS;
     }
 
     private static boolean isTimeoutException(MongoException exception) {
@@ -471,12 +475,12 @@ class MongoStatement implements StatementAdapter {
         AGGREGATE("aggregate", true, false);
 
         private final String commandName;
-        private final boolean returnsResultSet;
+        private final boolean isQuery;
         private final boolean isUpdate;
 
-        CommandDescription(String commandName, boolean returnsResultSet, boolean isUpdate) {
+        CommandDescription(String commandName, boolean isQuery, boolean isUpdate) {
             this.commandName = commandName;
-            this.returnsResultSet = returnsResultSet;
+            this.isQuery = isQuery;
             this.isUpdate = isUpdate;
         }
 
@@ -487,22 +491,22 @@ class MongoStatement implements StatementAdapter {
         /**
          * Indicates whether the command may be used in {@code executeUpdate(...)} or {@code executeBatch()} methods.
          *
-         * @return true if the command may be used in update operations, false if it is used in query operations.
+         * @return true if the command may be used in update operations.
          */
         boolean isUpdate() {
             return isUpdate;
         }
 
         /**
-         * Indicates whether the command returns a {@link ResultSet}.
+         * Indicates whether the command may be used in {@code executeQuery(...)} methods.
          *
-         * @see #executeQuery(String)
+         * @return true if the command may be used in query operations.
          */
-        boolean returnsResultSet() {
-            return returnsResultSet;
+        boolean isQuery() {
+            return isQuery;
         }
 
-        static CommandDescription fromString(String commandName) throws SQLFeatureNotSupportedException {
+        static CommandDescription of(String commandName) throws SQLFeatureNotSupportedException {
             return switch (commandName) {
                 case "insert" -> INSERT;
                 case "update" -> UPDATE;
@@ -561,10 +565,7 @@ class MongoStatement implements StatementAdapter {
                         throw fail(commandDescription.toString());
                 }
             } catch (BSONException bsonException) {
-                throw new SQLSyntaxErrorException(
-                        "Invalid MQL: [%s]".formatted(command.toJson(EXTENDED_JSON_WRITER_SETTINGS)),
-                        NULL_SQL_STATE,
-                        bsonException);
+                throw createSyntaxErrorException("%s: [%s]", command, bsonException);
             }
         }
 
@@ -610,7 +611,7 @@ class MongoStatement implements StatementAdapter {
                 throws SQLFeatureNotSupportedException {
             checkFields(
                     commandDescription,
-                    UNSUPPORTED_MESSAGE_STATEMENT_FIELD,
+                    UNSUPPORTED_MESSAGE_TEMPLATE_STATEMENT_FIELD,
                     supportedStatementFields,
                     statement.keySet().iterator());
         }
@@ -620,12 +621,13 @@ class MongoStatement implements StatementAdapter {
                 throws SQLFeatureNotSupportedException {
             var iterator = command.keySet().iterator();
             iterator.next(); // skip the command name
-            checkFields(commandDescription, UNSUPPORTED_MESSAGE_COMMAND_FIELD, supportedCommandFields, iterator);
+            checkFields(
+                    commandDescription, UNSUPPORTED_MESSAGE_TEMPLATE_COMMAND_FIELD, supportedCommandFields, iterator);
         }
 
         private static void checkFields(
                 CommandDescription commandDescription,
-                String exceptionMessage,
+                String exceptionMessageTemplate,
                 Set<String> supportedCommandFields,
                 Iterator<String> fieldNameIterator)
                 throws SQLFeatureNotSupportedException {
@@ -633,7 +635,7 @@ class MongoStatement implements StatementAdapter {
                 var field = fieldNameIterator.next();
                 if (!supportedCommandFields.contains(field)) {
                     throw new SQLFeatureNotSupportedException(
-                            exceptionMessage.formatted(commandDescription.getCommandName(), field));
+                            exceptionMessageTemplate.formatted(commandDescription.getCommandName(), field));
                 }
             }
         }
@@ -658,7 +660,8 @@ class MongoStatement implements StatementAdapter {
 
         private int findCommandIndex(int writeModelIndex) {
             assertTrue(cumulativeCountIndex == cumulativeCounts.length);
-            int lo = 0, hi = cumulativeCounts.length;
+            var lo = 0;
+            var hi = cumulativeCounts.length;
             while (lo < hi) {
                 var mid = (lo + hi) >>> 1;
                 if (cumulativeCounts[mid] >= writeModelIndex + 1) {
