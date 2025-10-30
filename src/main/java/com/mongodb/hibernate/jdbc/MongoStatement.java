@@ -70,6 +70,7 @@ import org.bson.BsonValue;
 import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
+    private static final String EXCEPTION_MESSAGE_PREFIX_INVALID_MQL = "Invalid MQL";
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_OPERATION_TIMED_OUT =
             "Timeout while waiting for operation to complete";
@@ -77,7 +78,6 @@ class MongoStatement implements StatementAdapter {
     static final int[] EMPTY_UPDATE_COUNTS = new int[0];
 
     static final @Nullable String NULL_SQL_STATE = null;
-    private static final String EXCEPTION_MESSAGE_PREFIX_INVALID_MQL = "Invalid MQL";
 
     private final MongoDatabase mongoDatabase;
     private final MongoConnection mongoConnection;
@@ -117,7 +117,7 @@ class MongoStatement implements StatementAdapter {
                     .toList();
             var projectStageIndex = pipeline.size() - 1;
             if (pipeline.isEmpty()) {
-                throw createSyntaxErrorException("%s. $project stage is missing [%s]", command);
+                throw createSyntaxErrorException("%s. $project stage is missing [%s]", command, null);
             }
             var fieldNames = getFieldNamesFromProjectStage(
                     pipeline.get(projectStageIndex).getDocument("$project"));
@@ -317,8 +317,8 @@ class MongoStatement implements StatementAdapter {
     static BsonDocument parse(String mql) throws SQLSyntaxErrorException {
         try {
             return BsonDocument.parse(mql);
-        } catch (RuntimeException e) {
-            throw new SQLSyntaxErrorException("%s: [%s]".formatted(EXCEPTION_MESSAGE_PREFIX_INVALID_MQL, mql), e);
+        } catch (RuntimeException exception) {
+            throw createSyntaxErrorException("%s: [%s]", mql, exception);
         }
     }
 
@@ -374,9 +374,9 @@ class MongoStatement implements StatementAdapter {
                     exceptionMessage, errorCode, bulkWriteException, assertNotNull(writeModelsToCommandMapper));
         }
 
-        // TODO-HIBERNATE-132 java.sql.BatchUpdateException is thrown when one of the commands fails to execute properly.
-        // When exception is not of MongoBulkWriteException, we are not sure if any command was executed
-        // successfully or failed.
+        // TODO-HIBERNATE-132 java.sql.BatchUpdateException is thrown when one of the
+        // commands fails to execute properly. When exception is not of MongoBulkWriteException,
+        // we are not sure if any command was executed successfully or failed.
         return new SQLException(exceptionMessage, NULL_SQL_STATE, errorCode, exceptionToHandle);
     }
 
@@ -420,16 +420,14 @@ class MongoStatement implements StatementAdapter {
 
     private static SQLSyntaxErrorException createSyntaxErrorException(
             String exceptionMessageTemplate, BsonDocument command, @Nullable Exception cause) {
-        return new SQLSyntaxErrorException(
-                exceptionMessageTemplate.formatted(
-                        EXCEPTION_MESSAGE_PREFIX_INVALID_MQL, command.toJson(EXTENDED_JSON_WRITER_SETTINGS)),
-                command.toJson(),
-                cause);
+        var mql = command.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+        return createSyntaxErrorException(exceptionMessageTemplate, mql, cause);
     }
 
     private static SQLSyntaxErrorException createSyntaxErrorException(
-            String exceptionMessageTemplate, BsonDocument command) {
-        return createSyntaxErrorException(exceptionMessageTemplate, command, null);
+            String exceptionMessageTemplate, String mql, @Nullable Exception cause) {
+        return new SQLSyntaxErrorException(
+                exceptionMessageTemplate.formatted(EXCEPTION_MESSAGE_PREFIX_INVALID_MQL, mql), NULL_SQL_STATE, cause);
     }
 
     private static BatchUpdateException createBatchUpdateException(
