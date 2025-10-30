@@ -23,10 +23,8 @@ import com.mongodb.hibernate.query.Book;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
-import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
@@ -177,19 +175,5 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
                                 }
                                 """)),
                 Set.of(Book.COLLECTION_NAME));
-    }
-
-    @Test
-    @Disabled("TODO-HIBERNATE-95 https://jira.mongodb.org/browse/HIBERNATE-95 enable this test")
-    void testConstraintViolationExceptionIsThrown() {
-        var hql =
-                """
-                insert into Book (id, title, outOfStock, publishYear, isbn13, discount, price)
-                     values
-                         (:id, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD),
-                         (:id, 'Pride & Prejudice', false, 1813, 9780141439518L, 0.2D, 23.55BD)
-                """;
-        assertMutationQueryFailure(
-                hql, query -> query.setParameter("id", 1), ConstraintViolationException.class, "to be decided");
     }
 }

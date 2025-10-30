@@ -39,6 +39,7 @@ import java.time.Instant;
 import java.util.Calendar;
 import java.util.Collection;
 import org.bson.types.ObjectId;
+import org.hibernate.JDBCException;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
@@ -50,6 +51,7 @@ import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
@@ -368,5 +370,10 @@ public class MongoDialect extends Dialect {
     @Override
     public void appendDatetimeFormat(SqlAppender appender, String format) {
         throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
+    }
+
+    @Override
+    public SQLExceptionConversionDelegate buildSQLExceptionConversionDelegate() {
+        return (sqlException, exceptionMessage, mql) -> new JDBCException(exceptionMessage, sqlException, mql);
     }
 }
