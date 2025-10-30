@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.exception;
+package com.mongodb.hibernate;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.junit.InjectMongoClient;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
