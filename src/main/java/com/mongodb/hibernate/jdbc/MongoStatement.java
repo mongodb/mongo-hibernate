@@ -374,7 +374,7 @@ class MongoStatement implements StatementAdapter {
                     exceptionMessage, errorCode, bulkWriteException, assertNotNull(writeModelsToCommandMapper));
         }
 
-        // TODO-HIBERNATE-132 BatchUpdateException is thrown when one of the commands fails to execute properly.
+        // TODO-HIBERNATE-132 java.sql.BatchUpdateException is thrown when one of the commands fails to execute properly.
         // When exception is not of MongoBulkWriteException, we are not sure if any command was executed
         // successfully or failed.
         return new SQLException(exceptionMessage, NULL_SQL_STATE, errorCode, exceptionToHandle);
