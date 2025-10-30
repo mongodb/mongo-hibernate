@@ -23,12 +23,12 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
+import java.sql.BatchUpdateException;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -50,7 +50,7 @@ import org.bson.types.ObjectId;
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
-
+    private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
 
     MongoPreparedStatement(
@@ -59,6 +59,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         super(mongoDatabase, clientSession, mongoConnection);
         MongoAggregateSupport.checkSupported(mql);
         this.command = MongoStatement.parse(mql);
+        this.commandBatch = new ArrayList<>();
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -68,7 +69,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
-        return executeQueryCommand(command);
+        checkSupportedQueryCommand(command);
+        return executeQuery(command);
     }
 
     @Override
@@ -76,7 +78,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
-        return executeUpdateCommand(command);
+        checkSupportedUpdateCommand(command);
+        return executeUpdate(command);
     }
 
     private void checkAllParametersSet() throws SQLException {
@@ -181,7 +184,47 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        checkAllParametersSet();
+        commandBatch.add(parameterValueSetters.isEmpty() ? command : command.clone());
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        commandBatch.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        try {
+            closeLastOpenResultSet();
+            if (commandBatch.isEmpty()) {
+                return EMPTY_UPDATE_COUNTS;
+            }
+            checkSupportedBatchCommand(commandBatch.get(0));
+            return executeBatch(commandBatch);
+        } finally {
+            commandBatch.clear();
+        }
+    }
+
+    /** @throws BatchUpdateException if any of the commands in the batch attempts to return a result set. */
+    private static void checkSupportedBatchCommand(BsonDocument command)
+            throws SQLFeatureNotSupportedException, BatchUpdateException, SQLSyntaxErrorException {
+        var commandDescription = getCommandDescription(command);
+        if (commandDescription.isQuery()) {
+            throw new BatchUpdateException(
+                    "Commands returning result set are not allowed. Received command: %s"
+                            .formatted(commandDescription.getCommandName()),
+                    NULL_SQL_STATE,
+                    NO_ERROR_CODE,
+                    EMPTY_UPDATE_COUNTS);
+        }
+        if (!commandDescription.isUpdate()) {
+            throw new SQLFeatureNotSupportedException(
+                    "Unsupported command for executeBatch: %s".formatted(commandDescription.getCommandName()));
+        }
     }
 
     @Override
@@ -301,12 +344,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
      *
      * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
      */
-    private static void checkComparatorNotComparingWithNullValues(BsonDocument document) {
+    private static void checkComparatorNotComparingWithNullValues(BsonDocument document)
+            throws SQLFeatureNotSupportedException {
         var comparisonOperators = Set.of("$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
         for (var entry : document.entrySet()) {
             var value = entry.getValue();
             if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
-                throw new FeatureNotSupportedException(
+                throw new SQLFeatureNotSupportedException(
                         "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
             }
             if (value instanceof BsonDocument documentValue) {

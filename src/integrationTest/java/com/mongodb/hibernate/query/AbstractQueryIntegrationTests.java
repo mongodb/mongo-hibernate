@@ -30,6 +30,7 @@ import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
@@ -127,7 +128,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             }
             var resultList = selectionQuery.getResultList();
 
-            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
 
             resultListVerifier.accept(resultList);
 
@@ -144,14 +145,14 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier, expectedAffectedCollections);
     }
 
-    protected <T> void assertSelectQueryFailure(
+    protected <T> AbstractThrowableAssert<?, ? extends Throwable> assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
             Class<? extends Exception> expectedExceptionType,
-            String expectedExceptionMessage,
+            String expectedExceptionMessageSubstring,
             Object... expectedExceptionMessageParameters) {
-        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
+        return sessionFactoryScope.fromTransaction(session -> assertThatThrownBy(() -> {
                     var selectionQuery = session.createSelectionQuery(hql, resultType);
                     if (queryPostProcessor != null) {
                         queryPostProcessor.accept(selectionQuery);
@@ -159,7 +160,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                     selectionQuery.getResultList();
                 })
                 .isInstanceOf(expectedExceptionType)
-                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+                .hasMessageContaining(expectedExceptionMessageSubstring, expectedExceptionMessageParameters));
     }
 
     protected void assertSelectQueryFailure(
@@ -177,13 +178,13 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 expectedExceptionMessageParameters);
     }
 
-    protected void assertActualCommand(BsonDocument expectedCommand) {
+    protected void assertActualCommandsInOrder(BsonDocument... expectedCommands) {
         var capturedCommands = testCommandListener.getStartedCommands();
-
-        assertThat(capturedCommands)
-                .singleElement()
-                .asInstanceOf(InstanceOfAssertFactories.MAP)
-                .containsAllEntriesOf(expectedCommand);
+        assertThat(capturedCommands).hasSize(expectedCommands.length);
+        for (int i = 0; i < expectedCommands.length; i++) {
+            BsonDocument actual = capturedCommands.get(i);
+            assertThat(actual).asInstanceOf(InstanceOfAssertFactories.MAP).containsAllEntriesOf(expectedCommands[i]);
+        }
     }
 
     protected void assertMutationQuery(
@@ -217,7 +218,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 queryPostProcessor.accept(query);
             }
             var mutationCount = query.executeUpdate();
-            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
             assertThat(mutationCount).isEqualTo(expectedMutationCount);
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);

@@ -613,7 +613,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
             query.getResultList();
             if (expectedMql != null) {
                 var expectedCommand = BsonDocument.parse(expectedMql);
-                assertActualCommand(expectedCommand);
+                assertActualCommandsInOrder(expectedCommand);
             }
         }
     }

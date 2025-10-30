@@ -29,9 +29,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import org.hibernate.JDBCException;
 import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
@@ -710,11 +712,14 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @Test
         void testNullParameterNotSupported() {
             assertSelectQueryFailure(
-                    "from Contact where country != :country",
-                    Contact.class,
-                    q -> q.setParameter("country", null),
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+                            "from Contact where country != :country",
+                            Contact.class,
+                            q -> q.setParameter("country", null),
+                            JDBCException.class,
+                            "JDBC exception executing SQL")
+                    .cause()
+                    .isInstanceOf(SQLFeatureNotSupportedException.class)
+                    .hasMessage("TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
         }
 
         @Test
