@@ -43,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+/** @see MongoDialect#buildSQLExceptionConversionDelegate() */
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
 @ExtendWith(MongoExtension.class)
