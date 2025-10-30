@@ -186,7 +186,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void addBatch() throws SQLException {
         checkClosed();
         checkAllParametersSet();
-        commandBatch.add(command.clone());
+        commandBatch.add(parameterValueSetters.isEmpty() ? command : command.clone());
     }
 
     @Override
