@@ -28,7 +28,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 import org.hibernate.type.SqlTypes;
 
-public enum MqlType implements SQLType {
+enum MqlType implements SQLType {
     OBJECT_ID(11_000);
 
     static {

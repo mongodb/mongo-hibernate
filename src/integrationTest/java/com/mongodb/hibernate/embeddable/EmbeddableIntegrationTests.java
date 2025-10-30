@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.embeddable;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static com.mongodb.hibernate.MongoTestAssertions.assertUsingRecursiveComparison;
 import static java.util.Arrays.asList;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
+import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -36,6 +38,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -63,8 +66,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
-    private static final String COLLECTION_NAME = "items";
-
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -95,7 +96,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                 true,
                                 "str",
                                 BigDecimal.valueOf(10.1),
-                                new ObjectId("000000000000000000000001"))));
+                                new ObjectId("000000000000000000000001"),
+                                Instant.parse("2007-12-03T10:15:30Z"))));
         item.flattened2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -116,7 +118,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: true,
                     string: "str",
                     bigDecimal: {$numberDecimal: "10.1"},
-                    objectId: {$oid: "000000000000000000000001"}
+                    objectId: {$oid: "000000000000000000000001"},
+                    instant: {"$date": "2007-12-03T10:15:30Z"}
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -145,7 +148,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: true,
                     string: "str",
                     bigDecimal: {$numberDecimal: "10.1"},
-                    objectId: {$oid: "000000000000000000000001"}
+                    objectId: {$oid: "000000000000000000000001"},
+                    instant: {"$date": "2007-12-03T10:15:30Z"}
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -166,6 +170,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                 Long.MAX_VALUE,
                                 Double.MAX_VALUE,
                                 true,
+                                null,
                                 null,
                                 null,
                                 null,
@@ -194,7 +199,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: null,
                     string: null,
                     bigDecimal: null,
-                    objectId: null
+                    objectId: null,
+                    instant: null
                 }
                 """);
         var loadedItem = sessionFactoryScope.fromTransaction(
@@ -223,7 +229,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     boxedBoolean: null,
                     string: null,
                     bigDecimal: null,
-                    objectId: null
+                    objectId: null,
+                    instant: null
                 }
                 """);
         loadedItem = sessionFactoryScope.fromTransaction(
@@ -250,6 +257,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         new String[] {null, "str"},
                         new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                         new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                        new Instant[] {Instant.parse("2007-12-03T10:15:30Z"), null},
                         new StructAggregateEmbeddableIntegrationTests.Single[] {
                             new StructAggregateEmbeddableIntegrationTests.Single(1), null
                         },
@@ -261,6 +269,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         asList("str", null),
                         asList(BigDecimal.valueOf(10.1), null),
                         asList(null, new ObjectId("000000000000000000000001")),
+                        asList(Instant.parse("2007-12-03T10:15:30Z"), null),
                         asList(new StructAggregateEmbeddableIntegrationTests.Single(1), null)));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -281,6 +290,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     strings: [null, "str"],
                     bigDecimals: [null, {$numberDecimal: "10.1"}],
                     objectIds: [{$oid: "000000000000000000000001"}, null],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddables: [{a: 1}, null],
                     charsCollection: ["s", "t", null, "r"],
                     intsCollection: [null, 5],
@@ -290,6 +300,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddablesCollection: [{a: 1}, null]
                 }
                 """);
@@ -323,6 +334,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     strings: [null, "str"],
                     bigDecimals: [null, {$numberDecimal: "10.1"}],
                     objectIds: [{$oid: "000000000000000000000002"}, null],
+                    instants: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddables: [{a: 1}, null],
                     charsCollection: ["s", "t", null, "r"],
                     intsCollection: [null, 5],
@@ -332,6 +344,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: ["str", null],
                     bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                     objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                    instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}, null],
                     structAggregateEmbeddablesCollection: [{a: 1}, null]
                 }
                 """);
@@ -359,9 +372,11 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                         new String[0],
                         new BigDecimal[0],
                         new ObjectId[0],
+                        new Instant[0],
                         new StructAggregateEmbeddableIntegrationTests.Single[0],
                         List.of(),
                         Set.of(),
+                        List.of(),
                         List.of(),
                         List.of(),
                         List.of(),
@@ -388,6 +403,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     strings: [],
                     bigDecimals: [],
                     objectIds: [],
+                    instants: [],
                     structAggregateEmbeddables: [],
                     charsCollection: [],
                     intsCollection: [],
@@ -397,6 +413,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: [],
                     bigDecimalsCollection: [],
                     objectIdsCollection: [],
+                    instantsCollection: [],
                     structAggregateEmbeddablesCollection: []
                 }
                 """);
@@ -415,8 +432,32 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     @Test
     public void testFlattenedValueHavingNullArraysAndCollections() {
         var emptyEmbeddable = new ArraysAndCollections(
-                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                (List<Character>) null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
         var item = new ItemWithFlattenedValueHavingArraysAndCollections(1, emptyEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -437,6 +478,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     strings: null,
                     bigDecimals: null,
                     objectIds: null,
+                    instants: null,
                     structAggregateEmbeddables: null,
                     charsCollection: null,
                     intsCollection: null,
@@ -446,6 +488,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                     stringsCollection: null,
                     bigDecimalsCollection: null,
                     objectIdsCollection: null,
+                    instantsCollection: null,
                     structAggregateEmbeddablesCollection: null
                 }
                 """);
@@ -486,6 +529,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                                 Long.MAX_VALUE,
                                 Double.MAX_VALUE,
                                 true,
+                                null,
                                 null,
                                 null,
                                 null,
@@ -581,8 +625,9 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
-    record Plural(
+    public record Plural(
             char primitiveChar,
             int primitiveInt,
             long primitiveLong,
@@ -595,7 +640,8 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
             Boolean boxedBoolean,
             String string,
             BigDecimal bigDecimal,
-            ObjectId objectId) {}
+            ObjectId objectId,
+            Instant instant) {}
 
     @Entity
     @Table(name = COLLECTION_NAME)
@@ -613,8 +659,9 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
-    static class ArraysAndCollections {
+    public static class ArraysAndCollections {
         byte[] bytes;
         char[] chars;
         int[] ints;
@@ -629,6 +676,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         String[] strings;
         BigDecimal[] bigDecimals;
         ObjectId[] objectIds;
+        Instant[] instants;
         StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables;
         List<Character> charsCollection;
         Set<Integer> intsCollection;
@@ -638,9 +686,65 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
         Collection<String> stringsCollection;
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
+        Collection<Instant> instantsCollection;
         Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection;
 
         ArraysAndCollections() {}
+
+        public ArraysAndCollections(
+                byte[] bytes,
+                char[] chars,
+                int[] ints,
+                long[] longs,
+                double[] doubles,
+                boolean[] booleans,
+                Character[] boxedChars,
+                Integer[] boxedInts,
+                Long[] boxedLongs,
+                Double[] boxedDoubles,
+                Boolean[] boxedBooleans,
+                String[] strings,
+                BigDecimal[] bigDecimals,
+                ObjectId[] objectIds,
+                Instant[] instants,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
+                List<Character> charsCollection,
+                Set<Integer> intsCollection,
+                Collection<Long> longsCollection,
+                Collection<Double> doublesCollection,
+                Collection<Boolean> booleansCollection,
+                Collection<String> stringsCollection,
+                Collection<BigDecimal> bigDecimalsCollection,
+                Collection<ObjectId> objectIdsCollection,
+                Collection<Instant> instantsCollection,
+                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
+            this.bytes = bytes;
+            this.chars = chars;
+            this.ints = ints;
+            this.longs = longs;
+            this.doubles = doubles;
+            this.booleans = booleans;
+            this.boxedChars = boxedChars;
+            this.boxedInts = boxedInts;
+            this.boxedLongs = boxedLongs;
+            this.boxedDoubles = boxedDoubles;
+            this.boxedBooleans = boxedBooleans;
+            this.strings = strings;
+            this.bigDecimals = bigDecimals;
+            this.objectIds = objectIds;
+            this.instants = instants;
+            this.structAggregateEmbeddables = structAggregateEmbeddables;
+            this.charsCollection = charsCollection;
+            this.intsCollection = intsCollection;
+            this.longsCollection = longsCollection;
+            this.doublesCollection = doublesCollection;
+            this.booleansCollection = booleansCollection;
+            this.stringsCollection = stringsCollection;
+            this.bigDecimalsCollection = bigDecimalsCollection;
+            this.objectIdsCollection = objectIdsCollection;
+            this.instantsCollection = instantsCollection;
+            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+        }
 
         ArraysAndCollections(
                 byte[] bytes,
@@ -657,40 +761,45 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
                 String[] strings,
                 BigDecimal[] bigDecimals,
                 ObjectId[] objectIds,
+                Instant[] instants,
                 StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
-                List<Character> charsCollection,
-                Set<Integer> intsCollection,
-                Collection<Long> longsCollection,
-                Collection<Double> doublesCollection,
-                Collection<Boolean> booleansCollection,
-                Collection<String> stringsCollection,
-                Collection<BigDecimal> bigDecimalsCollection,
-                Collection<ObjectId> objectIdsCollection,
-                Collection<StructAggregateEmbeddableIntegrationTests.Single> structAggregateEmbeddablesCollection) {
-            this.bytes = bytes;
-            this.chars = chars;
-            this.ints = ints;
-            this.longs = longs;
-            this.doubles = doubles;
-            this.booleans = booleans;
-            this.boxedChars = boxedChars;
-            this.boxedInts = boxedInts;
-            this.boxedLongs = boxedLongs;
-            this.boxedDoubles = boxedDoubles;
-            this.boxedBooleans = boxedBooleans;
-            this.strings = strings;
-            this.bigDecimals = bigDecimals;
-            this.objectIds = objectIds;
-            this.structAggregateEmbeddables = structAggregateEmbeddables;
-            this.charsCollection = charsCollection;
-            this.intsCollection = intsCollection;
-            this.longsCollection = longsCollection;
-            this.doublesCollection = doublesCollection;
-            this.booleansCollection = booleansCollection;
-            this.stringsCollection = stringsCollection;
-            this.bigDecimalsCollection = bigDecimalsCollection;
-            this.objectIdsCollection = objectIdsCollection;
-            this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+                Character[] charsCollection,
+                Integer[] intsCollection,
+                Long[] longsCollection,
+                Double[] doublesCollection,
+                Boolean[] booleansCollection,
+                String[] stringsCollection,
+                BigDecimal[] bigDecimalsCollection,
+                ObjectId[] objectIdsCollection,
+                Instant[] instantsCollection,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddablesCollection) {
+            this(
+                    bytes,
+                    chars,
+                    ints,
+                    longs,
+                    doubles,
+                    booleans,
+                    boxedChars,
+                    boxedInts,
+                    boxedLongs,
+                    boxedDoubles,
+                    boxedBooleans,
+                    strings,
+                    bigDecimals,
+                    objectIds,
+                    instants,
+                    structAggregateEmbeddables,
+                    charsCollection == null ? null : asList(charsCollection),
+                    intsCollection == null ? null : new HashSet<>(asList(intsCollection)),
+                    longsCollection == null ? null : asList(longsCollection),
+                    doublesCollection == null ? null : asList(doublesCollection),
+                    booleansCollection == null ? null : asList(booleansCollection),
+                    stringsCollection == null ? null : asList(stringsCollection),
+                    bigDecimalsCollection == null ? null : asList(bigDecimalsCollection),
+                    objectIdsCollection == null ? null : asList(objectIdsCollection),
+                    instantsCollection == null ? null : asList(instantsCollection),
+                    structAggregateEmbeddablesCollection == null ? null : asList(structAggregateEmbeddablesCollection));
         }
     }
 

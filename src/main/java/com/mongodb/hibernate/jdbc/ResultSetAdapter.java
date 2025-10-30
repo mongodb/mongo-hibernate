@@ -241,7 +241,7 @@ interface ResultSetAdapter extends ResultSet {
     }
 
     @Override
-    default Object getObject(int columnIndex) throws SQLException {
+    default @Nullable Object getObject(int columnIndex) throws SQLException {
         throw new SQLFeatureNotSupportedException("getObject not implemented");
     }
 

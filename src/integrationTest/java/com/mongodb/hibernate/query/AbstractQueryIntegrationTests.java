@@ -19,7 +19,7 @@ package com.mongodb.hibernate.query;
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
-import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.MutationQuery;
@@ -251,13 +250,11 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 .containsExactlyInAnyOrderElementsOf(expectedAffectedCollections);
     }
 
-    protected static final class TranslateResultAwareDialect extends Dialect {
-        private final Dialect delegate;
+    protected static final class TranslateResultAwareDialect extends MongoDialect {
         private AbstractJdbcOperationQuery capturedTranslateResult;
 
         public TranslateResultAwareDialect(DialectResolutionInfo info) {
             super(info);
-            delegate = new MongoDialect(info);
         }
 
         @Override
@@ -266,21 +263,25 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 @Override
                 public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
                         SessionFactoryImplementor sessionFactory, SelectStatement statement) {
-                    return createCapturingTranslator(
-                            delegate.getSqlAstTranslatorFactory().buildSelectTranslator(sessionFactory, statement));
+                    return createCapturingTranslator(TranslateResultAwareDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildSelectTranslator(sessionFactory, statement));
                 }
 
                 @Override
                 public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
                         SessionFactoryImplementor sessionFactory, MutationStatement statement) {
-                    return createCapturingTranslator(
-                            delegate.getSqlAstTranslatorFactory().buildMutationTranslator(sessionFactory, statement));
+                    return createCapturingTranslator(TranslateResultAwareDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildMutationTranslator(sessionFactory, statement));
                 }
 
                 @Override
                 public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
                         TableMutation<O> mutation, SessionFactoryImplementor sessionFactory) {
-                    return delegate.getSqlAstTranslatorFactory().buildModelMutationTranslator(mutation, sessionFactory);
+                    return TranslateResultAwareDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildModelMutationTranslator(mutation, sessionFactory);
                 }
 
                 private <T extends JdbcOperation> SqlAstTranslator<T> createCapturingTranslator(
