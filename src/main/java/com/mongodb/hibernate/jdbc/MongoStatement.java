@@ -368,7 +368,7 @@ class MongoStatement implements StatementAdapter {
     private static SQLException handleExecuteBatchException(
             RuntimeException exceptionToHandle, @Nullable WriteModelsToCommandMapper writeModelsToCommandMapper) {
         var errorCode = getErrorCode(exceptionToHandle);
-        String exceptionMessage = getExceptionMessage(errorCode, exceptionToHandle);
+        var exceptionMessage = getExceptionMessage(errorCode, exceptionToHandle);
         if (exceptionToHandle instanceof MongoBulkWriteException bulkWriteException) {
             return createBatchUpdateException(
                     exceptionMessage, errorCode, bulkWriteException, assertNotNull(writeModelsToCommandMapper));
