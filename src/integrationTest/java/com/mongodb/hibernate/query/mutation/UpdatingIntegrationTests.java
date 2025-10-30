@@ -16,11 +16,18 @@
 
 package com.mongodb.hibernate.query.mutation;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
+
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
@@ -29,7 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DomainModel(annotatedClasses = Book.class)
+@DomainModel(annotatedClasses = {Book.class, UpdatingIntegrationTests.Unsupported.ItemWithNestedValue.class})
 class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
@@ -348,6 +355,30 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     query -> {},
                     FeatureNotSupportedException.class,
                     "Path expression as update assignment value for field path [publishYear] is not supported");
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionAssignment() {
+            assertMutationQueryFailure(
+                    "update ItemWithNestedValue set nested.a = 0",
+                    null,
+                    FeatureNotSupportedException.class,
+                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+        }
+
+        @Entity(name = "ItemWithNestedValue")
+        @Table(name = COLLECTION_NAME)
+        static class ItemWithNestedValue {
+            @Id
+            int id;
+
+            StructAggregateEmbeddableIntegrationTests.Single nested;
+
+            ItemWithNestedValue() {}
+
+            ItemWithNestedValue(StructAggregateEmbeddableIntegrationTests.Single nested) {
+                this.nested = nested;
+            }
         }
     }
 }

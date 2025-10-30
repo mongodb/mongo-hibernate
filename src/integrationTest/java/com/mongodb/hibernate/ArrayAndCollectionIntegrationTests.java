@@ -16,7 +16,12 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.client.model.Aggregates.project;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.hibernate.ArrayAndCollectionIntegrationTests.ItemWithArrayAndCollectionValues.CONSTRUCTOR_MAPPING_FOR_ITEM;
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,17 +34,21 @@ import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTest
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import jakarta.persistence.ColumnResult;
+import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.SqlResultSetMapping;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import org.bson.BsonDocument;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.hibernate.MappingException;
 import org.hibernate.boot.MetadataSources;
@@ -65,8 +74,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
 public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
-    private static final String COLLECTION_NAME = "items";
-
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -100,7 +107,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     new StructAggregateEmbeddableIntegrationTests.Single(1), null
                 },
                 asList('s', 't', null, 'r'),
-                asList(null, 5),
+                new HashSet<>(asList(null, 5)),
                 asList(Long.MAX_VALUE, null, 6L),
                 asList(null, Double.MAX_VALUE),
                 asList(null, true),
@@ -262,8 +269,33 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     @Test
     void testArrayAndCollectionNullValues() {
         var item = new ItemWithArrayAndCollectionValues(
-                1, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null);
+                1,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                (Collection<Character>) null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
                 """
@@ -324,8 +356,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
                     new StructAggregateEmbeddableIntegrationTests.Single(1)
                 },
                 List.of('s', 't', 'r'),
-                // Hibernate ORM uses `LinkedHashSet`, forcing us to also use it, but messing up the order anyway
-                new LinkedHashSet<>(List.of(5)),
+                new HashSet<>(List.of(5)),
                 List.of(Long.MAX_VALUE, 6L),
                 List.of(Double.MAX_VALUE),
                 List.of(true),
@@ -509,11 +540,88 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
         assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Entity
     @Table(name = COLLECTION_NAME)
-    static class ItemWithArrayAndCollectionValues {
+    @SqlResultSetMapping(
+            name = CONSTRUCTOR_MAPPING_FOR_ITEM,
+            classes =
+                    @ConstructorResult(
+                            targetClass = ItemWithArrayAndCollectionValues.class,
+                            columns = {
+                                @ColumnResult(name = ID_FIELD_NAME, type = int.class),
+                                @ColumnResult(name = "bytes", type = byte[].class),
+                                @ColumnResult(name = "chars", type = char[].class),
+                                @ColumnResult(name = "ints", type = int[].class),
+                                @ColumnResult(name = "longs", type = long[].class),
+                                @ColumnResult(name = "doubles", type = double[].class),
+                                @ColumnResult(name = "booleans", type = boolean[].class),
+                                @ColumnResult(name = "boxedChars", type = Character[].class),
+                                @ColumnResult(name = "boxedInts", type = Integer[].class),
+                                @ColumnResult(name = "boxedLongs", type = Long[].class),
+                                @ColumnResult(name = "boxedDoubles", type = Double[].class),
+                                @ColumnResult(name = "boxedBooleans", type = Boolean[].class),
+                                @ColumnResult(name = "strings", type = String[].class),
+                                @ColumnResult(name = "bigDecimals", type = BigDecimal[].class),
+                                @ColumnResult(name = "objectIds", type = ObjectId[].class),
+                                @ColumnResult(name = "instants", type = Instant[].class),
+                                @ColumnResult(
+                                        name = "structAggregateEmbeddables",
+                                        type = StructAggregateEmbeddableIntegrationTests.Single[].class),
+                                @ColumnResult(name = "charsCollection", type = Character[].class),
+                                @ColumnResult(name = "intsCollection", type = Integer[].class),
+                                @ColumnResult(name = "longsCollection", type = Long[].class),
+                                @ColumnResult(name = "doublesCollection", type = Double[].class),
+                                @ColumnResult(name = "booleansCollection", type = Boolean[].class),
+                                @ColumnResult(name = "stringsCollection", type = String[].class),
+                                @ColumnResult(name = "bigDecimalsCollection", type = BigDecimal[].class),
+                                @ColumnResult(name = "objectIdsCollection", type = ObjectId[].class),
+                                @ColumnResult(name = "instantsCollection", type = Instant[].class),
+                                @ColumnResult(
+                                        name = "structAggregateEmbeddablesCollection",
+                                        type = StructAggregateEmbeddableIntegrationTests.Single[].class)
+                            }))
+    @SqlResultSetMapping(
+            name = ItemWithArrayAndCollectionValues.MAPPING_FOR_ITEM,
+            columns = {
+                @ColumnResult(name = ID_FIELD_NAME),
+                @ColumnResult(name = "bytes", type = byte[].class),
+                @ColumnResult(name = "chars", type = char[].class),
+                @ColumnResult(name = "ints", type = int[].class),
+                @ColumnResult(name = "longs", type = long[].class),
+                @ColumnResult(name = "doubles", type = double[].class),
+                @ColumnResult(name = "booleans", type = boolean[].class),
+                @ColumnResult(name = "boxedChars", type = Character[].class),
+                @ColumnResult(name = "boxedInts", type = Integer[].class),
+                @ColumnResult(name = "boxedLongs", type = Long[].class),
+                @ColumnResult(name = "boxedDoubles", type = Double[].class),
+                @ColumnResult(name = "boxedBooleans", type = Boolean[].class),
+                @ColumnResult(name = "strings", type = String[].class),
+                @ColumnResult(name = "bigDecimals", type = BigDecimal[].class),
+                @ColumnResult(name = "objectIds", type = ObjectId[].class),
+                @ColumnResult(name = "instants", type = Instant[].class),
+                @ColumnResult(
+                        name = "structAggregateEmbeddables",
+                        type = StructAggregateEmbeddableIntegrationTests.Single[].class),
+                @ColumnResult(name = "charsCollection", type = Character[].class),
+                @ColumnResult(name = "intsCollection", type = Integer[].class),
+                @ColumnResult(name = "longsCollection", type = Long[].class),
+                @ColumnResult(name = "doublesCollection", type = Double[].class),
+                @ColumnResult(name = "booleansCollection", type = Boolean[].class),
+                @ColumnResult(name = "stringsCollection", type = String[].class),
+                @ColumnResult(name = "bigDecimalsCollection", type = BigDecimal[].class),
+                @ColumnResult(name = "objectIdsCollection", type = ObjectId[].class),
+                @ColumnResult(name = "instantsCollection", type = Instant[].class),
+                @ColumnResult(
+                        name = "structAggregateEmbeddablesCollection",
+                        type = StructAggregateEmbeddableIntegrationTests.Single[].class)
+            })
+    public static class ItemWithArrayAndCollectionValues {
+        public static final String CONSTRUCTOR_MAPPING_FOR_ITEM = "ConstructorItemWithArrayAndCollectionValues";
+        public static final String MAPPING_FOR_ITEM = "ItemWithArrayAndCollectionValues";
+
         @Id
-        int id;
+        public int id;
 
         byte[] bytes;
         char[] chars;
@@ -544,7 +652,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
         ItemWithArrayAndCollectionValues() {}
 
-        ItemWithArrayAndCollectionValues(
+        public ItemWithArrayAndCollectionValues(
                 int id,
                 byte[] bytes,
                 char[] chars,
@@ -600,26 +708,157 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
             this.instantsCollection = instantsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
         }
+
+        ItemWithArrayAndCollectionValues(
+                int id,
+                byte[] bytes,
+                char[] chars,
+                int[] ints,
+                long[] longs,
+                double[] doubles,
+                boolean[] booleans,
+                Character[] boxedChars,
+                Integer[] boxedInts,
+                Long[] boxedLongs,
+                Double[] boxedDoubles,
+                Boolean[] boxedBooleans,
+                String[] strings,
+                BigDecimal[] bigDecimals,
+                ObjectId[] objectIds,
+                Instant[] instants,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddables,
+                Character[] charsCollection,
+                Integer[] intsCollection,
+                Long[] longsCollection,
+                Double[] doublesCollection,
+                Boolean[] booleansCollection,
+                String[] stringsCollection,
+                BigDecimal[] bigDecimalsCollection,
+                ObjectId[] objectIdsCollection,
+                Instant[] instantsCollection,
+                StructAggregateEmbeddableIntegrationTests.Single[] structAggregateEmbeddablesCollection) {
+            this(
+                    id,
+                    bytes,
+                    chars,
+                    ints,
+                    longs,
+                    doubles,
+                    booleans,
+                    boxedChars,
+                    boxedInts,
+                    boxedLongs,
+                    boxedDoubles,
+                    boxedBooleans,
+                    strings,
+                    bigDecimals,
+                    objectIds,
+                    instants,
+                    structAggregateEmbeddables,
+                    charsCollection == null ? null : asList(charsCollection),
+                    intsCollection == null ? null : new HashSet<>(asList(intsCollection)),
+                    longsCollection == null ? null : asList(longsCollection),
+                    doublesCollection == null ? null : asList(doublesCollection),
+                    booleansCollection == null ? null : asList(booleansCollection),
+                    stringsCollection == null ? null : asList(stringsCollection),
+                    bigDecimalsCollection == null ? null : asList(bigDecimalsCollection),
+                    objectIdsCollection == null ? null : asList(objectIdsCollection),
+                    instantsCollection == null ? null : asList(instantsCollection),
+                    structAggregateEmbeddablesCollection == null ? null : asList(structAggregateEmbeddablesCollection));
+        }
+
+        public static Bson projectAll() {
+            return project(include(
+                    ID_FIELD_NAME,
+                    "bytes",
+                    "chars",
+                    "ints",
+                    "longs",
+                    "doubles",
+                    "booleans",
+                    "boxedChars",
+                    "boxedInts",
+                    "boxedLongs",
+                    "boxedDoubles",
+                    "boxedBooleans",
+                    "strings",
+                    "bigDecimals",
+                    "objectIds",
+                    "instants",
+                    "structAggregateEmbeddables",
+                    "charsCollection",
+                    "intsCollection",
+                    "longsCollection",
+                    "doublesCollection",
+                    "booleansCollection",
+                    "stringsCollection",
+                    "bigDecimalsCollection",
+                    "objectIdsCollection",
+                    "instantsCollection",
+                    "structAggregateEmbeddablesCollection"));
+        }
     }
 
     @Entity
     @Table(name = COLLECTION_NAME)
-    static class ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections {
+    @SqlResultSetMapping(
+            name =
+                    ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections
+                            .CONSTRUCTOR_MAPPING_FOR_ITEM,
+            classes =
+                    @ConstructorResult(
+                            targetClass =
+                                    ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections
+                                            .class,
+                            columns = {
+                                @ColumnResult(name = ID_FIELD_NAME, type = int.class),
+                                @ColumnResult(name = "structAggregateEmbeddables", type = ArraysAndCollections[].class),
+                                @ColumnResult(
+                                        name = "structAggregateEmbeddablesCollection",
+                                        type = ArraysAndCollections[].class)
+                            }))
+    @SqlResultSetMapping(
+            name =
+                    ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections
+                            .MAPPING_FOR_ITEM,
+            columns = {
+                @ColumnResult(name = ID_FIELD_NAME),
+                @ColumnResult(name = "structAggregateEmbeddables", type = ArraysAndCollections[].class),
+                @ColumnResult(name = "structAggregateEmbeddablesCollection", type = ArraysAndCollections[].class)
+            })
+    public static class ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections {
+        public static final String CONSTRUCTOR_MAPPING_FOR_ITEM =
+                "ConstructorItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections";
+        public static final String MAPPING_FOR_ITEM =
+                "ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections";
+
         @Id
-        int id;
+        public int id;
 
         ArraysAndCollections[] structAggregateEmbeddables;
         Collection<ArraysAndCollections> structAggregateEmbeddablesCollection;
 
         ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections() {}
 
-        ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
+        public ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
                 int id,
                 ArraysAndCollections[] structAggregateEmbeddables,
                 Collection<ArraysAndCollections> structAggregateEmbeddablesCollection) {
             this.id = id;
             this.structAggregateEmbeddables = structAggregateEmbeddables;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
+        }
+
+        ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections(
+                int id,
+                ArraysAndCollections[] structAggregateEmbeddables,
+                ArraysAndCollections[] structAggregateEmbeddablesCollection) {
+            this(id, structAggregateEmbeddables, asList(structAggregateEmbeddablesCollection));
+        }
+
+        public static Bson projectAll() {
+            return project(
+                    include(ID_FIELD_NAME, "structAggregateEmbeddables", "structAggregateEmbeddablesCollection"));
         }
     }
 

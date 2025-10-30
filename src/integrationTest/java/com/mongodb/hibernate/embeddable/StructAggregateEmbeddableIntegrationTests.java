@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.embeddable;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
+import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -63,8 +65,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
-    private static final String COLLECTION_NAME = "items";
-
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -597,9 +597,10 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
     @Struct(name = "Plural")
-    record Plural(
+    public record Plural(
             char primitiveChar,
             int primitiveInt,
             long primitiveLong,
@@ -631,6 +632,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
     @Struct(name = "ArraysAndCollections")
     public static class ArraysAndCollections {
