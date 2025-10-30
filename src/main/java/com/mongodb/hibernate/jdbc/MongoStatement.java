@@ -382,7 +382,7 @@ class MongoStatement implements StatementAdapter {
 
     private static SQLException handleExecuteQueryOrUpdateException(RuntimeException exceptionToHandle) {
         var errorCode = getErrorCode(exceptionToHandle);
-        String exceptionMessage = getExceptionMessage(errorCode, exceptionToHandle);
+        var exceptionMessage = getExceptionMessage(errorCode, exceptionToHandle);
         return new SQLException(exceptionMessage, NULL_SQL_STATE, errorCode, exceptionToHandle);
     }
 
