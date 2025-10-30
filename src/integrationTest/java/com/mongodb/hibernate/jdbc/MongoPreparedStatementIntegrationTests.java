@@ -781,12 +781,12 @@ class MongoPreparedStatementIntegrationTests {
         @ParameterizedTest(name = "test not supported update command field. Parameters: option={0}")
         @ValueSource(
                 strings = {
-                        "maxTimeMS: 1",
-                        "writeConcern: {}",
-                        "bypassDocumentValidation: true",
-                        "comment: {}",
-                        "ordered: true",
-                        "let: {}"
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
                 })
         void testNotSupportedUpdateCommandField(String unsupportedField) {
             doWorkAwareOfAutoCommit(connection -> {
@@ -876,12 +876,12 @@ class MongoPreparedStatementIntegrationTests {
         @ParameterizedTest(name = "test not supported insert command field. Parameters: option={0}")
         @ValueSource(
                 strings = {
-                        "maxTimeMS: 1",
-                        "writeConcern: {}",
-                        "bypassDocumentValidation: true",
-                        "comment: {}",
-                        "ordered: true",
-                        "let: {}"
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
                 })
         void testNotSupportedInsertCommandField(String unsupportedField) {
             doWorkAwareOfAutoCommit(connection -> {
