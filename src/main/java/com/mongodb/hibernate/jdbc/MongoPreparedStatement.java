@@ -23,7 +23,7 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
@@ -35,11 +35,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
-import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -59,9 +57,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        command = MongoStatement.parse(mql);
-        commandBatch = new ArrayList<>();
-        parameterValueSetters = new ArrayList<>();
+        MongoAggregateSupport.checkSupported(mql);
+        this.command = MongoStatement.parse(mql);
+        this.commandBatch = new ArrayList<>();
+        this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
 
@@ -70,6 +69,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
+        checkSupportedQueryCommand(command);
         return executeQuery(command);
     }
 
@@ -166,10 +166,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         BsonValue value;
-        if (targetSqlType == ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber()) {
-            value = toBsonValue(assertInstanceOf(x, ObjectId.class));
-        } else if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+        if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
             value = assertInstanceOf(x, BsonDocument.class);
+        } else if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
+            value = toBsonValue(assertInstanceOf(x, ObjectId.class));
         } else if (targetSqlType == JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber()
                 && x instanceof Instant instant) {
             value = toBsonValue(instant);
@@ -185,7 +185,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     public void addBatch() throws SQLException {
         checkClosed();
         checkAllParametersSet();
-        commandBatch.add(command.clone());
+        commandBatch.add(parameterValueSetters.isEmpty() ? command : command.clone());
     }
 
     @Override
@@ -200,34 +200,30 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         try {
             closeLastOpenResultSet();
             if (commandBatch.isEmpty()) {
-                return EMPTY_BATCH_RESULT;
+                return EMPTY_UPDATE_COUNTS;
             }
             checkSupportedBatchCommand(commandBatch.get(0));
-            executeBatch(commandBatch);
-            var updateCounts = new int[commandBatch.size()];
-            // We cannot determine the actual number of rows affected for each command in the batch.
-            Arrays.fill(updateCounts, Statement.SUCCESS_NO_INFO);
-            return updateCounts;
+            return executeBatch(commandBatch);
         } finally {
             commandBatch.clear();
         }
     }
 
     /** @throws BatchUpdateException if any of the commands in the batch attempts to return a result set. */
-    private void checkSupportedBatchCommand(BsonDocument command) throws SQLException {
+    private static void checkSupportedBatchCommand(BsonDocument command)
+            throws SQLFeatureNotSupportedException, BatchUpdateException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
-        if (commandDescription.returnsResultSet()) {
+        if (commandDescription.isQuery()) {
             throw new BatchUpdateException(
-                    format(
-                            "Commands returning result set are not allowed. Received command: %s",
-                            commandDescription.getCommandName()),
-                    null,
+                    "Commands returning result set are not allowed. Received command: %s"
+                            .formatted(commandDescription.getCommandName()),
+                    NULL_SQL_STATE,
                     NO_ERROR_CODE,
-                    null);
+                    EMPTY_UPDATE_COUNTS);
         }
         if (!commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
-                    format("Unsupported command for batch operation: %s", commandDescription.getCommandName()));
+                    "Unsupported command for executeBatch: %s".formatted(commandDescription.getCommandName()));
         }
     }
 
@@ -348,12 +344,13 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
      *
      * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
      */
-    private static void checkComparatorNotComparingWithNullValues(BsonDocument document) {
+    private static void checkComparatorNotComparingWithNullValues(BsonDocument document)
+            throws SQLFeatureNotSupportedException {
         var comparisonOperators = Set.of("$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
         for (var entry : document.entrySet()) {
             var value = entry.getValue();
             if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
-                throw new FeatureNotSupportedException(
+                throw new SQLFeatureNotSupportedException(
                         "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
             }
             if (value instanceof BsonDocument documentValue) {

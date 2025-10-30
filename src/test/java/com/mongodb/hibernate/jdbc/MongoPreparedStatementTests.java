@@ -22,7 +22,6 @@ import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatObject;
-import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -63,7 +62,6 @@ import java.sql.Array;
 import java.sql.BatchUpdateException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Types;
 import java.util.Calendar;
@@ -155,8 +153,8 @@ class MongoPreparedStatementTests {
                 preparedStatement.setInt(3, 1);
                 preparedStatement.setBoolean(4, true);
                 preparedStatement.setString(5, "array element");
-                preparedStatement.setObject(6, new ObjectId(1, 2), ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber());
-                preparedStatement.setObject(7, new ObjectId(2, 0), ObjectIdJdbcType.MQL_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(6, new ObjectId(1, 2), ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(7, new ObjectId(2, 0), ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber());
 
                 preparedStatement.executeUpdate();
 
@@ -273,18 +271,11 @@ class MongoPreparedStatementTests {
                     );
         }
 
-        private static Stream<Integer> constraintViolationErrorCodes() {
-            return Stream.of(11000, 11001, 12582);
-        }
-
-        private static Stream<MongoException> constraintViolationExceptions() {
-            return constraintViolationErrorCodes()
-                    .map(errorCode -> new MongoException(errorCode, DUMMY_EXCEPTION_MESSAGE));
-        }
-
         private static Stream<MongoException> genericMongoExceptions() {
             return Stream.of(
-                    new MongoException(-3, DUMMY_EXCEPTION_MESSAGE), new MongoException(5000, DUMMY_EXCEPTION_MESSAGE));
+                    new MongoException(-3, DUMMY_EXCEPTION_MESSAGE),
+                    new MongoException(11000, DUMMY_EXCEPTION_MESSAGE),
+                    new MongoException(5000, DUMMY_EXCEPTION_MESSAGE));
         }
 
         @ParameterizedTest(name = "test executeBatch MongoException. Parameters: Parameters: mongoException: {0}")
@@ -316,55 +307,12 @@ class MongoPreparedStatementTests {
                     sqlException -> assertGenericMongoException(sqlException, mongoException));
         }
 
-        @ParameterizedTest(name = "test executeUpdate constraint violation. Parameters: mongoException: {0}")
-        @MethodSource("constraintViolationExceptions")
-        void testExecuteUpdateConstraintViolationException(MongoException mongoException) throws SQLException {
-            int expectedErrorCode = mongoException.getCode();
-            doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-
-            assertExecuteUpdateThrowsSqlException(sqlException -> {
-                assertConstraintViolationException(mongoException, sqlException, expectedErrorCode);
-            });
-        }
-
-        @ParameterizedTest(name = "test executeQuery constraint violation. Parameters: mongoException: {0}")
-        @MethodSource("constraintViolationExceptions")
-        void testExecuteQueryConstraintViolationException(MongoException mongoException) throws SQLException {
-            int expectedErrorCode = mongoException.getCode();
-            doThrow(mongoException).when(mongoCollection).aggregate(eq(clientSession), anyList());
-
-            assertExecuteQueryThrowsSqlException(sqlException -> {
-                assertConstraintViolationException(mongoException, sqlException, expectedErrorCode);
-            });
-        }
-
         @ParameterizedTest(name = "test executeBatch timeout exception. Parameters: mongoTimeoutException: {0}")
         @MethodSource("timeoutExceptions")
         void testExecuteBatchTimeoutException(MongoException mongoTimeoutException) throws SQLException {
             doThrow(mongoTimeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
             assertExecuteBatchThrowsSqlException(batchUpdateException -> {
                 assertGenericMongoException(batchUpdateException, mongoTimeoutException);
-            });
-        }
-
-        @ParameterizedTest(name = "test executeBatch constraint violation. Parameters: mongoException: {0}")
-        @MethodSource("constraintViolationErrorCodes")
-        void testExecuteBatchConstraintViolationException(int errorCode) throws SQLException {
-            MongoBulkWriteException mongoBulkWriteException = createMongoBulkWriteException(errorCode, 0);
-
-            doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-
-            assertExecuteBatchThrowsBatchUpdateException(batchUpdateException -> {
-                assertThatObject(batchUpdateException)
-                        .returns(errorCode, BatchUpdateException::getErrorCode)
-                        .returns(null, BatchUpdateException::getSQLState)
-                        .satisfies(ex -> {
-                            assertUpdateCounts(ex.getUpdateCounts(), 0);
-                        })
-                        .extracting(SQLException::getCause)
-                        .asInstanceOf(type(SQLIntegrityConstraintViolationException.class))
-                        .returns(errorCode, SQLIntegrityConstraintViolationException::getErrorCode)
-                        .returns(mongoBulkWriteException, SQLIntegrityConstraintViolationException::getCause);
             });
         }
 
@@ -468,8 +416,6 @@ class MongoPreparedStatementTests {
                             assertUpdateCounts(ex.getUpdateCounts(), expectedUpdateCountLength);
                         })
                         .havingCause()
-                        .isInstanceOf(SQLException.class)
-                        .havingCause()
                         .isSameAs(mongoBulkWriteException);
             }
         }
@@ -488,25 +434,6 @@ class MongoPreparedStatementTests {
                     .returns(cause.getCode(), SQLException::getErrorCode)
                     .returns(null, SQLException::getSQLState)
                     .returns(cause, SQLException::getCause);
-        }
-
-        private static void assertConstraintViolationException(
-                MongoException mongoException, SQLException sqlException, int expectedErrorCode) {
-            assertThatObject(sqlException)
-                    .asInstanceOf(type(SQLIntegrityConstraintViolationException.class))
-                    .returns(expectedErrorCode, SQLIntegrityConstraintViolationException::getErrorCode)
-                    .returns(null, SQLIntegrityConstraintViolationException::getSQLState)
-                    .returns(mongoException, SQLIntegrityConstraintViolationException::getCause);
-        }
-
-        private void assertExecuteBatchThrowsBatchUpdateException(ThrowingConsumer<BatchUpdateException> asserter)
-                throws SQLException {
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
-                mongoPreparedStatement.addBatch();
-                assertThatExceptionOfType(BatchUpdateException.class)
-                        .isThrownBy(mongoPreparedStatement::executeBatch)
-                        .satisfies(asserter);
-            }
         }
 
         private void assertExecuteBatchThrowsSqlException(ThrowingConsumer<SQLException> asserter) throws SQLException {

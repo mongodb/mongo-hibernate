@@ -21,13 +21,13 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.Sealed;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
-import com.mongodb.hibernate.internal.type.MqlType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
@@ -133,7 +133,7 @@ public class MongoDialect extends Dialect {
     private void contributeObjectIdType(TypeContributions typeContributions) {
         typeContributions.contributeJavaType(ObjectIdJavaType.INSTANCE);
         typeContributions.contributeJdbcType(ObjectIdJdbcType.INSTANCE);
-        var objectIdTypeCode = MqlType.OBJECT_ID.getVendorTypeNumber();
+        var objectIdTypeCode = ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber();
         typeContributions
                 .getTypeConfiguration()
                 .getDdlTypeRegistry()

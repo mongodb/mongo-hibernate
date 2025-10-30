@@ -19,7 +19,7 @@ package com.mongodb.hibernate.query;
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
@@ -30,6 +30,7 @@ import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
@@ -144,14 +145,14 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier, expectedAffectedCollections);
     }
 
-    protected <T> void assertSelectQueryFailure(
+    protected <T> AbstractThrowableAssert<?, ? extends Throwable> assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
             Class<? extends Exception> expectedExceptionType,
-            String expectedExceptionMessage,
+            String expectedExceptionMessageSubstring,
             Object... expectedExceptionMessageParameters) {
-        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
+        return sessionFactoryScope.fromTransaction(session -> assertThatThrownBy(() -> {
                     var selectionQuery = session.createSelectionQuery(hql, resultType);
                     if (queryPostProcessor != null) {
                         queryPostProcessor.accept(selectionQuery);
@@ -159,7 +160,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                     selectionQuery.getResultList();
                 })
                 .isInstanceOf(expectedExceptionType)
-                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+                .hasMessageContaining(expectedExceptionMessageSubstring, expectedExceptionMessageParameters));
     }
 
     protected void assertSelectQueryFailure(
