@@ -60,7 +60,8 @@ tasks.withType<Javadoc> {
                 "https://docs.hibernate.org/orm/6.6/javadocs/",
                 "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/bson/",
                 "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-core/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-sync/")
+                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-sync/",
+                "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/")
     }
 }
 
