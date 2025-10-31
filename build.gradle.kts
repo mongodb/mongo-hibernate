@@ -198,6 +198,8 @@ val localBuildRepo: Provider<Directory> = project.layout.buildDirectory.dir("rep
 
 tasks.named<Delete>("clean") { delete.add(localBuildRepo) }
 
+tasks.withType<GenerateModuleMetadata> { enabled = false }
+
 publishing {
     repositories {
         // publish to local build dir for testing
