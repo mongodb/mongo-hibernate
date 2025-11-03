@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import java.util.List;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
@@ -34,10 +34,9 @@ class AstLogicalFilterTests {
                 operator,
                 List.of(
                         new AstFieldOperationFilter(
-                                "field1", new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)))),
+                                "field1", new AstComparisonFilterOperation(EQ, new AstLiteral(new BsonInt32(1)))),
                         new AstFieldOperationFilter(
-                                "field2",
-                                new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("1"))))));
+                                "field2", new AstComparisonFilterOperation(EQ, new AstLiteral(new BsonString("1"))))));
 
         var expectedJson =
                 """

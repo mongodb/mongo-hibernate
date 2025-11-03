@@ -41,8 +41,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = JakartaPersistenceBootstrappingIntegrationTests.Item.class)
 @ExtendWith(MongoExtension.class)
 class JakartaPersistenceBootstrappingIntegrationTests {
+    private static final String COLLECTION_NAME = "items";
 
-    @InjectMongoCollection("items")
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     @Test
@@ -56,7 +57,7 @@ class JakartaPersistenceBootstrappingIntegrationTests {
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class Item {
         @Id
         int id;

@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import java.util.List;
@@ -45,7 +45,7 @@ class AstVisitorValueHolderTests {
     @Test
     void testSimpleUsage() {
 
-        var value = new AstLiteralValue(new BsonString("field_value"));
+        var value = new AstLiteral(new BsonString("field_value"));
         Runnable valueYielder = () -> astVisitorValueHolder.yield(VALUE, value);
 
         var valueGotten = astVisitorValueHolder.execute(VALUE, valueYielder);
@@ -76,8 +76,8 @@ class AstVisitorValueHolderTests {
     void testHolderNotEmptyWhenSetting() {
 
         Runnable valueYielder = () -> {
-            astVisitorValueHolder.yield(VALUE, new AstLiteralValue(new BsonString("value1")));
-            astVisitorValueHolder.yield(VALUE, new AstLiteralValue(new BsonString("value2")));
+            astVisitorValueHolder.yield(VALUE, new AstLiteral(new BsonString("value1")));
+            astVisitorValueHolder.yield(VALUE, new AstLiteral(new BsonString("value2")));
         };
 
         assertThrows(Error.class, () -> astVisitorValueHolder.execute(VALUE, valueYielder));
@@ -87,8 +87,7 @@ class AstVisitorValueHolderTests {
     @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of actual data")
     void testHolderExpectingDifferentDescriptor() {
 
-        Runnable valueYielder =
-                () -> astVisitorValueHolder.yield(VALUE, new AstLiteralValue(new BsonString("some_value")));
+        Runnable valueYielder = () -> astVisitorValueHolder.yield(VALUE, new AstLiteral(new BsonString("some_value")));
 
         assertThrows(Error.class, () -> astVisitorValueHolder.execute(MODEL_MUTATION_RESULT, valueYielder));
     }

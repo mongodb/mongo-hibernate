@@ -17,10 +17,11 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstAggregateCommand(String collection, List<? extends AstStage> stages) implements AstCommand {
+/** See <a href="https://www.mongodb.com/docs/manual/reference/command/aggregate/">{@code aggregate}</a>. */
+public record AstAggregateCommand(String collection, Collection<? extends AstStage> stages) implements AstCommand {
 
     @Override
     public void render(BsonWriter writer) {

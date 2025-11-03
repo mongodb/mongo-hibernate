@@ -22,12 +22,14 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import com.mongodb.client.MongoClient;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
 /**
  * The annotated field must be static and of the {@link MongoClient} type. It is injected
- * {@linkplain BeforeAllCallback#beforeAll(ExtensionContext) before all} tests.
+ * {@linkplain MongoExtension#beforeAll(ExtensionContext) before all} tests, and is {@linkplain MongoClient#close()
+ * closed} when the Java virtual machine {@linkplain Runtime#addShutdownHook(Thread) shuts down}.
+ *
+ * <p>Requires {@link MongoExtension}.
  */
 @Target(FIELD)
 @Retention(RUNTIME)

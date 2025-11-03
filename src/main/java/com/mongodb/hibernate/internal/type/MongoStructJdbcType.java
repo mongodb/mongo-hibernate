@@ -25,8 +25,12 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.isNull;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -38,6 +42,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
+import org.hibernate.dialect.StructAttributeValues;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.descriptor.ValueBinder;
@@ -58,7 +63,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
     public static final MongoStructJdbcType INSTANCE = new MongoStructJdbcType();
     public static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
 
-    private final @Nullable EmbeddableMappingType embeddableMappingType;
+    private final transient @Nullable EmbeddableMappingType embeddableMappingType;
     private final @Nullable String structTypeName;
 
     private MongoStructJdbcType() {
@@ -164,7 +169,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         if (isNull(rawJdbcValue)) {
             return null;
         }
-        var bsonDocument = assertInstanceOf(rawJdbcValue, BsonDocument.class);
+        var bsonDocument = assertInstanceOf(assertNotNull(rawJdbcValue), BsonDocument.class);
         var embeddableMappingType = getEmbeddableMappingType();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         var result = new Object[jdbcValueCount];
@@ -204,6 +209,12 @@ public final class MongoStructJdbcType implements StructJdbcType {
     @Override
     public <X> ValueExtractor<X> getExtractor(JavaType<X> javaType) {
         return new Extractor<>(javaType);
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        throw new NotSerializableException(
+                "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
     /** Thread-safe. */
@@ -252,10 +263,21 @@ public final class MongoStructJdbcType implements StructJdbcType {
 
         @Override
         protected @Nullable X doExtract(ResultSet rs, int paramIndex, WrapperOptions options) throws SQLException {
-            var classX = getJavaType().getJavaTypeClass();
-            assertTrue(classX.equals(Object[].class));
             var bsonDocument = rs.getObject(paramIndex, BsonDocument.class);
-            return classX.cast(getJdbcType().extractJdbcValues(bsonDocument, options));
+            var jdbcValues = getJdbcType().extractJdbcValues(bsonDocument, options);
+            var classX = getJavaType().getJavaTypeClass();
+            Object result;
+            if (classX.equals(Object[].class) || jdbcValues == null) {
+                result = jdbcValues;
+            } else {
+                var embeddableMappingType = getEmbeddableMappingType();
+                assertTrue(classX.equals(embeddableMappingType.getJavaType().getJavaTypeClass()));
+                result = instantiate(
+                        embeddableMappingType,
+                        new StructAttributeValues(jdbcValues.length, jdbcValues),
+                        options.getSessionFactory());
+            }
+            return classX.cast(result);
         }
 
         @Override

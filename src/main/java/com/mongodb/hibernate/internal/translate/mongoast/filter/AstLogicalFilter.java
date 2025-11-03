@@ -18,10 +18,14 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstLogicalFilter(AstLogicalFilterOperator operator, List<? extends AstFilter> filters)
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/#logical">Query and Projection Operators.
+ * Query Selectors. Logical</a>.
+ */
+public record AstLogicalFilter(AstLogicalFilterOperator operator, Collection<? extends AstFilter> filters)
         implements AstFilter {
 
     public AstLogicalFilter {

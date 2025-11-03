@@ -19,10 +19,11 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstInsertCommand(String collection, List<? extends AstDocument> documents) implements AstCommand {
+/** See <a href="https://www.mongodb.com/docs/manual/reference/command/insert/">{@code insert}</a>. */
+public record AstInsertCommand(String collection, Collection<? extends AstDocument> documents) implements AstCommand {
 
     public AstInsertCommand {
         assertFalse(documents.isEmpty());

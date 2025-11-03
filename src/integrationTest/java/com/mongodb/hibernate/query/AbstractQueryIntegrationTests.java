@@ -19,7 +19,7 @@ package com.mongodb.hibernate.query;
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
@@ -30,9 +30,9 @@ import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
-import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.MutationQuery;
@@ -128,7 +128,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             }
             var resultList = selectionQuery.getResultList();
 
-            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
 
             resultListVerifier.accept(resultList);
 
@@ -145,14 +145,14 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier, expectedAffectedCollections);
     }
 
-    protected <T> void assertSelectQueryFailure(
+    protected <T> AbstractThrowableAssert<?, ? extends Throwable> assertSelectQueryFailure(
             String hql,
             Class<T> resultType,
             Consumer<SelectionQuery<T>> queryPostProcessor,
             Class<? extends Exception> expectedExceptionType,
-            String expectedExceptionMessage,
+            String expectedExceptionMessageSubstring,
             Object... expectedExceptionMessageParameters) {
-        sessionFactoryScope.inTransaction(session -> assertThatThrownBy(() -> {
+        return sessionFactoryScope.fromTransaction(session -> assertThatThrownBy(() -> {
                     var selectionQuery = session.createSelectionQuery(hql, resultType);
                     if (queryPostProcessor != null) {
                         queryPostProcessor.accept(selectionQuery);
@@ -160,7 +160,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                     selectionQuery.getResultList();
                 })
                 .isInstanceOf(expectedExceptionType)
-                .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+                .hasMessageContaining(expectedExceptionMessageSubstring, expectedExceptionMessageParameters));
     }
 
     protected void assertSelectQueryFailure(
@@ -178,13 +178,30 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 expectedExceptionMessageParameters);
     }
 
-    protected void assertActualCommand(BsonDocument expectedCommand) {
+    protected void assertActualCommandsInOrder(BsonDocument... expectedCommands) {
         var capturedCommands = testCommandListener.getStartedCommands();
+        assertThat(capturedCommands).hasSize(expectedCommands.length);
+        for (int i = 0; i < expectedCommands.length; i++) {
+            BsonDocument actual = capturedCommands.get(i);
+            assertThat(actual).asInstanceOf(InstanceOfAssertFactories.MAP).containsAllEntriesOf(expectedCommands[i]);
+        }
+    }
 
-        assertThat(capturedCommands)
-                .singleElement()
-                .asInstanceOf(InstanceOfAssertFactories.MAP)
-                .containsAllEntriesOf(expectedCommand);
+    protected void assertMutationQuery(
+            String hql,
+            int expectedMutationCount,
+            String expectedMql,
+            MongoCollection<BsonDocument> collection,
+            Iterable<? extends BsonDocument> expectedDocuments,
+            Set<String> expectedAffectedCollections) {
+        assertMutationQuery(
+                hql,
+                null,
+                expectedMutationCount,
+                expectedMql,
+                collection,
+                expectedDocuments,
+                expectedAffectedCollections);
     }
 
     protected void assertMutationQuery(
@@ -201,7 +218,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 queryPostProcessor.accept(query);
             }
             var mutationCount = query.executeUpdate();
-            assertActualCommand(BsonDocument.parse(expectedMql));
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
             assertThat(mutationCount).isEqualTo(expectedMutationCount);
         });
         assertThat(collection.find()).containsExactlyElementsOf(expectedDocuments);
@@ -234,13 +251,11 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 .containsExactlyInAnyOrderElementsOf(expectedAffectedCollections);
     }
 
-    protected static final class TranslateResultAwareDialect extends Dialect {
-        private final Dialect delegate;
+    protected static final class TranslateResultAwareDialect extends MongoDialect {
         private AbstractJdbcOperationQuery capturedTranslateResult;
 
         public TranslateResultAwareDialect(DialectResolutionInfo info) {
             super(info);
-            delegate = new MongoDialect(info);
         }
 
         @Override
@@ -249,21 +264,25 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 @Override
                 public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
                         SessionFactoryImplementor sessionFactory, SelectStatement statement) {
-                    return createCapturingTranslator(
-                            delegate.getSqlAstTranslatorFactory().buildSelectTranslator(sessionFactory, statement));
+                    return createCapturingTranslator(TranslateResultAwareDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildSelectTranslator(sessionFactory, statement));
                 }
 
                 @Override
                 public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
                         SessionFactoryImplementor sessionFactory, MutationStatement statement) {
-                    return createCapturingTranslator(
-                            delegate.getSqlAstTranslatorFactory().buildMutationTranslator(sessionFactory, statement));
+                    return createCapturingTranslator(TranslateResultAwareDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildMutationTranslator(sessionFactory, statement));
                 }
 
                 @Override
                 public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
                         TableMutation<O> mutation, SessionFactoryImplementor sessionFactory) {
-                    return delegate.getSqlAstTranslatorFactory().buildModelMutationTranslator(mutation, sessionFactory);
+                    return TranslateResultAwareDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildModelMutationTranslator(mutation, sessionFactory);
                 }
 
                 private <T extends JdbcOperation> SqlAstTranslator<T> createCapturingTranslator(

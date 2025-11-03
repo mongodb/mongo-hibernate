@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/limit/">{@code limit}</a>. */
 public record AstLimitStage(AstValue value) implements AstStage {
     @Override
     public void render(BsonWriter writer) {

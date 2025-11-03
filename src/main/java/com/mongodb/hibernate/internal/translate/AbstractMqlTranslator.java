@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
@@ -33,8 +34,8 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
-import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.FALSE;
-import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue.TRUE;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.FALSE;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.TRUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -54,7 +55,7 @@ import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryS
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
@@ -73,6 +74,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSo
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
@@ -97,12 +99,15 @@ import org.hibernate.query.NullPrecedence;
 import org.hibernate.query.spi.Limit;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
+import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
+import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
 import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
@@ -127,6 +132,7 @@ import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.ExtractUnit;
 import org.hibernate.sql.ast.tree.expression.Format;
+import org.hibernate.sql.ast.tree.expression.FunctionExpression;
 import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.expression.Literal;
@@ -166,6 +172,7 @@ import org.hibernate.sql.ast.tree.predicate.Junction;
 import org.hibernate.sql.ast.tree.predicate.LikePredicate;
 import org.hibernate.sql.ast.tree.predicate.NegatedPredicate;
 import org.hibernate.sql.ast.tree.predicate.NullnessPredicate;
+import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.predicate.SelfRenderingPredicate;
 import org.hibernate.sql.ast.tree.predicate.ThruthnessPredicate;
 import org.hibernate.sql.ast.tree.select.QueryGroup;
@@ -194,7 +201,7 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
-abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
     private final SessionFactoryImplementor sessionFactory;
 
@@ -212,6 +219,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                 .getServiceRegistry()
                 .requireService(StandardServiceRegistryScopedState.class)
                 .getConfiguration());
+    }
+
+    public static AbstractMqlTranslator<?> cast(SqlAstTranslator<?> translator) {
+        return assertInstanceOf(translator, AbstractMqlTranslator.class);
     }
 
     @Override
@@ -250,8 +261,13 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     }
 
     @SuppressWarnings("overloads")
-    <R> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
+    public <R> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
+    }
+
+    @SuppressWarnings("NamedLikeContextualKeyword")
+    public <R> void yield(AstVisitorValueDescriptor<R> valueDescriptor, R value) {
+        astVisitorValueHolder.yield(valueDescriptor, value);
     }
 
     @Override
@@ -290,7 +306,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (tableDelete.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
-        var keyFilter = getKeyFilter(tableDelete);
+        var keyFilter = createKeyFilter(tableDelete);
         astVisitorValueHolder.yield(
                 MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(
@@ -306,7 +322,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         if (tableUpdate.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
-        var keyFilter = getKeyFilter(tableUpdate);
+        var keyFilter = createKeyFilter(tableUpdate);
         var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
         for (var valueBinding : tableUpdate.getValueBindings()) {
             var fieldName = valueBinding.getColumnReference().getColumnExpression();
@@ -320,7 +336,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                         parameterBinders));
     }
 
-    private AstFilter getKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
+    private AstFilter createKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
         if (tableMutation.getNumberOfOptimisticLockBindings() > 0) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
         }
@@ -509,7 +525,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var operator = isFieldOnLeftHandSide
                 ? comparisonPredicate.getOperator()
                 : comparisonPredicate.getOperator().invert();
-        var astComparisonFilterOperator = getAstComparisonFilterOperator(operator);
+        var astComparisonFilterOperator = createAstComparisonFilterOperator(operator);
 
         var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
         var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
@@ -560,7 +576,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
         var literalValue = queryLiteral.getLiteralValue();
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteral(toBsonValue(literalValue)));
     }
 
     @Override
@@ -580,7 +596,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
         var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(VALUE, new AstLiteralValue(toBsonValue(literalValue)));
+        astVisitorValueHolder.yield(VALUE, new AstLiteral(toBsonValue(literalValue)));
     }
 
     @Override
@@ -659,7 +675,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         checkMutationStatementSupportability(deleteStatement);
         var collection = addToAffectedTableNames(deleteStatement.getTargetTable());
-        var filter = acceptAndYield(deleteStatement.getRestriction(), FILTER);
+        var filter = createAstFilter(deleteStatement);
 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
@@ -671,7 +687,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
     public void visitUpdateStatement(UpdateStatement updateStatement) {
         checkMutationStatementSupportability(updateStatement);
         var collection = addToAffectedTableNames(updateStatement.getTargetTable());
-        var filter = acceptAndYield(updateStatement.getRestriction(), FILTER);
+        var filter = createAstFilter(updateStatement);
 
         var assignments = updateStatement.getAssignments();
         var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
@@ -682,7 +698,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
             var fieldPath = acceptAndYield(fieldReferences.get(0), FIELD_PATH);
             var assignedValue = assignment.getAssignedValue();
             if (!isValueExpression(assignedValue)) {
-                throw new FeatureNotSupportedException();
+                throw new FeatureNotSupportedException(
+                        getUnsupportedUpdateValueAssignmentMessage(fieldPath, assignedValue));
             }
             var fieldValue = acceptAndYield(assignedValue, VALUE);
             fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
@@ -697,6 +714,11 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         var collection = tableRef.getTableExpression();
         affectedTableNames.add(collection);
         return collection;
+    }
+
+    private AstFilter createAstFilter(final AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
+        var restriction = updateOrDeleteStatement.getRestriction();
+        return restriction == null ? AstEmptyFilter.INSTANCE : acceptAndYield(restriction, FILTER);
     }
 
     @Override
@@ -872,7 +894,10 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        throw new FeatureNotSupportedException();
+        if (!(selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression)) {
+            throw new FeatureNotSupportedException("Only function expressions are supported");
+        }
+        selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
     }
 
     @Override
@@ -962,7 +987,8 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
 
     @Override
     public void visitSelfRenderingPredicate(SelfRenderingPredicate selfRenderingPredicate) {
-        throw new FeatureNotSupportedException();
+        assertFalse(selfRenderingPredicate.isEmpty());
+        selfRenderingPredicate.getSelfRenderingExpression().accept(this);
     }
 
     @Override
@@ -1055,7 +1081,7 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
         }
     }
 
-    private static AstComparisonFilterOperator getAstComparisonFilterOperator(ComparisonOperator operator) {
+    private static AstComparisonFilterOperator createAstComparisonFilterOperator(ComparisonOperator operator) {
         return switch (operator) {
             case EQUAL -> EQ;
             case NOT_EQUAL -> NE;
@@ -1170,6 +1196,38 @@ abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstT
                             executionContext.getQueryOptions().getLimit().getMaxRows(),
                             startPosition,
                             executionContext.getSession());
+        }
+    }
+
+    /**
+     * This {@link SqlAppender} makes any {@link SelfRenderingExpression} explicitly unsupported, unless we implemented
+     * its rendering such that it avoids using this appender. Unfortunately, this class does not give us protection if a
+     * {@link SelfRenderingExpression} delegates rendering to its {@link SqlAstTranslator}, and does not explicitly use
+     * its {@link SqlAppender}.
+     */
+    private static final class FeatureNotSupportedSqlAppender implements SqlAppender {
+        static final FeatureNotSupportedSqlAppender INSTANCE = new FeatureNotSupportedSqlAppender();
+
+        private FeatureNotSupportedSqlAppender() {}
+
+        @Override
+        public void appendSql(String fragment) {
+            throw new FeatureNotSupportedException();
+        }
+    }
+
+    private static String getUnsupportedUpdateValueAssignmentMessage(final String fieldPath, Expression assignedValue) {
+        if (assignedValue instanceof FunctionExpression ex) {
+            return "Function expression [%s] as update assignment value for field path [%s] is not supported"
+                    .formatted(ex.getFunctionName(), fieldPath);
+        } else if (assignedValue instanceof Predicate) {
+            return "Predicate expression as update assignment value for field path [%s] is not supported"
+                    .formatted(fieldPath);
+        } else if (assignedValue instanceof SqmPathInterpretation) {
+            return "Path expression as update assignment value for field path [%s] is not supported"
+                    .formatted(fieldPath);
+        } else {
+            return "Update assignment value for field path [%s] is not supported".formatted(fieldPath);
         }
     }
 }

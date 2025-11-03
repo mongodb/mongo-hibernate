@@ -24,10 +24,12 @@ import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.cfg.MongoConfigurator;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,11 +38,27 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 /**
  * Assumes that all tests that use this {@linkplain ExtendWith#value() extension} run <a
  * href="https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution">sequentially</a>.
+ *
+ * <p>The {@linkplain MongoConfigurator#databaseName(String) database} is dropped
+ * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
+ * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests. The fail points are disabled
+ * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
+ * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests.
  */
-public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback {
+public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
+
+    /** Disables {@code failCommand} fail point. */
+    private static final BsonDocument DISABLE_FAIL_POINT_COMMAND = BsonDocument.parse(
+            """
+            {
+              "configureFailPoint": "failCommand",
+              "mode": "off"
+            }
+            """);
 
     private static final State STATE = State.create();
 
+    /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}. */
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
         var fieldMustBeStaticMsgFormat = "The field [%s] must be static";
@@ -60,17 +78,30 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
     }
 
     @Override
-    public void beforeEach(ExtensionContext context) {
+    public void afterAll(ExtensionContext context) {
+        disableFailPoint();
         STATE.mongoDatabase().drop();
     }
 
-    private record State(MongoClient mongoClient, MongoDatabase mongoDatabase) {
+    /**
+     * {@linkplain MongoDatabase#drop() Drops} the {@link MongoConfigurator#databaseName(String) database}, thus
+     * dropping all {@linkplain InjectMongoCollection collections}.
+     */
+    @Override
+    @SuppressWarnings("try")
+    public void beforeEach(ExtensionContext context) throws Exception {
+        try (AutoCloseable disableFilPoint = MongoExtension::disableFailPoint;
+                AutoCloseable dropDatabase = () -> STATE.mongoDatabase().drop()) {}
+    }
+
+    private record State(MongoClient mongoClient, MongoDatabase mongoDatabase, MongoDatabase adminDatabase) {
         static State create() {
             @SuppressWarnings("unchecked")
             var hibernateProperties = (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
             var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
             var mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
-            var state = new State(mongoClient, mongoClient.getDatabase(mongoConfig.databaseName()));
+            var state = new State(
+                    mongoClient, mongoClient.getDatabase(mongoConfig.databaseName()), mongoClient.getDatabase("admin"));
             Runtime.getRuntime().addShutdownHook(new Thread(state::close));
             return state;
         }
@@ -78,5 +109,9 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
         private void close() {
             mongoClient.close();
         }
+    }
+
+    private static void disableFailPoint() {
+        STATE.adminDatabase().runCommand(DISABLE_FAIL_POINT_COMMAND);
     }
 }

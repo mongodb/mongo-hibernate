@@ -18,10 +18,11 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
-import java.util.List;
+import java.util.Collection;
 import org.bson.BsonWriter;
 
-public record AstSortStage(List<? extends AstSortField> sortFields) implements AstStage {
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/">{@code $sort}</a>. */
+public record AstSortStage(Collection<? extends AstSortField> sortFields) implements AstStage {
 
     public AstSortStage {
         assertFalse(sortFields.isEmpty());

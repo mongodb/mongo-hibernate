@@ -18,9 +18,9 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static java.lang.String.format;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.hibernate.cfg.JdbcSettings.DIALECT;
-import static org.hibernate.cfg.QuerySettings.QUERY_PLAN_CACHE_ENABLED;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.cfg.AvailableSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.QUERY_PLAN_CACHE_ENABLED;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 import com.mongodb.hibernate.dialect.MongoDialect;
@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
-import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.sqm.FetchClauseType;
@@ -83,8 +82,8 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         return Arrays.stream(ids)
                 .mapToObj(id -> testingBooks.stream()
                         .filter(c -> c.id == id)
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException("id does not exist: " + id)))
+                        .findAny()
+                        .orElseThrow(() -> fail("id does not exist: " + id)))
                 .toList();
     }
 
@@ -461,7 +460,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class FeatureNotSupportedTests {
+    class Unsupported {
 
         @ParameterizedTest
         @EnumSource(value = FetchClauseType.class, mode = EXCLUDE, names = "ROWS_ONLY")
@@ -614,7 +613,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
             query.getResultList();
             if (expectedMql != null) {
                 var expectedCommand = BsonDocument.parse(expectedMql);
-                assertActualCommand(expectedCommand);
+                assertActualCommandsInOrder(expectedCommand);
             }
         }
     }
@@ -626,13 +625,11 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
      * the query plan cache is hit, not whether {@link SqlAstTranslator} is reused afterwards (e.g., incompatible
      * {@link org.hibernate.query.spi.QueryOptions QueryOptions}s will end up with new translator bing created).
      */
-    protected static final class TranslatingCacheTestingDialect extends Dialect {
+    protected static final class TranslatingCacheTestingDialect extends MongoDialect {
         private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
-        private final Dialect delegate;
 
         public TranslatingCacheTestingDialect(DialectResolutionInfo info) {
             super(info);
-            delegate = new MongoDialect(info);
         }
 
         @Override
@@ -642,7 +639,9 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                 public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
                         SessionFactoryImplementor sessionFactory, SelectStatement statement) {
                     selectTranslatingCounter.incrementAndGet();
-                    return delegate.getSqlAstTranslatorFactory().buildSelectTranslator(sessionFactory, statement);
+                    return TranslatingCacheTestingDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildSelectTranslator(sessionFactory, statement);
                 }
 
                 @Override
@@ -654,12 +653,14 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                 @Override
                 public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
                         TableMutation<O> mutation, SessionFactoryImplementor sessionFactory) {
-                    return delegate.getSqlAstTranslatorFactory().buildModelMutationTranslator(mutation, sessionFactory);
+                    return TranslatingCacheTestingDialect.super
+                            .getSqlAstTranslatorFactory()
+                            .buildModelMutationTranslator(mutation, sessionFactory);
                 }
             };
         }
 
-        public int getSelectTranslatingCount() {
+        int getSelectTranslatingCount() {
             return selectTranslatingCounter.get();
         }
     }

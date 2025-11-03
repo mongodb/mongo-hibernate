@@ -19,7 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import org.bson.BsonString;
@@ -32,7 +32,7 @@ class AstDeleteCommandTests {
 
         var collection = "books";
         var filter = new AstFieldOperationFilter(
-                "isbn", new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonString("978-3-16-148410-0"))));
+                "isbn", new AstComparisonFilterOperation(EQ, new AstLiteral(new BsonString("978-3-16-148410-0"))));
 
         var deleteCommand = new AstDeleteCommand(collection, filter);
 

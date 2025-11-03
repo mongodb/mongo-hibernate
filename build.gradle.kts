@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import java.time.Duration
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
@@ -23,28 +24,58 @@ plugins {
     id("java-library")
     id("spotless-java-extension")
     id("maven-publish")
+    id("signing")
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
+    alias(libs.plugins.nexus.publish)
 }
 
 repositories { mavenCentral() }
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    toolchain { languageVersion = JavaLanguageVersion.of(17) } // Remember to update javadoc links
     withJavadocJar()
     withSourcesJar()
 }
 
-tasks.withType<Javadoc> { exclude("/com/mongodb/hibernate/internal/**") }
+tasks.withType<Javadoc> {
+    exclude("/com/mongodb/hibernate/internal/**")
+    exclude("com/mongodb/hibernate/dialect/**")
+    exclude("com/mongodb/hibernate/jdbc/**")
+
+    val standardDocletOptions = options as StandardJavadocDocletOptions
+    standardDocletOptions.apply {
+        author(true)
+        version(true)
+        encoding = "UTF-8"
+        charSet("UTF-8")
+        docEncoding("UTF-8")
+        addBooleanOption("html5", true)
+        addBooleanOption("-allow-script-in-comments", true)
+        // TODO-HIBERNATE-129 addStringOption("-link-modularity-mismatch", "info")
+        links =
+            listOf(
+                "https://docs.oracle.com/en/java/javase/17/docs/api/",
+                "https://jakarta.ee/specifications/persistence/3.1/apidocs/",
+                "https://docs.hibernate.org/orm/6.6/javadocs/",
+                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/bson/",
+                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-core/",
+                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-sync/",
+                "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/")
+    }
+}
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Integration Test
 
+// Added `Action` explicitly due to an intellij 2025.2 false positive: https://youtrack.jetbrains.com/issue/KTIJ-34210
 sourceSets {
-    create("integrationTest") {
-        compileClasspath += sourceSets.main.get().output
-        runtimeClasspath += sourceSets.main.get().output
-    }
+    create(
+        "integrationTest",
+        Action {
+            compileClasspath += sourceSets.main.get().output
+            runtimeClasspath += sourceSets.main.get().output
+        })
 }
 
 val integrationTestSourceSet: SourceSet = sourceSets["integrationTest"]
@@ -154,18 +185,40 @@ dependencies {
 
     api(libs.hibernate.core)
     api(libs.mongo.java.driver.sync)
+    // We need the `libs.findbugs.jsr` dependency to stop `javadoc` from emitting
+    // `warning: unknown enum constant When.MAYBE`
+    //   `reason: class file for javax.annotation.meta.When not found`.
+    compileOnly(libs.findbugs.jsr)
     implementation(libs.sl4j.api)
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Publishing
+
+val localBuildRepo: Provider<Directory> = project.layout.buildDirectory.dir("repo")
+
+tasks.named<Delete>("clean") { delete.add(localBuildRepo) }
+
+tasks.withType<GenerateModuleMetadata> { enabled = false }
+
 publishing {
+    repositories {
+        // publish to local build dir for testing
+        // `./gradlew publishMavenPublicationToLocalBuildRepository`
+        maven {
+            url = uri(localBuildRepo.get())
+            name = "LocalBuild"
+        }
+    }
+
     publications {
         create<MavenPublication>("mavenJava") {
             groupId = "org.mongodb"
             artifactId = "mongodb-hibernate"
             from(components["java"])
             pom {
-                name = "MongoDB Hibernate Extension"
-                description = "A MongoDB Extension of Hibernate ORM"
+                name = "MongoDB Extension for Hibernate ORM"
+                description = "An extension providing MongoDB support to Hibernate ORM"
                 url = "https://www.mongodb.com/"
                 licenses {
                     license {
@@ -186,5 +239,101 @@ publishing {
                 }
             }
         }
+    }
+}
+
+// Artifact signing
+signing {
+    val signingKey: String? = providers.gradleProperty("signingKey").getOrNull()
+    val signingPassword: String? = providers.gradleProperty("signingPassword").getOrNull()
+    if (signingKey != null && signingPassword != null) {
+        logger.info("[${project.displayName}] Signing is enabled")
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign(publishing.publications["mavenJava"])
+    } else {
+        logger.info("[${project.displayName}] No Signing keys found, skipping signing configuration")
+    }
+}
+
+// Publishing to the central sonatype portal currently requires the gradle nexus publishing plugin
+// Adds a `publishToSonatype` task
+val nexusUsername: Provider<String> = providers.gradleProperty("nexusUsername")
+val nexusPassword: Provider<String> = providers.gradleProperty("nexusPassword")
+
+nexusPublishing {
+    packageGroup.set("org.mongodb")
+    repositories {
+        sonatype {
+            username.set(nexusUsername)
+            password.set(nexusPassword)
+
+            // central portal URLs
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+        }
+    }
+
+    connectTimeout.set(Duration.ofMinutes(5))
+    clientTimeout.set(Duration.ofMinutes(30))
+
+    transitionCheckOptions {
+        // We have many artifacts and Maven Central can take a long time on its compliance checks.
+        // Set the timeout for waiting for the repository to close to a comfortable 50 minutes.
+        maxRetries.set(300)
+        delayBetween.set(Duration.ofSeconds(10))
+    }
+}
+
+// Gets the git version
+val gitVersion: String by lazy {
+    providers
+        .exec {
+            isIgnoreExitValue = true
+            commandLine("git", "describe", "--tags", "--always", "--dirty")
+        }
+        .standardOutput
+        .asText
+        .map { it.trim().removePrefix("r") }
+        .getOrElse("UNKNOWN")
+}
+
+// Publish snapshots
+tasks.register("publishSnapshots") {
+    group = "publishing"
+    description = "Publishes snapshots to Sonatype"
+
+    if (version.toString().endsWith("-SNAPSHOT")) {
+        dependsOn(tasks.named("publishAllPublicationsToLocalBuildRepository"))
+        dependsOn(tasks.named("publishToSonatype"))
+    }
+}
+
+// Publish the release
+tasks.register("publishArchives") {
+    group = "publishing"
+    description = "Publishes a release and uploads to Sonatype / Maven Central"
+
+    val currentGitVersion = gitVersion
+    val gitVersionMatch = currentGitVersion == version
+    doFirst {
+        if (!gitVersionMatch) {
+            val cause =
+                """
+                Version mismatch:
+                =================
+
+                 $version != $currentGitVersion
+
+                 The project version does not match the git tag.
+                """
+                    .trimMargin()
+            throw GradleException(cause)
+        } else {
+            println("Publishing: ${project.name} : $currentGitVersion")
+        }
+    }
+    if (gitVersionMatch) {
+        dependsOn(tasks.named("publishAllPublicationsToLocalBuildRepository"))
+        dependsOn(tasks.named("publishToSonatype"))
     }
 }

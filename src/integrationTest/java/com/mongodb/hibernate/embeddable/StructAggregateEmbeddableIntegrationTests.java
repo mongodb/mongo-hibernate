@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.embeddable;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.ArrayAndCollectionIntegrationTests;
+import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
@@ -34,6 +36,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.sql.SQLFeatureNotSupportedException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -62,7 +65,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ExtendWith(MongoExtension.class)
 public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
-    @InjectMongoCollection("items")
+    @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -92,7 +95,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 true,
                                 "str",
                                 BigDecimal.valueOf(10.1),
-                                new ObjectId("000000000000000000000001"))));
+                                new ObjectId("000000000000000000000001"),
+                                Instant.parse("2007-12-03T10:15:30Z"))));
         item.nested2.parent = item;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -117,7 +121,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                             boxedBoolean: true,
                             string: "str",
                             bigDecimal: {$numberDecimal: "10.1"},
-                            objectId: {$oid: "000000000000000000000001"}
+                            objectId: {$oid: "000000000000000000000001"},
+                            instant: {"$date": "2007-12-03T10:15:30Z"}
                         }
                     }
                 }
@@ -152,7 +157,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                             boxedBoolean: true,
                             string: "str",
                             bigDecimal: {$numberDecimal: "10.1"},
-                            objectId: {$oid: "000000000000000000000001"}
+                            objectId: {$oid: "000000000000000000000001"},
+                            instant: {"$date": "2007-12-03T10:15:30Z"}
                         }
                     }
                 }
@@ -175,6 +181,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 Long.MAX_VALUE,
                                 Double.MAX_VALUE,
                                 true,
+                                null,
                                 null,
                                 null,
                                 null,
@@ -205,7 +212,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                             boxedBoolean: null,
                             string: null,
                             bigDecimal: null,
-                            objectId: null
+                            objectId: null,
+                            instant: null
                         }
                     }
                 }
@@ -253,6 +261,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         new String[] {null, "str"},
                         new BigDecimal[] {null, BigDecimal.valueOf(10.1)},
                         new ObjectId[] {new ObjectId("000000000000000000000001"), null},
+                        new Instant[] {Instant.parse("2007-12-03T10:15:30Z"), null},
                         new Single[] {new Single(1), null},
                         asList('s', 't', null, 'r'),
                         new HashSet<>(asList(null, 5)),
@@ -262,6 +271,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         asList("str", null),
                         asList(BigDecimal.valueOf(10.1), null),
                         asList(null, new ObjectId("000000000000000000000001")),
+                        asList(Instant.parse("2007-12-03T10:15:30Z"), null),
                         asList(new Single(1), null)));
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -283,6 +293,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         strings: [null, "str"],
                         bigDecimals: [null, {$numberDecimal: "10.1"}],
                         objectIds: [{$oid: "000000000000000000000001"}, null],
+                        instants: [{"$date": "2007-12-03T10:15:30Z"}, null],
                         structAggregateEmbeddables: [{a: 1}, null],
                         charsCollection: ["s", "t", null, "r"],
                         intsCollection: [null, 5],
@@ -292,6 +303,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         stringsCollection: ["str", null],
                         bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                         objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                        instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}, null],
                         structAggregateEmbeddablesCollection: [{a: 1}, null]
                     }
                 }
@@ -327,6 +339,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         strings: [null, "str"],
                         bigDecimals: [null, {$numberDecimal: "10.1"}],
                         objectIds: [{$oid: "000000000000000000000002"}, null],
+                        instants: [{"$date": "2007-12-03T10:15:30Z"}, null],
                         structAggregateEmbeddables: [{a: 1}, null],
                         charsCollection: ["s", "t", null, "r"],
                         intsCollection: [null, 5],
@@ -336,6 +349,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         stringsCollection: ["str", null],
                         bigDecimalsCollection: [{$numberDecimal: "10.1"}, null],
                         objectIdsCollection: [null, {$oid: "000000000000000000000001"}],
+                        instantsCollection: [{"$date": "2007-12-03T10:15:30Z"}, null],
                         structAggregateEmbeddablesCollection: [{a: 1}, null]
                     }
                 }
@@ -364,9 +378,11 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         new String[0],
                         new BigDecimal[0],
                         new ObjectId[0],
+                        new Instant[0],
                         new Single[0],
                         List.of(),
                         Set.of(),
+                        List.of(),
                         List.of(),
                         List.of(),
                         List.of(),
@@ -394,6 +410,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         strings: [],
                         bigDecimals: [],
                         objectIds: [],
+                        instants: [],
                         structAggregateEmbeddables: [],
                         charsCollection: [],
                         intsCollection: [],
@@ -403,6 +420,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         stringsCollection: [],
                         bigDecimalsCollection: [],
                         objectIdsCollection: [],
+                        instantsCollection: [],
                         structAggregateEmbeddablesCollection: []
                     }
                 }
@@ -423,7 +441,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     public void testNestedValueHavingNullArraysAndCollections() {
         var emptyStructAggregateEmbeddable = new ArraysAndCollections(
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
         var item = new ItemWithNestedValueHavingArraysAndCollections(1, emptyStructAggregateEmbeddable);
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertCollectionContainsExactly(
@@ -445,6 +463,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         strings: null,
                         bigDecimals: null,
                         objectIds: null,
+                        instants: null,
                         structAggregateEmbeddables: null,
                         charsCollection: null,
                         intsCollection: null,
@@ -454,6 +473,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                         stringsCollection: null,
                         bigDecimalsCollection: null,
                         objectIdsCollection: null,
+                        instantsCollection: null
                         structAggregateEmbeddablesCollection: null
                     }
                 }
@@ -503,6 +523,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                                 null,
                                 null,
                                 null,
+                                null,
                                 null)));
         expectedItem.nested2.parent = expectedItem;
         var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(ItemWithNestedValues.class, id));
@@ -514,7 +535,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     }
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithNestedValues {
         @Id
         EmbeddableIntegrationTests.Single flattenedId;
@@ -576,9 +597,10 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
     @Struct(name = "Plural")
-    record Plural(
+    public record Plural(
             char primitiveChar,
             int primitiveInt,
             long primitiveLong,
@@ -591,10 +613,11 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             Boolean boxedBoolean,
             String string,
             BigDecimal bigDecimal,
-            ObjectId objectId) {}
+            ObjectId objectId,
+            Instant instant) {}
 
     @Entity
-    @Table(name = "items")
+    @Table(name = COLLECTION_NAME)
     static class ItemWithNestedValueHavingArraysAndCollections {
         @Id
         int id;
@@ -609,6 +632,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
     }
 
+    /** @see BasicCrudIntegrationTests.Item */
     @Embeddable
     @Struct(name = "ArraysAndCollections")
     public static class ArraysAndCollections {
@@ -626,6 +650,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         String[] strings;
         BigDecimal[] bigDecimals;
         ObjectId[] objectIds;
+        Instant[] instants;
         Single[] structAggregateEmbeddables;
         List<Character> charsCollection;
         Set<Integer> intsCollection;
@@ -635,6 +660,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         Collection<String> stringsCollection;
         Collection<BigDecimal> bigDecimalsCollection;
         Collection<ObjectId> objectIdsCollection;
+        Collection<Instant> instantsCollection;
         Collection<Single> structAggregateEmbeddablesCollection;
 
         ArraysAndCollections() {}
@@ -654,6 +680,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 String[] strings,
                 BigDecimal[] bigDecimals,
                 ObjectId[] objectIds,
+                Instant[] instants,
                 Single[] structAggregateEmbeddables,
                 List<Character> charsCollection,
                 Set<Integer> intsCollection,
@@ -663,6 +690,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
                 Collection<String> stringsCollection,
                 Collection<BigDecimal> bigDecimalsCollection,
                 Collection<ObjectId> objectIdsCollection,
+                Collection<Instant> instantsCollection,
                 Collection<Single> structAggregateEmbeddablesCollection) {
             this.bytes = bytes;
             this.chars = chars;
@@ -678,6 +706,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             this.strings = strings;
             this.bigDecimals = bigDecimals;
             this.objectIds = objectIds;
+            this.instants = instants;
             this.structAggregateEmbeddables = structAggregateEmbeddables;
             this.charsCollection = charsCollection;
             this.intsCollection = intsCollection;
@@ -687,6 +716,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
             this.stringsCollection = stringsCollection;
             this.bigDecimalsCollection = bigDecimalsCollection;
             this.objectIdsCollection = objectIdsCollection;
+            this.instantsCollection = instantsCollection;
             this.structAggregateEmbeddablesCollection = structAggregateEmbeddablesCollection;
         }
     }
@@ -761,14 +791,14 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithSingleAsId {
             @Id
             Single id;
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         record ItemWithNestedValueHavingNonInsertable(@Id int id, PairHavingNonInsertable nested) {}
 
         @Embeddable
@@ -776,7 +806,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         record ItemWithNestedValueHavingNonUpdatable(@Id int id, PairHavingNonUpdatable nested) {}
 
         @Embeddable
@@ -796,7 +826,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValueHavingAllNonInsertable {
             @Id
             int id;
@@ -809,7 +839,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithPolymorphicPersistentAttribute {
             @Id
             int id;
@@ -843,7 +873,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         }
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValueHavingEmbeddable {
             @Id
             int id;
@@ -861,7 +891,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
         record SingleHavingEmbeddable(EmbeddableIntegrationTests.Single flattened) {}
 
         @Entity
-        @Table(name = "items")
+        @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValueHavingNoPersistentAttributes {
             @Id
             int id;

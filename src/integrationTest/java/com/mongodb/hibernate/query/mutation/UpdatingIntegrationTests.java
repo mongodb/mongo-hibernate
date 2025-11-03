@@ -16,18 +16,27 @@
 
 package com.mongodb.hibernate.query.mutation;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
+
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DomainModel(annotatedClasses = Book.class)
+@DomainModel(annotatedClasses = {Book.class, UpdatingIntegrationTests.Unsupported.ItemWithNestedValue.class})
 class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
@@ -227,5 +236,149 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 }
                                 """)),
                 Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Test
+    void testUpdateNoFilter() {
+        assertMutationQuery(
+                "update Book set title = :newTitle",
+                q -> q.setParameter("newTitle", "Unknown"),
+                5,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {},
+                       "u": {
+                         "$set": {
+                           "title": "Unknown"
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                mongoCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "Unknown",
+                                  "outOfStock": true,
+                                  "publishYear": 1869,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "Unknown",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Nested
+    class Unsupported {
+        @Test
+        void testFunctionExpressionAssignment() {
+            var hql = "update Book b set b.title = upper(b.title) where b.id = 1";
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "Function expression [upper] as update assignment value for field path [title] is not supported");
+        }
+
+        @Test
+        void testPredicateExpressionAssignment() {
+            var hql = "update Book b set b.outOfStock = (b.publishYear > 2000) where b.id = 2";
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "Predicate expression as update assignment value for field path [outOfStock] is not supported");
+        }
+
+        @Test
+        void testPathExpressionAssignment() {
+            var hql = "update Book b set b.publishYear = b.isbn13 where b.id = 3";
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "Path expression as update assignment value for field path [publishYear] is not supported");
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionAssignment() {
+            assertMutationQueryFailure(
+                    "update ItemWithNestedValue set nested.a = 0",
+                    null,
+                    FeatureNotSupportedException.class,
+                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+        }
+
+        @Entity(name = "ItemWithNestedValue")
+        @Table(name = COLLECTION_NAME)
+        static class ItemWithNestedValue {
+            @Id
+            int id;
+
+            StructAggregateEmbeddableIntegrationTests.Single nested;
+
+            ItemWithNestedValue() {}
+
+            ItemWithNestedValue(StructAggregateEmbeddableIntegrationTests.Single nested) {
+                this.nested = nested;
+            }
+        }
     }
 }

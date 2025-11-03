@@ -16,27 +16,40 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWorkWithSpecifiedAutoCommit;
 import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
+import static java.lang.String.format;
+import static java.sql.Statement.SUCCESS_NO_INFO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.of;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.math.BigDecimal;
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.sql.SQLSyntaxErrorException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import org.bson.BSONException;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -45,11 +58,15 @@ import org.hibernate.jdbc.Work;
 import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.Parameter;
 import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
@@ -130,8 +147,19 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @Test
-    void testPreparedStatementAndResultSetRoundTrip() {
+    void testPreparedStatementExecuteUpdateAndResultSetRoundTrip() {
+        assertRoundTrip(PreparedStatement::executeUpdate);
+    }
 
+    @Test
+    void testPreparedStatementExecuteBatchAndResultSetRoundTrip() {
+        assertRoundTrip(preparedStatement -> {
+            preparedStatement.addBatch();
+            preparedStatement.executeBatch();
+        });
+    }
+
+    private void assertRoundTrip(SqlConsumer<PreparedStatement> executor) {
         var random = new Random();
 
         boolean booleanValue = random.nextBoolean();
@@ -171,8 +199,7 @@ class MongoPreparedStatementIntegrationTests {
                 pstmt.setString(5, stringValue);
                 pstmt.setBigDecimal(6, bigDecimalValue);
                 pstmt.setBytes(7, bytes);
-
-                pstmt.executeUpdate();
+                executor.accept(pstmt);
             }
         });
 
@@ -216,6 +243,355 @@ class MongoPreparedStatementIntegrationTests {
         });
     }
 
+    @Test
+    void testNoCommandNameProvidedExecuteQuery() {
+        assertInvalidMql(
+                """
+                {}""",
+                PreparedStatement::executeQuery,
+                "Invalid MQL. Command name is missing: [{}]");
+    }
+
+    @Test
+    void testNoCommandNameProvidedExecuteUpdate() {
+        assertInvalidMql(
+                """
+                {}""",
+                PreparedStatement::executeUpdate,
+                "Invalid MQL. Command name is missing: [{}]");
+    }
+
+    @Test
+    void testNoCommandNameProvidedExecuteBatch() {
+        assertInvalidMql(
+                """
+                {}""",
+                preparedStatement -> {
+                    preparedStatement.addBatch();
+                    preparedStatement.executeBatch();
+                },
+                "Invalid MQL. Command name is missing: [{}]");
+    }
+
+    @Test
+    void testNoCollectionNameProvidedExecuteQuery() {
+        assertInvalidMql(
+                """
+                {
+                    aggregate: {}
+                }""",
+                PreparedStatement::executeQuery,
+                """
+                Invalid MQL. Collection name is missing [{"aggregate": {}}]""");
+    }
+
+    @Test
+    void testNoCollectionNameProvidedExecuteUpdate() {
+        assertInvalidMql(
+                """
+                {
+                    insert: {}
+                }""",
+                PreparedStatement::executeUpdate,
+                """
+                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+    }
+
+    @Test
+    void testNoCollectionNameProvidedExecuteBatch() {
+        assertInvalidMql(
+                """
+                {
+                    insert: {}
+                }""",
+                preparedStatement -> {
+                    preparedStatement.addBatch();
+                    preparedStatement.executeBatch();
+                },
+                """
+                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+    }
+
+    @Test
+    void testAbsentRequiredAggregateCommandField() {
+        doWorkAwareOfAutoCommit(connection -> {
+            String mql =
+                    """
+                        {
+                        aggregate: "books"
+                    }""";
+            try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .isInstanceOf(BSONException.class)
+                        .hasMessage("Document does not contain key pipeline");
+            }
+        });
+    }
+
+    @Test
+    void testAbsentRequiredProjectAggregationPipelineStage() {
+        doWorkAwareOfAutoCommit(connection -> {
+            String mql =
+                    """
+                        {
+                        aggregate: "books",
+                        "pipeline": []
+                    }""";
+            try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(toExtendedJson(mql)));
+            }
+        });
+    }
+
+    @Nested
+    class ExecuteBatchTests {
+        private static final String INSERT_MQL =
+                """
+                {
+                    insert: "books",
+                    documents: [
+                        {
+                            _id: 1,
+                            title: "War and Peace"
+                        },
+                        {
+                            _id: 2,
+                            title: "Anna Karenina"
+                        },
+                        {
+                            _id: 3,
+                            title: "Crime and Punishment"
+                        }
+                    ]
+                }""";
+
+        @Test
+        @DisplayName("executeBatch throws a BatchUpdateException for command returning ResultSet")
+        void testQueriesReturningResult() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstm = connection.prepareStatement(
+                        """
+                        {
+                             aggregate: "books",
+                             pipeline: [
+                                 { $match: { _id: 1 } }
+                             ]
+                         }""")) {
+                    pstm.addBatch();
+                    assertThatExceptionOfType(BatchUpdateException.class)
+                            .isThrownBy(pstm::executeBatch)
+                            .returns(new int[0], BatchUpdateException::getUpdateCounts)
+                            .returns(null, BatchUpdateException::getSQLState)
+                            .returns(0, BatchUpdateException::getErrorCode);
+                }
+            });
+
+            assertThat(mongoCollection.find()).isEmpty();
+        }
+
+        @Test
+        void testEmptyBatch() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstmt = connection.prepareStatement(INSERT_MQL)) {
+                    var updateCounts = pstmt.executeBatch();
+                    assertEquals(0, updateCounts.length);
+                }
+            });
+
+            assertThat(mongoCollection.find()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Test statement’s batch of commands is reset once executeBatch returns")
+        void testBatchQueueIsResetAfterExecute() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            insert: "books",
+                            documents: [
+                                {
+                                    _id: {$undefined: true},
+                                    title: {$undefined: true}
+                                }
+                            ]
+                        }""")) {
+
+                    pstmt.setInt(1, 1);
+                    pstmt.setString(2, "War and Peace");
+                    pstmt.addBatch();
+                    assertExecuteBatch(pstmt, 1);
+                    assertExecuteBatch(pstmt, 0);
+                }
+            });
+
+            assertThat(mongoCollection.find())
+                    .containsExactly(
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                        _id: 1,
+                                        title: "War and Peace"
+                                    }"""));
+        }
+
+        @Test
+        @DisplayName("Test values set for the parameter markers of PreparedStatement are not reset when it is executed")
+        void testBatchParametersReuse() {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            insert: "books",
+                            documents: [
+                                {
+                                    _id: {$undefined: true},
+                                    title: {$undefined: true}
+                                }
+                            ]
+                        }""")) {
+
+                    pstmt.setInt(1, 1);
+                    pstmt.setString(2, "War and Peace");
+                    pstmt.addBatch();
+                    assertExecuteBatch(pstmt, 1);
+
+                    pstmt.setInt(1, 2);
+                    // No need to set title again, it should be reused from the previous execution
+                    pstmt.addBatch();
+                    assertExecuteBatch(pstmt, 1);
+                }
+            });
+
+            assertThat(mongoCollection.find())
+                    .containsExactly(
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                        _id: 1,
+                                        title: "War and Peace"
+                                    }"""),
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                        _id: 2,
+                                        title: "War and Peace"
+                                    }"""));
+        }
+
+        @Test
+        void testBatchInsert() {
+            var batchSize = 3;
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            insert: "books",
+                            documents: [{
+                                _id: {$undefined: true},
+                                title: {$undefined: true}
+                            }]
+                        }""")) {
+
+                    for (int i = 1; i <= batchSize; i++) {
+                        pstmt.setInt(1, i);
+                        pstmt.setString(2, "Book " + i);
+                        pstmt.addBatch();
+                    }
+                    assertExecuteBatch(pstmt, batchSize);
+                }
+            });
+
+            var expectedDocs = new ArrayList<BsonDocument>();
+            for (int i = 1; i <= batchSize; i++) {
+                expectedDocs.add(BsonDocument.parse(format(
+                        """
+                        {
+                            "_id": %d,
+                            "title": "Book %d"
+                        }""",
+                        i, i)));
+            }
+            assertThat(mongoCollection.find()).containsExactlyElementsOf(expectedDocs);
+        }
+
+        @Test
+        void testBatchUpdate() {
+            insertTestData(session, INSERT_MQL);
+            var batchSize = 3;
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                             update: "books",
+                             updates: [{
+                                q: { _id: { $undefined: true } },
+                                u: { $set: { title: { $undefined: true } } },
+                                multi: true
+                              }]
+                         }""")) {
+                    for (int i = 1; i <= batchSize; i++) {
+                        pstmt.setInt(1, i);
+                        pstmt.setString(2, "Book " + i);
+                        pstmt.addBatch();
+                    }
+                    assertExecuteBatch(pstmt, batchSize);
+                }
+            });
+
+            var expectedDocs = new ArrayList<BsonDocument>();
+            for (int i = 1; i <= batchSize; i++) {
+                expectedDocs.add(BsonDocument.parse(format(
+                        """
+                        {
+                            "_id": %d,
+                            "title": "Book %d"
+                        }""",
+                        i, i)));
+            }
+            assertThat(mongoCollection.find()).containsExactlyElementsOf(expectedDocs);
+        }
+
+        @Test
+        void testBatchDelete() {
+            insertTestData(session, INSERT_MQL);
+            var batchSize = 3;
+            doWorkAwareOfAutoCommit(connection -> {
+                try (var pstmt = connection.prepareStatement(
+                        """
+                        {
+                            delete: "books",
+                            deletes: [{
+                                q: { _id: { $undefined: true } },
+                                limit: 0
+                            }]
+                        }""")) {
+                    for (int i = 1; i <= batchSize; i++) {
+                        pstmt.setInt(1, i);
+                        pstmt.addBatch();
+                    }
+                    assertExecuteBatch(pstmt, batchSize);
+                }
+            });
+
+            assertThat(mongoCollection.find()).isEmpty();
+        }
+
+        private static void assertExecuteBatch(PreparedStatement pstmt, int expectedUpdateCountsSize)
+                throws SQLException {
+            int[] updateCounts = pstmt.executeBatch();
+            assertEquals(expectedUpdateCountsSize, updateCounts.length);
+            for (int updateCount : updateCounts) {
+                assertEquals(SUCCESS_NO_INFO, updateCount);
+            }
+        }
+    }
+
     @Nested
     class ExecuteUpdateTests {
 
@@ -250,7 +626,7 @@ class MongoPreparedStatementIntegrationTests {
 
         @Test
         void testInsert() {
-            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+            Function<Connection, PreparedStatement> pstmtProvider = connection -> {
                 try {
                     var pstmt = (MongoPreparedStatement)
                             connection.prepareStatement(
@@ -322,26 +698,25 @@ class MongoPreparedStatementIntegrationTests {
                                 outOfStock: false,
                                 tags: [ "classic", "dostoevsky", "literature" ]
                             }"""));
-            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+            Function<Connection, PreparedStatement> pstmtProvider = connection -> {
                 try {
-                    var pstmt = (MongoPreparedStatement)
-                            connection.prepareStatement(
-                                    """
+                    var pstmt = connection.prepareStatement(
+                            """
+                            {
+                                update: "books",
+                                updates: [
                                     {
-                                        update: "books",
-                                        updates: [
-                                            {
-                                                q: { author: { $undefined: true } },
-                                                u: {
-                                                    $set: {
-                                                        outOfStock: { $undefined: true }
-                                                    },
-                                                    $push: { tags: { $undefined: true } }
-                                                },
-                                                multi: true
-                                            }
-                                        ]
-                                    }""");
+                                        q: { author: { $undefined: true } },
+                                        u: {
+                                            $set: {
+                                                outOfStock: { $undefined: true }
+                                            },
+                                            $push: { tags: { $undefined: true } }
+                                        },
+                                        multi: true
+                                    }
+                                ]
+                            }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     pstmt.setBoolean(2, true);
                     pstmt.setString(3, "literature");
@@ -357,20 +732,19 @@ class MongoPreparedStatementIntegrationTests {
         void testDelete() {
             insertTestData(session, INSERT_MQL);
 
-            Function<Connection, MongoPreparedStatement> pstmtProvider = connection -> {
+            Function<Connection, PreparedStatement> pstmtProvider = connection -> {
                 try {
-                    var pstmt = (MongoPreparedStatement)
-                            connection.prepareStatement(
-                                    """
+                    var pstmt = connection.prepareStatement(
+                            """
+                            {
+                                delete: "books",
+                                deletes: [
                                     {
-                                        delete: "books",
-                                        deletes: [
-                                            {
-                                                q: { author: { $undefined: true } },
-                                                limit: 0
-                                            }
-                                        ]
-                                    }""");
+                                        q: { author: { $undefined: true } },
+                                        limit: 0
+                                    }
+                                ]
+                            }""");
                     pstmt.setString(1, "Leo Tolstoy");
                     return pstmt;
                 } catch (SQLException e) {
@@ -392,8 +766,284 @@ class MongoPreparedStatementIntegrationTests {
                                     }""")));
         }
 
+        @ParameterizedTest(name = "test not supported commands. Parameters: {0}")
+        @ValueSource(strings = {"findAndModify", "aggregate", "bulkWrite"})
+        void testNotSupportedCommands(String commandName) {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        """
+                        {
+                          %s: "books"
+                        }"""
+                                .formatted(commandName))) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessageContaining(commandName);
+                }
+            });
+        }
+
+        @ParameterizedTest(name = "test not supported update command field. Parameters: option={0}")
+        @ValueSource(
+                strings = {
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
+                })
+        void testNotSupportedUpdateCommandField(String unsupportedField) {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        """
+                            {
+                            update: "books",
+                            updates: [
+                                {
+                                    q: { author: { $eq: "Leo Tolstoy" } },
+                                    u: { $set: { outOfStock: true } },
+                                    multi: true
+                                }
+                            ],
+                            %s
+                        }"""
+                                .formatted(unsupportedField))) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage("Unsupported field in [update] command: [%s]"
+                                    .formatted(getFieldName(unsupportedField)));
+                }
+            });
+        }
+
+        @Test
+        void testAbsentRequiredUpdateCommandField() {
+            doWorkAwareOfAutoCommit(connection -> {
+                String mql =
+                        """
+                            {
+                            update: "books"
+                        }""";
+                try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLSyntaxErrorException.class)
+                            .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                            .cause()
+                            .hasMessage("Document does not contain key updates");
+                }
+            });
+        }
+
+        @ParameterizedTest(name = "test not supported delete command field. Parameters: option={0}")
+        @ValueSource(strings = {"maxTimeMS: 1", "writeConcern: {}", "comment: {}", "ordered: true", "let: {}"})
+        void testNotSupportedDeleteCommandField(String unsupportedField) {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        """
+                            {
+                            delete: "books",
+                            deletes: [
+                                {
+                                    q: { author: { $eq: "Leo Tolstoy" } },
+                                    limit: 0
+                                }
+                            ]
+                             %s
+                        }"""
+                                .formatted(unsupportedField))) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage("Unsupported field in [delete] command: [%s]"
+                                    .formatted(getFieldName(unsupportedField)));
+                }
+            });
+        }
+
+        @Test
+        void testAbsentRequiredDeleteCommandField() {
+            doWorkAwareOfAutoCommit(connection -> {
+                String mql =
+                        """
+                            {
+                            delete: "books"
+                        }""";
+                try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLSyntaxErrorException.class)
+                            .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                            .cause()
+                            .hasMessage("Document does not contain key deletes");
+                }
+            });
+        }
+
+        @ParameterizedTest(name = "test not supported insert command field. Parameters: option={0}")
+        @ValueSource(
+                strings = {
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
+                })
+        void testNotSupportedInsertCommandField(String unsupportedField) {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        """
+                            {
+                            insert: "books",
+                            documents: [
+                                {
+                                    _id: 1
+                                }
+                            ],
+                            %s
+                        }"""
+                                .formatted(unsupportedField))) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage("Unsupported field in [insert] command: [%s]"
+                                    .formatted(getFieldName(unsupportedField)));
+                }
+            });
+        }
+
+        @Test
+        void testAbsentRequiredInsertCommandField() {
+            doWorkAwareOfAutoCommit(connection -> {
+                String mql =
+                        """
+                            {
+                            insert: "books"
+                        }""";
+                try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLSyntaxErrorException.class)
+                            .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                            .cause()
+                            .hasMessage("Document does not contain key documents");
+                }
+            });
+        }
+
+        private static Stream<Arguments> unsupportedUpdateStatementFields() {
+            return Stream.of(
+                    of("hint: {}", "Unsupported field in [update] statement: [hint]"),
+                    of("hint: \"a\"", "Unsupported field in [update] statement: [hint]"),
+                    of("collation: {}", "Unsupported field in [update] statement: [collation]"),
+                    of("arrayFilters: []", "Unsupported field in [update] statement: [arrayFilters]"),
+                    of("sort: {}", "Unsupported field in [update] statement: [sort]"),
+                    of("upsert: true", "Unsupported field in [update] statement: [upsert]"),
+                    of("u: []", "Only document type is supported as value for field: [u]"),
+                    of("c: {}", "Unsupported field in [update] statement: [c]"));
+        }
+
+        @ParameterizedTest(name = "test not supported update statement field. Parameters: option={0}")
+        @MethodSource("unsupportedUpdateStatementFields")
+        void testNotSupportedUpdateStatemenField(String unsupportedField, String expectedMessage) {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        """
+                            {
+                            update: "books",
+                            updates: [
+                                {
+                                    q: { author: { $eq: "Leo Tolstoy" } },
+                                    u: { $set: { outOfStock: true } },
+                                    multi: true,
+                                    %s
+                                }
+                            ]
+                        }"""
+                                .formatted(unsupportedField))) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage(expectedMessage);
+                }
+            });
+        }
+
+        @ParameterizedTest(name = "test absent required update statement field. Parameters: fieldToRemove={0}")
+        @ValueSource(strings = {"q: {}", "u: {}"})
+        void testAbsentRequiredUpdateStatementField(String fieldToRemove) {
+            doWorkAwareOfAutoCommit(connection -> {
+                String mql =
+                        """
+                            {
+                            update: "books",
+                            updates: [
+                                {
+                                    q: {},
+                                    u: {},
+                                }
+                            ]
+                        }"""
+                                .replace(fieldToRemove + ",", "");
+                try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLSyntaxErrorException.class)
+                            .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                            .cause()
+                            .hasMessage("Document does not contain key %s".formatted(getFieldName(fieldToRemove)));
+                }
+            });
+        }
+
+        @ParameterizedTest(name = "test not supported delete statement field. Parameters: option={0}")
+        @ValueSource(strings = {"hint: {}", "hint: \"a\"", "collation: {}"})
+        void testNotSupportedDeleteStatementField(String unsupportedField) {
+            doWorkAwareOfAutoCommit(connection -> {
+                try (PreparedStatement pstm = connection.prepareStatement(
+                        """
+                            {
+                            delete: "books",
+                            deletes: [
+                                {
+                                    q: { author: { $eq: "Leo Tolstoy" } },
+                                    limit: 0,
+                                    %s
+                                }
+                            ]
+                        }"""
+                                .formatted(unsupportedField))) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLFeatureNotSupportedException.class)
+                            .hasMessage("Unsupported field in [delete] statement: [%s]"
+                                    .formatted(getFieldName(unsupportedField)));
+                }
+            });
+        }
+
+        @ParameterizedTest(name = "test absent required update statement field. Parameters: fieldToRemove={0}")
+        @ValueSource(strings = {"q: {}", "limit: 0"})
+        void testAbsentRequiredDeleteStatementField(String fieldToRemove) {
+            doWorkAwareOfAutoCommit(connection -> {
+                String mql =
+                        """
+                                     {
+                                     delete: "books",
+                                     deletes: [
+                                         {
+                                             q: {},
+                                             limit: 0,
+                                         }
+                                     ]
+                        }"""
+                                .replace(fieldToRemove + ",", "");
+                try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                    assertThatThrownBy(pstm::executeUpdate)
+                            .isInstanceOf(SQLSyntaxErrorException.class)
+                            .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                            .cause()
+                            .hasMessage("Document does not contain key %s".formatted(getFieldName(fieldToRemove)));
+                }
+            });
+        }
+
         private void assertExecuteUpdate(
-                Function<Connection, MongoPreparedStatement> pstmtProvider,
+                Function<Connection, PreparedStatement> pstmtProvider,
                 int expectedUpdatedRowCount,
                 List<? extends BsonDocument> expectedDocuments) {
             doWorkAwareOfAutoCommit(connection -> {
@@ -406,7 +1056,30 @@ class MongoPreparedStatementIntegrationTests {
         }
     }
 
+    private void assertInvalidMql(
+            String mql, SqlConsumer<PreparedStatement> executor, String expectedExceptionMessage) {
+        doWorkAwareOfAutoCommit(connection -> {
+            try (PreparedStatement pstm = connection.prepareStatement(mql)) {
+                assertThatThrownBy(() -> executor.accept(pstm))
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(expectedExceptionMessage);
+            }
+        });
+    }
+
     private void doWorkAwareOfAutoCommit(Work work) {
         doWorkWithSpecifiedAutoCommit(autoCommit, session, work);
+    }
+
+    private static String getFieldName(String unsupportedField) {
+        return BsonDocument.parse("{" + unsupportedField + "}").getFirstKey();
+    }
+
+    private String toExtendedJson(String mql) {
+        return BsonDocument.parse(mql).toJson(EXTENDED_JSON_WRITER_SETTINGS);
+    }
+
+    interface SqlConsumer<T> {
+        void accept(T t) throws SQLException;
     }
 }

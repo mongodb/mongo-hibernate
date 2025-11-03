@@ -18,7 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import org.bson.BsonInt32;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -28,7 +28,7 @@ class AstComparisonFilterOperationTests {
     @ParameterizedTest
     @EnumSource(AstComparisonFilterOperator.class)
     void testRendering(AstComparisonFilterOperator operator) {
-        var operation = new AstComparisonFilterOperation(operator, new AstLiteralValue(new BsonInt32(1)));
+        var operation = new AstComparisonFilterOperation(operator, new AstLiteral(new BsonInt32(1)));
 
         var expectedJson = """
                            {"%s": {"$numberInt": "1"}}\

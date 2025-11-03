@@ -21,7 +21,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
-@Entity(name = "Book")
+@Entity
 @Table(name = Book.COLLECTION_NAME)
 public class Book {
     public static final String COLLECTION_NAME = "books";
