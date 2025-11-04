@@ -16,19 +16,19 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
+import static java.util.Collections.singletonList;
 
-import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 class AstProjectStageTests {
 
     @Test
     void testRendering() {
-        var astProjectStage = new AstProjectStage(Collections.emptyList());
+        var astProjectStage = new AstProjectStage(singletonList(new AstProjectStageIncludeSpecification("title")));
         var expectedJson = """
-                           {"$project": {}}\
+                           {"$project": {"title": true}}\
                            """;
-        assertRender(expectedJson, astProjectStage);
+        assertRendering(expectedJson, astProjectStage);
     }
 }

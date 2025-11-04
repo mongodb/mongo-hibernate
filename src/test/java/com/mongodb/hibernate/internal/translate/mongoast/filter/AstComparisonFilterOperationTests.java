@@ -16,23 +16,24 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import org.bson.BsonInt32;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class AstComparisonFilterOperationTests {
 
-    @Test
-    void testRendering() {
-
-        var astComparisonFilterOperation = new AstComparisonFilterOperation(EQ, new AstLiteralValue(new BsonInt32(1)));
+    @ParameterizedTest
+    @EnumSource(AstComparisonFilterOperator.class)
+    void testRendering(AstComparisonFilterOperator operator) {
+        var operation = new AstComparisonFilterOperation(operator, new AstLiteral(new BsonInt32(1)));
 
         var expectedJson = """
-                           {"$eq": 1}\
-                           """;
-        assertRender(expectedJson, astComparisonFilterOperation);
+                           {"%s": {"$numberInt": "1"}}\
+                           """
+                .formatted(operator.getOperatorName());
+        assertRendering(expectedJson, operation);
     }
 }

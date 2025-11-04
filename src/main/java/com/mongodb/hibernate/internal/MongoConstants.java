@@ -16,9 +16,17 @@
 
 package com.mongodb.hibernate.internal;
 
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
+
 public final class MongoConstants {
 
     private MongoConstants() {}
 
+    public static final JsonWriterSettings EXTENDED_JSON_WRITER_SETTINGS =
+            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+
+    public static final String MONGO_DBMS_NAME = "MongoDB";
+    public static final String MONGO_JDBC_DRIVER_NAME = MONGO_DBMS_NAME + " Java Driver JDBC Adapter";
     public static final String ID_FIELD_NAME = "_id";
 }

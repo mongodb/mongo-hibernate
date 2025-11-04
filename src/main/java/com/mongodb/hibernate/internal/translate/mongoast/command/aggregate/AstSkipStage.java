@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import org.bson.BsonValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
-import org.bson.codecs.BsonValueCodec;
-import org.bson.codecs.EncoderContext;
 
-public record AstLiteralValue(BsonValue literalValue) implements AstValue {
-
-    private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();
-    private static final EncoderContext DEFAULT_CONTEXT =
-            EncoderContext.builder().build();
-
+/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/skip/">{@code $skip}</a>. */
+public record AstSkipStage(AstValue value) implements AstStage {
     @Override
     public void render(BsonWriter writer) {
-        BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
+        writer.writeStartDocument();
+        {
+            writer.writeName("$skip");
+            value.render(writer);
+        }
+        writer.writeEndDocument();
     }
 }

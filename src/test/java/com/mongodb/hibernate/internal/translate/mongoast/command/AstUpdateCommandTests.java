@@ -16,15 +16,14 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterFieldPath;
 import java.util.List;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
@@ -36,21 +35,21 @@ class AstUpdateCommandTests {
     void testRendering() {
 
         var collection = "books";
-        var astFieldUpdate1 = new AstFieldUpdate("title", new AstLiteralValue(new BsonString("War and Peace")));
-        var astFieldUpdate2 = new AstFieldUpdate("author", new AstLiteralValue(new BsonString("Leo Tolstoy")));
+        var astFieldUpdate1 = new AstFieldUpdate("title", new AstLiteral(new BsonString("War and Peace")));
+        var astFieldUpdate2 = new AstFieldUpdate("author", new AstLiteral(new BsonString("Leo Tolstoy")));
 
         final AstFilter filter;
         filter = new AstFieldOperationFilter(
-                new AstFilterFieldPath("_id"),
+                "_id",
                 new AstComparisonFilterOperation(
-                        AstComparisonFilterOperator.EQ, new AstLiteralValue(new BsonInt64(12345L))));
+                        AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt64(12345L))));
 
         var updateCommand = new AstUpdateCommand(collection, filter, List.of(astFieldUpdate1, astFieldUpdate2));
 
         final String expectedJson =
                 """
-                {"update": "books", "updates": [{"q": {"_id": {"$eq": 12345}}, "u": {"$set": {"title": "War and Peace", "author": "Leo Tolstoy"}}, "multi": true}]}\
+                {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$numberLong": "12345"}}}, "u": {"$set": {"title": "War and Peace", "author": "Leo Tolstoy"}}, "multi": true}]}\
                 """;
-        assertRender(expectedJson, updateCommand);
+        assertRendering(expectedJson, updateCommand);
     }
 }

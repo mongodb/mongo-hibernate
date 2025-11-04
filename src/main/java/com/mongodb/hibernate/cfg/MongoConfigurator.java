@@ -26,7 +26,7 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.service.spi.Configurable;
 
 /**
- * The configurator of the MongoDB extension of Hibernate ORM.
+ * The configurator of the MongoDB Extension for Hibernate ORM.
  *
  * <table>
  *     <caption>Supported configuration properties</caption>

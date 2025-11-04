@@ -16,14 +16,15 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_MUTATION;
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_VALUE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MODEL_MUTATION_RESULT;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
+import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import java.util.List;
@@ -44,10 +45,10 @@ class AstVisitorValueHolderTests {
     @Test
     void testSimpleUsage() {
 
-        var value = new AstLiteralValue(new BsonString("field_value"));
-        Runnable valueYielder = () -> astVisitorValueHolder.yield(FIELD_VALUE, value);
+        var value = new AstLiteral(new BsonString("field_value"));
+        Runnable valueYielder = () -> astVisitorValueHolder.yield(VALUE, value);
 
-        var valueGotten = astVisitorValueHolder.execute(FIELD_VALUE, valueYielder);
+        var valueGotten = astVisitorValueHolder.execute(VALUE, valueYielder);
 
         assertSame(value, valueGotten);
     }
@@ -57,15 +58,17 @@ class AstVisitorValueHolderTests {
 
         Runnable tableInserter = () -> {
             Runnable fieldValueYielder = () -> {
-                astVisitorValueHolder.yield(FIELD_VALUE, AstParameterMarker.INSTANCE);
+                astVisitorValueHolder.yield(VALUE, AstParameterMarker.INSTANCE);
             };
-            var fieldValue = astVisitorValueHolder.execute(FIELD_VALUE, fieldValueYielder);
+            var fieldValue = astVisitorValueHolder.execute(VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(
-                    COLLECTION_MUTATION, new AstInsertCommand("city", new AstDocument(List.of(astElement))));
+                    MODEL_MUTATION_RESULT,
+                    ModelMutationMqlTranslator.Result.create(
+                            new AstInsertCommand("city", List.of(new AstDocument(List.of(astElement)))), emptyList()));
         };
 
-        astVisitorValueHolder.execute(COLLECTION_MUTATION, tableInserter);
+        astVisitorValueHolder.execute(MODEL_MUTATION_RESULT, tableInserter);
     }
 
     @Test
@@ -73,26 +76,25 @@ class AstVisitorValueHolderTests {
     void testHolderNotEmptyWhenSetting() {
 
         Runnable valueYielder = () -> {
-            astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value1")));
-            astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("value2")));
+            astVisitorValueHolder.yield(VALUE, new AstLiteral(new BsonString("value1")));
+            astVisitorValueHolder.yield(VALUE, new AstLiteral(new BsonString("value2")));
         };
 
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, valueYielder));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(VALUE, valueYielder));
     }
 
     @Test
     @DisplayName("Exception is thrown when holder is expecting a descriptor different from that of actual data")
     void testHolderExpectingDifferentDescriptor() {
 
-        Runnable valueYielder =
-                () -> astVisitorValueHolder.yield(FIELD_VALUE, new AstLiteralValue(new BsonString("some_value")));
+        Runnable valueYielder = () -> astVisitorValueHolder.yield(VALUE, new AstLiteral(new BsonString("some_value")));
 
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(COLLECTION_MUTATION, valueYielder));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(MODEL_MUTATION_RESULT, valueYielder));
     }
 
     @Test
     @DisplayName("Exception is thrown when no value is yielded")
     void testHolderStillEmpty() {
-        assertThrows(Error.class, () -> astVisitorValueHolder.execute(FIELD_VALUE, () -> {}));
+        assertThrows(Error.class, () -> astVisitorValueHolder.execute(VALUE, () -> {}));
     }
 }

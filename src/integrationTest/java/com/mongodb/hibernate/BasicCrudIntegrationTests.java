@@ -16,18 +16,30 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.client.model.Aggregates.project;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.CONSTRUCTOR_MAPPING_FOR_ITEM;
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.MAPPING_FOR_ITEM;
+import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
+import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
+import jakarta.persistence.ColumnResult;
+import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.SqlResultSetMapping;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.Instant;
 import org.bson.BsonDocument;
-import org.hibernate.annotations.DynamicUpdate;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -39,14 +51,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @SessionFactory(exportSchema = false)
 @DomainModel(
         annotatedClasses = {
-            BasicCrudIntegrationTests.Book.class,
-            BasicCrudIntegrationTests.BookWithEmbeddedField.class,
-            BasicCrudIntegrationTests.BookDynamicallyUpdated.class
+            BasicCrudIntegrationTests.Item.class,
+            BasicCrudIntegrationTests.ItemDynamicallyUpdated.class,
         })
 @ExtendWith(MongoExtension.class)
-class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
+public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
 
-    @InjectMongoCollection("books")
+    @InjectMongoCollection(Item.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
@@ -60,68 +71,82 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     class InsertTests {
         @Test
         void testSimpleEntityInsertion() {
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            var expectedDocument = BsonDocument.parse(
+            sessionFactoryScope.inTransaction(session -> session.persist(new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    "str",
+                    BigDecimal.valueOf(10.1),
+                    new ObjectId("000000000000000000000001"),
+                    Instant.parse("2024-01-01T10:00:00Z"))));
+            assertCollectionContainsExactly(
                     """
                     {
                         _id: 1,
-                        title: "War and Peace",
-                        author: "Leo Tolstoy",
-                        publishYear: 1867
-                    }""");
-            assertCollectionContainsExactly(expectedDocument);
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: true,
+                        boxedChar: "c",
+                        boxedInt: 1,
+                        boxedLong: {$numberLong: "9223372036854775807"},
+                        boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                        boxedBoolean: true,
+                        string: "str",
+                        bigDecimal: {$numberDecimal: "10.1"},
+                        objectId: {$oid: "000000000000000000000001"},
+                        instant: {$date: "2024-01-01T10:00:00Z"}
+                    }
+                    """);
         }
 
         @Test
-        void testEntityWithNullFieldValueInsertion() {
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            var expectedDocument = BsonDocument.parse(
+        void testEntityWithNullFieldValuesInsertion() {
+            sessionFactoryScope.inTransaction(session -> session.persist(new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null)));
+            assertCollectionContainsExactly(
                     """
                     {
                         _id: 1,
-                        title: "War and Peace",
-                        author: null,
-                        publishYear: 1867
-                    }""");
-            assertCollectionContainsExactly(expectedDocument);
-        }
-
-        @Test
-        void testEntityWithEmbeddedFieldInsertion() {
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new BookWithEmbeddedField();
-                book.id = 1;
-                book.title = "War and Peace";
-                var author = new Author();
-                author.firstName = "Leo";
-                author.lastName = "Tolstoy";
-                book.author = author;
-                book.publishYear = 1867;
-                session.persist(book);
-            });
-            var expectedDocument = BsonDocument.parse(
-                    """
-                    {
-                        _id: 1,
-                        title: "War and Peace",
-                        authorFirstName: "Leo",
-                        authorLastName: "Tolstoy",
-                        publishYear: 1867
-                    }""");
-            assertCollectionContainsExactly(expectedDocument);
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: true,
+                        boxedChar: null,
+                        boxedInt: null,
+                        boxedLong: null,
+                        boxedDouble: null,
+                        boxedBoolean: null,
+                        string: null,
+                        bigDecimal: null,
+                        objectId: null,
+                        instant: null
+                    }
+                    """);
         }
     }
 
@@ -132,19 +157,27 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         void testSimpleDeletion() {
 
             var id = 1;
-            sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = id;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
-            });
+            sessionFactoryScope.inTransaction(session -> session.persist(new Item(
+                    id,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    "str",
+                    BigDecimal.valueOf(10.1),
+                    new ObjectId("000000000000000000000001"),
+                    Instant.parse("2024-01-01T10:00:00Z"))));
             assertThat(mongoCollection.find()).hasSize(1);
 
             sessionFactoryScope.inTransaction(session -> {
-                var book = session.getReference(Book.class, id);
-                session.remove(book);
+                var item = session.getReference(Item.class, id);
+                session.remove(item);
             });
 
             assertThat(mongoCollection.find()).isEmpty();
@@ -157,44 +190,141 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void testSimpleUpdate() {
             sessionFactoryScope.inTransaction(session -> {
-                var book = new Book();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1867;
-                session.persist(book);
+                var item = new Item(
+                        1,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        "str",
+                        BigDecimal.valueOf(10.1),
+                        new ObjectId("000000000000000000000001"),
+                        Instant.parse("2024-01-01T10:00:00Z"));
+                session.persist(item);
                 session.flush();
-
-                book.title = "Resurrection";
-                book.publishYear = 1899;
+                item.primitiveBoolean = false;
+                item.boxedBoolean = false;
             });
 
             assertCollectionContainsExactly(
-                    BsonDocument.parse(
-                            """
-                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1899, "title": "Resurrection"}\
-                            """));
+                    """
+                    {
+                        _id: 1,
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: false,
+                        boxedChar: "c",
+                        boxedInt: 1,
+                        boxedLong: {$numberLong: "9223372036854775807"},
+                        boxedDouble: {$numberDouble: "1.7976931348623157E308"},
+                        boxedBoolean: false,
+                        string: "str",
+                        bigDecimal: {$numberDecimal: "10.1"},
+                        objectId: {$oid: "000000000000000000000001"},
+                        instant: {$date: "2024-01-01T10:00:00Z"}
+                    }
+                    """);
+        }
+
+        @Test
+        void testSimpleUpdateWithNullFieldValues() {
+            sessionFactoryScope.inTransaction(session -> {
+                var item = new Item(
+                        1,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        'c',
+                        1,
+                        Long.MAX_VALUE,
+                        Double.MAX_VALUE,
+                        true,
+                        "str",
+                        BigDecimal.valueOf(10.1),
+                        new ObjectId("000000000000000000000001"),
+                        Instant.parse("2024-01-01T10:00:00Z"));
+                session.persist(item);
+                session.flush();
+                item.boxedChar = null;
+                item.boxedInt = null;
+                item.boxedLong = null;
+                item.boxedDouble = null;
+                item.boxedBoolean = null;
+                item.string = null;
+                item.bigDecimal = null;
+                item.objectId = null;
+                item.instant = null;
+            });
+
+            assertCollectionContainsExactly(
+                    """
+                    {
+                        _id: 1,
+                        primitiveChar: "c",
+                        primitiveInt: 1,
+                        primitiveLong: {$numberLong: "9223372036854775807"},
+                        primitiveDouble: {$numberDouble: "1.7976931348623157E308"},
+                        primitiveBoolean: true,
+                        boxedChar: null,
+                        boxedInt: null,
+                        boxedLong: null,
+                        boxedDouble: null,
+                        boxedBoolean: null,
+                        string: null,
+                        bigDecimal: null,
+                        objectId: null,
+                        instant: null
+                    }
+                    """);
         }
 
         @Test
         void testDynamicUpdate() {
             sessionFactoryScope.inTransaction(session -> {
-                var book = new BookDynamicallyUpdated();
-                book.id = 1;
-                book.title = "War and Peace";
-                book.author = "Leo Tolstoy";
-                book.publishYear = 1899;
-                session.persist(book);
+                var item = new ItemDynamicallyUpdated(1, true, true);
+                session.persist(item);
                 session.flush();
-
-                book.publishYear = 1867;
+                item.primitiveBoolean = false;
+                item.boxedBoolean = false;
             });
 
             assertCollectionContainsExactly(
-                    BsonDocument.parse(
-                            """
-                            {"_id": 1, "author": "Leo Tolstoy", "publishYear": 1867, "title": "War and Peace"}\
-                            """));
+                    """
+                    {
+                        _id: 1,
+                        primitiveBoolean: false,
+                        boxedBoolean: false
+                    }
+                    """);
+        }
+
+        @Test
+        void testDynamicUpdateWithNullFieldValues() {
+            sessionFactoryScope.inTransaction(session -> {
+                var item = new ItemDynamicallyUpdated(1, false, true);
+                session.persist(item);
+                session.flush();
+                item.boxedBoolean = null;
+            });
+
+            assertCollectionContainsExactly(
+                    """
+                    {
+                        _id: 1,
+                        primitiveBoolean: false,
+                        boxedBoolean: null
+                    }
+                    """);
         }
     }
 
@@ -202,92 +332,202 @@ class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     class SelectTests {
 
         @Test
-        void testGetByPrimaryKeyWithoutNullValueField() {
-            var book = new Book();
-            book.id = 1;
-            book.author = "Marcel Proust";
-            book.title = "In Search of Lost Time";
-            book.publishYear = 1913;
+        void testFindByPrimaryKey() {
+            var item = new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    "str",
+                    BigDecimal.valueOf(10.1),
+                    new ObjectId("000000000000000000000001"),
+                    Instant.parse("2024-01-01T10:00:00Z"));
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
 
-            sessionFactoryScope.inTransaction(session -> session.persist(book));
-
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
-            assertThat(loadedBook)
-                    .isNotNull()
-                    .usingRecursiveComparison()
-                    .withStrictTypeChecking()
-                    .isEqualTo(book);
+            var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
+            assertEq(item, loadedItem);
         }
 
         @Test
-        void testGetByPrimaryKeyWithNullValueField() {
-            var book = new Book();
-            book.id = 1;
-            book.title = "Brave New World";
-            book.publishYear = 1932;
+        void testFindByPrimaryKeyWithNullFieldValues() {
+            var item = new Item(
+                    1,
+                    'c',
+                    1,
+                    Long.MAX_VALUE,
+                    Double.MAX_VALUE,
+                    true,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
+            sessionFactoryScope.inTransaction(session -> session.persist(item));
 
-            sessionFactoryScope.inTransaction(session -> session.persist(book));
-
-            var loadedBook = sessionFactoryScope.fromTransaction(session -> session.get(Book.class, 1));
-            assertThat(loadedBook)
-                    .isNotNull()
-                    .usingRecursiveComparison()
-                    .withStrictTypeChecking()
-                    .isEqualTo(book);
+            var loadedItem = sessionFactoryScope.fromTransaction(session -> session.find(Item.class, item.id));
+            assertEq(item, loadedItem);
         }
     }
 
-    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
-        assertThat(mongoCollection.find()).containsExactly(expectedDoc);
+    private static void assertCollectionContainsExactly(String documentAsJsonObject) {
+        assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
+    }
+
+    /**
+     * This class should have persistent attributes of all the <a
+     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic">basic
+     * types</a> we support. When adding more persistent attributes to this class, we should do similar changes to
+     * {@link EmbeddableIntegrationTests.Plural}/{@link StructAggregateEmbeddableIntegrationTests.Plural},
+     * {@link EmbeddableIntegrationTests.ArraysAndCollections}/{@link StructAggregateEmbeddableIntegrationTests.ArraysAndCollections},
+     * {@link ArrayAndCollectionIntegrationTests.ItemWithArrayAndCollectionValues}.
+     */
+    @Entity
+    @Table(name = Item.COLLECTION_NAME)
+    @SqlResultSetMapping(
+            name = CONSTRUCTOR_MAPPING_FOR_ITEM,
+            classes =
+                    @ConstructorResult(
+                            targetClass = Item.class,
+                            columns = {
+                                @ColumnResult(name = ID_FIELD_NAME, type = int.class),
+                                @ColumnResult(name = "primitiveChar", type = char.class),
+                                @ColumnResult(name = "primitiveInt", type = int.class),
+                                @ColumnResult(name = "primitiveLong", type = long.class),
+                                @ColumnResult(name = "primitiveDouble", type = double.class),
+                                @ColumnResult(name = "primitiveBoolean", type = boolean.class),
+                                @ColumnResult(name = "boxedChar", type = Character.class),
+                                @ColumnResult(name = "boxedInt", type = Integer.class),
+                                @ColumnResult(name = "boxedLong", type = Long.class),
+                                @ColumnResult(name = "boxedDouble", type = Double.class),
+                                @ColumnResult(name = "boxedBoolean", type = Boolean.class),
+                                @ColumnResult(name = "string", type = String.class),
+                                @ColumnResult(name = "bigDecimal", type = BigDecimal.class),
+                                @ColumnResult(name = "objectId", type = ObjectId.class),
+                                @ColumnResult(name = "instant", type = Instant.class),
+                            }))
+    @SqlResultSetMapping(
+            name = MAPPING_FOR_ITEM,
+            columns = {
+                @ColumnResult(name = ID_FIELD_NAME),
+                @ColumnResult(name = "primitiveChar", type = char.class),
+                @ColumnResult(name = "primitiveInt"),
+                @ColumnResult(name = "primitiveLong"),
+                @ColumnResult(name = "primitiveDouble"),
+                @ColumnResult(name = "primitiveBoolean"),
+                @ColumnResult(name = "boxedChar", type = Character.class),
+                @ColumnResult(name = "boxedInt"),
+                @ColumnResult(name = "boxedLong"),
+                @ColumnResult(name = "boxedDouble"),
+                @ColumnResult(name = "boxedBoolean"),
+                @ColumnResult(name = "string"),
+                @ColumnResult(name = "bigDecimal"),
+                @ColumnResult(name = "objectId"),
+                @ColumnResult(name = "instant")
+            })
+    public static class Item {
+        public static final String COLLECTION_NAME = "items";
+        public static final String CONSTRUCTOR_MAPPING_FOR_ITEM = "ConstructorItem";
+        public static final String MAPPING_FOR_ITEM = "Item";
+
+        @Id
+        public int id;
+
+        public char primitiveChar;
+        public int primitiveInt;
+        public long primitiveLong;
+        public double primitiveDouble;
+        public boolean primitiveBoolean;
+        public Character boxedChar;
+        public Integer boxedInt;
+        public Long boxedLong;
+        public Double boxedDouble;
+        public Boolean boxedBoolean;
+        public String string;
+        public BigDecimal bigDecimal;
+        public ObjectId objectId;
+        public Instant instant;
+
+        Item() {}
+
+        public Item(
+                int id,
+                char primitiveChar,
+                int primitiveInt,
+                long primitiveLong,
+                double primitiveDouble,
+                boolean primitiveBoolean,
+                Character boxedChar,
+                Integer boxedInt,
+                Long boxedLong,
+                Double boxedDouble,
+                Boolean boxedBoolean,
+                String string,
+                BigDecimal bigDecimal,
+                ObjectId objectId,
+                Instant instant) {
+            this.id = id;
+            this.primitiveChar = primitiveChar;
+            this.primitiveInt = primitiveInt;
+            this.primitiveLong = primitiveLong;
+            this.primitiveDouble = primitiveDouble;
+            this.primitiveBoolean = primitiveBoolean;
+            this.boxedChar = boxedChar;
+            this.boxedInt = boxedInt;
+            this.boxedLong = boxedLong;
+            this.boxedDouble = boxedDouble;
+            this.boxedBoolean = boxedBoolean;
+            this.string = string;
+            this.bigDecimal = bigDecimal;
+            this.objectId = objectId;
+            this.instant = instant;
+        }
+
+        public static Bson projectAll() {
+            return project(include(
+                    ID_FIELD_NAME,
+                    "primitiveChar",
+                    "primitiveInt",
+                    "primitiveLong",
+                    "primitiveDouble",
+                    "primitiveBoolean",
+                    "boxedChar",
+                    "boxedInt",
+                    "boxedLong",
+                    "boxedDouble",
+                    "boxedBoolean",
+                    "string",
+                    "bigDecimal",
+                    "objectId",
+                    "instant"));
+        }
     }
 
     @Entity
-    @Table(name = "books")
-    static class Book {
+    @Table(name = Item.COLLECTION_NAME)
+    static class ItemDynamicallyUpdated {
         @Id
         int id;
 
-        String title;
+        boolean primitiveBoolean;
+        Boolean boxedBoolean;
 
-        String author;
+        ItemDynamicallyUpdated() {}
 
-        int publishYear;
-    }
-
-    @Entity
-    @Table(name = "books")
-    @DynamicUpdate
-    static class BookDynamicallyUpdated {
-        @Id
-        int id;
-
-        String title;
-
-        String author;
-
-        int publishYear;
-    }
-
-    @Entity
-    @Table(name = "books")
-    static class BookWithEmbeddedField {
-        @Id
-        int id;
-
-        String title;
-
-        Author author;
-
-        int publishYear;
-    }
-
-    @Embeddable
-    static class Author {
-
-        @Column(name = "authorFirstName")
-        String firstName;
-
-        @Column(name = "authorLastName")
-        String lastName;
+        ItemDynamicallyUpdated(int id, boolean primitiveBoolean, Boolean boxedBoolean) {
+            this.id = id;
+            this.primitiveBoolean = primitiveBoolean;
+            this.boxedBoolean = boxedBoolean;
+        }
     }
 }

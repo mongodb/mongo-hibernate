@@ -16,11 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.util.List;
 import org.bson.BsonInt32;
@@ -33,16 +33,25 @@ class AstInsertCommandTests {
     void testRendering() {
 
         var collection = "books";
-        var elements = List.of(
-                new AstElement("title", new AstLiteralValue(new BsonString("War and Peace"))),
-                new AstElement("year", new AstLiteralValue(new BsonInt32(1867))),
+
+        var elements1 = List.of(
+                new AstElement("title", new AstLiteral(new BsonString("War and Peace"))),
+                new AstElement("year", new AstLiteral(new BsonInt32(1867))),
                 new AstElement("_id", AstParameterMarker.INSTANCE));
-        var insertCommand = new AstInsertCommand(collection, new AstDocument(elements));
+        var document1 = new AstDocument(elements1);
+
+        var elements2 = List.of(
+                new AstElement("title", new AstLiteral(new BsonString("Crime and Punishment"))),
+                new AstElement("year", new AstLiteral(new BsonInt32(1868))),
+                new AstElement("_id", AstParameterMarker.INSTANCE));
+        var document2 = new AstDocument(elements2);
+
+        var insertCommand = new AstInsertCommand(collection, List.of(document1, document2));
 
         var expectedJson =
                 """
-                {"insert": "books", "documents": [{"title": "War and Peace", "year": 1867, "_id": {"$undefined": true}}]}\
+                {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": {"$undefined": true}}, {"title": "Crime and Punishment", "year": {"$numberInt": "1868"}, "_id": {"$undefined": true}}]}\
                 """;
-        assertRender(expectedJson, insertCommand);
+        assertRendering(expectedJson, insertCommand);
     }
 }

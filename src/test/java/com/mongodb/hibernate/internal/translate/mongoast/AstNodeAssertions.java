@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
@@ -26,22 +27,30 @@ public final class AstNodeAssertions {
 
     private AstNodeAssertions() {}
 
-    public static void assertRender(String expectedJson, AstNode node) {
-        doAssertRender(expectedJson, node, false);
+    public static void assertRendering(String expectedCanonicalExtendedJson, AstNode node) {
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.DOCUMENT);
     }
 
-    public static void assertElementRender(String expectedJson, AstNode node) {
-        doAssertRender(expectedJson, node, true);
+    public static void assertElementRendering(String expectedCanonicalExtendedJson, AstNode node) {
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.ELEMENT);
     }
 
-    private static void doAssertRender(String expectedJson, AstNode node, boolean isElement) {
+    public static void assertValueRendering(String expectedCanonicalExtendedJson, AstValue node) {
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.VALUE);
+    }
+
+    private static void doAssertRendering(String expectedJson, AstNode node, AstNodeKind nodeKind) {
         try (var stringWriter = new StringWriter();
-                var jsonWriter = new JsonWriter(stringWriter)) {
-            if (isElement) {
+                var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
+            if (nodeKind != AstNodeKind.DOCUMENT) {
                 jsonWriter.writeStartDocument();
             }
+            var ancillaryFieldName = "";
+            if (nodeKind == AstNodeKind.VALUE) {
+                jsonWriter.writeName(ancillaryFieldName);
+            }
             node.render(jsonWriter);
-            if (isElement) {
+            if (nodeKind != AstNodeKind.DOCUMENT) {
                 jsonWriter.writeEndDocument();
             }
             jsonWriter.flush();
@@ -50,5 +59,12 @@ public final class AstNodeAssertions {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private enum AstNodeKind {
+        DOCUMENT,
+        /** A key/value pair, a.k.a., field (a name and a value). */
+        ELEMENT,
+        VALUE
     }
 }

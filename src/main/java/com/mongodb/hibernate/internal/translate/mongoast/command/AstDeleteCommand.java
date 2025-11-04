@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import org.bson.BsonWriter;
 
+/** See <a href="https://www.mongodb.com/docs/manual/reference/command/delete/">{@code delete}</a>. */
 public record AstDeleteCommand(String collection, AstFilter filter) implements AstCommand {
     @Override
     public void render(BsonWriter writer) {

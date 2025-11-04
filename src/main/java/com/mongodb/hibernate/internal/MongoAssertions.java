@@ -33,7 +33,7 @@ public final class MongoAssertions {
      */
     public static <T> T assertNotNull(@Nullable T value) throws AssertionError {
         if (value == null) {
-            throw new AssertionError();
+            throw fail();
         }
         return value;
     }
@@ -69,7 +69,7 @@ public final class MongoAssertions {
      */
     public static void assertNull(@Nullable Object value) throws AssertionError {
         if (value != null) {
-            throw new AssertionError();
+            throw fail();
         }
     }
 
@@ -82,22 +82,7 @@ public final class MongoAssertions {
      */
     public static boolean assertTrue(boolean value) throws AssertionError {
         if (!value) {
-            throw new AssertionError();
-        }
-        return true;
-    }
-
-    /**
-     * Asserts that {@code value} is {@code true} with message.
-     *
-     * @param message the message to explain details.
-     * @param value A value to check.
-     * @return {@code true}.
-     * @throws AssertionError If {@code value} is {@code false}.
-     */
-    public static boolean assertTrue(String message, boolean value) throws AssertionError {
-        if (!value) {
-            throw new AssertionError(message);
+            throw fail();
         }
         return true;
     }
@@ -111,8 +96,16 @@ public final class MongoAssertions {
      */
     public static boolean assertFalse(boolean value) throws AssertionError {
         if (value) {
-            throw new AssertionError();
+            throw fail();
         }
         return false;
+    }
+
+    public static <T> T assertInstanceOf(Object value, Class<? extends T> type) {
+        try {
+            return type.cast(value);
+        } catch (ClassCastException e) {
+            throw fail();
+        }
     }
 }

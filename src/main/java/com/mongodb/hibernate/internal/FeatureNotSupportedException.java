@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal;
 
 import java.io.Serial;
+import java.sql.SQLFeatureNotSupportedException;
 
 public final class FeatureNotSupportedException extends RuntimeException {
 
@@ -37,5 +38,9 @@ public final class FeatureNotSupportedException extends RuntimeException {
      */
     public FeatureNotSupportedException(String message) {
         super(message);
+    }
+
+    public FeatureNotSupportedException(SQLFeatureNotSupportedException cause) {
+        super(cause);
     }
 }

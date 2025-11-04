@@ -16,21 +16,29 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRender;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import java.util.List;
+import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
 class AstAggregateCommandTests {
 
     @Test
     void testRendering() {
-        var aggregateCommand = new AstAggregateCommand(
-                "books", List.of(new AstProjectStage(List.of()), new AstProjectStage(List.of())));
+        var matchStage = new AstMatchStage(new AstFieldOperationFilter(
+                "_id",
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1)))));
+        var projectStage = new AstProjectStage(List.of(new AstProjectStageIncludeSpecification("title")));
+        var aggregateCommand = new AstAggregateCommand("books", List.of(matchStage, projectStage));
         var expectedJson =
                 """
-                {"aggregate": "books", "pipeline": [{"$project": {}}, {"$project": {}}]}\
+                {"aggregate": "books", "pipeline": [{"$match": {"_id": {"$eq": {"$numberInt": "1"}}}}, {"$project": {"title": true}}]}\
                 """;
-        assertRender(expectedJson, aggregateCommand);
+        assertRendering(expectedJson, aggregateCommand);
     }
 }

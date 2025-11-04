@@ -20,29 +20,38 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.sql.ast.tree.expression.Expression;
 
 @SuppressWarnings("UnusedTypeParameter")
-final class AstVisitorValueDescriptor<T> {
+public final class AstVisitorValueDescriptor<T> {
 
-    static final AstVisitorValueDescriptor<AstCommand> COLLECTION_MUTATION = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstCommand> COLLECTION_AGGREGATE = new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MODEL_MUTATION_RESULT =
+            new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<SelectMqlTranslator.Result> SELECT_RESULT =
+            new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<MutationMqlTranslator.Result> MUTATION_RESULT =
+            new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<String> COLLECTION_NAME = new AstVisitorValueDescriptor<>();
 
-    static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstValue> FIELD_VALUE = new AstVisitorValueDescriptor<>();
+    public static final AstVisitorValueDescriptor<String> FIELD_PATH = new AstVisitorValueDescriptor<>();
+    public static final AstVisitorValueDescriptor<AstValue> VALUE = new AstVisitorValueDescriptor<>();
 
     static final AstVisitorValueDescriptor<List<AstProjectStageSpecification>> PROJECT_STAGE_SPECIFICATIONS =
             new AstVisitorValueDescriptor<>();
-    static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
+    public static final AstVisitorValueDescriptor<AstFilter> FILTER = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<List<AstSortField>> SORT_FIELDS = new AstVisitorValueDescriptor<>();
+
+    static final AstVisitorValueDescriptor<List<Expression>> TUPLE = new AstVisitorValueDescriptor<>();
 
     private static final Map<AstVisitorValueDescriptor<?>, String> CONSTANT_TOSTRING_CONTENT_MAP;
 

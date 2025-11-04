@@ -16,8 +16,21 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+/** @see AstComparisonFilterOperation */
+@SuppressWarnings("MissingSummary")
 public enum AstComparisonFilterOperator {
-    EQ("$eq");
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/eq/">{@code $eq}</a>. */
+    EQ("$eq"),
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/gt/">{@code $gt}</a>. */
+    GT("$gt"),
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/gte/">{@code $gte}</a>. */
+    GTE("$gte"),
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/lt/">{@code $lt}</a>. */
+    LT("$lt"),
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/lte/">{@code $lte}</a>. */
+    LTE("$lte"),
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/ne/">{@code $ne}</a>. */
+    NE("$ne");
 
     AstComparisonFilterOperator(String operatorName) {
         this.operatorName = operatorName;

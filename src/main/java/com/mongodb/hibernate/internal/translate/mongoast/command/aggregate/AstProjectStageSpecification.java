@@ -18,4 +18,6 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 
+/** @see AstProjectStage */
+@SuppressWarnings("MissingSummary")
 public interface AstProjectStageSpecification extends AstNode {}

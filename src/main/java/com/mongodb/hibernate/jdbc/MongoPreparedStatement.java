@@ -16,52 +16,50 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
+import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
+import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
-import java.sql.Date;
+import java.sql.BatchUpdateException;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
-import org.bson.BsonBinary;
-import org.bson.BsonBoolean;
-import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
-import org.bson.BsonDouble;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
-import org.bson.BsonNull;
-import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
-import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 
 final class MongoPreparedStatement extends MongoStatement implements PreparedStatementAdapter {
 
     private final BsonDocument command;
-
+    private final List<BsonDocument> commandBatch;
     private final List<ParameterValueSetter> parameterValueSetters;
 
     MongoPreparedStatement(
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
+        MongoAggregateSupport.checkSupported(mql);
         this.command = MongoStatement.parse(mql);
+        this.commandBatch = new ArrayList<>();
         this.parameterValueSetters = new ArrayList<>();
         parseParameters(command, parameterValueSetters);
     }
@@ -71,7 +69,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
-        return executeQueryCommand(command);
+        checkSupportedQueryCommand(command);
+        return executeQuery(command);
     }
 
     @Override
@@ -79,7 +78,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         closeLastOpenResultSet();
         checkAllParametersSet();
-        return executeUpdateCommand(command);
+        checkSupportedUpdateCommand(command);
+        return executeUpdate(command);
     }
 
     private void checkAllParametersSet() throws SQLException {
@@ -88,6 +88,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLException(format("Parameter with index [%d] is not set", i + 1));
             }
         }
+        checkComparatorNotComparingWithNullValues(command);
     }
 
     @Override
@@ -95,11 +96,9 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         switch (sqlType) {
-            case Types.ARRAY:
             case Types.BLOB:
             case Types.CLOB:
             case Types.DATALINK:
-            case Types.JAVA_OBJECT:
             case Types.NCHAR:
             case Types.NCLOB:
             case Types.NVARCHAR:
@@ -107,136 +106,132 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             case Types.REF:
             case Types.ROWID:
             case Types.SQLXML:
-            case Types.STRUCT:
                 throw new SQLFeatureNotSupportedException(
-                        "Unsupported sql type: " + JDBCType.valueOf(sqlType).getName());
+                        "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
-        setParameter(parameterIndex, BsonNull.VALUE);
+        setParameter(parameterIndex, toBsonValue((Object) null));
     }
 
     @Override
     public void setBoolean(int parameterIndex, boolean x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, BsonBoolean.valueOf(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setInt(int parameterIndex, int x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonInt32(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setLong(int parameterIndex, long x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonInt64(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setDouble(int parameterIndex, double x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonDouble(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonDecimal128(new Decimal128(x)));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setString(int parameterIndex, String x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonString(x));
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setBytes(int parameterIndex, byte[] x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        setParameter(parameterIndex, new BsonBinary(x));
-    }
-
-    @Override
-    public void setDate(int parameterIndex, Date x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTime(int parameterIndex, Time x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
-    }
-
-    @Override
-    public void setObject(int parameterIndex, Object x) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        BsonValue value;
+        if (targetSqlType == MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+            value = assertInstanceOf(x, BsonDocument.class);
+        } else if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
+            value = toBsonValue(assertInstanceOf(x, ObjectId.class));
+        } else if (targetSqlType == JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber()
+                && x instanceof Instant instant) {
+            value = toBsonValue(instant);
+        } else {
+            throw new SQLFeatureNotSupportedException(format(
+                    "Parameter value [%s] of SQL type [%d] with index [%d] is not supported",
+                    x, targetSqlType, parameterIndex));
+        }
+        setParameter(parameterIndex, value);
     }
 
     @Override
     public void addBatch() throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-35 https://jira.mongodb.org/browse/HIBERNATE-35");
+        checkAllParametersSet();
+        commandBatch.add(parameterValueSetters.isEmpty() ? command : command.clone());
+    }
+
+    @Override
+    public void clearBatch() throws SQLException {
+        checkClosed();
+        commandBatch.clear();
+    }
+
+    @Override
+    public int[] executeBatch() throws SQLException {
+        checkClosed();
+        try {
+            closeLastOpenResultSet();
+            if (commandBatch.isEmpty()) {
+                return EMPTY_UPDATE_COUNTS;
+            }
+            checkSupportedBatchCommand(commandBatch.get(0));
+            return executeBatch(commandBatch);
+        } finally {
+            commandBatch.clear();
+        }
+    }
+
+    /** @throws BatchUpdateException if any of the commands in the batch attempts to return a result set. */
+    private static void checkSupportedBatchCommand(BsonDocument command)
+            throws SQLFeatureNotSupportedException, BatchUpdateException, SQLSyntaxErrorException {
+        var commandDescription = getCommandDescription(command);
+        if (commandDescription.isQuery()) {
+            throw new BatchUpdateException(
+                    "Commands returning result set are not allowed. Received command: %s"
+                            .formatted(commandDescription.getCommandName()),
+                    NULL_SQL_STATE,
+                    NO_ERROR_CODE,
+                    EMPTY_UPDATE_COUNTS);
+        }
+        if (!commandDescription.isUpdate()) {
+            throw new SQLFeatureNotSupportedException(
+                    "Unsupported command for executeBatch: %s".formatted(commandDescription.getCommandName()));
+        }
     }
 
     @Override
     public void setArray(int parameterIndex, Array x) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException();
-    }
-
-    @Override
-    public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-42 https://jira.mongodb.org/browse/HIBERNATE-42");
-    }
-
-    @Override
-    public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
-        checkClosed();
-        checkParameterIndex(parameterIndex);
-        throw new SQLFeatureNotSupportedException("To be implemented in scope of Array / Struct tickets");
+        setParameter(parameterIndex, toBsonValue(x));
     }
 
     @Override
@@ -299,10 +294,10 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     private static void parseParameters(BsonValue value, List<ParameterValueSetter> parameterValueSetters) {
-        if (value.isDocument()) {
-            parseParameters(value.asDocument(), parameterValueSetters);
-        } else if (value.isArray()) {
-            parseParameters(value.asArray(), parameterValueSetters);
+        if (value instanceof BsonDocument document) {
+            parseParameters(document, parameterValueSetters);
+        } else if (value instanceof BsonArray array) {
+            parseParameters(array, parameterValueSetters);
         } else {
             fail("Only BSON container type (BsonDocument or BsonArray) is accepted; provided type: "
                     + value.getBsonType());
@@ -340,6 +335,33 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
         boolean isUsed() {
             return used;
+        }
+    }
+
+    /**
+     * Temporary method to ensure exception is thrown when comparison query operators are comparing with {@code null}
+     * values.
+     *
+     * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
+     */
+    private static void checkComparatorNotComparingWithNullValues(BsonDocument document)
+            throws SQLFeatureNotSupportedException {
+        var comparisonOperators = Set.of("$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
+        for (var entry : document.entrySet()) {
+            var value = entry.getValue();
+            if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
+                throw new SQLFeatureNotSupportedException(
+                        "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
+            }
+            if (value instanceof BsonDocument documentValue) {
+                checkComparatorNotComparingWithNullValues(documentValue);
+            } else if (value instanceof BsonArray arrayValue) {
+                for (var element : arrayValue) {
+                    if (element instanceof BsonDocument documentElement) {
+                        checkComparatorNotComparingWithNullValues(documentElement);
+                    }
+                }
+            }
         }
     }
 }

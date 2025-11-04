@@ -16,15 +16,22 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_AGGREGATE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
+import static java.lang.Integer.MAX_VALUE;
+import static java.util.Collections.emptyMap;
 import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
+import static org.hibernate.sql.exec.spi.JdbcLockStrategy.NONE;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
+import java.util.List;
+import java.util.Set;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.Statement;
+import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.jspecify.annotations.Nullable;
@@ -32,13 +39,10 @@ import org.jspecify.annotations.Nullable;
 final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuerySelect> {
 
     private final SelectStatement selectStatement;
-    private final JdbcValuesMappingProducerProvider jdbcValuesMappingProducerProvider;
 
     SelectMqlTranslator(SessionFactoryImplementor sessionFactory, SelectStatement selectStatement) {
         super(sessionFactory);
         this.selectStatement = selectStatement;
-        jdbcValuesMappingProducerProvider =
-                sessionFactory.getServiceRegistry().requireService(JdbcValuesMappingProducerProvider.class);
     }
 
     @Override
@@ -47,19 +51,51 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuery
 
         logSqlAst(selectStatement);
 
-        if (jdbcParameterBindings != null) {
-            throw new FeatureNotSupportedException();
+        applyQueryOptions(queryOptions);
+
+        var result = acceptAndYield((Statement) selectStatement, SELECT_RESULT);
+        return result.createJdbcOperationQuerySelect(selectStatement, getSessionFactory());
+    }
+
+    static final class Result {
+        private final AstCommand command;
+        private final List<JdbcParameterBinder> parameterBinders;
+        private final Set<String> affectedTableNames;
+        private final @Nullable JdbcParameter offsetParameter;
+        private final @Nullable JdbcParameter limitParameter;
+
+        Result(
+                AstCommand command,
+                List<JdbcParameterBinder> parameterBinders,
+                Set<String> affectedTableNames,
+                @Nullable JdbcParameter offsetParameter,
+                @Nullable JdbcParameter limitParameter) {
+            this.command = command;
+            this.parameterBinders = parameterBinders;
+            this.affectedTableNames = affectedTableNames;
+            this.offsetParameter = offsetParameter;
+            this.limitParameter = limitParameter;
         }
-        checkQueryOptionsSupportability(queryOptions);
 
-        var aggregateCommand = acceptAndYield((Statement) selectStatement, COLLECTION_AGGREGATE);
-        var jdbcValuesMappingProducer =
-                jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, getSessionFactory());
-
-        return new JdbcOperationQuerySelect(
-                renderMongoAstNode(aggregateCommand),
-                getParameterBinders(),
-                jdbcValuesMappingProducer,
-                getAffectedTableNames());
+        private JdbcOperationQuerySelect createJdbcOperationQuerySelect(
+                SelectStatement selectStatement, SessionFactoryImplementor sessionFactory) {
+            var jdbcValuesMappingProducerProvider =
+                    sessionFactory.getServiceRegistry().requireService(JdbcValuesMappingProducerProvider.class);
+            var jdbcValuesMappingProducer =
+                    jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, sessionFactory);
+            return new JdbcOperationQuerySelect(
+                    renderMongoAstNode(command),
+                    parameterBinders,
+                    jdbcValuesMappingProducer,
+                    affectedTableNames,
+                    0,
+                    MAX_VALUE,
+                    emptyMap(),
+                    NONE,
+                    // The following parameters are provided for query plan cache purposes.
+                    // Not setting them could result in reusing the wrong query plan and subsequently the wrong MQL.
+                    offsetParameter,
+                    limitParameter);
+        }
     }
 }

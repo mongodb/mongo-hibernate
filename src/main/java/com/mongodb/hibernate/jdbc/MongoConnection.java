@@ -24,6 +24,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
+import com.mongodb.hibernate.internal.jdbc.MongoArray;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -32,7 +33,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
-import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
@@ -152,13 +152,7 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         checkClosed();
-        throw new SQLFeatureNotSupportedException();
-    }
-
-    @Override
-    public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-        checkClosed();
-        throw new SQLFeatureNotSupportedException();
+        return new MongoArray(elements);
     }
 
     @Override
@@ -167,7 +161,7 @@ final class MongoConnection implements ConnectionAdapter {
         try {
             var commandResult = mongoClient
                     .getDatabase("admin")
-                    .runCommand(clientSession, new BsonDocument("buildinfo", new BsonInt32(1)));
+                    .runCommand(clientSession, new BsonDocument("buildInfo", new BsonInt32(1)));
             var versionText = commandResult.getString("version");
             var versionArray = commandResult.getList("versionArray", Integer.class);
             if (versionArray.size() < 2) {

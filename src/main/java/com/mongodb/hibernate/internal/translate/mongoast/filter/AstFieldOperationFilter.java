@@ -18,13 +18,18 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import org.bson.BsonWriter;
 
-public record AstFieldOperationFilter(AstFilterFieldPath fieldPath, AstFilterOperation filterOperation)
-        implements AstFilter {
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/glossary/#std-term-query-predicate">query predicate</a>,
+ * <a href="https://www.mongodb.com/docs/manual/tutorial/query-documents/">Query Documents</a>.
+ *
+ * @see AstEmptyFilter
+ */
+public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            fieldPath.render(writer);
+            writer.writeName(fieldPath);
             filterOperation.render(writer);
         }
         writer.writeEndDocument();

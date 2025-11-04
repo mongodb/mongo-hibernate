@@ -14,14 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+@NullMarked
+package com.mongodb.hibernate.internal.dialect.function;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import org.bson.BsonWriter;
-
-public record AstFilterFieldPath(String path) implements AstNode {
-    @Override
-    public void render(BsonWriter writer) {
-        writer.writeName(path);
-    }
-}
+import org.jspecify.annotations.NullMarked;

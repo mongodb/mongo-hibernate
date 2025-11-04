@@ -26,9 +26,7 @@ import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 
-/**
- * Tread-safe.
- */
+/** Tread-safe. */
 public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     public static MongoTranslatorFactory INSTANCE = new MongoTranslatorFactory();
 
@@ -43,8 +41,7 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, MutationStatement mutationStatement) {
-        // TODO-HIBERNATE-46 https://jira.mongodb.org/browse/HIBERNATE-46
-        return new NoopSqlAstTranslator<>();
+        return new MutationMqlTranslator(sessionFactoryImplementor, mutationStatement);
     }
 
     @Override
