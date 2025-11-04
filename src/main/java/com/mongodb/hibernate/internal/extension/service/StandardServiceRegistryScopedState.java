@@ -42,6 +42,7 @@ import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.jspecify.annotations.Nullable;
 
+/** Thread-safe. */
 public final class StandardServiceRegistryScopedState implements Service {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -64,7 +65,7 @@ public final class StandardServiceRegistryScopedState implements Service {
     }
 
     /**
-     * The instance methods like {@link #contribute(StandardServiceRegistryBuilder)} are called multiple times if
+     * The instance methods of {@link org.hibernate.service.spi.ServiceContributor} are called multiple times if
      * multiple {@link StandardServiceRegistry} instances are {@linkplain StandardServiceRegistryBuilder#build() built}
      * using the same {@link BootstrapServiceRegistry}.
      */
@@ -74,11 +75,16 @@ public final class StandardServiceRegistryScopedState implements Service {
         @Override
         public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
             serviceRegistryBuilder.addInitiator(new StandardServiceInitiator<StandardServiceRegistryScopedState>() {
+                /**
+                 * This method may be called multiple times when {@linkplain StandardServiceRegistryBuilder#build()
+                 * building} a single {@link StandardServiceRegistry} instance.
+                 */
                 @Override
                 public Class<StandardServiceRegistryScopedState> getServiceInitiated() {
                     return StandardServiceRegistryScopedState.class;
                 }
 
+                /** This method is called not more than once per instance of {@link StandardServiceInitiator}. */
                 @Override
                 public StandardServiceRegistryScopedState initiateService(
                         Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {

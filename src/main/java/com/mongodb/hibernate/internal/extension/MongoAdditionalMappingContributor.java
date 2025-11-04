@@ -54,10 +54,8 @@ import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
 /**
- * The instance methods like {@link #getContributorName()}, {@link #contribute(AdditionalMappingContributions,
- * InFlightMetadataCollector, ResourceStreamLocator, MetadataBuildingContext)} are called multiple times if multiple
- * {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
- * {@link BootstrapServiceRegistry}.
+ * The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple {@link Metadata}
+ * instances are {@linkplain MetadataSources#buildMetadata() built} using the same {@link BootstrapServiceRegistry}.
  */
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
