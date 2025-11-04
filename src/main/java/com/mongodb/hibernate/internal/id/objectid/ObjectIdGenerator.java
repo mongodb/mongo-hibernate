@@ -24,6 +24,7 @@ import java.util.EnumSet;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.EventType;
+import org.hibernate.generator.Generator;
 import org.hibernate.generator.GeneratorCreationContext;
 import org.hibernate.id.factory.spi.CustomIdGeneratorCreationContext;
 import org.jspecify.annotations.Nullable;
@@ -39,25 +40,17 @@ public final class ObjectIdGenerator implements BeforeExecutionGenerator {
 
     private static final org.bson.codecs.ObjectIdGenerator GENERATOR = new org.bson.codecs.ObjectIdGenerator();
 
-    private final boolean forIdentifier;
-
+    /** @see Generator */
     public ObjectIdGenerator(
             com.mongodb.hibernate.annotations.ObjectIdGenerator config,
             Member annotatedMember,
-            CustomIdGeneratorCreationContext context) {
-        this(true);
-    }
+            CustomIdGeneratorCreationContext context) {}
 
+    /** @see Generator */
     public ObjectIdGenerator(
             com.mongodb.hibernate.annotations.ObjectIdGenerator config,
             Member annotatedMember,
-            GeneratorCreationContext context) {
-        this(false);
-    }
-
-    private ObjectIdGenerator(boolean forIdentifier) {
-        this.forIdentifier = forIdentifier;
-    }
+            GeneratorCreationContext context) {}
 
     @Override
     public Object generate(
@@ -67,13 +60,6 @@ public final class ObjectIdGenerator implements BeforeExecutionGenerator {
             EventType eventType) {
         if (currentValue != null) {
             return currentValue;
-        } else if (forIdentifier) {
-            // Hibernate ORM provides `null` as `currentValue` when generating an entity identifier value.
-            // To work around that behavior we have to read the value explicitly.
-            var currentId = session.getEntityPersister(null, owner).getIdentifier(owner, session);
-            if (currentId != null) {
-                return currentId;
-            }
         }
         return GENERATOR.generate();
     }
