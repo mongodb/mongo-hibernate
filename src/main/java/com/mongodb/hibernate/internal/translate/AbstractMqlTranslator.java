@@ -107,6 +107,7 @@ import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
@@ -201,7 +202,10 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
-/** @mongoCme This class and its subclasses do not have to be thread-safe. */
+/**
+ * @mongoCme This class and its subclasses do not have to be thread-safe because they are
+ *     {@linkplain SqlAstTranslatorFactory single-use}.
+ */
 @SuppressWarnings("MissingSummary")
 public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
