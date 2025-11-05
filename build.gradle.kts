@@ -64,8 +64,6 @@ tasks.withType<Javadoc> {
                 "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/")
         // specify the custom `@mongoCme` `javadoc` block tag
         tags("mongoCme:TM:Concurrency, Mutability, Execution\\:")
-        tagletPath(rootProject.projectDir.resolve("buildSrc/build/classes/java/main"))
-        taglets("com.mongodb.doclet.internal.ConcurrencyMutabilityExecutionTaglet")
     }
 }
 
