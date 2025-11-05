@@ -36,6 +36,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.jspecify.annotations.Nullable;
 
+/** @mongoCme Does not have to be thread-safe. */
 final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuerySelect> {
 
     private final SelectStatement selectStatement;

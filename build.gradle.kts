@@ -58,10 +58,14 @@ tasks.withType<Javadoc> {
                 "https://docs.oracle.com/en/java/javase/17/docs/api/",
                 "https://jakarta.ee/specifications/persistence/3.1/apidocs/",
                 "https://docs.hibernate.org/orm/6.6/javadocs/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/bson/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-core/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-sync/",
+                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/bson/",
+                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-core/",
+                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-sync/",
                 "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/")
+        // specify the custom `@mongoCme` `javadoc` block tag
+        tags("mongoCme:TM:Concurrency, Mutability, Execution\\:")
+        tagletPath(rootProject.projectDir.resolve("buildSrc/build/classes/java/main"))
+        taglets("com.mongodb.doclet.internal.ConcurrencyMutabilityExecutionTaglet")
     }
 }
 
@@ -146,6 +150,8 @@ tasks.withType<JavaCompile>().configureEach {
         tasks.compileJava.get() ->
             options.errorprone {
                 disableWarningsInGeneratedCode = true
+                // Error Prone complains about the `javadoc` tags registered via the `-tag`/`-taglet` options
+                disable("InvalidBlockTag")
                 option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
                 error("NullAway")
             }

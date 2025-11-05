@@ -39,6 +39,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.jspecify.annotations.Nullable;
 
+/** @mongoCme Does not have to be thread-safe. */
 final class MutationMqlTranslator extends AbstractMqlTranslator<JdbcOperationQueryMutation> {
 
     private final MutationStatement mutationStatement;

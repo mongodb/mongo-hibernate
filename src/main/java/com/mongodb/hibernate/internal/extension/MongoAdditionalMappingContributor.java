@@ -54,9 +54,11 @@ import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
 /**
- * The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple {@link Metadata}
- * instances are {@linkplain MetadataSources#buildMetadata() built} using the same {@link BootstrapServiceRegistry}.
+ * @mongoCme The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple
+ *     {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
+ *     {@link BootstrapServiceRegistry}.
  */
+@SuppressWarnings("MissingSummary")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as

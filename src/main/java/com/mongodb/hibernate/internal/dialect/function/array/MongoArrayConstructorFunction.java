@@ -33,7 +33,7 @@ import org.hibernate.sql.ast.tree.SqlAstNode;
  * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
  * {@code array}, {@code array_list}</a>.
  *
- * <p>Thread-safe.
+ * @mongoCme Must be thread-safe.
  */
 public final class MongoArrayConstructorFunction extends ArrayConstructorFunction {
     static final Set<String> NAMES = Set.of("array", "array_list");

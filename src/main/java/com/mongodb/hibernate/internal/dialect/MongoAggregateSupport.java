@@ -25,6 +25,8 @@ import org.hibernate.dialect.aggregate.AggregateSupportImpl;
 import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Column;
 
+/** @mongoCme It is unclear whether this class must be thread-safe. */
+@SuppressWarnings("MissingSummary")
 public final class MongoAggregateSupport extends AggregateSupportImpl {
     public static final MongoAggregateSupport INSTANCE = new MongoAggregateSupport();
     public static final String UNSUPPORTED_MESSAGE_PREFIX =

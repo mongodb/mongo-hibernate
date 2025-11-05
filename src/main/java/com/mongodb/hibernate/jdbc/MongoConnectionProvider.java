@@ -50,6 +50,9 @@ import org.jspecify.annotations.Nullable;
  * <p>This {@link ConnectionProvider} does not respect the {@value org.hibernate.cfg.AvailableSettings#AUTOCOMMIT}
  * configuration property, and {@linkplain MongoConnectionProvider#getConnection() provides} {@link Connection}s with
  * {@linkplain Connection#getAutoCommit() auto-commit} enabled.
+ *
+ * @mongoCme The methods {@link #getConnection()}/{@link #closeConnection(Connection)} must be thread-safe. It is
+ *     unclear about the other methods.
  */
 public final class MongoConnectionProvider implements ConnectionProvider, Stoppable {
     @Serial
@@ -58,6 +61,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
     private @Nullable StandardServiceRegistryScopedState standardServiceRegistryScopedState;
     private transient @Nullable MongoClient mongoClient;
 
+    /** @mongoCme Must be thread-safe. */
     @Override
     public Connection getConnection() throws SQLException {
         try {
@@ -72,6 +76,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
     }
 
+    /** @mongoCme Must be thread-safe. */
     @Override
     public void closeConnection(Connection connection) throws SQLException {
         connection.close();

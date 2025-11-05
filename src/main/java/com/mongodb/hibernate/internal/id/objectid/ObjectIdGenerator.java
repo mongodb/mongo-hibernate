@@ -30,10 +30,10 @@ import org.hibernate.id.factory.spi.CustomIdGeneratorCreationContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Tread-safe.
- *
  * @see com.mongodb.hibernate.annotations.ObjectIdGenerator
+ * @mongoCme Must be thread-safe.
  */
+@SuppressWarnings("MissingSummary")
 public final class ObjectIdGenerator implements BeforeExecutionGenerator {
     @Serial
     private static final long serialVersionUID = 1L;

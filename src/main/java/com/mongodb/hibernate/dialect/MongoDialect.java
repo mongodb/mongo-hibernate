@@ -152,7 +152,8 @@ import org.jspecify.annotations.Nullable;
  * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-exp-functions">HQL
  * functions</a> see {@link #initializeFunctionRegistry(FunctionContributions)}.
  *
- * <p>Thread-safe, immutable, as per the documentation of {@link Dialect}.
+ * @mongoCme Must be immutable, as per the documentation of {@link Dialect}. It is unclear whether it should be
+ *     shallowly or deeply immutable; most likely—shallowly.
  */
 @Sealed
 public class MongoDialect extends Dialect {
@@ -352,7 +353,7 @@ public class MongoDialect extends Dialect {
         functionRegistry.register("array_includes_nullable", new MongoArrayIncludesFunction(true, typeConfiguration));
     }
 
-    /** The {@link MutationOperation} returned from this method does not have to be thread-safe. */
+    /** @mongoCme The {@link MutationOperation} returned from this method does not have to be thread-safe. */
     @Override
     public MutationOperation createOptionalTableUpdateOperation(
             EntityMutationTarget mutationTarget,
@@ -375,7 +376,7 @@ public class MongoDialect extends Dialect {
         throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
     }
 
-    /** The {@link SQLExceptionConversionDelegate} returned from this method must be thread-safe. */
+    /** @mongoCme The {@link SQLExceptionConversionDelegate} returned from this method must be thread-safe. */
     @Override
     public SQLExceptionConversionDelegate buildSQLExceptionConversionDelegate() {
         return (sqlException, exceptionMessage, mql) -> new JDBCException(exceptionMessage, sqlException, mql);

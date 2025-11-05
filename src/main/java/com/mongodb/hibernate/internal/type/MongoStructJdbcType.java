@@ -55,7 +55,8 @@ import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.StructJdbcType;
 import org.jspecify.annotations.Nullable;
 
-/** Thread-safe. */
+/** @mongoCme Must be thread-safe. */
+@SuppressWarnings("MissingSummary")
 public final class MongoStructJdbcType implements StructJdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -217,7 +218,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
                 "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
-    /** Thread-safe. */
+    /** @mongoCme Must be thread-safe. */
     private final class Binder<X> extends BasicBinder<X> {
         @Serial
         private static final long serialVersionUID = 1L;
@@ -247,7 +248,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
     }
 
-    /** Thread-safe. */
+    /** @mongoCme Must be thread-safe. */
     private final class Extractor<X> extends BasicExtractor<X> {
         @Serial
         private static final long serialVersionUID = 1L;

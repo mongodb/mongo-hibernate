@@ -32,7 +32,8 @@ import org.hibernate.type.descriptor.jdbc.JdbcTypeConstructor;
 import org.hibernate.type.spi.TypeConfiguration;
 import org.jspecify.annotations.Nullable;
 
-/** Thread-safe. */
+/** @mongoCme Must be thread-safe. */
+@SuppressWarnings("MissingSummary")
 public final class MongoArrayJdbcType extends ArrayJdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
