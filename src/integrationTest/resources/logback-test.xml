@@ -7,7 +7,6 @@
         </encoder>
     </appender>
     <logger name="org.hibernate" level="warn" additivity="true"/>
-    <logger name="org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator" level="debug" additivity="true"/>
     <logger name="org.hibernate.SQL" level="debug" additivity="true"/>
     <logger name="org.hibernate.orm.jdbc.bind" level="trace" additivity="true"/>
     <logger name="org.hibernate.orm.jdbc.extract" level="trace" additivity="true"/>
