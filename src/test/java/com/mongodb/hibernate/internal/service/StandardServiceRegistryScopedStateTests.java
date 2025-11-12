@@ -19,7 +19,6 @@ package com.mongodb.hibernate.internal.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.util.ArrayList;
 import org.hibernate.boot.MetadataSources;

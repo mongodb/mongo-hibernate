@@ -1,1 +1,5 @@
-com.mongodb.hibernate.internal.extension.MongoAdditionalMappingContributor
+# Hibernate ORM runs additional mapping contributors for any
+# `org.hibernate.SessionFactory`/`jakarta.persistence.EntityManagerFactory` that is being bootstrapped.
+# Consequently, this contributor must check that the involved dialect is `com.mongodb.hibernate.dialect.MongoDialect`,
+# to avoid interfering with bootstrapping unrelated to the MongoDB Extension for Hibernate ORM.
+com.mongodb.hibernate.internal.boot.MongoAdditionalMappingContributor
