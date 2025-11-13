@@ -10,7 +10,7 @@
         alt="Hibernate ORM requirement">
   </a>
   <a href="https://www.mongodb.com/docs/manual/">
-    <img src="https://img.shields.io/badge/MongoDB_-6.0+-00ED64.svg?labelColor=001E2B"
+    <img src="https://img.shields.io/badge/MongoDB_-7.0+-00ED64.svg?labelColor=001E2B"
         alt="MongoDB DBMS requirement">
   </a>
 </p>
