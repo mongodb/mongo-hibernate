@@ -18,7 +18,7 @@ Java 17 is the JDK version for development.
 
 Initially Hibernate ORM v6.6 is the dependency version.
 
-MongoDB v6.0 is the minimal version this product supports.
+MongoDB v7.0 is the minimal version this product supports.
 
 > [Standalone instance](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) is not supported. It is recommended to [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
 
