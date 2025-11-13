@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.extension.service;
+package com.mongodb.hibernate.internal.service;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
@@ -84,8 +84,7 @@ public final class StandardServiceRegistryScopedState implements Service {
         private MongoConfiguration createMongoConfiguration(
                 Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
             var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
-            MongoConfigurationContributor mongoConfigurationContributor =
-                    getMongoConfigurationContributor(serviceRegistry);
+            var mongoConfigurationContributor = getMongoConfigurationContributor(serviceRegistry);
             if (jdbcUrl == null && mongoConfigurationContributor == null) {
                 throw new HibernateException(format(
                         "Configuration property [%s] is required unless %s is provided",
