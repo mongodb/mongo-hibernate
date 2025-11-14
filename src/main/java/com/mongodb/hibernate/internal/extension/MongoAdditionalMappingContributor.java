@@ -38,7 +38,10 @@ import java.util.Date;
 import java.util.Set;
 import java.util.StringJoiner;
 import org.hibernate.annotations.Struct;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
@@ -50,6 +53,12 @@ import org.hibernate.mapping.Property;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
+/**
+ * @mongoCme The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple
+ *     {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
+ *     {@link BootstrapServiceRegistry}.
+ */
+@SuppressWarnings("MissingSummary")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
