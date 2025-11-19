@@ -52,7 +52,7 @@ Use ["Extension for Hibernate ORM" at jira.mongodb.org](https://jira.mongodb.org
 
 ### Feature Requests
 
-Use ["Drivers & Frameworks"/"Frameworks (e.g. Django, Hibernate, EFCore)" at feedback.mongodb.com" at feedback.mongodb.com](https://feedback.mongodb.com/?category=7548141831345841376).
+Use ["Drivers & Frameworks"/"Frameworks (e.g. Django, Hibernate, EFCore)" at feedback.mongodb.com](https://feedback.mongodb.com/?category=7548141831345841376).
 
 ## Contributor Documentation
 
