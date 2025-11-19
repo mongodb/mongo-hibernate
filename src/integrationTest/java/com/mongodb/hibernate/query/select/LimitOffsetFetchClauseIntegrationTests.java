@@ -23,9 +23,9 @@ import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.hibernate.cfg.AvailableSettings.QUERY_PLAN_CACHE_ENABLED;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
+import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
@@ -625,7 +625,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
      * the query plan cache is hit, not whether {@link SqlAstTranslator} is reused afterwards (e.g., incompatible
      * {@link org.hibernate.query.spi.QueryOptions QueryOptions}s will end up with new translator bing created).
      */
-    protected static final class TranslatingCacheTestingDialect extends MongoDialect {
+    protected static final class TranslatingCacheTestingDialect extends TestMongoDialect {
         private final AtomicInteger selectTranslatingCounter = new AtomicInteger();
 
         public TranslatingCacheTestingDialect(DialectResolutionInfo info) {

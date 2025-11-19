@@ -96,16 +96,16 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         switch (sqlType) {
-            case Types.BLOB:
-            case Types.CLOB:
-            case Types.DATALINK:
-            case Types.NCHAR:
-            case Types.NCLOB:
-            case Types.NVARCHAR:
-            case Types.LONGNVARCHAR:
-            case Types.REF:
-            case Types.ROWID:
-            case Types.SQLXML:
+            case Types.BLOB,
+                    Types.CLOB,
+                    Types.DATALINK,
+                    Types.NCHAR,
+                    Types.NCLOB,
+                    Types.NVARCHAR,
+                    Types.LONGNVARCHAR,
+                    Types.REF,
+                    Types.ROWID,
+                    Types.SQLXML ->
                 throw new SQLFeatureNotSupportedException(
                         "Unsupported SQL type: " + JDBCType.valueOf(sqlType).getName());
         }
