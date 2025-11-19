@@ -32,7 +32,6 @@ class NativeBootstrappingIntegrationTests {
     private static MongoClient mongoClient;
 
     @Test
-    @SuppressWarnings("try")
     void testCouldNotInstantiateDialectExceptionMessage() {
         assertThatThrownBy(() -> {
                     BsonDocument failPointCommand = BsonDocument.parse(
