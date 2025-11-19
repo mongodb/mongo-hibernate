@@ -35,7 +35,7 @@ instead of SQL. This product works by:
 - [Manual](https://www.mongodb.com/docs/languages/java/mongodb-hibernate/current)
 - [API](https://javadoc.io/doc/org.mongodb/mongodb-hibernate/latest/index.html)
 
-[Standalone deployments](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) are not supported,
+MongoDB [standalone deployments](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) are not supported,
 because they [do not support transactions](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/).
 If you use one, you may [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
 
@@ -102,7 +102,7 @@ This project uses separate directories for unit and integration tests:
 - [`./src/test`](src/test)
 - [`./src/integrationTest`](src/integrationTest)
 
-Integration tests require a MongoDB deployment with test commands enabled,  which may be achieved with the
+Integration tests require a MongoDB deployment with test commands enabled, which may be achieved with the
 [`--setParameter enableTestCommands=1`](https://www.mongodb.com/docs/manual/reference/parameters/)
 command-line arguments.
 

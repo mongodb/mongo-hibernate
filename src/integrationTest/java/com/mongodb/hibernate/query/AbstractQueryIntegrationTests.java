@@ -26,7 +26,7 @@ import static org.mockito.Mockito.spy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
-import com.mongodb.hibernate.dialect.MongoDialect;
+import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -251,7 +251,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
                 .containsExactlyInAnyOrderElementsOf(expectedAffectedCollections);
     }
 
-    protected static final class TranslateResultAwareDialect extends MongoDialect {
+    protected static final class TranslateResultAwareDialect extends TestMongoDialect {
         private AbstractJdbcOperationQuery capturedTranslateResult;
 
         public TranslateResultAwareDialect(DialectResolutionInfo info) {
