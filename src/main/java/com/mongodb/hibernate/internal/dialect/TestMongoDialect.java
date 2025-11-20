@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.dialect;
 
-import org.bson.BsonWriter;
+import com.mongodb.hibernate.dialect.MongoDialect;
+import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
-public interface AstNode {
-    void render(BsonWriter writer);
+public abstract non-sealed class TestMongoDialect extends MongoDialect {
+    protected TestMongoDialect(DialectResolutionInfo info) {
+        super(info);
+    }
 }

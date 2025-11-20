@@ -21,7 +21,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>.
+ *
+ * @hidden
+ */
 @SuppressWarnings("InvalidParam")
 public record AstUpdateCommand(String collection, AstFilter filter, Collection<? extends AstFieldUpdate> updates)
         implements AstCommand {

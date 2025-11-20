@@ -201,6 +201,8 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
     private final SessionFactoryImplementor sessionFactory;

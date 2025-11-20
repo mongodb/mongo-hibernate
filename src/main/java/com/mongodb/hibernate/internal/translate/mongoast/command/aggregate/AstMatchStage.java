@@ -19,7 +19,11 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/match/">{@code $match}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/match/">{@code $match}</a>.
+ *
+ * @hidden
+ */
 public record AstMatchStage(AstFilter filter) implements AstStage {
     @Override
     public void render(BsonWriter writer) {

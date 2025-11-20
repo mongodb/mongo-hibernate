@@ -19,7 +19,10 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.bson.BsonWriter;
 
-/** @see AstSortField */
+/**
+ * @see AstSortField
+ * @hidden
+ */
 @SuppressWarnings("MissingSummary")
 public enum AstSortOrder implements AstNode {
     ASC(1),

@@ -22,7 +22,11 @@ import java.util.Collection;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/type/">{@code $type}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/type/">{@code $type}</a>.
+ *
+ * @hidden
+ */
 public record AstTypeFilterOperation(Collection<BsonType> types) implements AstFilterOperation {
     public AstTypeFilterOperation {
         assertFalse(types.isEmpty());

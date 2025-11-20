@@ -53,6 +53,8 @@ import org.jspecify.annotations.Nullable;
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}
  * implementation uses under the hood and rarely exposes, and domain values we usually use when setting parameter values
  * on our {@link PreparedStatement}, or retrieving column values from a {@link ResultSet}.
+ *
+ * @hidden
  */
 public final class ValueConversions {
     private ValueConversions() {}

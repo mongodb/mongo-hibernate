@@ -55,7 +55,11 @@ import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.StructJdbcType;
 import org.jspecify.annotations.Nullable;
 
-/** Thread-safe. */
+/**
+ * Thread-safe.
+ *
+ * @hidden
+ */
 public final class MongoStructJdbcType implements StructJdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
