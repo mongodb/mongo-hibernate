@@ -22,6 +22,8 @@ import org.bson.BsonWriter;
  * Matches all documents.
  *
  * <p>{@link AstFieldOperationFilter} is used for specifying a concrete filter to match documents.
+ *
+ * @hidden
  */
 public final class AstEmptyFilter implements AstFilter {
     public static final AstEmptyFilter INSTANCE = new AstEmptyFilter();

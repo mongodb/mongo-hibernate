@@ -26,6 +26,8 @@ import java.lang.annotation.Target;
  * Denotes that the annotated program element is made more accessible than otherwise necessary for the purpose of
  * testing. The annotated program element must be used as if it had the {@linkplain #otherwise() intended} access
  * modifier for any purpose other than testing.
+ *
+ * @hidden
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)
@@ -33,6 +35,8 @@ import java.lang.annotation.Target;
 public @interface VisibleForTesting {
     VisibleForTesting.AccessModifier otherwise();
 
+    /** @hidden */
+    @SuppressWarnings("MissingSummary")
     enum AccessModifier {
         PRIVATE,
         PACKAGE,

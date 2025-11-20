@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class MongoConstants {
 
     private MongoConstants() {}

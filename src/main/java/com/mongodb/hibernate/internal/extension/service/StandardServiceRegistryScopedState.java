@@ -40,6 +40,8 @@ import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.jspecify.annotations.Nullable;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class StandardServiceRegistryScopedState implements Service {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -61,6 +63,7 @@ public final class StandardServiceRegistryScopedState implements Service {
                 "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
+    /** @hidden */
     public static final class ServiceContributor implements org.hibernate.service.spi.ServiceContributor {
         public ServiceContributor() {}
 

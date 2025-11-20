@@ -26,5 +26,6 @@ import java.util.function.Consumer;
  * @param mongoClientSettings {@link MongoConfigurator#applyToMongoClientSettings(Consumer)}.
  * @param databaseName {@link MongoConfigurator#databaseName(String)}.
  * @see MongoConfigurationBuilder#build()
+ * @hidden
  */
 public record MongoConfiguration(MongoClientSettings mongoClientSettings, String databaseName) {}

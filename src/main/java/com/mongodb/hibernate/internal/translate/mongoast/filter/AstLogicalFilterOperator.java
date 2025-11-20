@@ -16,7 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-/** @see AstLogicalFilter */
+/**
+ * @see AstLogicalFilter
+ * @hidden
+ */
 @SuppressWarnings("MissingSummary")
 public enum AstLogicalFilterOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/and/">{@code $and}</a>. */

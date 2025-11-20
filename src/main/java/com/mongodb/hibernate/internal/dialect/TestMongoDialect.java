@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal.dialect;
 import com.mongodb.hibernate.dialect.MongoDialect;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public abstract non-sealed class TestMongoDialect extends MongoDialect {
     protected TestMongoDialect(DialectResolutionInfo info) {
         super(info);
