@@ -22,7 +22,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/command/insert/">{@code insert}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/command/insert/">{@code insert}</a>.
+ *
+ * @hidden
+ */
 public record AstInsertCommand(String collection, Collection<? extends AstDocument> documents) implements AstCommand {
 
     public AstInsertCommand {

@@ -34,6 +34,8 @@ import org.hibernate.sql.ast.tree.SqlAstNode;
  * {@code array}, {@code array_list}</a>.
  *
  * <p>Thread-safe.
+ *
+ * @hidden
  */
 public final class MongoArrayConstructorFunction extends ArrayConstructorFunction {
     static final Set<String> NAMES = Set.of("array", "array_list");

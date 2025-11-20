@@ -20,5 +20,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation-pipeline/">Aggregation Stages</a>.
+ *
+ * @hidden
  */
 public interface AstStage extends AstNode {}
