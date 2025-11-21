@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.service;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
+import static org.hibernate.cfg.AvailableSettings.DIALECT_RESOLVERS;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.hibernate.cfg.AvailableSettings.JAVA_TIME_USE_DIRECT_JDBC;
 import static org.hibernate.cfg.AvailableSettings.PREFERRED_INSTANT_JDBC_TYPE;
@@ -92,11 +93,11 @@ public final class StandardServiceRegistryScopedState implements Service {
             var dialectFactory = serviceRegistry.getService(DialectFactory.class);
             if ((dialectFactory == null
                             || dialectFactory.getClass().getPackageName().startsWith("org.hibernate"))
-                    && configurationValues.get(AvailableSettings.DIALECT_RESOLVERS) == null) {
-                // If `DialectFactory` is different from the ones Hibernate ORM provide, or if
-                // `AvailableSettings.DIALECT_RESOLVERS` is specified, then we cannot detect whether
-                // `MongoDialect` is plugged in. Otherwise, we know that `AvailableSettings.DIALECT`
-                // is the only way to plug `MongoDialect` in, and we can detect whether it is plugged in.
+                    && configurationValues.get(DIALECT_RESOLVERS) == null) {
+                // If `DialectFactory` is different from the ones Hibernate ORM provides, or if
+                // `DIALECT_RESOLVERS` is specified, then we cannot detect whether `MongoDialect` is plugged in.
+                // Otherwise, we know that `DIALECT` is the only way to plug `MongoDialect` in,
+                // and we can detect whether it is plugged in.
                 var dialect = configurationValues.get(AvailableSettings.DIALECT);
                 if (!((dialect instanceof MongoDialect)
                         || (dialect instanceof Class<?> dialectClass
