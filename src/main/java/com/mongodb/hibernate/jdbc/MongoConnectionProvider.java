@@ -25,7 +25,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.VisibleForTesting;
-import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
@@ -57,6 +57,8 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
 
     private @Nullable StandardServiceRegistryScopedState standardServiceRegistryScopedState;
     private transient @Nullable MongoClient mongoClient;
+
+    public MongoConnectionProvider() {}
 
     @Override
     public Connection getConnection() throws SQLException {
