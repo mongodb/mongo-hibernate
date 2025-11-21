@@ -177,7 +177,6 @@ dependencies {
         exclude(group = "org.apache.logging.log4j", module = "log4j-core")
     }
     integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    integrationTestRuntimeOnly(libs.postgresql)
 
     api(libs.jspecify)
 

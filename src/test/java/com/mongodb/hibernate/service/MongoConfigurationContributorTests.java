@@ -60,13 +60,11 @@ class MongoConfigurationContributorTests {
     }
 
     private static SessionFactory buildSessionFactory(MongoConfigurationContributor mongoConfigurationContributor) {
-        return new MetadataSources(new StandardServiceRegistryBuilder()
+        return new MetadataSources()
+                .buildMetadata(new StandardServiceRegistryBuilder()
                         .addService(MongoConfigurationContributor.class, mongoConfigurationContributor)
                         .build())
-                .getMetadataBuilder()
-                .build()
-                .getSessionFactoryBuilder()
-                .build();
+                .buildSessionFactory();
     }
 
     private static class TestClusterListener implements ClusterListener {
