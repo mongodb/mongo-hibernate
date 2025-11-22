@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
-/** Program elements related to configuring the MongoDB Extension for Hibernate ORM. */
+/**
+ * Program elements related to configuring the MongoDB Extension for Hibernate ORM.
+ *
+ * <p>See {@link com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor} for the details on programmatically
+ * configuring the MongoDB Extension for Hibernate ORM, and {@link com.mongodb.hibernate.cfg.MongoConfigurator} for the
+ * details on the supported configuration properties.
+ */
 @NullMarked
 package com.mongodb.hibernate.cfg;
 

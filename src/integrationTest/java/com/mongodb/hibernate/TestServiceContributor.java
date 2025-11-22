@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate;
 
-import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceContributor;
 
