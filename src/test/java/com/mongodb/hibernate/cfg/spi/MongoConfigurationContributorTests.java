@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.service;
+package com.mongodb.hibernate.cfg.spi;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.mongodb.event.ClusterClosedEvent;
 import com.mongodb.event.ClusterListener;
-import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -33,7 +35,9 @@ import java.util.concurrent.TimeoutException;
 import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class MongoConfigurationContributorTests {
@@ -57,6 +61,28 @@ class MongoConfigurationContributorTests {
                     .close();
         });
         assertSame(expected, actual.getCause());
+    }
+
+    @Test
+    @DisplayName(
+            "MongoConfigurationContributor is called once per StandardServiceRegistry, different MongoConfigurator instances passed")
+    @SuppressWarnings("try")
+    void invocationsAndMongoConfiguratorInstances() {
+        var bootstrapServiceRegistry = new BootstrapServiceRegistryBuilder().build();
+        var mongoConfigurators = new ArrayList<>();
+        MongoConfigurationContributor mongoConfigurationContributor = mongoConfigurators::add;
+        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder(bootstrapServiceRegistry)
+                .addService(MongoConfigurationContributor.class, mongoConfigurationContributor);
+        var metadataSources = new MetadataSources();
+        var standardServiceRegistry1 = standardServiceRegistryBuilder.build();
+        var standardServiceRegistry2 = standardServiceRegistryBuilder.build();
+        try (var sessionFactory1 =
+                        metadataSources.buildMetadata(standardServiceRegistry1).buildSessionFactory();
+                var sessionFactory2 =
+                        metadataSources.buildMetadata(standardServiceRegistry2).buildSessionFactory()) {
+            assertEquals(2, mongoConfigurators.size());
+            assertNotSame(mongoConfigurators.get(0), mongoConfigurators.get(1));
+        }
     }
 
     private static SessionFactory buildSessionFactory(MongoConfigurationContributor mongoConfigurationContributor) {
