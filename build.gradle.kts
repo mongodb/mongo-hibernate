@@ -354,3 +354,6 @@ tasks.register("publishArchives") {
         dependsOn(tasks.named("publishToSonatype"))
     }
 }
+
+// `./gradlew -q printProjectVersion`
+tasks.register("printProjectVersion") { doLast { logger.quiet(project.version.toString()) } }

@@ -9,10 +9,13 @@ set -o errexit  # Exit the script with error if any of the commands fail
 
 source java-config.sh
 
-echo "mongo-hibernate: running integration tests ..."
+echo "mongo-hibernate: running smoke tests ..."
 
 echo "MongoDB version: ${MONGODB_VERSION}; topology: ${TOPOLOGY}"
 
 ./gradlew -version
 
-./gradlew -PjavaVersion="${JAVA_VERSION}" --stacktrace --info --continue clean integrationTest
+./gradlew -PjavaVersion="${JAVA_VERSION}" publishToMavenLocal \
+  && ./example-module/mvnw clean verify -f ./example-module/pom.xml \
+    -DjavaVersion="${JAVA_VERSION}" \
+    -DprojectVersion="$(./gradlew -q printProjectVersion)"

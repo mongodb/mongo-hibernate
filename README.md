@@ -54,6 +54,28 @@ Use ["Extension for Hibernate ORM" at jira.mongodb.org](https://jira.mongodb.org
 
 Use ["Drivers & Frameworks"/"Frameworks (e.g. Django, Hibernate, EFCore)" at feedback.mongodb.com" at feedback.mongodb.com](https://feedback.mongodb.com/?category=7548141831345841376).
 
+### Examples
+
+[Maven](https://maven.apache.org/) is used as a build tool.
+
+The Java module with example applications is located in [`./example-module`](example-module).
+The examples require a MongoDB deployment accessible at `localhost:27017`.
+
+This module serves two purposes:
+
+- examples for users;
+- smoke tests for contributors.
+
+#### Build and Run from Source
+
+```console
+source ./.evergreen/java-config.sh \
+  && ./gradlew -PjavaVersion=${JAVA_VERSION} clean publishToMavenLocal \
+  && ./example-module/mvnw clean verify -f ./example-module/pom.xml \
+    -DjavaVersion="${JAVA_VERSION}" \
+    -DprojectVersion="$(./gradlew -q printProjectVersion)"
+```
+
 ## Contributor Documentation
 
 [Gradle](https://gradle.org/) is used as a build tool.
