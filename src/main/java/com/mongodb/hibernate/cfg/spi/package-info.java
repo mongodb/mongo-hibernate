@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-/** The SPI for integrating pluggable {@linkplain org.hibernate.service.Service services}. */
+/** SPI related to configuring the MongoDB Extension for Hibernate ORM. */
 @NullMarked
-package com.mongodb.hibernate.service.spi;
+package com.mongodb.hibernate.cfg.spi;
 
 import org.jspecify.annotations.NullMarked;
