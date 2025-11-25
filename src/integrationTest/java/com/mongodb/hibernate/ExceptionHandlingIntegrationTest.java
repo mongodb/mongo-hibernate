@@ -20,10 +20,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.junit.InjectMongoClient;
-import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -50,16 +48,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(MongoExtension.class)
 class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
     private static final String COLLECTION_NAME = "items";
-    private static final String EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION = "Failed to execute operation";
-    private static final String EXCEPTION_MESSAGE_TIMEOUT = "Timeout while waiting for operation to complete";
+    private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
+    private static final String EXCEPTION_MESSAGE_OPERATION_TIMED_OUT =
+            "Timeout while waiting for operation to complete";
 
     @InjectMongoClient
     private static MongoClient mongoClient;
 
-    @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
-
-    SessionFactoryScope sessionFactoryScope;
+    private SessionFactoryScope sessionFactoryScope;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
@@ -75,10 +71,10 @@ class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
                         session.persist(new Item(1));
                     });
                 })
-                .isInstanceOf(JDBCException.class)
-                .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
+                .isExactlyInstanceOf(JDBCException.class)
+                .hasMessageContaining(EXCEPTION_MESSAGE_OPERATION_FAILED)
                 .cause()
-                .isInstanceOf(SQLException.class)
+                .isExactlyInstanceOf(SQLException.class)
                 .hasRootCauseInstanceOf(MongoException.class);
     }
 
@@ -90,10 +86,10 @@ class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
                         session.persist(new Item(1));
                     });
                 })
-                .isInstanceOf(JDBCException.class)
-                .hasMessageContaining(EXCEPTION_MESSAGE_TIMEOUT)
+                .isExactlyInstanceOf(JDBCException.class)
+                .hasMessageContaining(EXCEPTION_MESSAGE_OPERATION_TIMED_OUT)
                 .cause()
-                .isInstanceOf(SQLException.class)
+                .isExactlyInstanceOf(SQLException.class)
                 .hasRootCauseInstanceOf(MongoException.class);
     }
 
@@ -103,7 +99,7 @@ class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
     @SessionFactory(exportSchema = false)
     @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
     class Batch implements SessionFactoryScopeAware {
-        SessionFactoryScope sessionFactoryScope;
+        private SessionFactoryScope sessionFactoryScope;
 
         @Override
         public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
@@ -120,8 +116,8 @@ class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
                             session.persist(new Item(2));
                         });
                     })
-                    .isInstanceOf(JDBCException.class)
-                    .hasMessageContaining(EXCEPTION_MESSAGE_FAILED_TO_EXECUTE_OPERATION)
+                    .isExactlyInstanceOf(JDBCException.class)
+                    .hasMessageContaining(EXCEPTION_MESSAGE_OPERATION_FAILED)
                     .cause()
                     .isExactlyInstanceOf(SQLException.class)
                     .hasRootCauseInstanceOf(MongoException.class);
@@ -136,8 +132,8 @@ class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
                             session.persist(new Item(2));
                         });
                     })
-                    .isInstanceOf(JDBCException.class)
-                    .hasMessageContaining(EXCEPTION_MESSAGE_TIMEOUT)
+                    .isExactlyInstanceOf(JDBCException.class)
+                    .hasMessageContaining(EXCEPTION_MESSAGE_OPERATION_TIMED_OUT)
                     .cause()
                     .isExactlyInstanceOf(SQLException.class)
                     .hasRootCauseInstanceOf(MongoException.class);
