@@ -46,6 +46,16 @@ The `groupId:artifactId` coordinates: `org.mongodb:mongodb-hibernate`.
   - [Maven Central Repository](https://repo.maven.apache.org/maven2/org/mongodb/mongodb-hibernate/)
   - [Maven Central Repository Search](https://central.sonatype.com/artifact/org.mongodb/mongodb-hibernate)
 
+### Examples
+
+[Maven](https://maven.apache.org/) is used as a build tool.
+
+The Java module with example applications is located in
+
+- [`./example-module`](example-module)
+
+The examples may be run by running the smoke tests as specified in [Run Smoke Tests](#run-smoke-tests).
+
 ### Bug Reports
 
 Use ["Extension for Hibernate ORM" at jira.mongodb.org](https://jira.mongodb.org/projects/HIBERNATE/issues).
@@ -54,28 +64,6 @@ Use ["Extension for Hibernate ORM" at jira.mongodb.org](https://jira.mongodb.org
 
 Use ["Drivers & Frameworks"/"Frameworks (e.g. Django, Hibernate, EFCore)" at feedback.mongodb.com" at feedback.mongodb.com](https://feedback.mongodb.com/?category=7548141831345841376).
 
-### Examples
-
-[Maven](https://maven.apache.org/) is used as a build tool.
-
-The Java module with example applications is located in [`./example-module`](example-module).
-The examples require a MongoDB deployment accessible at `localhost:27017`.
-
-This module serves two purposes:
-
-- examples for users;
-- smoke tests for contributors.
-
-#### Build and Run from Source
-
-```console
-source ./.evergreen/java-config.sh \
-  && ./gradlew -PjavaVersion=${JAVA_VERSION} clean publishToMavenLocal \
-  && ./example-module/mvnw clean verify -f ./example-module/pom.xml \
-    -DjavaVersion="${JAVA_VERSION}" \
-    -DprojectVersion="$(./gradlew -q printProjectVersion)"
-```
-
 ## Contributor Documentation
 
 [Gradle](https://gradle.org/) is used as a build tool.
@@ -83,7 +71,7 @@ source ./.evergreen/java-config.sh \
 ### Build from Source
 
 ```console
-./gradlew clean build
+./gradlew build
 ```
 
 ### Static Code Analysis
@@ -119,19 +107,11 @@ The analysis is done as part of the Gradle `compileJava` task execution.
 
 ### Testing
 
-This project uses separate directories for unit and integration tests:
+This project uses separate directories for unit, integration, smoke tests:
 
 - [`./src/test`](src/test)
 - [`./src/integrationTest`](src/integrationTest)
-
-Integration tests require a MongoDB deployment with test commands enabled, which may be achieved with the
-[`--setParameter enableTestCommands=1`](https://www.mongodb.com/docs/manual/reference/parameters/)
-command-line arguments.
-
-You may change the [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/)
-via the [`jakarta.persistence.jdbc.url`](https://docs.hibernate.org/orm/6.6/userguide/html_single/#settings-jakarta.persistence.jdbc.url)
-configuration property
-in [`./src/integrationTest/resources/hibernate.properties`](src/integrationTest/resources/hibernate.properties).
+- [`./example-module/src/smokeTest`](example-module/src/smokeTest)
 
 #### Run Unit Tests
 
@@ -141,10 +121,38 @@ in [`./src/integrationTest/resources/hibernate.properties`](src/integrationTest/
 
 #### Run Integration Tests
 
+The integration tests require a MongoDB deployment that
+
+- is accessible at `localhost:27017`;
+  - You may change the [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/)
+    via the [`jakarta.persistence.jdbc.url`](https://docs.hibernate.org/orm/6.6/userguide/html_single/#settings-jakarta.persistence.jdbc.url)
+    configuration property
+    in [`./src/integrationTest/resources/hibernate.properties`](src/integrationTest/resources/hibernate.properties). 
+- has test commands enabled.
+  - This may be achieved with the
+    [`--setParameter enableTestCommands=1`](https://www.mongodb.com/docs/manual/reference/parameters/)
+    command-line arguments.
+
 ```console
 ./gradlew integrationTest
 ```
 
+#### Run Smoke Tests
+
+The smoke tests with the `Tests` suffix do not require a MongoDB deployment.
+The smoke tests with the `IntegrationTests` suffix, as well as the examples, require a MongoDB deployment that
+
+- is accessible at `localhost:27017`.
+  - You may change this by modifying the examples run by the smoke tests.
+
+```console
+source ./.evergreen/java-config.sh \
+  && ./gradlew -PjavaVersion=${JAVA_VERSION} publishToMavenLocal \
+  && ./example-module/mvnw verify -f ./example-module/pom.xml \
+    -DjavaVersion="${JAVA_VERSION}" \
+    -DprojectVersion="$(./gradlew -q printProjectVersion)"
+```
+
 ### Continuous Integration
-[Evergreen](https://github.com/evergreen-ci/evergreen) and [GitHub actions](https://docs.github.com/en/actions)
+[Evergreen](https://github.com/evergreen-ci/evergreen) and [GitHub Actions](https://docs.github.com/en/actions)
 are used for continuous integration.

@@ -94,6 +94,7 @@ limitations under the License.
         </dependency>
     </dependencies>
     <build>
+        <testSourceDirectory>${project.basedir}/src/smokeTest/java</testSourceDirectory>
         <pluginManagement>
             <plugins>
                 <plugin>
