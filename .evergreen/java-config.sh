@@ -3,7 +3,6 @@
 # Java configurations for evergreen
 
 export JDK17="/opt/java/jdk17"
-export JDK21="/opt/java/jdk21"
 
 if [ -d "$JDK17" ]; then
   export JAVA_HOME=$JDK17

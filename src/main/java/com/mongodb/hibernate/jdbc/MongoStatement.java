@@ -524,29 +524,28 @@ class MongoStatement implements StatementAdapter {
                 throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
             try {
                 switch (commandDescription) {
-                    case INSERT:
+                    case INSERT -> {
                         checkCommandFields(command, commandDescription, SUPPORTED_INSERT_COMMAND_FIELDS);
                         var documentsToInsert = command.getArray("documents");
                         for (var documentToInsert : documentsToInsert) {
                             writeModels.add(createInsertModel(documentToInsert.asDocument()));
                         }
-                        break;
-                    case UPDATE:
+                    }
+                    case UPDATE -> {
                         checkCommandFields(command, commandDescription, SUPPORTED_UPDATE_COMMAND_FIELDS);
                         var updateStatements = command.getArray("updates");
                         for (var updateStatement : updateStatements) {
                             writeModels.add(createUpdateModel(updateStatement.asDocument(), commandDescription));
                         }
-                        break;
-                    case DELETE:
+                    }
+                    case DELETE -> {
                         checkCommandFields(command, commandDescription, SUPPORTED_DELETE_COMMAND_FIELDS);
                         var deleteStatements = command.getArray("deletes");
                         for (var deleteStatement : deleteStatements) {
                             writeModels.add(createDeleteModel(deleteStatement.asDocument(), commandDescription));
                         }
-                        break;
-                    default:
-                        throw fail(commandDescription.toString());
+                    }
+                    default -> throw fail(commandDescription.toString());
                 }
             } catch (BSONException bsonException) {
                 throw createSyntaxErrorException("%s: [%s]", command, bsonException);
