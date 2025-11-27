@@ -23,8 +23,11 @@ import org.mockito.stubbing.Answer;
  * Mockito's global configuration overriding mechanism. Before the <a
  * href="https://github.com/mockito/mockito/issues/971">issue</a> is resolved, this seems the best way to configure
  * {@link Answers#RETURNS_SMART_NULLS RETURNS_SMART_NULLS} as the default Mock {@link Answer}.
+ *
+ * @mongoCme This class does not have to be thread-safe, as per the documentation of {@link IMockitoConfiguration}.
  */
 public final class MockitoConfiguration extends DefaultMockitoConfiguration {
+    public MockitoConfiguration() {}
 
     public Answer<Object> getDefaultAnswer() {
         return Answers.RETURNS_SMART_NULLS;
