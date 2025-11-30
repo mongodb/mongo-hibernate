@@ -115,10 +115,10 @@ class MongoStatement implements StatementAdapter {
             var pipeline = command.getArray("pipeline").stream()
                     .map(BsonValue::asDocument)
                     .toList();
-            var projectStageIndex = pipeline.size() - 1;
             if (pipeline.isEmpty()) {
                 throw createSyntaxErrorException("%s. $project stage is missing [%s]", command, null);
             }
+            var projectStageIndex = pipeline.size() - 1;
             var fieldNames = getFieldNamesFromProjectStage(
                     pipeline.get(projectStageIndex).getDocument("$project"));
             startTransactionIfNeeded();
