@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.jdbc.MongoStatement.NO_ERROR_CODE;
 import static java.sql.Statement.SUCCESS_NO_INFO;
 import static java.util.Collections.emptyList;
@@ -23,6 +24,7 @@ import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatObject;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -30,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Named.named;
+import static org.junit.jupiter.params.provider.Arguments.of;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -60,8 +63,10 @@ import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Types;
 import java.util.Calendar;
@@ -69,6 +74,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowingConsumer;
+import org.bson.BSONException;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -86,6 +92,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -131,6 +138,106 @@ class MongoPreparedStatementTests {
             }
             """;
 
+    @Test
+    void testNoCommandNameProvidedExecuteQuery() throws SQLException {
+        assertInvalidMql(
+                """
+                {}""",
+                PreparedStatement::executeQuery,
+                "Invalid MQL. Command name is missing: [{}]");
+    }
+
+    @Test
+    void testNoCommandNameProvidedExecuteUpdate() throws SQLException {
+        assertInvalidMql(
+                """
+                {}""",
+                PreparedStatement::executeUpdate,
+                "Invalid MQL. Command name is missing: [{}]");
+    }
+
+    @Test
+    void testNoCommandNameProvidedExecuteBatch() throws SQLException {
+        assertInvalidMql(
+                """
+                {}""",
+                preparedStatement -> {
+                    preparedStatement.addBatch();
+                    preparedStatement.executeBatch();
+                },
+                "Invalid MQL. Command name is missing: [{}]");
+    }
+
+    @Test
+    void testNoCollectionNameProvidedExecuteQuery() throws SQLException {
+        assertInvalidMql(
+                """
+                {
+                    aggregate: {}
+                }""",
+                PreparedStatement::executeQuery,
+                """
+                Invalid MQL. Collection name is missing [{"aggregate": {}}]""");
+    }
+
+    @Test
+    void testNoCollectionNameProvidedExecuteUpdate() throws SQLException {
+        assertInvalidMql(
+                """
+                {
+                    insert: {}
+                }""",
+                PreparedStatement::executeUpdate,
+                """
+                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+    }
+
+    @Test
+    void testNoCollectionNameProvidedExecuteBatch() throws SQLException {
+        assertInvalidMql(
+                """
+                {
+                    insert: {}
+                }""",
+                preparedStatement -> {
+                    preparedStatement.addBatch();
+                    preparedStatement.executeBatch();
+                },
+                """
+                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+    }
+
+    @Test
+    void testMissingRequiredAggregateCommandField() throws SQLException {
+        var mql = """
+                  {
+                      aggregate: "books"
+                  }""";
+        try (var pstm = createMongoPreparedStatement(mql)) {
+            assertThatThrownBy(pstm::executeQuery)
+                    .isInstanceOf(SQLSyntaxErrorException.class)
+                    .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                    .cause()
+                    .isInstanceOf(BSONException.class)
+                    .hasMessage("Document does not contain key pipeline");
+        }
+    }
+
+    @Test
+    void testMissingRequiredProjectAggregationPipelineStage() throws SQLException {
+        var mql =
+                """
+                    {
+                    aggregate: "books",
+                    "pipeline": []
+                }""";
+        try (var pstm = createMongoPreparedStatement(mql)) {
+            assertThatThrownBy(pstm::executeQuery)
+                    .isInstanceOf(SQLSyntaxErrorException.class)
+                    .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(toExtendedJson(mql)));
+        }
+    }
+
     @Nested
     class ParameterValueSettingTests {
 
@@ -174,6 +281,266 @@ class MongoPreparedStatementTests {
                 var insertOneModel = assertInstanceOf(InsertOneModel.class, writeModels.get(0));
                 assertEquals(expectedDoc, insertOneModel.getDocument());
             }
+        }
+    }
+
+    @Nested
+    class ExecuteThrowsSqlFeatureNotSupportedExceptionOrSqlSyntaxErrorExceptionTests {
+        @ParameterizedTest(name = "test not supported command {0}")
+        @ValueSource(strings = {"findAndModify", "aggregate", "bulkWrite"})
+        void testNotSupportedCommands(String commandName) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                    {
+                      %s: "books"
+                    }"""
+                            .formatted(commandName))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessageContaining(commandName);
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported update command field {0}")
+        @ValueSource(
+                strings = {
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
+                })
+        void testNotSupportedUpdateCommandField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        update: "books",
+                        updates: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                u: { $set: { outOfStock: true } },
+                                multi: true
+                            }
+                        ],
+                        %s
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [update] command: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @Test
+        void testMissingRequiredUpdateCommandField() throws SQLException {
+            var mql = """
+                      {
+                          update: "books"
+                      }""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .hasMessage("Document does not contain key updates");
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported delete command field {0}")
+        @ValueSource(strings = {"maxTimeMS: 1", "writeConcern: {}", "comment: {}", "ordered: true", "let: {}"})
+        void testNotSupportedDeleteCommandField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                limit: 0
+                            }
+                        ]
+                         %s
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [delete] command: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @Test
+        void testMissingRequiredDeleteCommandField() throws SQLException {
+            var mql = """
+                        {
+                        delete: "books"
+                    }""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .hasMessage("Document does not contain key deletes");
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported insert command field {0}")
+        @ValueSource(
+                strings = {
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
+                })
+        void testNotSupportedInsertCommandField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        insert: "books",
+                        documents: [
+                            {
+                                _id: 1
+                            }
+                        ],
+                        %s
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [insert] command: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @Test
+        void testMissingRequiredInsertCommandField() throws SQLException {
+            var mql = """
+                        {
+                        insert: "books"
+                    }""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .hasMessage("Document does not contain key documents");
+            }
+        }
+
+        private static Stream<Arguments> testNotSupportedUpdateStatemenField() {
+            return Stream.of(
+                    of("hint: {}", "Unsupported field in [update] statement: [hint]"),
+                    of("hint: \"a\"", "Unsupported field in [update] statement: [hint]"),
+                    of("collation: {}", "Unsupported field in [update] statement: [collation]"),
+                    of("arrayFilters: []", "Unsupported field in [update] statement: [arrayFilters]"),
+                    of("sort: {}", "Unsupported field in [update] statement: [sort]"),
+                    of("upsert: true", "Unsupported field in [update] statement: [upsert]"),
+                    of("u: []", "Only document type is supported as value for field: [u]"),
+                    of("c: {}", "Unsupported field in [update] statement: [c]"));
+        }
+
+        @ParameterizedTest(name = "test not supported update statement field {0}")
+        @MethodSource
+        void testNotSupportedUpdateStatemenField(String unsupportedField, String expectedMessage) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        update: "books",
+                        updates: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                u: { $set: { outOfStock: true } },
+                                multi: true,
+                                %s
+                            }
+                        ]
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage(expectedMessage);
+            }
+        }
+
+        @ParameterizedTest(name = "test missing required update statement field {0}")
+        @ValueSource(strings = {"q", "u"})
+        void testMissingRequiredUpdateStatementField(String missingFieldName) throws SQLException {
+            var mqlDocument = BsonDocument.parse(
+                    """
+                        {
+                        update: "books",
+                        updates: [
+                            {
+                                q: {},
+                                u: {},
+                            }
+                        ]
+                    }""");
+            mqlDocument.getArray("updates").get(0).asDocument().remove(missingFieldName);
+            var mql = mqlDocument.toJson();
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .hasMessage("Document does not contain key %s".formatted(missingFieldName));
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported delete statement field {0}")
+        @ValueSource(strings = {"hint: {}", "hint: \"a\"", "collation: {}"})
+        void testNotSupportedDeleteStatementField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                limit: 0,
+                                %s
+                            }
+                        ]
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [delete] statement: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @ParameterizedTest(name = "test missing required update statement field {0}")
+        @ValueSource(strings = {"q", "limit"})
+        void testMissingRequiredDeleteStatementField(String missingFieldName) throws SQLException {
+            var mqlDocument = BsonDocument.parse(
+                    """
+                        {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: {},
+                                limit: 0,
+                            }
+                        ]
+                    }""");
+            mqlDocument.getArray("deletes").get(0).asDocument().remove(missingFieldName);
+            var mql = mqlDocument.toJson();
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .cause()
+                        .hasMessage("Document does not contain key %s".formatted(missingFieldName));
+            }
+        }
+
+        private static String getFieldName(String field) {
+            return BsonDocument.parse("{" + field + "}").getFirstKey();
         }
     }
 
@@ -597,5 +964,22 @@ class MongoPreparedStatementTests {
     private static void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
+    }
+
+    private void assertInvalidMql(String mql, SqlConsumer<PreparedStatement> executor, String expectedExceptionMessage)
+            throws SQLException {
+        try (var pstm = createMongoPreparedStatement(mql)) {
+            assertThatThrownBy(() -> executor.accept(pstm))
+                    .isInstanceOf(SQLSyntaxErrorException.class)
+                    .hasMessage(expectedExceptionMessage);
+        }
+    }
+
+    private static String toExtendedJson(String mql) {
+        return BsonDocument.parse(mql).toJson(EXTENDED_JSON_WRITER_SETTINGS);
+    }
+
+    private interface SqlConsumer<T> {
+        void accept(T t) throws SQLException;
     }
 }
