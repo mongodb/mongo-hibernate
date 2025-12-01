@@ -210,13 +210,11 @@ class MongoPreparedStatementTests {
     @Test
     void testMissingRequiredAggregateCommandField() throws SQLException {
         var mql = """
-                  {
-                      aggregate: "books"
-                  }""";
+                  {"aggregate": "books"}""";
         try (var pstm = createMongoPreparedStatement(mql)) {
             assertThatThrownBy(pstm::executeQuery)
                     .isInstanceOf(SQLSyntaxErrorException.class)
-                    .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                    .hasMessage("Invalid MQL: [%s]".formatted(mql))
                     .cause()
                     .isInstanceOf(BSONException.class)
                     .hasMessage("Document does not contain key pipeline");
@@ -225,16 +223,12 @@ class MongoPreparedStatementTests {
 
     @Test
     void testMissingRequiredProjectAggregationPipelineStage() throws SQLException {
-        var mql =
-                """
-                    {
-                    aggregate: "books",
-                    "pipeline": []
-                }""";
+        var mql = """
+                  {"aggregate": "books", "pipeline": []}""";
         try (var pstm = createMongoPreparedStatement(mql)) {
             assertThatThrownBy(pstm::executeQuery)
                     .isInstanceOf(SQLSyntaxErrorException.class)
-                    .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(toExtendedJson(mql)));
+                    .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(mql));
         }
     }
 
@@ -336,13 +330,11 @@ class MongoPreparedStatementTests {
         @Test
         void testMissingRequiredUpdateCommandField() throws SQLException {
             var mql = """
-                      {
-                          update: "books"
-                      }""";
+                      {"update": "books"}""";
             try (var pstm = createMongoPreparedStatement(mql)) {
                 assertThatThrownBy(pstm::executeUpdate)
                         .isInstanceOf(SQLSyntaxErrorException.class)
-                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
                         .cause()
                         .hasMessage("Document does not contain key updates");
             }
@@ -374,13 +366,11 @@ class MongoPreparedStatementTests {
         @Test
         void testMissingRequiredDeleteCommandField() throws SQLException {
             var mql = """
-                        {
-                        delete: "books"
-                    }""";
+                      {"delete": "books"}""";
             try (var pstm = createMongoPreparedStatement(mql)) {
                 assertThatThrownBy(pstm::executeUpdate)
                         .isInstanceOf(SQLSyntaxErrorException.class)
-                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
                         .cause()
                         .hasMessage("Document does not contain key deletes");
             }
@@ -419,13 +409,11 @@ class MongoPreparedStatementTests {
         @Test
         void testMissingRequiredInsertCommandField() throws SQLException {
             var mql = """
-                        {
-                        insert: "books"
-                    }""";
+                      {"insert": "books"}""";
             try (var pstm = createMongoPreparedStatement(mql)) {
                 assertThatThrownBy(pstm::executeUpdate)
                         .isInstanceOf(SQLSyntaxErrorException.class)
-                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
                         .cause()
                         .hasMessage("Document does not contain key documents");
             }
@@ -485,7 +473,7 @@ class MongoPreparedStatementTests {
             try (var pstm = createMongoPreparedStatement(mql)) {
                 assertThatThrownBy(pstm::executeUpdate)
                         .isInstanceOf(SQLSyntaxErrorException.class)
-                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
                         .cause()
                         .hasMessage("Document does not contain key %s".formatted(missingFieldName));
             }
@@ -519,21 +507,21 @@ class MongoPreparedStatementTests {
         void testMissingRequiredDeleteStatementField(String missingFieldName) throws SQLException {
             var mqlDocument = BsonDocument.parse(
                     """
-                        {
-                        delete: "books",
-                        deletes: [
+                    {
+                        "delete": "books",
+                        "deletes": [
                             {
-                                q: {},
-                                limit: 0,
+                                "q": {},
+                                "limit": {"$numberInt": "0"},
                             }
                         ]
                     }""");
             mqlDocument.getArray("deletes").get(0).asDocument().remove(missingFieldName);
-            var mql = mqlDocument.toJson();
+            var mql = mqlDocument.toJson(EXTENDED_JSON_WRITER_SETTINGS);
             try (var pstm = createMongoPreparedStatement(mql)) {
                 assertThatThrownBy(pstm::executeUpdate)
                         .isInstanceOf(SQLSyntaxErrorException.class)
-                        .hasMessage("Invalid MQL: [%s]".formatted(toExtendedJson(mql)))
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
                         .cause()
                         .hasMessage("Document does not contain key %s".formatted(missingFieldName));
             }
@@ -973,10 +961,6 @@ class MongoPreparedStatementTests {
                     .isInstanceOf(SQLSyntaxErrorException.class)
                     .hasMessage(expectedExceptionMessage);
         }
-    }
-
-    private static String toExtendedJson(String mql) {
-        return BsonDocument.parse(mql).toJson(EXTENDED_JSON_WRITER_SETTINGS);
     }
 
     private interface SqlConsumer<T> {
