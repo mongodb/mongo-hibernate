@@ -63,7 +63,6 @@ import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -138,100 +137,6 @@ class MongoPreparedStatementTests {
             }
             """;
 
-    @Test
-    void testNoCommandNameProvidedExecuteQuery() throws SQLException {
-        assertInvalidMql(
-                """
-                {}""",
-                PreparedStatement::executeQuery,
-                "Invalid MQL. Command name is missing: [{}]");
-    }
-
-    @Test
-    void testNoCommandNameProvidedExecuteUpdate() throws SQLException {
-        assertInvalidMql(
-                """
-                {}""",
-                PreparedStatement::executeUpdate,
-                "Invalid MQL. Command name is missing: [{}]");
-    }
-
-    @Test
-    void testNoCommandNameProvidedExecuteBatch() throws SQLException {
-        assertInvalidMql(
-                """
-                {}""",
-                preparedStatement -> {
-                    preparedStatement.addBatch();
-                    preparedStatement.executeBatch();
-                },
-                "Invalid MQL. Command name is missing: [{}]");
-    }
-
-    @Test
-    void testNoCollectionNameProvidedExecuteQuery() throws SQLException {
-        assertInvalidMql(
-                """
-                {
-                    aggregate: {}
-                }""",
-                PreparedStatement::executeQuery,
-                """
-                Invalid MQL. Collection name is missing [{"aggregate": {}}]""");
-    }
-
-    @Test
-    void testNoCollectionNameProvidedExecuteUpdate() throws SQLException {
-        assertInvalidMql(
-                """
-                {
-                    insert: {}
-                }""",
-                PreparedStatement::executeUpdate,
-                """
-                Invalid MQL. Collection name is missing [{"insert": {}}]""");
-    }
-
-    @Test
-    void testNoCollectionNameProvidedExecuteBatch() throws SQLException {
-        assertInvalidMql(
-                """
-                {
-                    insert: {}
-                }""",
-                preparedStatement -> {
-                    preparedStatement.addBatch();
-                    preparedStatement.executeBatch();
-                },
-                """
-                Invalid MQL. Collection name is missing [{"insert": {}}]""");
-    }
-
-    @Test
-    void testMissingRequiredAggregateCommandField() throws SQLException {
-        var mql = """
-                  {"aggregate": "books"}""";
-        try (var pstm = createMongoPreparedStatement(mql)) {
-            assertThatThrownBy(pstm::executeQuery)
-                    .isInstanceOf(SQLSyntaxErrorException.class)
-                    .hasMessage("Invalid MQL: [%s]".formatted(mql))
-                    .cause()
-                    .isInstanceOf(BSONException.class)
-                    .hasMessage("Document does not contain key pipeline");
-        }
-    }
-
-    @Test
-    void testMissingRequiredProjectAggregationPipelineStage() throws SQLException {
-        var mql = """
-                  {"aggregate": "books", "pipeline": []}""";
-        try (var pstm = createMongoPreparedStatement(mql)) {
-            assertThatThrownBy(pstm::executeQuery)
-                    .isInstanceOf(SQLSyntaxErrorException.class)
-                    .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(mql));
-        }
-    }
-
     @Nested
     class ParameterValueSettingTests {
 
@@ -279,7 +184,98 @@ class MongoPreparedStatementTests {
     }
 
     @Nested
-    class ExecuteThrowsSqlFeatureNotSupportedExceptionOrSqlSyntaxErrorExceptionTests {
+    class ExecuteInvalidOrUnsupportedMql {
+        @Test
+        void testNoCommandNameProvidedExecuteQuery() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{}")) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. Command name is missing: [{}]");
+            }
+        }
+
+        @Test
+        void testNoCommandNameProvidedExecuteUpdate() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{}")) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. Command name is missing: [{}]");
+            }
+        }
+
+        @Test
+        void testNoCommandNameProvidedExecuteBatch() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{}")) {
+                assertThatThrownBy(() -> {
+                            pstm.addBatch();
+                            pstm.executeBatch();
+                        })
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. Command name is missing: [{}]");
+            }
+        }
+
+        @Test
+        void testNoCollectionNameProvidedExecuteQuery() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{aggregate: {}}")) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(
+                                """
+                                Invalid MQL. Collection name is missing [{"aggregate": {}}]""");
+            }
+        }
+
+        @Test
+        void testNoCollectionNameProvidedExecuteUpdate() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{insert: {}}")) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(
+                                """
+                                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+            }
+        }
+
+        @Test
+        void testNoCollectionNameProvidedExecuteBatch() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{insert: {}}")) {
+                assertThatThrownBy(() -> {
+                            pstm.addBatch();
+                            pstm.executeBatch();
+                        })
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(
+                                """
+                                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+            }
+        }
+
+        @Test
+        void testMissingRequiredAggregateCommandField() throws SQLException {
+            var mql = """
+                      {"aggregate": "books"}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .isInstanceOf(BSONException.class)
+                        .hasMessage("Document does not contain key pipeline");
+            }
+        }
+
+        @Test
+        void testMissingRequiredProjectAggregationPipelineStage() throws SQLException {
+            var mql = """
+                      {"aggregate": "books", "pipeline": []}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(mql));
+            }
+        }
+
         @ParameterizedTest(name = "test not supported command {0}")
         @ValueSource(strings = {"findAndModify", "aggregate", "bulkWrite"})
         void testNotSupportedCommands(String commandName) throws SQLException {
@@ -952,18 +948,5 @@ class MongoPreparedStatementTests {
     private static void assertThrowsClosedException(Executable executable) {
         var exception = assertThrows(SQLException.class, executable);
         assertThat(exception.getMessage()).isEqualTo("MongoPreparedStatement has been closed");
-    }
-
-    private void assertInvalidMql(String mql, SqlConsumer<PreparedStatement> executor, String expectedExceptionMessage)
-            throws SQLException {
-        try (var pstm = createMongoPreparedStatement(mql)) {
-            assertThatThrownBy(() -> executor.accept(pstm))
-                    .isInstanceOf(SQLSyntaxErrorException.class)
-                    .hasMessage(expectedExceptionMessage);
-        }
-    }
-
-    private interface SqlConsumer<T> {
-        void accept(T t) throws SQLException;
     }
 }
