@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.service.spi;
+package com.mongodb.hibernate.cfg.spi;
 
 import com.mongodb.hibernate.cfg.MongoConfigurator;
 import java.util.Map;
