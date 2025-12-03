@@ -67,7 +67,7 @@ import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 6.0 and above}. Must be used together
+ * A MongoDB {@link Dialect} for {@linkplain #getMinimumSupportedVersion() version 7.0 and above}. Must be used together
  * with {@link MongoConnectionProvider}.
  *
  * <p>Usually Hibernate dialect represents some SQL RDBMS and speaks SQL with vendor-specific difference. MongoDB is a
@@ -154,7 +154,7 @@ import org.jspecify.annotations.Nullable;
  */
 @Sealed
 public class MongoDialect extends Dialect {
-    private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(6);
+    private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(7);
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);

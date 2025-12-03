@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -102,12 +103,12 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
 
     @Override
     default int getDriverMajorVersion() {
-        throw new RuntimeException("getDriverMajorVersion not implemented");
+        throw new FeatureNotSupportedException("getDriverMajorVersion not implemented");
     }
 
     @Override
     default int getDriverMinorVersion() {
-        throw new RuntimeException("getDriverMinorVersion not implemented");
+        throw new FeatureNotSupportedException("getDriverMinorVersion not implemented");
     }
 
     @Override
