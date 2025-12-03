@@ -148,7 +148,7 @@ The smoke tests with the `IntegrationTests` suffix, as well as the examples, req
 ```console
 source ./.evergreen/java-config.sh \
   && ./gradlew -PjavaVersion=${JAVA_VERSION} publishToMavenLocal \
-  && ./example-module/mvnw verify -f ./example-module/pom.xml \
+  && ./example-module/mvnw verify --file ./example-module/pom.xml \
     -DjavaVersion="${JAVA_VERSION}" \
     -DprojectVersion="$(./gradlew -q printProjectVersion)"
 ```

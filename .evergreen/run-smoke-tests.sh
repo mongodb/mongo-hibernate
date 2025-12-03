@@ -16,6 +16,6 @@ echo "MongoDB version: ${MONGODB_VERSION}; topology: ${TOPOLOGY}"
 ./gradlew -version
 
 ./gradlew -PjavaVersion="${JAVA_VERSION}" publishToMavenLocal \
-  && ./example-module/mvnw clean verify -f ./example-module/pom.xml \
+  && ./example-module/mvnw clean verify --file ./example-module/pom.xml \
     -DjavaVersion="${JAVA_VERSION}" \
     -DprojectVersion="$(./gradlew -q printProjectVersion)"
