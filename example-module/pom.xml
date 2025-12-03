@@ -37,6 +37,8 @@ limitations under the License.
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>${project.build.sourceEncoding}</project.reporting.outputEncoding>
+        <projectVersion>1.0.0-alpha1-SNAPSHOT</projectVersion>
+        <javaVersion>17</javaVersion>
     </properties>
     <dependencyManagement>
         <dependencies>
