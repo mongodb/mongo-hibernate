@@ -135,7 +135,6 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         return mongoClient;
     }
 
-    /** Thread-safe. */
     private static final class MongoDatabaseConnectionInfo implements DatabaseConnectionInfo {
         private final MongoConfiguration configuration;
         private final @Nullable DatabaseVersion dbmsVersion;
