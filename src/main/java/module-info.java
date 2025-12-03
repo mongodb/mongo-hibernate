@@ -42,7 +42,7 @@ module com.mongodb.hibernate {
     opens com.mongodb.hibernate.internal.id.objectid to
             org.hibernate.orm.core;
 
-    exports com.mongodb.hibernate.service.spi;
     exports com.mongodb.hibernate.cfg;
+    exports com.mongodb.hibernate.cfg.spi;
     exports com.mongodb.hibernate.annotations;
 }
