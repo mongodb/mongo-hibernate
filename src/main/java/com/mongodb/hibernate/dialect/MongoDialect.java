@@ -153,7 +153,7 @@ import org.jspecify.annotations.Nullable;
  * functions</a> see {@link #initializeFunctionRegistry(FunctionContributions)}.
  */
 public sealed class MongoDialect extends Dialect permits TestMongoDialect {
-    private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(7);
+    private static final DatabaseVersion MINIMUM_DBMS_VERSION = DatabaseVersion.make(7);
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
@@ -176,7 +176,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
 
     @Override
     protected DatabaseVersion getMinimumSupportedVersion() {
-        return MINIMUM_VERSION;
+        return MINIMUM_DBMS_VERSION;
     }
 
     @Override
