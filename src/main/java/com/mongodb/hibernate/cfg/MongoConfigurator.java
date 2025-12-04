@@ -19,7 +19,7 @@ package com.mongodb.hibernate.cfg;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
-import com.mongodb.hibernate.internal.Sealed;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.hibernate.cfg.AvailableSettings;
@@ -74,8 +74,7 @@ import org.hibernate.service.spi.Configurable;
  *
  * @see MongoConfigurationContributor
  */
-@Sealed
-public interface MongoConfigurator {
+public sealed interface MongoConfigurator permits MongoConfigurationBuilder {
     /**
      * Configures {@link MongoClientSettings}.
      *

@@ -16,13 +16,11 @@
 
 package com.mongodb.hibernate.jdbc;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.jdbc.MongoArray;
 import java.sql.Array;
@@ -168,8 +166,7 @@ final class MongoConnection implements ConnectionAdapter {
                 throw new SQLException(
                         format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
             }
-            return new MongoDatabaseMetaData(
-                    this, versionText, versionArray.get(0), versionArray.get(1), assertNotNull(BuildConfig.VERSION));
+            return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
         } catch (RuntimeException e) {
             // TODO-HIBERNATE-43 Let's do `LOGGER.error(<message>, e)`.
             // Hibernate ORM neither propagates, nor logs `e` (the cause of the `SQLException` we throw),

@@ -17,6 +17,8 @@
 package com.mongodb.hibernate.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_JDBC_DRIVER_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 
 import com.mongodb.MongoDriverInformation;
@@ -25,6 +27,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.VisibleForTesting;
+import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
 import java.io.IOException;
 import java.io.NotSerializableException;
@@ -33,7 +36,10 @@ import java.io.Serial;
 import java.sql.Connection;
 import java.sql.SQLException;
 import org.hibernate.HibernateException;
+import org.hibernate.dialect.DatabaseVersion;
+import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
+import org.hibernate.engine.jdbc.connections.spi.DatabaseConnectionInfo;
 import org.hibernate.service.UnknownUnwrapTypeException;
 import org.hibernate.service.spi.InjectService;
 import org.hibernate.service.spi.Stoppable;
@@ -57,6 +63,12 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
 
     private @Nullable StandardServiceRegistryScopedState standardServiceRegistryScopedState;
     private transient @Nullable MongoClient mongoClient;
+
+    @Override
+    public DatabaseConnectionInfo getDatabaseConnectionInfo(Dialect dialect) {
+        return new MongoDatabaseConnectionInfo(
+                assertNotNull(standardServiceRegistryScopedState).getConfiguration(), dialect.getVersion());
+    }
 
     @Override
     public Connection getConnection() throws SQLException {
@@ -121,5 +133,65 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
     @VisibleForTesting(otherwise = PRIVATE)
     @Nullable MongoClient getMongoClient() {
         return mongoClient;
+    }
+
+    private static final class MongoDatabaseConnectionInfo implements DatabaseConnectionInfo {
+        private final MongoConfiguration configuration;
+        private final @Nullable DatabaseVersion dbmsVersion;
+
+        MongoDatabaseConnectionInfo(MongoConfiguration configuration, @Nullable DatabaseVersion dbmsVersion) {
+            this.configuration = configuration;
+            this.dbmsVersion = dbmsVersion;
+        }
+
+        @Override
+        public String getJdbcUrl() {
+            return configuration.mongoClientSettings().toString();
+        }
+
+        @Override
+        public String getJdbcDriver() {
+            return MONGO_JDBC_DRIVER_NAME + " " + assertNotNull(BuildConfig.VERSION);
+        }
+
+        @Override
+        public @Nullable DatabaseVersion getDialectVersion() {
+            return dbmsVersion;
+        }
+
+        @Override
+        public @Nullable String getAutoCommitMode() {
+            return null;
+        }
+
+        @Override
+        public @Nullable String getIsolationLevel() {
+            return null;
+        }
+
+        @Override
+        public Integer getPoolMinSize() {
+            return configuration
+                    .mongoClientSettings()
+                    .getConnectionPoolSettings()
+                    .getMinSize();
+        }
+
+        @Override
+        public Integer getPoolMaxSize() {
+            return configuration
+                    .mongoClientSettings()
+                    .getConnectionPoolSettings()
+                    .getMaxSize();
+        }
+
+        @Override
+        public String toInfoString() {
+            var dbmsVersion = getDialectVersion();
+            return "\tDMBS: " + MONGO_DBMS_NAME + (dbmsVersion == null ? "" : " " + dbmsVersion)
+                    + "\n\tDatabase name: " + configuration.databaseName()
+                    + "\n\tDBMS driver: " + getJdbcDriver()
+                    + "\n\tDBMS driver settings: " + getJdbcUrl();
+        }
     }
 }

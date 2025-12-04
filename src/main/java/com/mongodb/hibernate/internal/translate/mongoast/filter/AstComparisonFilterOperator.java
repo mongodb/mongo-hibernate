@@ -16,7 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
-/** @see AstComparisonFilterOperation */
+/**
+ * @see AstComparisonFilterOperation
+ * @hidden
+ */
 @SuppressWarnings("MissingSummary")
 public enum AstComparisonFilterOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/eq/">{@code $eq}</a>. */

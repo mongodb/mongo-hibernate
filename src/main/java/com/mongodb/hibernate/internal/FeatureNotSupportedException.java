@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal;
 import java.io.Serial;
 import java.sql.SQLFeatureNotSupportedException;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class FeatureNotSupportedException extends RuntimeException {
 
     @Serial

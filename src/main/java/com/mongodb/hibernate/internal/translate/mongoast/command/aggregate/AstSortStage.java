@@ -21,7 +21,11 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/">{@code $sort}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/">{@code $sort}</a>.
+ *
+ * @hidden
+ */
 public record AstSortStage(Collection<? extends AstSortField> sortFields) implements AstStage {
 
     public AstSortStage {
