@@ -41,8 +41,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.Parameter;
+import org.junit.jupiter.params.ParameterizedClass;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
+@ParameterizedClass
+@ValueSource(booleans = {true, false})
 class MongoStatementIntegrationTests {
 
     @AutoClose
@@ -53,6 +58,9 @@ class MongoStatementIntegrationTests {
 
     @AutoClose
     private Session session;
+
+    @Parameter
+    private boolean autoCommit;
 
     @BeforeAll
     static void beforeAll() {
@@ -274,14 +282,20 @@ class MongoStatementIntegrationTests {
     }
 
     private void doWorkAwareOfAutoCommit(Work work) {
-        session.doWork(connection -> doAwareOfAutoCommit(connection, () -> work.execute(connection)));
+        doWorkWithSpecifiedAutoCommit(autoCommit, session, work);
     }
 
-    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(false, connection, () -> doAndTerminateTransaction(connection, work));
+    static void doWorkWithSpecifiedAutoCommit(boolean autoCommit, Session session, Work work) {
+        session.doWork(connection -> {
+            SqlExecutable executable = () -> work.execute(connection);
+            doWithSpecifiedAutoCommit(
+                    autoCommit,
+                    connection,
+                    autoCommit ? executable : () -> doAndTerminateTransaction(connection, executable));
+        });
     }
 
-    static void doWithSpecifiedAutoCommit(boolean autoCommit, Connection connection, SqlExecutable work)
+    private static void doWithSpecifiedAutoCommit(boolean autoCommit, Connection connection, SqlExecutable work)
             throws SQLException {
         var originalAutoCommit = connection.getAutoCommit();
         connection.setAutoCommit(autoCommit);
@@ -292,7 +306,8 @@ class MongoStatementIntegrationTests {
         }
     }
 
-    static void doAndTerminateTransaction(Connection connectionNoAutoCommit, SqlExecutable work) throws SQLException {
+    private static void doAndTerminateTransaction(Connection connectionNoAutoCommit, SqlExecutable work)
+            throws SQLException {
         Throwable primaryException = null;
         try {
             work.execute();
@@ -311,7 +326,7 @@ class MongoStatementIntegrationTests {
         }
     }
 
-    interface SqlExecutable {
+    private interface SqlExecutable {
         void execute() throws SQLException;
     }
 }

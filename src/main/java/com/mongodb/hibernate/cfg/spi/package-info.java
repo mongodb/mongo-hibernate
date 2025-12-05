@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2024-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+/** SPI related to configuring the MongoDB Extension for Hibernate ORM. */
+@NullMarked
+package com.mongodb.hibernate.cfg.spi;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
-class MongoStatementWithAutoCommitIntegrationTests extends MongoStatementIntegrationTests {
-    @Override
-    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(true, connection, work);
-    }
-}
+import org.jspecify.annotations.NullMarked;

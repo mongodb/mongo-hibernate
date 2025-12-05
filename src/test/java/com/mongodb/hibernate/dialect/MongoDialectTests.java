@@ -34,11 +34,11 @@ class MongoDialectTests {
     void constructorFailsIfVersionIsNotSupported(@Mock DialectResolutionInfo info) {
         when(info.makeCopyOrDefault(any())).thenCallRealMethod();
         when(info.makeCopy()).thenCallRealMethod();
-        when(info.getDatabaseMajorVersion()).thenReturn(5);
+        when(info.getDatabaseMajorVersion()).thenReturn(6);
         when(info.getDatabaseMinorVersion()).thenReturn(3);
         assertThatThrownBy(() -> new MongoDialect(info))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessage("The minimum supported version of MongoDB is 6.0, but you are using 5.3");
+                .hasMessage("The minimum supported version of MongoDB is 7.0, but you are using 6.3");
     }
 
     @Test
