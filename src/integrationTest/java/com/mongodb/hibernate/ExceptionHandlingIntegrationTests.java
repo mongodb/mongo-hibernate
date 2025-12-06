@@ -44,9 +44,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /** @see MongoDialect#buildSQLExceptionConversionDelegate() */
 @SessionFactory(exportSchema = false)
-@DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
+@DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
-class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
+class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware {
     private static final String COLLECTION_NAME = "items";
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_OPERATION_TIMED_OUT =
@@ -97,7 +97,7 @@ class ExceptionHandlingIntegrationTest implements SessionFactoryScopeAware {
     @ServiceRegistry(settings = @Setting(name = AvailableSettings.STATEMENT_BATCH_SIZE, value = "2"))
     @ExtendWith(MongoExtension.class)
     @SessionFactory(exportSchema = false)
-    @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTest.Item.class})
+    @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTests.Item.class})
     class Batch implements SessionFactoryScopeAware {
         private SessionFactoryScope sessionFactoryScope;
 
