@@ -1,76 +1,128 @@
 # MongoDB Extension for Hibernate ORM
 
-This product enables applications to use databases managed by the [MongoDB](https://www.mongodb.com/) DBMS
-via [Hibernate ORM](https://hibernate.org/orm/).
+<p align="right">
+  <a href="https://docs.oracle.com/en/java/javase/17/">
+    <img src="https://img.shields.io/badge/Java_SE-17+-E49639.svg?labelColor=32728B"
+        alt="Java SE requirement">
+  </a>
+  <a href="https://hibernate.org/orm/documentation/6.6/">
+    <img src="https://img.shields.io/badge/Hibernate_ORM-6.6-BAAE80.svg?labelColor=5C656C"
+        alt="Hibernate ORM requirement">
+  </a>
+  <a href="https://www.mongodb.com/docs/manual/">
+    <img src="https://img.shields.io/badge/MongoDB_-7.0+-00ED64.svg?labelColor=001E2B"
+        alt="MongoDB DBMS requirement">
+  </a>
+</p>
 
 ## Overview
 
-MongoDB speaks MQL (**M**ongoDB **Q**uery **L**anguage) instead of SQL. This product works by:
+This product enables applications to use databases managed by the [MongoDB](https://www.mongodb.com/) DBMS
+via [Hibernate ORM](https://hibernate.org/orm/).
+
+MongoDB speaks [MQL (**M**ongoDB **Q**uery **L**anguage)](https://www.mongodb.com/docs/manual/reference/mql/)
+instead of SQL. This product works by:
 
 - Creating a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/),
-  which has to be plugged into Hibernate ORM via a custom [`ConnectionProvider`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html).
-- Translating Hibernate's internal SQL AST into MQL by means of a custom [`Dialect`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/dialect/Dialect.html),
+  which has to be plugged into Hibernate ORM via a custom
+  [`ConnectionProvider`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html).
+- Translating Hibernate's internal SQL AST into MQL by means of a custom
+  [`Dialect`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/dialect/Dialect.html),
   which has to be plugged into Hibernate ORM.
 
-## Development
+## User Documentation
 
-Java 17 is the JDK version for development.
+- [Manual](https://www.mongodb.com/docs/languages/java/mongodb-hibernate/current)
+- [API](https://javadoc.io/doc/org.mongodb/mongodb-hibernate/latest/index.html)
 
-Initially Hibernate ORM v6.6 is the dependency version.
+[Standalone deployments](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) are not supported,
+because they [do not support transactions](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/).
+If you use one, you may [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
 
-MongoDB v6.0 is the minimal version this product supports.
+### Maven Artifacts
 
-> [Standalone instance](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-standalone) is not supported. It is recommended to [convert it to a replica set](https://www.mongodb.com/docs/manual/tutorial/convert-standalone-to-replica-set/).
+The `groupId:artifactId` coordinates: `org.mongodb:mongodb-hibernate`.
+
+  - [Maven Central Repository](https://repo.maven.apache.org/maven2/org/mongodb/mongodb-hibernate/)
+  - [Maven Central Repository Search](https://central.sonatype.com/artifact/org.mongodb/mongodb-hibernate)
+
+### Bug Reports
+
+Use ["Extension for Hibernate ORM" at jira.mongodb.org](https://jira.mongodb.org/projects/HIBERNATE/issues).
+
+### Feature Requests
+
+Use ["Drivers & Frameworks"/"Frameworks (e.g. Django, Hibernate, EFCore)" at feedback.mongodb.com](https://feedback.mongodb.com/?category=7548141831345841376).
+
+## Contributor Documentation
+
+[Gradle](https://gradle.org/) is used as a build tool.
 
 ### Build from Source
 
-#### Static Code Analysis
+```console
+./gradlew clean build
+```
 
-#### Code Style Check
+### Static Code Analysis
 
-We chose [Spotless](https://github.com/diffplug/spotless/tree/main/plugin-gradle) as a general-purpose formatting plugin, and [Palantir Java Format](https://github.com/palantir/palantir-java-format) as a Java-specific formatting tool integrated with it.
+#### Code Formatting
 
-To check whether any format violation exists, run `spotlessCheck` gradle task. If any format violation is found during the previous step, run `spotlessApply` auto-formatting task to fix it automatically.
+[Spotless](https://github.com/diffplug/spotless)
+[Gradle plugin](https://github.com/diffplug/spotless/tree/main/plugin-gradle) is used as a general-purpose formatting tool,
+[Palantir Java Format](https://github.com/palantir/palantir-java-format) is used as a Java-specific formatting tool
+integrated with it.
 
-#### Code Quality Check
+##### Check Code Formatting
 
-[Error Prone](https://github.com/tbroyer/gradle-errorprone-plugin) gradle plugin is chosen for Java code qualify analysis during Java compiling phrase. [NullAway](https://github.com/uber/NullAway) is a Java `NullPointerException`s (NPEs) prevention gradle plugin integrated with Error Prone. [JSpecify](https://jspecify.dev) annotations are used to help NullAway detect potential NPEs.
+```console
+./gradlew spotlessCheck
+```
 
-Both plugins are enabled on gradle's `compileJava` task.
+##### Format Code
+
+```console
+./gradlew spotlessApply
+```
+
+#### Code Quality
+
+[Error Prone](https://errorprone.info/) [Gradle plugin](https://github.com/tbroyer/gradle-errorprone-plugin)
+is used as a Java-specific code analysis tool,
+[NullAway](https://github.com/uber/NullAway) is used as a
+[`NullPointerException`](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/NullPointerException.html)
+prevention tool integrated with it. [JSpecify](https://jspecify.dev) annotations are used to specify nullness.
+
+The analysis is done as part of the Gradle `compileJava` task execution.
 
 ### Testing
 
 This project uses separate directories for unit and integration tests:
 
-- [unit test](src/test)
-- [integration test](src/integrationTest)
+- [`./src/test`](src/test)
+- [`./src/integrationTest`](src/integrationTest)
 
-#### Gradle Tasks
-
-##### Unit Test
-```console
-./gradlew clean test
-```
-
-##### Integration Test
-```console
-./gradlew clean integrationTest
-```
-
-Integration tests require a MongoDB deployment with test commands enabled,
-which may be achieved with the
+Integration tests require a MongoDB deployment with test commands enabled,  which may be achieved with the
 [`--setParameter enableTestCommands=1`](https://www.mongodb.com/docs/manual/reference/parameters/)
 command-line arguments.
-You may change the default [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/) as below, in [hibernate.properties](src/integrationTest/resources/hibernate.properties):
 
-```properties
-jakarta.persistence.jdbc.url={your_mongodb_connection_string}
+You may change the [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/)
+via the [`jakarta.persistence.jdbc.url`](https://docs.hibernate.org/orm/6.6/userguide/html_single/#settings-jakarta.persistence.jdbc.url)
+configuration property
+in [`./src/integrationTest/resources/hibernate.properties`](src/integrationTest/resources/hibernate.properties).
+
+#### Run Unit Tests
+
+```console
+./gradlew test
 ```
 
-### CI/CD
-This project uses [evergreen](https://github.com/evergreen-ci/evergreen), a distributed continuous integration system from MongoDB. The evergreen configuration is in the [.evergreen](/.evergreen) directory.
+#### Run Integration Tests
 
-## References
-- [An Introduction to Hibernate 6](https://docs.jboss.org/hibernate/orm/6.6/introduction/html_single/Hibernate_Introduction.html)
-- [A Guide to Hibernate Query Language](https://docs.jboss.org/hibernate/orm/6.6/querylanguage/html_single/Hibernate_Query_Language.html)
-- [Hibernate User Guide](https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html)
+```console
+./gradlew integrationTest
+```
+
+### Continuous Integration
+[Evergreen](https://github.com/evergreen-ci/evergreen) and [GitHub actions](https://docs.github.com/en/actions)
+are used for continuous integration.

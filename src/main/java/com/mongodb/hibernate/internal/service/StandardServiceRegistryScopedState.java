@@ -23,12 +23,12 @@ import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.hibernate.cfg.AvailableSettings.JAVA_TIME_USE_DIRECT_JDBC;
 import static org.hibernate.cfg.AvailableSettings.PREFERRED_INSTANT_JDBC_TYPE;
 
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
-import com.mongodb.hibernate.service.spi.MongoConfigurationContributor;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
