@@ -23,7 +23,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.List;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
@@ -38,15 +37,14 @@ class AstUpdateCommandTests {
         var astFieldUpdate1 = new AstFieldUpdate("title", new AstLiteral(new BsonString("War and Peace")));
         var astFieldUpdate2 = new AstFieldUpdate("author", new AstLiteral(new BsonString("Leo Tolstoy")));
 
-        final AstFilter filter;
-        filter = new AstFieldOperationFilter(
+        var filter = new AstFieldOperationFilter(
                 "_id",
                 new AstComparisonFilterOperation(
                         AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt64(12345L))));
 
         var updateCommand = new AstUpdateCommand(collection, filter, List.of(astFieldUpdate1, astFieldUpdate2));
 
-        final String expectedJson =
+        var expectedJson =
                 """
                 {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$numberLong": "12345"}}}, "u": {"$set": {"title": "War and Peace", "author": "Leo Tolstoy"}}, "multi": true}]}\
                 """;

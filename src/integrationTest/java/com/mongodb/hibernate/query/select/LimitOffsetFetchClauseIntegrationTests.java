@@ -377,7 +377,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         @Nested
         class WithHqlClauses {
 
-            private static final String expectedMqlTemplate =
+            private static final String EXPECTED_MQL_TEMPLATE =
                     """
                     {
                       "aggregate": "books",
@@ -415,7 +415,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                                 q.setParameter("limit", 10)
                                         .setParameter("offset", 0)
                                         .setFirstResult(firstResult),
-                        expectedMqlTemplate.formatted("{\"$skip\": " + firstResult + "}"),
+                        EXPECTED_MQL_TEMPLATE.formatted("{\"$skip\": " + firstResult + "}"),
                         expectedBooks,
                         Set.of(Book.COLLECTION_NAME));
             }
@@ -432,7 +432,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                                 q.setParameter("limit", 10)
                                         .setParameter("offset", 0)
                                         .setMaxResults(maxResults),
-                        expectedMqlTemplate.formatted("{\"$limit\": " + maxResults + "}"),
+                        EXPECTED_MQL_TEMPLATE.formatted("{\"$limit\": " + maxResults + "}"),
                         expectedBooks,
                         Set.of(Book.COLLECTION_NAME));
             }
@@ -451,7 +451,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                                         .setParameter("offset", 0)
                                         .setFirstResult(firstResult)
                                         .setMaxResults(maxResults),
-                        expectedMqlTemplate.formatted(
+                        EXPECTED_MQL_TEMPLATE.formatted(
                                 "{\"$skip\": " + firstResult + "}," + "{\"$limit\": " + maxResults + "}"),
                         expectedBooks,
                         Set.of(Book.COLLECTION_NAME));
@@ -497,7 +497,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     class QueryPlanCacheTests extends AbstractQueryIntegrationTests {
 
         private static final String HQL = "from Book order by id";
-        private static final String expectedMqlTemplate =
+        private static final String EXPECTED_MQL_TEMPLATE =
                 """
                 {
                   "aggregate": "books",
@@ -544,7 +544,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         isFirstResultSet ? 5 : null,
                         isMaxResultsSet ? 10 : null,
                         format(
-                                expectedMqlTemplate,
+                                EXPECTED_MQL_TEMPLATE,
                                 (isFirstResultSet ? "{\"$skip\": 5}," : ""),
                                 (isMaxResultsSet ? "{\"$limit\": 10}," : "")));
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCount();
@@ -556,7 +556,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                         isFirstResultSet ? 3 : null,
                         isMaxResultsSet ? 6 : null,
                         format(
-                                expectedMqlTemplate,
+                                EXPECTED_MQL_TEMPLATE,
                                 (isFirstResultSet ? "{\"$skip\": 3}," : ""),
                                 (isMaxResultsSet ? "{\"$limit\": 6}," : "")));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
@@ -567,16 +567,16 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         @Test
         void testCacheInvalidatedDueToQueryOptionsAdded() {
             getSessionFactoryScope().inTransaction(session -> {
-                setQueryOptionsAndQuery(session, null, null, format(expectedMqlTemplate, "", ""));
+                setQueryOptionsAndQuery(session, null, null, format(EXPECTED_MQL_TEMPLATE, "", ""));
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCount();
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                setQueryOptionsAndQuery(session, 1, null, format(expectedMqlTemplate, "{\"$skip\": 1},", ""));
+                setQueryOptionsAndQuery(session, 1, null, format(EXPECTED_MQL_TEMPLATE, "{\"$skip\": 1},", ""));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount + 1);
 
                 setQueryOptionsAndQuery(
-                        session, 1, 5, format(expectedMqlTemplate, "{\"$skip\": 1},", "{\"$limit\": 5},"));
+                        session, 1, 5, format(EXPECTED_MQL_TEMPLATE, "{\"$skip\": 1},", "{\"$limit\": 5},"));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount + 2);
             });
@@ -586,15 +586,15 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         void testCacheInvalidatedDueToQueryOptionsRemoved() {
             getSessionFactoryScope().inTransaction(session -> {
                 setQueryOptionsAndQuery(
-                        session, 10, 5, format(expectedMqlTemplate, "{\"$skip\": 10},", "{\"$limit\": 5},"));
+                        session, 10, 5, format(EXPECTED_MQL_TEMPLATE, "{\"$skip\": 10},", "{\"$limit\": 5},"));
                 var initialSelectTranslatingCount = translatingCacheTestingDialect.getSelectTranslatingCount();
                 assertThat(initialSelectTranslatingCount).isPositive();
 
-                setQueryOptionsAndQuery(session, null, 5, format(expectedMqlTemplate, "", "{\"$limit\": 5},"));
+                setQueryOptionsAndQuery(session, null, 5, format(EXPECTED_MQL_TEMPLATE, "", "{\"$limit\": 5},"));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount + 1);
 
-                setQueryOptionsAndQuery(session, null, null, format(expectedMqlTemplate, "", ""));
+                setQueryOptionsAndQuery(session, null, null, format(EXPECTED_MQL_TEMPLATE, "", ""));
                 assertThat(translatingCacheTestingDialect.getSelectTranslatingCount())
                         .isEqualTo(initialSelectTranslatingCount + 2);
             });
