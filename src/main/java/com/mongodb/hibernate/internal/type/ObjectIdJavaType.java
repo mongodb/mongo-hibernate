@@ -29,7 +29,11 @@ import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.jspecify.annotations.Nullable;
 
-/** Thread-safe. */
+/**
+ * Thread-safe.
+ *
+ * @hidden
+ */
 public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     @Serial
     private static final long serialVersionUID = 1L;

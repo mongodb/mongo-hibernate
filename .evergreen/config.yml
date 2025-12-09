@@ -137,6 +137,21 @@ tasks:
           args:
             - run-integration-tests.sh
 
+  - name: run-smoke-tests
+    tags:
+      - pr
+    commands:
+      - func: bootstrap-mongo-orchestration
+      - command: subprocess.exec
+        type: test
+        params:
+          working_dir: src
+          binary: bash
+          add_to_path:
+            - .evergreen
+          args:
+            - run-smoke-tests.sh
+
   - name: publish-snapshot
     depends_on:
       - variant: static-checks
@@ -227,9 +242,16 @@ buildvariants:
     tasks:
       - name: run-unit-tests
 
-  - matrix_name: mongo-hibernate
-    matrix_spec: { mongo-version: "*", topology: "*", os: "*" }
+  - matrix_name: run-smoke-tests
+    matrix_spec: { mongo-version: "8.0", topology: replicaset, os: linux }
+    display_name: "Smoke Tests"
+    tags:
+      - pr
+    tasks:
+      - name: run-smoke-tests
 
+  - matrix_name: run-integration-tests
+    matrix_spec: { mongo-version: "*", topology: "*", os: "*" }
     display_name: "${mongo-version} ${topology} ${os}"
     tags:
       - pr

@@ -25,4 +25,4 @@ fi
 SYSTEM_PROPERTIES="-Dorg.gradle.internal.publish.checksums.insecure=true"
 
 ./gradlew -version
-./gradlew ${SYSTEM_PROPERTIES} --stacktrace --info  ${TASK}
+./gradlew ${SYSTEM_PROPERTIES} --stacktrace --info "${TASK}"

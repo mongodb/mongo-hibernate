@@ -56,6 +56,8 @@ import org.hibernate.type.spi.TypeConfiguration;
  * <p>See <a href="https://www.mongodb.com/docs/manual/tutorial/query-arrays/">Query an Array</a>.
  *
  * <p>Thread-safe.
+ *
+ * @hidden
  */
 public final class MongoArrayContainsFunction extends AbstractArrayContainsFunction {
     public MongoArrayContainsFunction(boolean nullable, TypeConfiguration typeConfiguration) {

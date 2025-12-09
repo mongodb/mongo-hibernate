@@ -24,6 +24,8 @@ import org.bson.BsonWriter;
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/#logical">Query and Projection Operators.
  * Query Selectors. Logical</a>.
+ *
+ * @hidden
  */
 public record AstLogicalFilter(AstLogicalFilterOperator operator, Collection<? extends AstFilter> filters)
         implements AstFilter {

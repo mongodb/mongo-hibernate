@@ -26,6 +26,8 @@ import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
     public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
