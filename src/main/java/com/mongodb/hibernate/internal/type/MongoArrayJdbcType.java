@@ -62,9 +62,11 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
         return super.getArray(extractor, array, options);
     }
 
-    /** @hidden */
+    /**
+     * @hidden
+     * @mongoCme Must be thread-safe.
+     */
     @SuppressWarnings("MissingSummary")
-    // VAKOTODO @mongoCme?
     public static final class Constructor implements JdbcTypeConstructor {
         public static final Constructor INSTANCE = new Constructor();
 

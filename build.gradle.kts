@@ -160,7 +160,6 @@ tasks.withType<JavaCompile>().configureEach {
                 // Error Prone does not understand the `@hidden` standard tag.
                 // It also complains about the `javadoc` tags registered via the `-tag`/`-taglet` options
                 disable("InvalidBlockTag")
-                // VAKOTODO remove?
                 disable("AssignmentExpression")
                 option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
                 error("NullAway")
