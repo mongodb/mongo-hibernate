@@ -55,7 +55,10 @@ import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.StructJdbcType;
 import org.jspecify.annotations.Nullable;
 
-/** @mongoCme Must be thread-safe. */
+/**
+ * @hidden
+ * @mongoCme Must be thread-safe.
+ */
 @SuppressWarnings("MissingSummary")
 public final class MongoStructJdbcType implements StructJdbcType {
     @Serial

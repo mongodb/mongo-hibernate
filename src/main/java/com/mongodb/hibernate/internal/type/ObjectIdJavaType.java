@@ -29,7 +29,10 @@ import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.jspecify.annotations.Nullable;
 
-/** @mongoCme Must be thread-safe. */
+/**
+ * @hidden
+ * @mongoCme Must be thread-safe.
+ */
 @SuppressWarnings("MissingSummary")
 public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     @Serial

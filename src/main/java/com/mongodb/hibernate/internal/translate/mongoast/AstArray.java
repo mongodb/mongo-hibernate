@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public record AstArray(Collection<AstValue> elements) implements AstValue {
     @Override
     public void render(BsonWriter writer) {

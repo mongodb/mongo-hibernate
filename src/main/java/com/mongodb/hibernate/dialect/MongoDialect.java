@@ -20,8 +20,8 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.Sealed;
 import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
+import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
@@ -155,9 +155,8 @@ import org.jspecify.annotations.Nullable;
  * @mongoCme Must be immutable, as per the documentation of {@link Dialect}. It is unclear whether it should be
  *     shallowly or deeply immutable; most likely—shallowly.
  */
-@Sealed
-public class MongoDialect extends Dialect {
-    private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make(7);
+public sealed class MongoDialect extends Dialect permits TestMongoDialect {
+    private static final DatabaseVersion MINIMUM_DBMS_VERSION = DatabaseVersion.make(7);
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
@@ -171,7 +170,7 @@ public class MongoDialect extends Dialect {
      *     {@link MongoDialect#MongoDialect(DialectResolutionInfo)} fails.
      * @throws RuntimeException Always.
      */
-    @Deprecated()
+    @Deprecated
     public MongoDialect() {
         throw new RuntimeException(format(
                 "Could not instantiate [%s], see the earlier exceptions to find out why",
@@ -180,7 +179,7 @@ public class MongoDialect extends Dialect {
 
     @Override
     protected DatabaseVersion getMinimumSupportedVersion() {
-        return MINIMUM_VERSION;
+        return MINIMUM_DBMS_VERSION;
     }
 
     @Override

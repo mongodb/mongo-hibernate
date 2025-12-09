@@ -18,7 +18,11 @@ package com.mongodb.hibernate.internal;
 
 import org.jspecify.annotations.Nullable;
 
-/** Util class for various assertion purposes. */
+/**
+ * Util class for various assertion purposes.
+ *
+ * @hidden
+ */
 public final class MongoAssertions {
 
     private MongoAssertions() {}

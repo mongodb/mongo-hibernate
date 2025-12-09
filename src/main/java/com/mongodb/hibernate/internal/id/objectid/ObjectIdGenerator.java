@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * @see com.mongodb.hibernate.annotations.ObjectIdGenerator
+ * @hidden
  * @mongoCme Must be thread-safe.
  */
 @SuppressWarnings("MissingSummary")

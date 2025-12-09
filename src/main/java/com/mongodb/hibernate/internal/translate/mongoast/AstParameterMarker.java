@@ -18,7 +18,10 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonWriter;
 
-/** @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS */
+/**
+ * @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS
+ * @hidden
+ */
 @SuppressWarnings("MissingSummary")
 public final class AstParameterMarker implements AstValue {
 

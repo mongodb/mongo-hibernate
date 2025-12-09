@@ -203,6 +203,7 @@ import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * @hidden
  * @mongoCme This class and its subclasses do not have to be thread-safe because they are
  *     {@linkplain SqlAstTranslatorFactory single-use}.
  */

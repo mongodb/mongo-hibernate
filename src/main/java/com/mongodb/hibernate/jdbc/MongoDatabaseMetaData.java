@@ -16,11 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_JDBC_DRIVER_NAME;
+import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 
+import com.mongodb.hibernate.internal.BuildConfig;
+import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -28,19 +32,23 @@ import java.sql.ResultSet;
 final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     private final Connection connection;
-
-    private final Version databaseVersion;
+    private final Version dbmsVersion;
     private final Version driverVersion;
 
+    @VisibleForTesting(otherwise = PRIVATE)
     MongoDatabaseMetaData(
             Connection connection,
-            String databaseVersionText,
-            int databaseMajorVersion,
-            int databaseMinorVersion,
+            String dbmsVersionText,
+            int dbmsMajorVersion,
+            int dbmsMinorVersion,
             String driverVersionText) {
         this.connection = connection;
-        databaseVersion = new Version(databaseVersionText, databaseMajorVersion, databaseMinorVersion);
+        dbmsVersion = new Version(dbmsVersionText, dbmsMajorVersion, dbmsMinorVersion);
         driverVersion = Version.parse(driverVersionText);
+    }
+
+    MongoDatabaseMetaData(Connection connection, String dbmsVersionText, int dbmsMajorVersion, int dbmsMinorVersion) {
+        this(connection, dbmsVersionText, dbmsMajorVersion, dbmsMinorVersion, assertNotNull(BuildConfig.VERSION));
     }
 
     @Override
@@ -50,7 +58,7 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public String getDatabaseProductVersion() {
-        return databaseVersion.versionText;
+        return dbmsVersion.versionText;
     }
 
     @Override
@@ -135,12 +143,12 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
     @Override
     public int getDatabaseMajorVersion() {
-        return databaseVersion.major;
+        return dbmsVersion.major;
     }
 
     @Override
     public int getDatabaseMinorVersion() {
-        return databaseVersion.minor;
+        return dbmsVersion.minor;
     }
 
     @Override

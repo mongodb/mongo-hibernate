@@ -32,7 +32,10 @@ import org.hibernate.type.descriptor.jdbc.JdbcTypeConstructor;
 import org.hibernate.type.spi.TypeConfiguration;
 import org.jspecify.annotations.Nullable;
 
-/** @mongoCme Must be thread-safe. */
+/**
+ * @hidden
+ * @mongoCme Must be thread-safe.
+ */
 @SuppressWarnings("MissingSummary")
 public final class MongoArrayJdbcType extends ArrayJdbcType {
     @Serial
@@ -59,6 +62,9 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
         return super.getArray(extractor, array, options);
     }
 
+    /** @hidden */
+    @SuppressWarnings("MissingSummary")
+    // VAKOTODO @mongoCme?
     public static final class Constructor implements JdbcTypeConstructor {
         public static final Constructor INSTANCE = new Constructor();
 

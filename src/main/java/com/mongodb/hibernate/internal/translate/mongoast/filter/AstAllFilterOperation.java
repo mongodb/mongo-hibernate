@@ -23,8 +23,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/all/">{@code $all}</a>. */
-@SuppressWarnings("MissingSummary")
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/all/">{@code $all}</a>.
+ *
+ * @hidden
+ */
 public record AstAllFilterOperation(AstValue parameterMarkerOrArrayValue) implements AstFilterOperation {
     public AstAllFilterOperation {
         assertTrue(parameterMarkerOrArrayValue instanceof AstParameterMarker

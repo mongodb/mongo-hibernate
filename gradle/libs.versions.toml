@@ -15,19 +15,19 @@
 [versions]
 junit-jupiter = "5.13.4"
 assertj = "3.27.3"
-google-errorprone-core = "2.36.0"
+google-errorprone-core = "2.42.0"
 nullaway = "0.12.4"
 jspecify = "1.0.0" # Remember to update javadoc links
 hibernate-orm = "6.6.34.Final" # Remember to update javadoc links
 mongo-java-driver-sync = "5.6.1" # Remember to update javadoc links
 findbugs-jsr = "3.0.2"
-slf4j-api = "2.0.16"
-logback-classic = "1.5.16"
+slf4j-api = "2.0.17"
+logback-classic = "1.5.21"
 mockito = "5.16.0"
 checker-qual = "3.49.1"
 
 plugin-spotless = "7.0.2"
-plugin-errorprone = "4.1.0"
+plugin-errorprone = "4.3.0"
 plugin-buildconfig = "5.5.4"
 plugin-palantir = "2.58.0"
 plugin-ktfmt = "0.54"

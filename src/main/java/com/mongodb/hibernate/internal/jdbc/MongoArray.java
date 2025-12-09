@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.internal.jdbc;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class MongoArray implements ArrayAdapter {
     private final Object contents;
 

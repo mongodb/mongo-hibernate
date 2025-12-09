@@ -54,6 +54,7 @@ import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
 /**
+ * @hidden
  * @mongoCme The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple
  *     {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
  *     {@link BootstrapServiceRegistry}.

@@ -20,7 +20,11 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 
 import org.jspecify.annotations.Nullable;
 
-/** Util class for checking, for example, argument values. */
+/**
+ * Util class for checking, for example, argument values.
+ *
+ * @hidden
+ */
 public final class MongoChecks {
     private MongoChecks() {}
 

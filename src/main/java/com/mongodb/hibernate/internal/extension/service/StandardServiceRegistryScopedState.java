@@ -42,7 +42,10 @@ import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.jspecify.annotations.Nullable;
 
-/** @mongoCme Thread-safe. */
+/**
+ * @hidden
+ * @mongoCme Thread-safe.
+ */
 @SuppressWarnings("MissingSummary")
 public final class StandardServiceRegistryScopedState implements Service {
     @Serial
@@ -66,6 +69,7 @@ public final class StandardServiceRegistryScopedState implements Service {
     }
 
     /**
+     * @hidden
      * @mongoCme The instance methods of {@link org.hibernate.service.spi.ServiceContributor} are called multiple times
      *     if multiple {@link StandardServiceRegistry} instances are {@linkplain StandardServiceRegistryBuilder#build()
      *     built} using the same {@link BootstrapServiceRegistry}.

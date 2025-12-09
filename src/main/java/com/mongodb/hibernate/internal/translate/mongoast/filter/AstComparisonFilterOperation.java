@@ -22,6 +22,8 @@ import org.bson.BsonWriter;
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/#comparison">Query and Projection
  * Operators. Query Selectors. Comparison</a>.
+ *
+ * @hidden
  */
 public record AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value)
         implements AstFilterOperation {
