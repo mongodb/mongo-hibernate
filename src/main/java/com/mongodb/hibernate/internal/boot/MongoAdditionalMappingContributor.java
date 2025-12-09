@@ -51,6 +51,8 @@ import org.hibernate.mapping.Property;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as

@@ -22,6 +22,8 @@ import org.bson.BsonWriter;
 import org.bson.codecs.BsonValueCodec;
 import org.bson.codecs.EncoderContext;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public record AstLiteral(BsonValue literalValue) implements AstValue {
 
     private static final BsonValueCodec BSON_VALUE_CODEC = new BsonValueCodec();

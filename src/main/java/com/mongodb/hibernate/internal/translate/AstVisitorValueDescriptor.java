@@ -30,7 +30,8 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.sql.ast.tree.expression.Expression;
 
-@SuppressWarnings("UnusedTypeParameter")
+/** @hidden */
+@SuppressWarnings({"MissingSummary", "UnusedTypeParameter"})
 public final class AstVisitorValueDescriptor<T> {
 
     static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MODEL_MUTATION_RESULT =

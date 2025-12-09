@@ -21,7 +21,11 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/">{@code project}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/">{@code project}</a>.
+ *
+ * @hidden
+ */
 public record AstProjectStage(Collection<? extends AstProjectStageSpecification> specifications) implements AstStage {
 
     public AstProjectStage {

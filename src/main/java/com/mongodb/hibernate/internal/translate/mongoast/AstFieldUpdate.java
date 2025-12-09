@@ -18,7 +18,10 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import org.bson.BsonWriter;
 
-/** @see com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand */
+/**
+ * @see com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand
+ * @hidden
+ */
 @SuppressWarnings("MissingSummary")
 public record AstFieldUpdate(String name, AstValue value) implements AstNode {
     @Override

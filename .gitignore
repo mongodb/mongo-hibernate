@@ -24,7 +24,7 @@
 /bin/
 
 # Intellij IDEA
-/.idea/
+.idea/
 /*.ipr
 /*.iws
 /*.iml
@@ -35,3 +35,4 @@
 .gradle/
 .kotlin/
 build/
+target/

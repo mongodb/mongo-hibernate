@@ -23,6 +23,7 @@ import org.bson.BsonWriter;
  * <a href="https://www.mongodb.com/docs/manual/tutorial/query-documents/">Query Documents</a>.
  *
  * @see AstEmptyFilter
+ * @hidden
  */
 public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
     @Override

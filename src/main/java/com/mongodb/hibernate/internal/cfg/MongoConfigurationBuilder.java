@@ -33,6 +33,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public final class MongoConfigurationBuilder implements MongoConfigurator {
     private final MongoClientSettings.Builder mongoClientSettingsBuilder;
     private @Nullable String databaseName;

@@ -18,6 +18,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import org.bson.BsonWriter;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public record AstProjectStageIncludeSpecification(String field) implements AstProjectStageSpecification {
     @Override
     public void render(BsonWriter writer) {
