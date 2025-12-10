@@ -31,7 +31,6 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
-import com.mongodb.bulk.BulkWriteInsert;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
@@ -45,8 +44,6 @@ import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.function.BiConsumer;
 import org.bson.BsonDocument;
-import org.bson.BsonObjectId;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -88,9 +85,7 @@ class MongoStatementTests {
 
     @Test
     void testResultSetClosedWhenStatementClosed(
-            @Mock MongoCollection<BsonDocument> mongoCollection,
-            @Mock AggregateIterable<BsonDocument> aggregateIterable,
-            @Mock MongoCursor<BsonDocument> mongoCursor)
+            @Mock AggregateIterable<BsonDocument> aggregateIterable, @Mock MongoCursor<BsonDocument> mongoCursor)
             throws SQLException {
 
         doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
@@ -116,7 +111,7 @@ class MongoStatementTests {
     @Nested
     class ExecuteMethodClosesLastOpenResultSetTests {
 
-        private final String exampleQueryMql =
+        private static final String EXAMPLE_QUERY_MQL =
                 """
                 {
                     aggregate: "books",
@@ -125,7 +120,7 @@ class MongoStatementTests {
                         { $project: { _id: 0, title: 1, publishYear: 1 } }
                     ]
                 }""";
-        private final String exampleUpdateMql =
+        private static final String EXAMPLE_UPDATE_MQL =
                 """
                 {
                   update: "members",
@@ -144,9 +139,6 @@ class MongoStatementTests {
         @Mock
         MongoCursor<BsonDocument> mongoCursor;
 
-        private static final BulkWriteResult BULK_WRITE_RESULT = BulkWriteResult.acknowledged(
-                1, 0, 2, 3, emptyList(), List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 1)))));
-
         private ResultSet lastOpenResultSet;
 
         @BeforeEach
@@ -155,28 +147,29 @@ class MongoStatementTests {
             doReturn(aggregateIterable).when(mongoCollection).aggregate(same(clientSession), anyList());
             doReturn(mongoCursor).when(aggregateIterable).cursor();
 
-            lastOpenResultSet = mongoStatement.executeQuery(exampleQueryMql);
+            lastOpenResultSet = mongoStatement.executeQuery(EXAMPLE_QUERY_MQL);
             assertFalse(lastOpenResultSet.isClosed());
         }
 
         @Test
         void testExecuteQuery() throws SQLException {
-            mongoStatement.executeQuery(exampleQueryMql);
+            mongoStatement.executeQuery(EXAMPLE_QUERY_MQL);
             assertTrue(lastOpenResultSet.isClosed());
         }
 
         @Test
         void testExecuteUpdate() throws SQLException {
-            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
-            doReturn(BULK_WRITE_RESULT).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
+            doReturn(BulkWriteResult.acknowledged(0, 0, 0, 0, emptyList(), emptyList()))
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
 
-            mongoStatement.executeUpdate(exampleUpdateMql);
+            mongoStatement.executeUpdate(EXAMPLE_UPDATE_MQL);
             assertTrue(lastOpenResultSet.isClosed());
         }
 
         @Test
         void testExecute() throws SQLException {
-            assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.execute(exampleUpdateMql));
+            assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.execute(EXAMPLE_UPDATE_MQL));
             assertTrue(lastOpenResultSet.isClosed());
         }
     }
