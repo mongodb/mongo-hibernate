@@ -483,7 +483,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
 
         record StagesAndJdbcParameters(
-                List<AstStage> stages, @Nullable JdbcParameter offset, @Nullable JdbcParameter limit) {}
+                List<AstStage> stages,
+                @Nullable JdbcParameter offset,
+                @Nullable JdbcParameter limit) {}
     }
 
     void applyQueryOptions(QueryOptions queryOptions) {

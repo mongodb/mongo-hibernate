@@ -13,24 +13,34 @@
 # limitations under the License.
 
 [versions]
+# We are not upgrading past 5.13.4
+# because https://github.com/junit-team/junit-framework/releases/tag/r5.14.0
+# removed the constructor used by `hibernate-testing`:
+# https://github.com/hibernate/hibernate-orm/blob/6.6/hibernate-testing/src/main/java/org/hibernate/testing/bytecode/enhancement/extension/engine/BytecodeEnhancedTestEngine.java#L229-L232.
+# `hibernate-testing` 7.0 does not use the removed constructor:
+# https://github.com/hibernate/hibernate-orm/blob/7.0/hibernate-testing/src/main/java/org/hibernate/testing/bytecode/enhancement/extension/engine/BytecodeEnhancedTestEngine.java#L230-L234.
 junit-jupiter = "5.13.4"
-assertj = "3.27.3"
+assertj = "3.27.6"
+# We are not upgrading past 2.42.0
+# because https://github.com/google/error-prone/releases/tag/v2.43.0 requires Java SE 21+.
 google-errorprone-core = "2.42.0"
-nullaway = "0.12.4"
+nullaway = "0.12.14"
 jspecify = "1.0.0" # Remember to update javadoc links
-hibernate-orm = "6.6.34.Final" # Remember to update javadoc links
-mongo-java-driver-sync = "5.6.1" # Remember to update javadoc links
+hibernate-orm = "6.6.38.Final" # Remember to update javadoc links
+mongo-java-driver-sync = "5.6.2" # Remember to update javadoc links
 findbugs-jsr = "3.0.2"
 slf4j-api = "2.0.17"
 logback-classic = "1.5.21"
-mockito = "5.16.0"
-checker-qual = "3.49.1"
+mockito = "5.21.0"
+checker-qual = "3.52.1"
 
-plugin-spotless = "7.0.2"
+plugin-spotless = "8.1.0"
 plugin-errorprone = "4.3.0"
-plugin-buildconfig = "5.5.4"
-plugin-palantir = "2.58.0"
-plugin-ktfmt = "0.54"
+plugin-buildconfig = "5.6.8"
+# We are not upgrading past 2.77.0
+# because https://github.com/palantir/palantir-java-format/releases/tag/2.78.0 messed up text block formatting.
+plugin-palantir = "2.77.0"
+plugin-ktfmt = "0.59"
 plugin-nexus-publish = "2.0.0"
 
 [libraries]
