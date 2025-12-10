@@ -465,7 +465,7 @@ class MongoPreparedStatementTests {
                         ]
                     }""");
             mqlDocument.getArray("updates").get(0).asDocument().remove(missingFieldName);
-            var mql = mqlDocument.toJson();
+            var mql = mqlDocument.toJson(EXTENDED_JSON_WRITER_SETTINGS);
             try (var pstm = createMongoPreparedStatement(mql)) {
                 assertThatThrownBy(pstm::executeUpdate)
                         .isInstanceOf(SQLSyntaxErrorException.class)
