@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.extension;
+package com.mongodb.hibernate.internal.boot;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
@@ -23,6 +23,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
+import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import java.sql.Time;
@@ -85,6 +86,10 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             InFlightMetadataCollector metadata,
             ResourceStreamLocator resourceStreamLocator,
             MetadataBuildingContext buildingContext) {
+        if (!(metadata.getDatabase().getDialect() instanceof MongoDialect)) {
+            // avoid interfering with bootstrapping unrelated to the MongoDB Extension for Hibernate ORM
+            return;
+        }
         forbidEmbeddablesWithoutPersistentAttributes(metadata);
         metadata.getEntityBindings().forEach(persistentClass -> {
             checkPropertyTypes(persistentClass);

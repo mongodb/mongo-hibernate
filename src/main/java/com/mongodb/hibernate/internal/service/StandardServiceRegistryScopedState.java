@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.extension.service;
+package com.mongodb.hibernate.internal.service;
 
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
+import static org.hibernate.cfg.AvailableSettings.DIALECT_RESOLVERS;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.hibernate.cfg.AvailableSettings.JAVA_TIME_USE_DIRECT_JDBC;
 import static org.hibernate.cfg.AvailableSettings.PREFERRED_INSTANT_JDBC_TYPE;
 
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
+import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
@@ -35,6 +38,8 @@ import java.util.Set;
 import org.hibernate.HibernateException;
 import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.engine.jdbc.dialect.spi.DialectFactory;
 import org.hibernate.service.Service;
 import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -78,17 +83,52 @@ public final class StandardServiceRegistryScopedState implements Service {
                 @Override
                 public StandardServiceRegistryScopedState initiateService(
                         Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
+                    checkMongoDialectIsPluggedIn(configurationValues, serviceRegistry);
+                    checkMongoConnectionProviderIsPluggedIn(configurationValues);
                     return new StandardServiceRegistryScopedState(
                             createMongoConfiguration(configurationValues, serviceRegistry));
                 }
             });
         }
 
-        private MongoConfiguration createMongoConfiguration(
+        private static void checkMongoDialectIsPluggedIn(
+                Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
+            var dialectFactory = serviceRegistry.getService(DialectFactory.class);
+            if ((dialectFactory == null
+                            || dialectFactory.getClass().getPackageName().startsWith("org.hibernate"))
+                    && configurationValues.get(DIALECT_RESOLVERS) == null) {
+                // If `DialectFactory` is different from the ones Hibernate ORM provides, or if
+                // `DIALECT_RESOLVERS` is specified, then we cannot detect whether `MongoDialect` is plugged in.
+                // Otherwise, we know that `DIALECT` is the only way to plug `MongoDialect` in,
+                // and we can detect whether it is plugged in.
+                var dialect = configurationValues.get(AvailableSettings.DIALECT);
+                if (!((dialect instanceof MongoDialect)
+                        || (dialect instanceof Class<?> dialectClass
+                                && MongoDialect.class.isAssignableFrom(dialectClass))
+                        || (dialect instanceof String dialectName
+                                && dialectName.startsWith("com.mongodb.hibernate")))) {
+                    throw new RuntimeException("%s must be plugged in, for example, via the [%s] configuration property"
+                            .formatted(MongoDialect.class.getName(), AvailableSettings.DIALECT));
+                }
+            }
+        }
+
+        private static void checkMongoConnectionProviderIsPluggedIn(Map<String, Object> configurationValues) {
+            var connectionProvider = configurationValues.get(AvailableSettings.CONNECTION_PROVIDER);
+            if (!((connectionProvider instanceof MongoConnectionProvider)
+                    || (connectionProvider instanceof Class<?> connectionProviderClass
+                            && MongoConnectionProvider.class.isAssignableFrom(connectionProviderClass))
+                    || (connectionProvider instanceof String connectionProviderName
+                            && connectionProviderName.startsWith("com.mongodb.hibernate")))) {
+                throw new RuntimeException("%s must be plugged in, for example, via the [%s] configuration property"
+                        .formatted(MongoConnectionProvider.class.getName(), AvailableSettings.CONNECTION_PROVIDER));
+            }
+        }
+
+        private static MongoConfiguration createMongoConfiguration(
                 Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
             var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
-            MongoConfigurationContributor mongoConfigurationContributor =
-                    getMongoConfigurationContributor(serviceRegistry);
+            var mongoConfigurationContributor = getMongoConfigurationContributor(serviceRegistry);
             if (jdbcUrl == null && mongoConfigurationContributor == null) {
                 throw new HibernateException(format(
                         "Configuration property [%s] is required unless %s is provided",
@@ -102,7 +142,7 @@ public final class StandardServiceRegistryScopedState implements Service {
             return mongoConfigurationBuilder.build();
         }
 
-        private @Nullable MongoConfigurationContributor getMongoConfigurationContributor(
+        private static @Nullable MongoConfigurationContributor getMongoConfigurationContributor(
                 ServiceRegistryImplementor serviceRegistry) {
             MongoConfigurationContributor result = null;
             try {
