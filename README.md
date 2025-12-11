@@ -3,16 +3,13 @@
 <p align="right">
   <a href="https://docs.oracle.com/en/java/javase/17/">
     <img src="https://img.shields.io/badge/Java_SE-17+-E49639.svg?labelColor=32728B"
-        alt="Java SE requirement">
-  </a>
+        alt="Java SE requirement"/></a>
   <a href="https://hibernate.org/orm/documentation/6.6/">
     <img src="https://img.shields.io/badge/Hibernate_ORM-6.6-BAAE80.svg?labelColor=5C656C"
-        alt="Hibernate ORM requirement">
-  </a>
+        alt="Hibernate ORM requirement"/></a>
   <a href="https://www.mongodb.com/docs/manual/">
     <img src="https://img.shields.io/badge/MongoDB_-7.0+-00ED64.svg?labelColor=001E2B"
-        alt="MongoDB DBMS requirement">
-  </a>
+        alt="MongoDB DBMS requirement"/></a>
 </p>
 
 ## Overview
