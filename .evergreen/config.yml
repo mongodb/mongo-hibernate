@@ -250,14 +250,14 @@ buildvariants:
     matrix_spec: { jdk: "*" }
     tags:
       - pr
-    display_name: "Unit Tests \${jdk}"
+    display_name: "Unit Tests ${jdk}"
     run_on: rhel80-medium
     tasks:
       - name: run-unit-tests
 
   - matrix_name: run-smoke-tests
-    matrix_spec: { mongo-version: "8.0", topology: replicaset, os: linux }
-    display_name: "Smoke Tests"
+    matrix_spec: { mongo-version: "8.0", topology: replicaset, os: linux, jdk: "jdk17" }
+    display_name: "Smoke Tests ${mongo-version} ${topology} ${os} ${jdk}"
     tags:
       - pr
     tasks:
@@ -265,7 +265,7 @@ buildvariants:
 
   - matrix_name: run-integration-tests
     matrix_spec: { mongo-version: "*", topology: "*", os: "*", jdk: "*" }
-    display_name: "${mongo-version} ${topology} ${os}"
+    display_name: "Integration Tests ${mongo-version} ${topology} ${os} ${jdk}"
     tags:
       - pr
     tasks:
