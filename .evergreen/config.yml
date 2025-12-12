@@ -221,6 +221,18 @@ axes:
         display_name: Linux
         run_on: rhel80-small
 
+  - id: "jdk"
+    display_name: "JDK"
+    values:
+      - id: "jdk17"
+        display_name: "JDK17"
+        variables:
+          JAVA_VERSION: "17"
+      - id: "jdk25"
+        display_name: "JDK25"
+        variables:
+          JAVA_VERSION: "25"
+
 ########################################
 #           Build Variants             #
 ########################################
@@ -234,10 +246,11 @@ buildvariants:
     tasks:
       - name: static-analysis
 
-  - name: unit-tests
+  - matrix_name: unit-tests
+    matrix_spec: { jdk: "*" }
     tags:
       - pr
-    display_name: "Unit Tests"
+    display_name: "Unit Tests \${jdk}"
     run_on: rhel80-medium
     tasks:
       - name: run-unit-tests
@@ -251,7 +264,7 @@ buildvariants:
       - name: run-smoke-tests
 
   - matrix_name: run-integration-tests
-    matrix_spec: { mongo-version: "*", topology: "*", os: "*" }
+    matrix_spec: { mongo-version: "*", topology: "*", os: "*", jdk: "*" }
     display_name: "${mongo-version} ${topology} ${os}"
     tags:
       - pr
