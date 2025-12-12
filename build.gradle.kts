@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+import java.time.Duration
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import java.time.Duration
 
 plugins {
     id("project.base")
