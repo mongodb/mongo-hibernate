@@ -30,10 +30,10 @@ import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Thread-safe.
- *
  * @hidden
+ * @mongoCme Must be thread-safe.
  */
+@SuppressWarnings("MissingSummary")
 public final class ObjectIdJavaType extends AbstractClassJavaType<ObjectId> {
     @Serial
     private static final long serialVersionUID = 1L;

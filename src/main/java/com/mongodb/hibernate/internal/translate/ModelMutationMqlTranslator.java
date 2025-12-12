@@ -32,6 +32,11 @@ import org.hibernate.sql.model.internal.TableUpdateNoSet;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * @mongoCme Does not have to be thread-safe because it is
+ *     {@linkplain MongoTranslatorFactory#buildModelMutationTranslator(TableMutation, SessionFactoryImplementor)
+ *     single-use}.
+ */
 final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
 
     private final TableMutation<O> tableMutation;
