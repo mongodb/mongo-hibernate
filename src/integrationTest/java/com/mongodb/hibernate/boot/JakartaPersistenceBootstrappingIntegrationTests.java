@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.boot;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mongodb.client.MongoCollection;
@@ -41,18 +42,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = JakartaPersistenceBootstrappingIntegrationTests.Item.class)
 @ExtendWith(MongoExtension.class)
 class JakartaPersistenceBootstrappingIntegrationTests {
-    private static final String COLLECTION_NAME = "items";
-
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
     @Test
     void smoke(EntityManagerFactoryScope scope) {
-        scope.inTransaction(em -> {
-            var item = new Item();
-            item.id = 1;
-            em.persist(item);
-        });
+        scope.inTransaction(em -> em.persist(new Item(1)));
         assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
@@ -61,5 +56,9 @@ class JakartaPersistenceBootstrappingIntegrationTests {
     static class Item {
         @Id
         int id;
+
+        Item(int id) {
+            this.id = id;
+        }
     }
 }

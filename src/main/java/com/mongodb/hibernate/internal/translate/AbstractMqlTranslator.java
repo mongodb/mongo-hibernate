@@ -51,7 +51,7 @@ import static java.lang.String.format;
 import static org.hibernate.query.sqm.FetchClauseType.ROWS_ONLY;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;

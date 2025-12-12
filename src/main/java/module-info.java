@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import com.mongodb.hibernate.internal.extension.MongoAdditionalMappingContributor;
-import com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.boot.MongoAdditionalMappingContributor;
+import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.service.spi.ServiceContributor;
 

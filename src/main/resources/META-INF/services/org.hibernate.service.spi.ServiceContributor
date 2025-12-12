@@ -1,1 +1,5 @@
-com.mongodb.hibernate.internal.extension.service.StandardServiceRegistryScopedState$ServiceContributor
+# Hibernate ORM initiates services on demand, so despite this service contributor being available to any
+# `org.hibernate.SessionFactory`/`jakarta.persistence.EntityManagerFactory` that is being bootstrapped,
+# its corresponding service will not be initiated until it is requested.
+# That means, it will not interfere with bootstrapping unrelated to the MongoDB Extension for Hibernate ORM.
+com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState$ServiceContributor
