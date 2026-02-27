@@ -89,7 +89,7 @@ public final class MongoConfigurationBuilder implements MongoConfigurator {
                 return new ConnectionString(propertyValue);
             } catch (RuntimeException e) {
                 throw MongoConfigurationBuilder.ConfigPropertiesParser.Exceptions.failedToParse(
-                        propertyName, propertyValue, ConnectionString.class);
+                        propertyName, propertyValue, ConnectionString.class, e);
             }
         }
 
@@ -103,10 +103,19 @@ public final class MongoConfigurationBuilder implements MongoConfigurator {
                         Arrays.stream(expectedTypes).map(Type::getTypeName).collect(Collectors.joining(", "))));
             }
 
-            static RuntimeException failedToParse(String propertyName, String propertyValue, Type type) {
-                return new RuntimeException(format(
-                        "Failed to get %s from configuration property [%s] with value [%s]",
-                        type.getTypeName(), propertyName, propertyValue));
+            static RuntimeException failedToParse(
+                    String propertyName, String propertyValue, Type type, Throwable cause) {
+                var exception = new RuntimeException(
+                        format(
+                                "Failed to get %s from configuration property [%s] with value [%s]",
+                                type.getTypeName(), propertyName, propertyValue),
+                        cause);
+                // we don't want to pollute the stack trace with the internals of the configuration parsing,
+                // so we clear it here
+                // the cause of the exception will still be available and will contain the original stack trace,
+                // so we won't lose any information about the root cause of the failure
+                exception.setStackTrace(new StackTraceElement[0]);
+                return exception;
             }
         }
     }

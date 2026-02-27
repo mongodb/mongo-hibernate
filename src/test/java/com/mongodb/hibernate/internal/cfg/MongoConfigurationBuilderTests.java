@@ -42,6 +42,14 @@ class MongoConfigurationBuilderTests {
     }
 
     @Test
+    void defaultsWithInvalidConnectionString() {
+        var e = assertThrows(RuntimeException.class, () -> new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, "mongodb+srv://mongo:27017/mongo"))
+                .databaseName("testDbName")
+                .build());
+        assertThat(e).hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void overridesDefaults() {
         var config = new MongoConfigurationBuilder()
                 .applyToMongoClientSettings(builder -> builder.applyConnectionString(
@@ -53,6 +61,7 @@ class MongoConfigurationBuilderTests {
                 config.mongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
         assertEquals("testDbName", config.databaseName());
     }
+
 
     @Test
     void overrides() {
@@ -95,6 +104,7 @@ class MongoConfigurationBuilderTests {
                     RuntimeException.class,
                     () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
             assertThat(e.getMessage()).matches("Failed to get .* from configuration property .*");
+            assertThat(e).hasCauseInstanceOf(RuntimeException.class);
         }
 
         private static void assertUnsupportedType(String propertyName, Object propertyValue) {
