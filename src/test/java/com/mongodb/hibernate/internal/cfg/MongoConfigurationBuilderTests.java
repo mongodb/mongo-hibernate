@@ -20,11 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -42,11 +44,32 @@ class MongoConfigurationBuilderTests {
     }
 
     @Test
+    @DisplayName(
+            "defaults with invalid connection string that contains mongodb+srv with port number should throw an exception")
     void defaultsWithInvalidConnectionString() {
-        var e = assertThrows(RuntimeException.class, () -> new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, "mongodb+srv://mongo:27017/mongo"))
+        var mongoSrvUrlWithPort = "mongodb+srv://mongo:27017/mongo";
+        var e = assertThrows(RuntimeException.class, () -> new MongoConfigurationBuilder(
+                        Map.of(JAKARTA_JDBC_URL, mongoSrvUrlWithPort))
                 .databaseName("testDbName")
                 .build());
         assertThat(e).hasCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(e).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName(
+            "overrides defaults with invalid connection string that contains mongodb+srv with port number should throw an exception")
+    void overridesDefaultsWithInvalidConnectionString() {
+        var mongoSrvUrlWithPort = "mongodb+srv://mongo:27017/mongo";
+        var e = assertThrows(RuntimeException.class, () -> new MongoConfigurationBuilder()
+                .applyToMongoClientSettings(
+                        builder -> builder.applyConnectionString(new ConnectionString(mongoSrvUrlWithPort)))
+                .databaseName("testDbName")
+                .build());
+        assertThat(e).isInstanceOf(IllegalArgumentException.class);
+        // unlike #defaultsWithInvalidConnectionString,
+        // the exception is not wrapped in a RuntimeException
+        assertNull(e.getCause());
     }
 
     @Test
@@ -61,7 +84,6 @@ class MongoConfigurationBuilderTests {
                 config.mongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
         assertEquals("testDbName", config.databaseName());
     }
-
 
     @Test
     void overrides() {
