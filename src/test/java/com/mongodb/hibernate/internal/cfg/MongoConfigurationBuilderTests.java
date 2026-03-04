@@ -16,60 +16,29 @@
 
 package com.mongodb.hibernate.internal.cfg;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import java.util.Map;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 class MongoConfigurationBuilderTests {
     @Test
     void requiresPropertiesThatHaveNoDefaults() {
-        var e = assertThrows(NullPointerException.class, () -> new MongoConfigurationBuilder().build());
-        assertEquals("databaseName must not be null", e.getMessage());
+        assertThatThrownBy(() -> new MongoConfigurationBuilder().build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("databaseName must not be null");
     }
 
     @Test
     void defaults() {
         var config = new MongoConfigurationBuilder().databaseName("testDbName").build();
         assertEquals(MongoClientSettings.builder().build(), config.mongoClientSettings());
-    }
-
-    @Test
-    @DisplayName(
-            "defaults with invalid connection string that contains mongodb+srv with port number should throw an exception")
-    void defaultsWithInvalidConnectionString() {
-        var mongoSrvUrlWithPort = "mongodb+srv://mongo:27017/mongo";
-        var e = assertThrows(RuntimeException.class, () -> new MongoConfigurationBuilder(
-                        Map.of(JAKARTA_JDBC_URL, mongoSrvUrlWithPort))
-                .databaseName("testDbName")
-                .build());
-        assertThat(e).hasCauseInstanceOf(IllegalArgumentException.class);
-        assertThat(e).isInstanceOf(RuntimeException.class);
-    }
-
-    @Test
-    @DisplayName(
-            "overrides defaults with invalid connection string that contains mongodb+srv with port number should throw an exception")
-    void overridesDefaultsWithInvalidConnectionString() {
-        var mongoSrvUrlWithPort = "mongodb+srv://mongo:27017/mongo";
-        var e = assertThrows(RuntimeException.class, () -> new MongoConfigurationBuilder()
-                .applyToMongoClientSettings(
-                        builder -> builder.applyConnectionString(new ConnectionString(mongoSrvUrlWithPort)))
-                .databaseName("testDbName")
-                .build());
-        assertThat(e).isInstanceOf(IllegalArgumentException.class);
-        // unlike #defaultsWithInvalidConnectionString,
-        // the exception is not wrapped in a RuntimeException
-        assertNull(e.getCause());
     }
 
     @Test
@@ -107,8 +76,18 @@ class MongoConfigurationBuilderTests {
                     () -> assertJakartaJdbcUrl("testReplicaSetName", "testDbName", connectionStringText),
                     () -> assertJakartaJdbcUrl(
                             "testReplicaSetName", "testDbName", new ConnectionString(connectionStringText)),
-                    () -> assertFailedToParse(JAKARTA_JDBC_URL, "invalid connection string"),
+                    () -> assertFailedToParse(JAKARTA_JDBC_URL, ""),
                     () -> assertUnsupportedType(JAKARTA_JDBC_URL, new StringBuilder()));
+        }
+
+        @Test
+        void applyToMongoClientSettingsPropagatesException() {
+            var exception = new RuntimeException();
+            assertThatThrownBy(() -> new MongoConfigurationBuilder()
+                            .applyToMongoClientSettings(builder -> {
+                                throw exception;
+                            }))
+                    .isEqualTo(exception);
         }
 
         private static void assertJakartaJdbcUrl(
@@ -122,18 +101,16 @@ class MongoConfigurationBuilderTests {
         }
 
         private static void assertFailedToParse(String propertyName, Object propertyValue) {
-            var e = assertThrows(
-                    RuntimeException.class,
-                    () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
-            assertThat(e.getMessage()).matches("Failed to get .* from configuration property .*");
-            assertThat(e).hasCauseInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build())
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageMatching("Failed to get .* from configuration property .*")
+                    .hasCauseInstanceOf(RuntimeException.class);
         }
 
         private static void assertUnsupportedType(String propertyName, Object propertyValue) {
-            var e = assertThrows(
-                    RuntimeException.class,
-                    () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
-            assertThat(e.getMessage()).matches("Type .* must be one of .*");
+            assertThatThrownBy(() -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build())
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageMatching("Type .* must be one of .*");
         }
     }
 }
