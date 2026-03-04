@@ -76,7 +76,7 @@ class MongoConfigurationBuilderTests {
                     () -> assertJakartaJdbcUrl("testReplicaSetName", "testDbName", connectionStringText),
                     () -> assertJakartaJdbcUrl(
                             "testReplicaSetName", "testDbName", new ConnectionString(connectionStringText)),
-                    () -> assertFailedToParse(JAKARTA_JDBC_URL, ""),
+                    () -> assertFailedToParse(JAKARTA_JDBC_URL, "invalid connection string"),
                     () -> assertUnsupportedType(JAKARTA_JDBC_URL, new StringBuilder()));
         }
 
