@@ -83,10 +83,9 @@ class MongoConfigurationBuilderTests {
         @Test
         void applyToMongoClientSettingsPropagatesException() {
             var exception = new RuntimeException();
-            assertThatThrownBy(() -> new MongoConfigurationBuilder()
-                            .applyToMongoClientSettings(builder -> {
-                                throw exception;
-                            }))
+            assertThatThrownBy(() -> new MongoConfigurationBuilder().applyToMongoClientSettings(builder -> {
+                        throw exception;
+                    }))
                     .isEqualTo(exception);
         }
 
