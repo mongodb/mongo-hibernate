@@ -803,7 +803,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairHavingNonInsertable")
-        record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
+        record PairHavingNonInsertable(
+                @Column(insertable = false) int a, int b) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)
@@ -836,7 +837,9 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairAllNonInsertable")
-        record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
+        record PairAllNonInsertable(
+                @Column(insertable = false) int a,
+                @Column(insertable = false) int b) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)
