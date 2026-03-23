@@ -16,4 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+/** @hidden */
+@SuppressWarnings("MissingSummary")
 public interface AstValue extends AstNode {}

@@ -20,7 +20,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import java.util.Collection;
 import org.bson.BsonWriter;
 
-/** See <a href="https://www.mongodb.com/docs/manual/reference/command/aggregate/">{@code aggregate}</a>. */
+/**
+ * See <a href="https://www.mongodb.com/docs/manual/reference/command/aggregate/">{@code aggregate}</a>.
+ *
+ * @hidden
+ */
 public record AstAggregateCommand(String collection, Collection<? extends AstStage> stages) implements AstCommand {
 
     @Override

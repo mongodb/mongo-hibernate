@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
  * Tread-safe.
  *
  * @see com.mongodb.hibernate.annotations.ObjectIdGenerator
+ * @hidden
  */
 public final class ObjectIdGenerator implements BeforeExecutionGenerator {
     @Serial

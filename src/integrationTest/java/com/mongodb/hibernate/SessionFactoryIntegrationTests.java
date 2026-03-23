@@ -36,9 +36,9 @@ class SessionFactoryIntegrationTests {
 
     @Test
     void testInvalidConnectionString() {
-        assertThrows(ServiceException.class, () -> buildSessionFactory(
-                        Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://localhost/test"))
-                .close());
+        assertThrows(
+                ServiceException.class, () -> buildSessionFactory(Map.of(JAKARTA_JDBC_URL, "jdbc:postgresql://host/"))
+                        .close());
     }
 
     @Test
@@ -60,12 +60,10 @@ class SessionFactoryIntegrationTests {
     }
 
     private static SessionFactory buildSessionFactory(Map<String, Object> settings) throws ServiceException {
-        var standardServiceRegistry =
-                new StandardServiceRegistryBuilder().applySettings(settings).build();
-        return new MetadataSources(standardServiceRegistry)
-                .getMetadataBuilder()
-                .build()
-                .getSessionFactoryBuilder()
-                .build();
+        return new MetadataSources()
+                .buildMetadata(new StandardServiceRegistryBuilder()
+                        .applySettings(settings)
+                        .build())
+                .buildSessionFactory();
     }
 }

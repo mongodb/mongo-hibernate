@@ -14,14 +14,9 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-
-class MongoStatementWithAutoCommitIntegrationTests extends MongoStatementIntegrationTests {
-    @Override
-    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(true, connection, work);
-    }
+open module com.mongodb.hibernate.example.test {
+    requires com.mongodb.hibernate.example;
+    requires jakarta.persistence;
+    requires org.junit.jupiter.api;
+    requires org.assertj.core;
 }

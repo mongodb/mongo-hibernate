@@ -19,7 +19,7 @@ package com.mongodb.hibernate.cfg;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
-import com.mongodb.hibernate.internal.Sealed;
+import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
 import java.util.function.Consumer;
 import org.hibernate.cfg.AvailableSettings;
@@ -50,10 +50,15 @@ import org.hibernate.service.spi.Configurable;
  *                     <li>{@link ConnectionString}</li>
  *                 </ul>
  *             </td>
- *             <td>Is {@linkplain MongoClientSettings.Builder#applyConnectionString(ConnectionString) based} on
- *             the {@link ConnectionString} {@linkplain ConnectionString#ConnectionString(String) constructed} from
- *             {@value AvailableSettings#JAKARTA_JDBC_URL}, if the latter is configured; otherwise a {@link MongoClientSettings}
- *             instance with its defaults.</td>
+ *             <td>
+ *                 Is {@linkplain MongoClientSettings.Builder#applyConnectionString(ConnectionString) based} on
+ *                 the {@link ConnectionString} {@linkplain ConnectionString#ConnectionString(String) constructed} from
+ *                 {@value AvailableSettings#JAKARTA_JDBC_URL}, if the latter is configured; otherwise a {@link MongoClientSettings}
+ *                 instance with its defaults.
+ *
+ *                 <p><strong>Warning:</strong> Do not include sensitive information in {@value AvailableSettings#JAKARTA_JDBC_URL},
+ *                 use {@link #applyToMongoClientSettings(Consumer)} instead.
+ *             </td>
  *         </tr>
  *         <tr>
  *             <td>{@link #databaseName(String)}</td>
@@ -74,8 +79,7 @@ import org.hibernate.service.spi.Configurable;
  *
  * @see MongoConfigurationContributor
  */
-@Sealed
-public interface MongoConfigurator {
+public sealed interface MongoConfigurator permits MongoConfigurationBuilder {
     /**
      * Configures {@link MongoClientSettings}.
      *

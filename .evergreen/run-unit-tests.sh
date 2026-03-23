@@ -13,4 +13,4 @@ echo "mongo-hibernate: running unit tests ..."
 
 ./gradlew -version
 
-./gradlew -PjavaVersion=${JAVA_VERSION} --stacktrace --info --continue clean test
+./gradlew -PjavaVersion="${JAVA_VERSION}" --stacktrace --info --continue clean test

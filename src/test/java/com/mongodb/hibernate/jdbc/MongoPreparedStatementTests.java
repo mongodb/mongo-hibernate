@@ -16,12 +16,15 @@
 
 package com.mongodb.hibernate.jdbc;
 
+import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
+import static com.mongodb.hibernate.jdbc.MongoStatement.NO_ERROR_CODE;
 import static java.sql.Statement.SUCCESS_NO_INFO;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatObject;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -29,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Named.named;
+import static org.junit.jupiter.params.provider.Arguments.of;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,7 +50,6 @@ import com.mongodb.MongoSocketWriteTimeoutException;
 import com.mongodb.MongoTimeoutException;
 import com.mongodb.ServerAddress;
 import com.mongodb.bulk.BulkWriteError;
-import com.mongodb.bulk.BulkWriteInsert;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.bulk.WriteConcernError;
 import com.mongodb.client.AggregateIterable;
@@ -62,6 +65,7 @@ import java.sql.Array;
 import java.sql.BatchUpdateException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Types;
 import java.util.Calendar;
@@ -69,6 +73,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowingConsumer;
+import org.bson.BSONException;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
@@ -86,6 +91,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -140,7 +146,7 @@ class MongoPreparedStatementTests {
         @Test
         @DisplayName("Happy path when all parameters are provided values")
         void testSuccess() throws SQLException {
-            BulkWriteResult bulkWriteResult = Mockito.mock(BulkWriteResult.class);
+            var bulkWriteResult = Mockito.mock(BulkWriteResult.class);
 
             doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
             doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
@@ -171,9 +177,354 @@ class MongoPreparedStatementTests {
                                 new BsonArray(
                                         List.of(new BsonString("array element"), new BsonObjectId(new ObjectId(1, 2)))))
                         .append("objectId", new BsonObjectId(new ObjectId(2, 0)));
-                assertInstanceOf(InsertOneModel.class, writeModels.get(0));
-                assertEquals(expectedDoc, ((InsertOneModel<BsonDocument>) writeModels.get(0)).getDocument());
+                var insertOneModel = assertInstanceOf(InsertOneModel.class, writeModels.get(0));
+                assertEquals(expectedDoc, insertOneModel.getDocument());
             }
+        }
+    }
+
+    @Nested
+    class ExecuteInvalidOrUnsupportedMql {
+        @Test
+        void testNoCommandNameProvidedExecuteQuery() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{}")) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. Command name is missing: [{}]");
+            }
+        }
+
+        @Test
+        void testNoCommandNameProvidedExecuteUpdate() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{}")) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. Command name is missing: [{}]");
+            }
+        }
+
+        @Test
+        void testNoCommandNameProvidedExecuteBatch() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{}")) {
+                assertThatThrownBy(() -> {
+                            pstm.addBatch();
+                            pstm.executeBatch();
+                        })
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. Command name is missing: [{}]");
+            }
+        }
+
+        @Test
+        void testNoCollectionNameProvidedExecuteQuery() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{aggregate: {}}")) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(
+                                """
+                                Invalid MQL. Collection name is missing [{"aggregate": {}}]""");
+            }
+        }
+
+        @Test
+        void testNoCollectionNameProvidedExecuteUpdate() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{insert: {}}")) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(
+                                """
+                                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+            }
+        }
+
+        @Test
+        void testNoCollectionNameProvidedExecuteBatch() throws SQLException {
+            try (var pstm = createMongoPreparedStatement("{insert: {}}")) {
+                assertThatThrownBy(() -> {
+                            pstm.addBatch();
+                            pstm.executeBatch();
+                        })
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage(
+                                """
+                                Invalid MQL. Collection name is missing [{"insert": {}}]""");
+            }
+        }
+
+        @Test
+        void testMissingRequiredAggregateCommandField() throws SQLException {
+            var mql = """
+                      {"aggregate": "books"}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .isInstanceOf(BSONException.class)
+                        .hasMessage("Document does not contain key pipeline");
+            }
+        }
+
+        @Test
+        void testMissingRequiredProjectAggregationPipelineStage() throws SQLException {
+            var mql = """
+                      {"aggregate": "books", "pipeline": []}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeQuery)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL. $project stage is missing [%s]".formatted(mql));
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported command {0}")
+        @ValueSource(strings = {"findAndModify", "aggregate", "bulkWrite"})
+        void testNotSupportedCommands(String commandName) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                    {
+                      %s: "books"
+                    }"""
+                            .formatted(commandName))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessageContaining(commandName);
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported update command field {0}")
+        @ValueSource(
+                strings = {
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
+                })
+        void testNotSupportedUpdateCommandField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        update: "books",
+                        updates: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                u: { $set: { outOfStock: true } },
+                                multi: true
+                            }
+                        ],
+                        %s
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [update] command: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @Test
+        void testMissingRequiredUpdateCommandField() throws SQLException {
+            var mql = """
+                      {"update": "books"}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .hasMessage("Document does not contain key updates");
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported delete command field {0}")
+        @ValueSource(strings = {"maxTimeMS: 1", "writeConcern: {}", "comment: {}", "ordered: true", "let: {}"})
+        void testNotSupportedDeleteCommandField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                limit: 0
+                            }
+                        ]
+                         %s
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [delete] command: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @Test
+        void testMissingRequiredDeleteCommandField() throws SQLException {
+            var mql = """
+                      {"delete": "books"}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .hasMessage("Document does not contain key deletes");
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported insert command field {0}")
+        @ValueSource(
+                strings = {
+                    "maxTimeMS: 1",
+                    "writeConcern: {}",
+                    "bypassDocumentValidation: true",
+                    "comment: {}",
+                    "ordered: true",
+                    "let: {}"
+                })
+        void testNotSupportedInsertCommandField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        insert: "books",
+                        documents: [
+                            {
+                                _id: 1
+                            }
+                        ],
+                        %s
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [insert] command: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @Test
+        void testMissingRequiredInsertCommandField() throws SQLException {
+            var mql = """
+                      {"insert": "books"}""";
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .hasMessage("Document does not contain key documents");
+            }
+        }
+
+        private static Stream<Arguments> testNotSupportedUpdateStatemenField() {
+            return Stream.of(
+                    of("hint: {}", "Unsupported field in [update] statement: [hint]"),
+                    of("hint: \"a\"", "Unsupported field in [update] statement: [hint]"),
+                    of("collation: {}", "Unsupported field in [update] statement: [collation]"),
+                    of("arrayFilters: []", "Unsupported field in [update] statement: [arrayFilters]"),
+                    of("sort: {}", "Unsupported field in [update] statement: [sort]"),
+                    of("upsert: true", "Unsupported field in [update] statement: [upsert]"),
+                    of("u: []", "Only document type is supported as value for field: [u]"),
+                    of("c: {}", "Unsupported field in [update] statement: [c]"));
+        }
+
+        @ParameterizedTest(name = "test not supported update statement field {0}")
+        @MethodSource
+        void testNotSupportedUpdateStatemenField(String unsupportedField, String expectedMessage) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        update: "books",
+                        updates: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                u: { $set: { outOfStock: true } },
+                                multi: true,
+                                %s
+                            }
+                        ]
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage(expectedMessage);
+            }
+        }
+
+        @ParameterizedTest(name = "test missing required update statement field {0}")
+        @ValueSource(strings = {"q", "u"})
+        void testMissingRequiredUpdateStatementField(String missingFieldName) throws SQLException {
+            var mqlDocument = BsonDocument.parse(
+                    """
+                        {
+                        update: "books",
+                        updates: [
+                            {
+                                q: {},
+                                u: {},
+                            }
+                        ]
+                    }""");
+            mqlDocument.getArray("updates").get(0).asDocument().remove(missingFieldName);
+            var mql = mqlDocument.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .hasMessage("Document does not contain key %s".formatted(missingFieldName));
+            }
+        }
+
+        @ParameterizedTest(name = "test not supported delete statement field {0}")
+        @ValueSource(strings = {"hint: {}", "hint: \"a\"", "collation: {}"})
+        void testNotSupportedDeleteStatementField(String unsupportedField) throws SQLException {
+            try (var pstm = createMongoPreparedStatement(
+                    """
+                        {
+                        delete: "books",
+                        deletes: [
+                            {
+                                q: { author: { $eq: "Leo Tolstoy" } },
+                                limit: 0,
+                                %s
+                            }
+                        ]
+                    }"""
+                            .formatted(unsupportedField))) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported field in [delete] statement: [%s]"
+                                .formatted(getFieldName(unsupportedField)));
+            }
+        }
+
+        @ParameterizedTest(name = "test missing required update statement field {0}")
+        @ValueSource(strings = {"q", "limit"})
+        void testMissingRequiredDeleteStatementField(String missingFieldName) throws SQLException {
+            var mqlDocument = BsonDocument.parse(
+                    """
+                    {
+                        "delete": "books",
+                        "deletes": [
+                            {
+                                "q": {},
+                                "limit": {"$numberInt": "0"},
+                            }
+                        ]
+                    }""");
+            mqlDocument.getArray("deletes").get(0).asDocument().remove(missingFieldName);
+            var mql = mqlDocument.toJson(EXTENDED_JSON_WRITER_SETTINGS);
+            try (var pstm = createMongoPreparedStatement(mql)) {
+                assertThatThrownBy(pstm::executeUpdate)
+                        .isInstanceOf(SQLSyntaxErrorException.class)
+                        .hasMessage("Invalid MQL: [%s]".formatted(mql))
+                        .cause()
+                        .hasMessage("Document does not contain key %s".formatted(missingFieldName));
+            }
+        }
+
+        private static String getFieldName(String field) {
+            return BsonDocument.parse("{" + field + "}").getFirstKey();
         }
     }
 
@@ -182,8 +533,8 @@ class MongoPreparedStatementTests {
         private static final String DUMMY_EXCEPTION_MESSAGE = "Test message";
         private static final ServerAddress DUMMY_SERVER_ADDRESS = new ServerAddress();
         private static final BsonDocument DUMMY_ERROR_DETAILS = new BsonDocument();
-        private static final BulkWriteResult BULK_WRITE_RESULT = BulkWriteResult.acknowledged(
-                1, 0, 2, 3, emptyList(), List.of(new BulkWriteInsert(0, new BsonObjectId(new ObjectId(1, 2)))));
+        private static final BulkWriteResult BULK_WRITE_RESULT =
+                BulkWriteResult.acknowledged(0, 0, 0, 0, emptyList(), emptyList());
         private static final MongoBulkWriteException MONGO_BULK_WRITE_EXCEPTION_WITH_WRITE_ERRORS =
                 new MongoBulkWriteException(
                         BULK_WRITE_RESULT,
@@ -278,20 +629,15 @@ class MongoPreparedStatementTests {
                     new MongoException(5000, DUMMY_EXCEPTION_MESSAGE));
         }
 
-        @ParameterizedTest(name = "test executeBatch MongoException. Parameters: Parameters: mongoException: {0}")
-        @MethodSource("genericMongoExceptions")
+        @ParameterizedTest(name = "test executeBatch MongoException {0}")
+        @MethodSource({"genericMongoExceptions", "timeoutExceptions"})
         void testExecuteBatchMongoException(MongoException mongoException) throws SQLException {
             doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-
-            assertExecuteBatchThrowsSqlException(sqlException -> {
-                assertThatObject(sqlException)
-                        .returns(mongoException.getCode(), SQLException::getErrorCode)
-                        .returns(null, SQLException::getSQLState)
-                        .returns(mongoException, SQLException::getCause);
-            });
+            assertExecuteBatchThrowsSqlException(
+                    sqlException -> assertGenericMongoException(sqlException, mongoException));
         }
 
-        @ParameterizedTest(name = "test executeUpdate MongoException. Parameters: Parameters: mongoException: {0}")
+        @ParameterizedTest(name = "test executeUpdate MongoException {0}")
         @MethodSource({"genericMongoExceptions", "timeoutExceptions"})
         void testExecuteUpdateMongoException(MongoException mongoException) throws SQLException {
             doThrow(mongoException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
@@ -299,7 +645,7 @@ class MongoPreparedStatementTests {
                     sqlException -> assertGenericMongoException(sqlException, mongoException));
         }
 
-        @ParameterizedTest(name = "test executeUQuery MongoException. Parameters: Parameters: mongoException: {0}")
+        @ParameterizedTest(name = "test executeUQuery MongoException {0}")
         @MethodSource({"genericMongoExceptions", "timeoutExceptions"})
         void testExecuteQueryMongoException(MongoException mongoException) throws SQLException {
             doThrow(mongoException).when(mongoCollection).aggregate(eq(clientSession), anyList());
@@ -307,30 +653,17 @@ class MongoPreparedStatementTests {
                     sqlException -> assertGenericMongoException(sqlException, mongoException));
         }
 
-        @ParameterizedTest(name = "test executeBatch timeout exception. Parameters: mongoTimeoutException: {0}")
-        @MethodSource("timeoutExceptions")
-        void testExecuteBatchTimeoutException(MongoException mongoTimeoutException) throws SQLException {
-            doThrow(mongoTimeoutException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            assertExecuteBatchThrowsSqlException(batchUpdateException -> {
-                assertGenericMongoException(batchUpdateException, mongoTimeoutException);
-            });
-        }
-
         @Test
         void testExecuteBatchRuntimeExceptionCause() throws SQLException {
-            RuntimeException runtimeException = new RuntimeException();
+            var runtimeException = new RuntimeException();
             doThrow(runtimeException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            assertExecuteBatchThrowsSqlException(sqlException -> {
-                assertThatObject(sqlException)
-                        .returns(0, SQLException::getErrorCode)
-                        .returns(null, SQLException::getSQLState)
-                        .returns(runtimeException, SQLException::getCause);
-            });
+            assertExecuteBatchThrowsSqlException(
+                    sqlException -> assertGenericException(sqlException, runtimeException));
         }
 
         @Test
         void testExecuteUpdateRuntimeExceptionCause() throws SQLException {
-            RuntimeException runtimeException = new RuntimeException();
+            var runtimeException = new RuntimeException();
             doThrow(runtimeException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
             assertExecuteUpdateThrowsSqlException(
                     sqlException -> assertGenericException(sqlException, runtimeException));
@@ -338,13 +671,13 @@ class MongoPreparedStatementTests {
 
         @Test
         void testExecuteQueryRuntimeExceptionCause() throws SQLException {
-            RuntimeException runtimeException = new RuntimeException();
+            var runtimeException = new RuntimeException();
             doThrow(runtimeException).when(mongoCollection).aggregate(eq(clientSession), anyList());
             assertExecuteQueryThrowsSqlException(
                     sqlException -> assertGenericException(sqlException, runtimeException));
         }
 
-        private static Stream<Arguments> bulkWriteExceptionsForExecuteUpdate() {
+        private static Stream<Arguments> testExecuteUpdateMongoBulkWriteException() {
             return mqlCommands()
                     .flatMap(mqlCommand -> Stream.of(
                             Arguments.of(mqlCommand, MONGO_BULK_WRITE_EXCEPTION_WITH_WRITE_CONCERN_EXCEPTION),
@@ -353,18 +686,19 @@ class MongoPreparedStatementTests {
 
         @ParameterizedTest(
                 name = "test executeUpdate MongoBulkWriteException. Parameters: commandName={0}, exception={1}")
-        @MethodSource("bulkWriteExceptionsForExecuteUpdate")
+        @MethodSource
         void testExecuteUpdateMongoBulkWriteException(String mql, MongoBulkWriteException mongoBulkWriteException)
                 throws SQLException {
             doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+            var vendorErrorCode = getVendorErrorCode(mongoBulkWriteException);
 
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+            try (var mongoPreparedStatement = createMongoPreparedStatement(mql)) {
                 assertThatExceptionOfType(SQLException.class)
                         .isThrownBy(mongoPreparedStatement::executeUpdate)
-                        .withCause(mongoBulkWriteException)
-                        .returns(vendorCodeError, SQLException::getErrorCode)
-                        .returns(null, SQLException::getSQLState);
+                        .returns(vendorErrorCode, SQLException::getErrorCode)
+                        .returns(null, SQLException::getSQLState)
+                        .havingCause()
+                        .isSameAs(mongoBulkWriteException);
             }
         }
 
@@ -374,8 +708,9 @@ class MongoPreparedStatementTests {
                             // Error in command 1
                             Arguments.of(
                                     mqlCommand, // MQL command to execute
-                                    createMongoBulkWriteException(1), // failed model index
+                                    createMongoBulkWriteException(0), // failed model index
                                     0), // expected update count length
+                            Arguments.of(mqlCommand, createMongoBulkWriteException(1), 0),
                             Arguments.of(mqlCommand, createMongoBulkWriteException(2), 0),
                             Arguments.of(mqlCommand, createMongoBulkWriteException(3), 0),
 
@@ -396,21 +731,21 @@ class MongoPreparedStatementTests {
         @ParameterizedTest(
                 name =
                         "test executeBatch MongoBulkWriteException. Parameters: commandName={0}, exception={1}, expectedUpdateCountLength={2}")
-        @MethodSource("testExecuteBatchMongoBulkWriteException")
+        @MethodSource
         void testExecuteBatchMongoBulkWriteException(
                 String mql, MongoBulkWriteException mongoBulkWriteException, int expectedUpdateCountLength)
                 throws SQLException {
             doThrow(mongoBulkWriteException).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
-            Integer vendorCodeError = getVendorCodeError(mongoBulkWriteException);
+            var vendorErrorCode = getVendorErrorCode(mongoBulkWriteException);
 
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(mql)) {
+            try (var mongoPreparedStatement = createMongoPreparedStatement(mql)) {
                 mongoPreparedStatement.addBatch();
                 mongoPreparedStatement.addBatch();
                 mongoPreparedStatement.addBatch();
 
                 assertThatExceptionOfType(BatchUpdateException.class)
                         .isThrownBy(mongoPreparedStatement::executeBatch)
-                        .returns(vendorCodeError, BatchUpdateException::getErrorCode)
+                        .returns(vendorErrorCode, BatchUpdateException::getErrorCode)
                         .returns(null, BatchUpdateException::getSQLState)
                         .satisfies(ex -> {
                             assertUpdateCounts(ex.getUpdateCounts(), expectedUpdateCountLength);
@@ -423,7 +758,7 @@ class MongoPreparedStatementTests {
         private static void assertGenericException(SQLException sqlException, RuntimeException cause) {
             assertThatObject(sqlException)
                     .isExactlyInstanceOf(SQLException.class)
-                    .returns(0, SQLException::getErrorCode)
+                    .returns(NO_ERROR_CODE, SQLException::getErrorCode)
                     .returns(null, SQLException::getSQLState)
                     .returns(cause, SQLException::getCause);
         }
@@ -437,7 +772,7 @@ class MongoPreparedStatementTests {
         }
 
         private void assertExecuteBatchThrowsSqlException(ThrowingConsumer<SQLException> asserter) throws SQLException {
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
+            try (var mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
                 mongoPreparedStatement.addBatch();
                 assertThatExceptionOfType(SQLException.class)
                         .isThrownBy(mongoPreparedStatement::executeBatch)
@@ -448,7 +783,7 @@ class MongoPreparedStatementTests {
 
         private void assertExecuteUpdateThrowsSqlException(ThrowingConsumer<SQLException> asserter)
                 throws SQLException {
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
+            try (var mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_INSERT)) {
                 assertThatExceptionOfType(SQLException.class)
                         .isThrownBy(mongoPreparedStatement::executeUpdate)
                         .satisfies(asserter);
@@ -456,7 +791,7 @@ class MongoPreparedStatementTests {
         }
 
         private void assertExecuteQueryThrowsSqlException(ThrowingConsumer<SQLException> asserter) throws SQLException {
-            try (MongoPreparedStatement mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_AGGREGATE)) {
+            try (var mongoPreparedStatement = createMongoPreparedStatement(MQL_ITEMS_AGGREGATE)) {
                 assertThatExceptionOfType(SQLException.class)
                         .isThrownBy(mongoPreparedStatement::executeQuery)
                         .satisfies(asserter);
@@ -465,36 +800,25 @@ class MongoPreparedStatementTests {
 
         private static void assertUpdateCounts(int[] actualUpdateCounts, int expectedUpdateCountsLength) {
             assertEquals(expectedUpdateCountsLength, actualUpdateCounts.length);
-            for (int count : actualUpdateCounts) {
+            for (var count : actualUpdateCounts) {
                 assertEquals(SUCCESS_NO_INFO, count);
             }
-        }
-
-        private static MongoBulkWriteException createMongoBulkWriteException(int errorCode, int failedModelIndex) {
-            return new MongoBulkWriteException(
-                    BULK_WRITE_RESULT,
-                    List.of(new BulkWriteError(
-                            errorCode, DUMMY_EXCEPTION_MESSAGE, DUMMY_ERROR_DETAILS, failedModelIndex)),
-                    null,
-                    DUMMY_SERVER_ADDRESS,
-                    emptySet());
         }
 
         private static MongoBulkWriteException createMongoBulkWriteException(int failedModelIndex) {
             return new MongoBulkWriteException(
                     BULK_WRITE_RESULT,
-                    List.of(new BulkWriteError(
-                            failedModelIndex, DUMMY_EXCEPTION_MESSAGE, DUMMY_ERROR_DETAILS, failedModelIndex)),
+                    List.of(new BulkWriteError(1, DUMMY_EXCEPTION_MESSAGE, DUMMY_ERROR_DETAILS, failedModelIndex)),
                     null,
                     DUMMY_SERVER_ADDRESS,
                     emptySet());
         }
 
-        private static Integer getVendorCodeError(MongoBulkWriteException mongoBulkWriteException) {
+        private static int getVendorErrorCode(MongoBulkWriteException mongoBulkWriteException) {
             return mongoBulkWriteException.getWriteErrors().stream()
                     .map(BulkWriteError::getCode)
                     .findFirst()
-                    .orElse(0);
+                    .orElse(NO_ERROR_CODE);
         }
     }
 
@@ -511,10 +835,7 @@ class MongoPreparedStatementTests {
     }
 
     @Nested
-    class ExecuteMethodClosesLastOpenResultSetTests {
-
-        @Mock
-        MongoCollection<BsonDocument> mongoCollection;
+    class ExecuteClosesLastOpenResultSetTests {
 
         @Mock
         AggregateIterable<BsonDocument> aggregateIterable;

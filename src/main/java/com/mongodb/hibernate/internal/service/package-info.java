@@ -14,17 +14,8 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+/** The program elements within this package are not part of the public API and may be removed or changed at any time */
+@NullMarked
+package com.mongodb.hibernate.internal.service;
 
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWithSpecifiedAutoCommit;
-
-import com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.SqlExecutable;
-import java.sql.Connection;
-import java.sql.SQLException;
-
-class MongoPreparedStatementWithAutoCommitIntegrationTests extends MongoPreparedStatementIntegrationTests {
-    @Override
-    void doAwareOfAutoCommit(Connection connection, SqlExecutable work) throws SQLException {
-        doWithSpecifiedAutoCommit(true, connection, work);
-    }
-}
+import org.jspecify.annotations.NullMarked;

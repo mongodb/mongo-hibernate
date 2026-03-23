@@ -15,4 +15,4 @@ echo "MongoDB version: ${MONGODB_VERSION}; topology: ${TOPOLOGY}"
 
 ./gradlew -version
 
-./gradlew -PjavaVersion=${JAVA_VERSION} --stacktrace --info --continue clean integrationTest
+./gradlew -PjavaVersion="${JAVA_VERSION}" --stacktrace --info --continue clean integrationTest
