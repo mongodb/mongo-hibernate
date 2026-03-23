@@ -132,7 +132,7 @@ jobs:
           echo "RELEASE_URL=$(\
           gh release create "r${RELEASE_VERSION}" \
             ${PRERELEASE} \
-            --target $RELEASE_BRANCH \
+            --target "$RELEASE_BRANCH" \
             --title "MongoDB Extension for Hibernate ORM $RELEASE_VERSION ($(date '+%B %d, %Y'))" \
             --generate-notes \
             --draft\
