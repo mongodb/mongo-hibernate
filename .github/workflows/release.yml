@@ -133,7 +133,7 @@ jobs:
           gh release create "r${RELEASE_VERSION}" \
             ${PRERELEASE} \
             --target "$RELEASE_BRANCH" \
-            --title "Java Driver $RELEASE_VERSION ($(date '+%B %d, %Y'))" \
+            --title "MongoDB Extension for Hibernate ORM $RELEASE_VERSION ($(date '+%B %d, %Y'))" \
             --generate-notes \
             --draft\
           )" >> "$GITHUB_ENV"
