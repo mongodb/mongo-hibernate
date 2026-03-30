@@ -32,7 +32,7 @@ tasks.withType<JavaCompile> {
 
 tasks.withType<Test>().configureEach {
     val testJavaVersion: Int = (findProperty("javaVersion") as String?)?.toInt() ?: RELEASE_JAVA_VERSION
-    logger.info("Running tests using using JDK${testJavaVersion}")
+    logger.info("Running tests using JDK${testJavaVersion}")
     javaLauncher.set(
         javaToolchains.launcherFor {
             languageVersion.set(JavaLanguageVersion.of(testJavaVersion))
