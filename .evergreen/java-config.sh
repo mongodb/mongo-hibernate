@@ -2,13 +2,8 @@
 
 # Java configurations for evergreen
 
-export JDK17="/opt/java/jdk17"
-export JDK25="/opt/java/jdk25"
-
-if [ -d "$JDK17" ]; then
-  export JAVA_HOME=$JDK17
-fi
-
+# JAVA_HOME is required to launch Gradle itself (Gradle 9+ requires JDK 17+).
+export JAVA_HOME="/opt/java/jdk17"
 export JAVA_VERSION=${JAVA_VERSION:-17}
 
 echo "Java Configs:"

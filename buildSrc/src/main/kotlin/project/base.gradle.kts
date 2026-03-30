@@ -20,7 +20,7 @@ plugins {
     `java-library`
 }
 
-logger.info("Compiling ${project.name} using JDK${RELEASE_JAVA_VERSION}")
+logger.info("Building ${project.name} using JDK${RELEASE_JAVA_VERSION}")
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(RELEASE_JAVA_VERSION) }

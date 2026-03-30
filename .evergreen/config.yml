@@ -117,6 +117,8 @@ tasks:
         params:
           working_dir: src
           binary: bash
+          include_expansions_in_env:
+            - JAVA_VERSION
           add_to_path:
             - .evergreen
           args:
@@ -132,6 +134,8 @@ tasks:
         params:
           working_dir: src
           binary: bash
+          include_expansions_in_env:
+            - JAVA_VERSION
           add_to_path:
             - .evergreen
           args:
@@ -147,6 +151,8 @@ tasks:
         params:
           working_dir: src
           binary: bash
+          include_expansions_in_env:
+            - JAVA_VERSION
           add_to_path:
             - .evergreen
           args:
