@@ -40,7 +40,7 @@ val runtimeJavaLauncher = javaToolchains.launcherFor {
 }
 
 tasks.withType<Test>().configureEach {
-    logger.info("Running tests using JDK${javaVersion}")
+    logger.info("Running tests using JDK${runtimeJavaVersion}")
     javaLauncher.set(runtimeJavaLauncher)
 }
 
