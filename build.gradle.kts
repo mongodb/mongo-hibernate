@@ -19,6 +19,7 @@ import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
+    id("project.base")
     id("eclipse")
     id("idea")
     id("java-library")
