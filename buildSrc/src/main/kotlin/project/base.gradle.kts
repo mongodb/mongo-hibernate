@@ -30,12 +30,22 @@ tasks.withType<JavaCompile> {
     options.release.set(RELEASE_JAVA_VERSION)
 }
 
+val runtimeJavaVersion: Int = providers.gradleProperty("javaVersion")
+    .map { it.toIntOrNull() ?: error("-PjavaVersion must be an integer, but got: $it") }
+    .orElse(RELEASE_JAVA_VERSION)
+    .get()
+
+val runtimeJavaLauncher = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(runtimeJavaVersion))
+}
+
 tasks.withType<Test>().configureEach {
-    val testJavaVersion: Int = (findProperty("javaVersion") as String?)?.toInt() ?: RELEASE_JAVA_VERSION
-    logger.info("Running tests using JDK${testJavaVersion}")
-    javaLauncher.set(
-        javaToolchains.launcherFor {
-            languageVersion.set(JavaLanguageVersion.of(testJavaVersion))
-        }
-    )
+    logger.info("Running tests using JDK${javaVersion}")
+    javaLauncher.set(runtimeJavaLauncher)
+}
+
+// JavaExec tasks don't inherit the project toolchain automatically (unlike JavaCompile, Test, Javadoc).
+// Without this, they would silently use the Gradle daemon JDK instead of the intended version.
+tasks.withType<JavaExec>().configureEach {
+    javaLauncher.set(runtimeJavaLauncher)
 }
