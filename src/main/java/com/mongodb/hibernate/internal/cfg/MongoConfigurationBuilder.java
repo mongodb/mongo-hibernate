@@ -89,7 +89,7 @@ public final class MongoConfigurationBuilder implements MongoConfigurator {
                 return new ConnectionString(propertyValue);
             } catch (RuntimeException e) {
                 throw MongoConfigurationBuilder.ConfigPropertiesParser.Exceptions.failedToParse(
-                        propertyName, propertyValue, ConnectionString.class);
+                        propertyName, propertyValue, ConnectionString.class, e);
             }
         }
 
@@ -103,10 +103,13 @@ public final class MongoConfigurationBuilder implements MongoConfigurator {
                         Arrays.stream(expectedTypes).map(Type::getTypeName).collect(Collectors.joining(", "))));
             }
 
-            static RuntimeException failedToParse(String propertyName, String propertyValue, Type type) {
-                return new RuntimeException(format(
-                        "Failed to get %s from configuration property [%s] with value [%s]",
-                        type.getTypeName(), propertyName, propertyValue));
+            static RuntimeException failedToParse(
+                    String propertyName, String propertyValue, Type type, Throwable cause) {
+                return new RuntimeException(
+                        format(
+                                "Failed to get %s from configuration property [%s] with value [%s]",
+                                type.getTypeName(), propertyName, propertyValue),
+                        cause);
             }
         }
     }

@@ -50,10 +50,15 @@ import org.hibernate.service.spi.Configurable;
  *                     <li>{@link ConnectionString}</li>
  *                 </ul>
  *             </td>
- *             <td>Is {@linkplain MongoClientSettings.Builder#applyConnectionString(ConnectionString) based} on
- *             the {@link ConnectionString} {@linkplain ConnectionString#ConnectionString(String) constructed} from
- *             {@value AvailableSettings#JAKARTA_JDBC_URL}, if the latter is configured; otherwise a {@link MongoClientSettings}
- *             instance with its defaults.</td>
+ *             <td>
+ *                 Is {@linkplain MongoClientSettings.Builder#applyConnectionString(ConnectionString) based} on
+ *                 the {@link ConnectionString} {@linkplain ConnectionString#ConnectionString(String) constructed} from
+ *                 {@value AvailableSettings#JAKARTA_JDBC_URL}, if the latter is configured; otherwise a {@link MongoClientSettings}
+ *                 instance with its defaults.
+ *
+ *                 <p><strong>Warning:</strong> Do not include sensitive information in {@value AvailableSettings#JAKARTA_JDBC_URL},
+ *                 use {@link #applyToMongoClientSettings(Consumer)} instead.
+ *             </td>
  *         </tr>
  *         <tr>
  *             <td>{@link #databaseName(String)}</td>
