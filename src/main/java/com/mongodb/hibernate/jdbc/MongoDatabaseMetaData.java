@@ -106,6 +106,67 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         return false;
     }
 
+    // Hibernate 7's `ExtractedDatabaseMetaDataImpl` queries these (and a handful of others below) when it builds
+    // the boot-time metadata snapshot. The 6.x bootstrap path did not, so they had remained unimplemented.
+    @Override
+    public boolean supportsSchemasInDataManipulation() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsCatalogsInDataManipulation() {
+        return false;
+    }
+
+    @Override
+    public int getSQLStateType() {
+        return DatabaseMetaData.sqlStateSQL;
+    }
+
+    // `MongoDatabaseMetaData` has no access to the connection URL; Hibernate reads this only for
+    // logging and diagnostics, so an empty string is harmless (null is also permitted by JDBC).
+    @Override
+    public String getURL() {
+        return "";
+    }
+
+    @Override
+    public int getDefaultTransactionIsolation() {
+        return Connection.TRANSACTION_NONE;
+    }
+
+    // Hibernate 7's `IdentifierHelperBuilder` queries the four `stores*CaseIdentifiers` variants when initializing
+    // its identifier-case policy. MongoDB preserves identifier case verbatim, so we report "mixed case" only.
+    @Override
+    public boolean storesUpperCaseIdentifiers() {
+        return false;
+    }
+
+    @Override
+    public boolean storesLowerCaseIdentifiers() {
+        return false;
+    }
+
+    @Override
+    public boolean storesMixedCaseIdentifiers() {
+        return true;
+    }
+
+    @Override
+    public boolean storesUpperCaseQuotedIdentifiers() {
+        return false;
+    }
+
+    @Override
+    public boolean storesLowerCaseQuotedIdentifiers() {
+        return false;
+    }
+
+    @Override
+    public boolean storesMixedCaseQuotedIdentifiers() {
+        return true;
+    }
+
     @Override
     public boolean dataDefinitionCausesTransactionCommit() {
         return false;
@@ -159,11 +220,6 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
     @Override
     public int getJDBCMinorVersion() {
         return 3;
-    }
-
-    @Override
-    public int getSQLStateType() {
-        return DatabaseMetaData.sqlStateSQL;
     }
 
     @Override
