@@ -22,7 +22,7 @@ import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
-import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 
@@ -30,7 +30,7 @@ import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 @SuppressWarnings("MissingSummary")
 public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     @Override
-    public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
+    public SqlAstTranslator<JdbcSelect> buildSelectTranslator(
             SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
         return new SelectMqlTranslator(sessionFactoryImplementor, selectStatement);
     }

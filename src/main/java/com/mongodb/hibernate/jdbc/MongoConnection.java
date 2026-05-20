@@ -194,6 +194,14 @@ final class MongoConnection implements ConnectionAdapter {
         return null;
     }
 
+    // Hibernate 7's `ExtractedDatabaseMetaDataImpl` queries this when building boot-time JDBC metadata.
+    // MongoDB has no JDBC-style transaction isolation level, so report TRANSACTION_NONE.
+    @Override
+    public int getTransactionIsolation() throws SQLException {
+        checkClosed();
+        return TRANSACTION_NONE;
+    }
+
     @Override
     public void clearWarnings() throws SQLException {
         checkClosed();

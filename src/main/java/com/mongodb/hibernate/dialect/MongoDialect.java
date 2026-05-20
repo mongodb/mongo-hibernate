@@ -160,18 +160,12 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     }
 
     /**
-     * This constructor is called only if Hibernate ORM falls back to it due to a failure of
-     * {@link MongoDialect#MongoDialect(DialectResolutionInfo)}.
-     *
-     * @deprecated Exists only to avoid the confusing {@link NoSuchMethodException} thrown by Hibernate ORM when
-     *     {@link MongoDialect#MongoDialect(DialectResolutionInfo)} fails.
-     * @throws RuntimeException Always.
+     * Hibernate 7's {@link org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator JdbcEnvironmentInitiator}
+     * invokes this no-arg form when it builds a default {@code JdbcEnvironment} (test bootstrap without a real JDBC
+     * connection). The {@link DialectResolutionInfo} variant is still preferred when JDBC metadata is available.
      */
-    @Deprecated
     public MongoDialect() {
-        throw new RuntimeException(format(
-                "Could not instantiate [%s], see the earlier exceptions to find out why",
-                MongoDialect.class.getName()));
+        super(MINIMUM_DBMS_VERSION);
     }
 
     @Override
@@ -245,6 +239,13 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
 
     @Override
     public boolean supportsStandardArrays() {
+        return true;
+    }
+
+    // Hibernate 7's `AggregateComponentSecondPass` rejects `@Struct` mappings unless this returns `true`.
+    // MQL supports embedded documents as user-defined struct types via `MongoStructJdbcType`.
+    @Override
+    public boolean supportsUserDefinedTypes() {
         return true;
     }
 
