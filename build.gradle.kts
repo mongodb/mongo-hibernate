@@ -66,7 +66,7 @@ tasks.withType<Javadoc> {
             listOf(
                 "https://docs.oracle.com/en/java/javase/17/docs/api/",
                 "https://jakarta.ee/specifications/persistence/3.1/apidocs/",
-                "https://docs.hibernate.org/orm/6.6/javadocs/",
+                "https://docs.hibernate.org/orm/7.3/javadocs/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/bson/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-core/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-sync/",

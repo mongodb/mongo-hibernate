@@ -36,13 +36,13 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.query.sqm.FetchClauseType;
+import org.hibernate.query.common.FetchClauseType;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
-import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.hibernate.stat.QueryStatistics;
@@ -636,7 +636,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
             return new SqlAstTranslatorFactory() {
                 @Override
-                public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
+                public SqlAstTranslator<JdbcSelect> buildSelectTranslator(
                         SessionFactoryImplementor sessionFactory, SelectStatement statement) {
                     selectTranslatingCounter.incrementAndGet();
                     return TranslatingCacheTestingDialect.super

@@ -19,14 +19,10 @@ package com.mongodb.hibernate.internal.id.objectid;
 import static org.hibernate.generator.EventTypeSets.INSERT_ONLY;
 
 import java.io.Serial;
-import java.lang.reflect.Member;
 import java.util.EnumSet;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.EventType;
-import org.hibernate.generator.Generator;
-import org.hibernate.generator.GeneratorCreationContext;
-import org.hibernate.id.factory.spi.CustomIdGeneratorCreationContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -40,18 +36,6 @@ public final class ObjectIdGenerator implements BeforeExecutionGenerator {
     private static final long serialVersionUID = 1L;
 
     private static final org.bson.codecs.ObjectIdGenerator GENERATOR = new org.bson.codecs.ObjectIdGenerator();
-
-    /** @see Generator */
-    public ObjectIdGenerator(
-            com.mongodb.hibernate.annotations.ObjectIdGenerator config,
-            Member annotatedMember,
-            CustomIdGeneratorCreationContext context) {}
-
-    /** @see Generator */
-    public ObjectIdGenerator(
-            com.mongodb.hibernate.annotations.ObjectIdGenerator config,
-            Member annotatedMember,
-            GeneratorCreationContext context) {}
 
     @Override
     public Object generate(
