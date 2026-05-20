@@ -28,6 +28,7 @@ import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import org.jspecify.annotations.Nullable;
 
 final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
 
@@ -123,11 +124,9 @@ final class MongoDatabaseMetaData implements DatabaseMetaDataAdapter {
         return DatabaseMetaData.sqlStateSQL;
     }
 
-    // `MongoDatabaseMetaData` has no access to the connection URL; Hibernate reads this only for
-    // logging and diagnostics, so an empty string is harmless (null is also permitted by JDBC).
     @Override
-    public String getURL() {
-        return "";
+    public @Nullable String getURL() {
+        return null;
     }
 
     @Override
