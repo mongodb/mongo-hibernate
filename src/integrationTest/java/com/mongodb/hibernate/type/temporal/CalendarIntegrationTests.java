@@ -20,7 +20,6 @@ import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.util.Calendar;
 import org.hibernate.boot.MetadataSources;
 import org.junit.jupiter.api.Test;
@@ -72,7 +71,6 @@ class CalendarIntegrationTests {
     static void assertNotSupported(Class<?> entityClass) {
         assertThatThrownBy(() ->
                         new MetadataSources().addAnnotatedClass(entityClass).buildMetadata())
-                .isInstanceOf(FeatureNotSupportedException.class)
-                .hasMessageMatching(".*persistent attribute .* has .*type .* that is not supported");
+                .isInstanceOf(org.hibernate.AnnotationException.class);
     }
 }

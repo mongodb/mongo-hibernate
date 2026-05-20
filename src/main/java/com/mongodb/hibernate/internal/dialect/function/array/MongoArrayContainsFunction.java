@@ -34,7 +34,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstTypeFilterOpe
 import java.util.List;
 import org.bson.BsonType;
 import org.hibernate.dialect.function.array.AbstractArrayContainsFunction;
-import org.hibernate.query.ReturnableType;
+import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
