@@ -236,13 +236,29 @@ final class MongoResultSet implements ResultSetAdapter {
     private <T> @Nullable T getValue(int columnIndex, SqlFunction<BsonValue, T> toJavaConverter) throws SQLException {
         try {
             var key = getKey(columnIndex);
-            var bsonValue = assertNotNull(currentDocument).get(key);
+            var bsonValue = getNestedBsonValue(assertNotNull(currentDocument), key);
             T value = ValueConversions.isNull(bsonValue) ? null : toJavaConverter.apply(assertNotNull(bsonValue));
             lastReadColumnValueWasNull = value == null;
             return value;
         } catch (RuntimeException e) {
             throw new SQLException(format("Failed to get value from column [index: %d]", columnIndex), e);
         }
+    }
+
+    private static @Nullable BsonValue getNestedBsonValue(BsonDocument document, String key) {
+        var current = document;
+        int start = 0;
+        int dotIndex;
+        while ((dotIndex = key.indexOf('.', start)) != -1) {
+            var segment = key.substring(start, dotIndex);
+            var nested = current.get(segment);
+            if (!(nested instanceof BsonDocument nestedDoc)) {
+                return null;
+            }
+            current = nestedDoc;
+            start = dotIndex + 1;
+        }
+        return current.get(key.substring(start));
     }
 
     private void checkColumnIndex(int columnIndex) throws SQLException {

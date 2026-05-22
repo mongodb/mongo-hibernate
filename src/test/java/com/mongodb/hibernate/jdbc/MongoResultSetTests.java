@@ -240,6 +240,60 @@ class MongoResultSetTests {
         }
     }
 
+    @Nested
+    class NestedBsonValueTests {
+
+        private void createResultSetWith(BsonDocument document, List<String> fields) throws SQLException {
+            doReturn(true).when(mongoCursor).hasNext();
+            doReturn(document).when(mongoCursor).next();
+            mongoResultSet = new MongoResultSet(mongoCursor, fields);
+            assertTrue(mongoResultSet.next());
+        }
+
+        @Test
+        void testFlatKey() throws SQLException {
+            // {"name": "Alice"}, column "name" -> "Alice"
+            createResultSetWith(new BsonDocument("name", new BsonString("Alice")), List.of("name"));
+            assertEquals("Alice", mongoResultSet.getString(1));
+        }
+
+        @Test
+        void testOneLevelNestedKey() throws SQLException {
+            // {"o1_0": {"total": 100}}, column "o1_0.total" -> 100
+            var inner = new BsonDocument("total", new BsonInt32(100));
+            var outer = new BsonDocument("o1_0", inner);
+            createResultSetWith(outer, List.of("o1_0.total"));
+            assertEquals(100, mongoResultSet.getInt(1));
+        }
+
+        @Test
+        void testMissingIntermediateDocument() throws SQLException {
+            // {"o1_0": "notADocument"}, column "o1_0.total" -> null
+            var document = new BsonDocument("o1_0", new BsonString("notADocument"));
+            createResultSetWith(document, List.of("o1_0.total"));
+            assertNull(mongoResultSet.getString(1));
+        }
+
+        @Test
+        void testMissingKeyAtLeaf() throws SQLException {
+            // {"o1_0": {"other": 1}}, column "o1_0.total" -> null
+            var inner = new BsonDocument("other", new BsonInt32(1));
+            var outer = new BsonDocument("o1_0", inner);
+            createResultSetWith(outer, List.of("o1_0.total"));
+            assertNull(mongoResultSet.getString(1));
+        }
+
+        @Test
+        void testTwoLevelNestedKey() throws SQLException {
+            // {"a": {"b": {"c": 42}}}, column "a.b.c" -> 42
+            var innermost = new BsonDocument("c", new BsonInt32(42));
+            var middle = new BsonDocument("b", innermost);
+            var outer = new BsonDocument("a", middle);
+            createResultSetWith(outer, List.of("a.b.c"));
+            assertEquals(42, mongoResultSet.getInt(1));
+        }
+    }
+
     private void checkMethodsWithOpenPrecondition(Consumer<Executable> asserter) {
         checkGetterMethods(1, asserter);
         assertAll(
