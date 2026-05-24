@@ -16,11 +16,10 @@
 
 package com.mongodb.hibernate.internal.cfg;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -31,8 +30,9 @@ import org.junit.jupiter.api.Test;
 class MongoConfigurationBuilderTests {
     @Test
     void requiresPropertiesThatHaveNoDefaults() {
-        var e = assertThrows(NullPointerException.class, () -> new MongoConfigurationBuilder().build());
-        assertEquals("databaseName must not be null", e.getMessage());
+        assertThatThrownBy(() -> new MongoConfigurationBuilder().build())
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("databaseName must not be null");
     }
 
     @Test
@@ -80,6 +80,15 @@ class MongoConfigurationBuilderTests {
                     () -> assertUnsupportedType(JAKARTA_JDBC_URL, new StringBuilder()));
         }
 
+        @Test
+        void applyToMongoClientSettingsPropagatesException() {
+            var exception = new RuntimeException();
+            assertThatThrownBy(() -> new MongoConfigurationBuilder().applyToMongoClientSettings(builder -> {
+                        throw exception;
+                    }))
+                    .isEqualTo(exception);
+        }
+
         private static void assertJakartaJdbcUrl(
                 String expectedRequiredReplicaSetName, String expectedDatabaseName, Object propertyValue) {
             var config = new MongoConfigurationBuilder(Map.of(JAKARTA_JDBC_URL, propertyValue)).build();
@@ -91,17 +100,16 @@ class MongoConfigurationBuilderTests {
         }
 
         private static void assertFailedToParse(String propertyName, Object propertyValue) {
-            var e = assertThrows(
-                    RuntimeException.class,
-                    () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
-            assertThat(e.getMessage()).matches("Failed to get .* from configuration property .*");
+            assertThatThrownBy(() -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build())
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageMatching("Failed to get .* from configuration property .*")
+                    .hasCauseInstanceOf(RuntimeException.class);
         }
 
         private static void assertUnsupportedType(String propertyName, Object propertyValue) {
-            var e = assertThrows(
-                    RuntimeException.class,
-                    () -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build());
-            assertThat(e.getMessage()).matches("Type .* must be one of .*");
+            assertThatThrownBy(() -> new MongoConfigurationBuilder(Map.of(propertyName, propertyValue)).build())
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageMatching("Type .* must be one of .*");
         }
     }
 }
