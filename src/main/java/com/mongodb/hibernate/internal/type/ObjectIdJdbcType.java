@@ -35,10 +35,10 @@ import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Thread-safe.
- *
  * @hidden
+ * @mongoCme Must be thread-safe.
  */
+@SuppressWarnings("MissingSummary")
 public final class ObjectIdJdbcType implements JdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
@@ -79,7 +79,7 @@ public final class ObjectIdJdbcType implements JdbcType {
         return result;
     }
 
-    /** Thread-safe. */
+    /** @mongoCme Must be thread-safe. */
     private final class Binder extends BasicBinder<ObjectId> {
         @Serial
         private static final long serialVersionUID = 1L;
@@ -101,7 +101,7 @@ public final class ObjectIdJdbcType implements JdbcType {
         }
     }
 
-    /** Thread-safe. */
+    /** @mongoCme Must be thread-safe. */
     private final class Extractor extends BasicExtractor<ObjectId> {
         @Serial
         private static final long serialVersionUID = 1L;

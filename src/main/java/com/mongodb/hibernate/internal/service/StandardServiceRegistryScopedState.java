@@ -36,7 +36,9 @@ import java.io.Serial;
 import java.util.Map;
 import java.util.Set;
 import org.hibernate.HibernateException;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceInitiator;
+import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.dialect.spi.DialectFactory;
@@ -45,7 +47,10 @@ import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.jspecify.annotations.Nullable;
 
-/** @hidden */
+/**
+ * @hidden
+ * @mongoCme Thread-safe.
+ */
 @SuppressWarnings("MissingSummary")
 public final class StandardServiceRegistryScopedState implements Service {
     @Serial
@@ -68,18 +73,31 @@ public final class StandardServiceRegistryScopedState implements Service {
                 "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
-    /** @hidden */
+    /**
+     * @hidden
+     * @mongoCme The instance methods of {@link org.hibernate.service.spi.ServiceContributor} are called multiple times
+     *     if multiple {@link StandardServiceRegistry} instances are {@linkplain StandardServiceRegistryBuilder#build()
+     *     built} using the same {@link BootstrapServiceRegistry}.
+     */
     public static final class ServiceContributor implements org.hibernate.service.spi.ServiceContributor {
         public ServiceContributor() {}
 
         @Override
         public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
             serviceRegistryBuilder.addInitiator(new StandardServiceInitiator<StandardServiceRegistryScopedState>() {
+                /**
+                 * @mongoCme This method may be called multiple times when
+                 *     {@linkplain StandardServiceRegistryBuilder#build() building} a single
+                 *     {@link StandardServiceRegistry} instance.
+                 */
                 @Override
                 public Class<StandardServiceRegistryScopedState> getServiceInitiated() {
                     return StandardServiceRegistryScopedState.class;
                 }
 
+                /**
+                 * @mongoCme This method is called not more than once per instance of {@link StandardServiceInitiator}.
+                 */
                 @Override
                 public StandardServiceRegistryScopedState initiateService(
                         Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
