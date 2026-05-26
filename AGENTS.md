@@ -66,7 +66,7 @@ To obtain `$TOKEN`, try these in order until one returns a non-empty value:
 2. **macOS Keychain:** `security find-generic-password -s "jira-cli" -w`
 3. **Linux Secret Service:** `secret-tool lookup service jira-cli`
 
-If none of these work, ask the user where their Jira API token is stored. If they don't have one, they can generate one at https://id.atlassian.com/manage-profile/security/api-tokens and configure it with `jira init`.
+If none of these work, ask the user where their Jira API token is stored. If they don't have one, they can generate a Personal Access Token at https://jira.mongodb.org/secure/ViewProfile.jspa (Profile → Personal Access Tokens) and configure it with `jira init`.
 
 The Jira REST API (`https://jira.mongodb.org/rest/api/2/`) is publicly readable without auth.
 
