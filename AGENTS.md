@@ -52,8 +52,6 @@ The `jira` CLI (`/opt/homebrew/bin/jira`) is installed and pre-authenticated via
 For operations the CLI doesn't support natively (e.g. re-ordering/ranking issues within an epic), use `curl` with the bearer token and the Jira Agile REST API:
 
 ```bash
-TOKEN=$(grep authentication_token ~/.config/.jira/.config.yml | awk '{print $2}')
-
 # Re-order: move HIBERNATE-XXX to rank before HIBERNATE-YYY
 curl -s -X PUT \
   -H "Authorization: Bearer $TOKEN" \
@@ -61,6 +59,14 @@ curl -s -X PUT \
   -d '{"issues":["HIBERNATE-XXX"],"rankBeforeIssue":"HIBERNATE-YYY"}' \
   "https://jira.mongodb.org/rest/agile/1.0/issue/rank"
 ```
+
+To obtain `$TOKEN`, try these in order until one returns a non-empty value:
+
+1. **Config file:** `grep authentication_token ~/.config/.jira/.config.yml | awk '{print $2}'`
+2. **macOS Keychain:** `security find-generic-password -s "jira-cli" -w`
+3. **Linux Secret Service:** `secret-tool lookup service jira-cli`
+
+If none of these work, ask the user where their Jira API token is stored. If they don't have one, they can generate one at https://id.atlassian.com/manage-profile/security/api-tokens and configure it with `jira init`.
 
 The Jira REST API (`https://jira.mongodb.org/rest/api/2/`) is publicly readable without auth.
 
