@@ -25,8 +25,4 @@ public abstract non-sealed class TestMongoDialect extends MongoDialect {
     protected TestMongoDialect(DialectResolutionInfo info) {
         super(info);
     }
-
-    protected TestMongoDialect() {
-        super();
-    }
 }

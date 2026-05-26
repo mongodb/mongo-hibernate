@@ -17,7 +17,7 @@
 package com.mongodb.hibernate.dialect;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -42,9 +42,8 @@ class MongoDialectTests {
     }
 
     @Test
-    void noArgConstructorSucceeds() {
-        // Hibernate 7's JdbcEnvironmentInitiator.getJdbcEnvironmentWithDefaults invokes the
-        // no-arg constructor when JDBC metadata is unavailable. It must succeed.
-        assertDoesNotThrow(() -> new MongoDialect());
+    @SuppressWarnings("deprecation")
+    void noArgConstructorFails() {
+        assertThrows(RuntimeException.class, MongoDialect::new);
     }
 }
