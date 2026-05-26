@@ -1233,6 +1233,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 continue;
             }
 
+            // TODO-HIBERNATE-169: when non-@Struct @ElementCollection join targets are supported, add a
+            // PluralTableGroup embeddable check here mirroring the root-level guard in checkFromClauseSupportability.
+
             var preserve =
                     switch (tgj.getJoinType()) {
                         case INNER -> false;
@@ -1268,6 +1271,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         + primaryRef.getClass().getSimpleName());
             }
 
+            // TODO-HIBERNATE-171: when JOINED inheritance and @SecondaryTable are supported, reject (or handle)
+            // joined entities whose persister spans multiple query spaces — a single $lookup covers only the
+            // primary table.
             var joinedCollection = joinedNtr.getTableExpression();
             var joinedAlias = joinedNtr.getIdentificationVariable();
 
