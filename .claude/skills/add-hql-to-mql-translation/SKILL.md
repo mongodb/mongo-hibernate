@@ -71,7 +71,7 @@ The plan must follow this task order:
 - Positive tests: `assertSelectionQuery(hql, resultType, expectedMql, expectedResults, expectedAffectedCollections)` — always assert the full MQL pipeline string, the full result set, and the full set of affected collections
 - When the `$project` fields are unknown upfront (e.g. JOIN FETCH): use `assertActualCommandsInOrder` with `/* FILL IN after first test run */`; upgrade to full `assertSelectionQuery` once the actual MQL is known
 - Negative tests: `assertSelectQueryFailure(hql, resultType, FeatureNotSupportedException.class, "TODO-HIBERNATE-161 ...")` — use the real ticket number, following the `TODO-HIBERNATE-NNN` codebase convention
-- Positive tests live in `@Nested class Positive` with `@BeforeEach` seed data; negative tests live at the outer class level (no seed data needed)
+- Positive tests live in a descriptively named `@Nested` class with `@BeforeEach` seed data; negative tests live at the outer class level for one-off cases or in `@Nested class Unsupported` when there are several.
 - Every non-trivial code path (loop iterations, recursive calls, each instanceof branch) must be covered by a positive or negative test
 
 ---
