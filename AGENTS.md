@@ -47,9 +47,26 @@ The Java module (`com.mongodb.hibernate`) exports only `cfg`, `cfg.spi`, and `an
 
 Project: **HIBERNATE** at https://jira.mongodb.org/browse/HIBERNATE
 
-The `jira` CLI (`/opt/homebrew/bin/jira`) is installed and pre-authenticated via a bearer token in `~/.config/.jira/.config.yml`. Use it for basic issue operations (`jira issue view`, `jira issue edit`, `jira issue move`, etc.).
+Check that the `jira` CLI is installed at `/opt/homebrew/bin/jira`. If not, ask the developer to install it:
 
-For operations the CLI doesn't support natively (e.g. re-ordering/ranking issues within an epic), use `curl` with the bearer token and the Jira Agile REST API:
+```bash
+brew install ankitpokhrel/jira-cli/jira-cli
+```
+
+The `jira` CLI handles basic issue operations (`jira issue view`, `jira issue edit`, `jira issue move`, etc.).
+
+Retrieve the bearer token from the macOS Keychain:
+
+```bash
+TOKEN=$(security find-generic-password -s "jira-cli" -w)
+```
+
+If `jira` commands fail with a missing configuration error, ask the developer to run `jira init` (link: `https://jira.mongodb.org`, login: their MongoDB email).
+
+If `TOKEN` is empty, ask the developer to create a Personal Access Token at https://jira.mongodb.org/tokens and add it to the keychain (`security add-generic-password -s "jira-cli" -a "their.name@mongodb.com" -w "<token>"`).
+This assumes they are on a Mac.  If not, figure out the Linux or Windows equivalent.
+
+For operations the CLI doesn't support natively (e.g. re-ordering/ranking issues within an epic), use `curl` with `$TOKEN` and the Jira Agile REST API, e.g.:
 
 ```bash
 # Re-order: move HIBERNATE-XXX to rank before HIBERNATE-YYY
@@ -60,23 +77,13 @@ curl -s -X PUT \
   "https://jira.mongodb.org/rest/agile/1.0/issue/rank"
 ```
 
-To obtain `$TOKEN`, try these in order until one returns a non-empty value:
-
-1. **Config file:** `grep authentication_token ~/.config/.jira/.config.yml | awk '{print $2}'`
-2. **macOS Keychain:** `security find-generic-password -s "jira-cli" -w`
-3. **Linux Secret Service:** `secret-tool lookup service jira-cli`
-
-If none of these work, ask the user where their Jira API token is stored. If they don't have one, they can generate a Personal Access Token at https://jira.mongodb.org/secure/ViewProfile.jspa (Profile → Personal Access Tokens) and configure it with `jira init`.
-
-The Jira REST API (`https://jira.mongodb.org/rest/api/2/`) is publicly readable without auth.
-
 ## Adding HQL-to-MQL Translation Support
 
 @.claude/skills/add-hql-to-mql-translation/SKILL.md
 
 ## Code Style
 
-- **JDK:** Java 17 (matches CI). Verify with `java -version` before building. An `.sdkmanrc` is provided if you use sdkman.
+- **JDK:** Java 17 (matches CI). Verify with `java -version` before building. An `.sdkmanrc` is provided if the developer uses sdkman.
 - **Formatter:** Spotless + Palantir Java Format. Always run `./gradlew spotlessApply` before committing.
 - **Nullness:** JSpecify annotations enforced by NullAway (via Error Prone at compile time). Annotate all API boundaries.
 - **Line length:** 120 characters.
