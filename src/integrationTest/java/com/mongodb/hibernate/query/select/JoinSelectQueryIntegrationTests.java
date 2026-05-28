@@ -327,9 +327,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     void testJoinFetchManyToOne() {
         var orders = new ArrayList<Order>();
         getSessionFactoryScope().inTransaction(session -> {
-            orders.addAll(
-                    session.createSelectionQuery("FROM Order o JOIN FETCH o.customer ORDER BY o.id", Order.class)
-                            .getResultList());
+            orders.addAll(session.createSelectionQuery("FROM Order o JOIN FETCH o.customer ORDER BY o.id", Order.class)
+                    .getResultList());
             assertActualCommandsInOrder(
                     BsonDocument.parse(
                             """
@@ -368,9 +367,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     void testJoinFetchOneToMany() {
         var customers = new ArrayList<Customer>();
         getSessionFactoryScope().inTransaction(session -> {
-            customers.addAll(session.createSelectionQuery(
-                            "FROM Customer c JOIN FETCH c.orders WHERE c.id = 1", Customer.class)
-                    .getResultList());
+            customers.addAll(
+                    session.createSelectionQuery("FROM Customer c JOIN FETCH c.orders WHERE c.id = 1", Customer.class)
+                            .getResultList());
             assertActualCommandsInOrder(
                     BsonDocument.parse(
                             """
