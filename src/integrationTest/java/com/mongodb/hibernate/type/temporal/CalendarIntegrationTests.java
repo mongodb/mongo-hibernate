@@ -16,59 +16,50 @@
 
 package com.mongodb.hibernate.type.temporal;
 
-import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.CalendarItems;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import java.util.Calendar;
 import org.hibernate.boot.MetadataSources;
 import org.junit.jupiter.api.Test;
 
 class CalendarIntegrationTests {
+
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new ItemWithId<Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<Calendar>() {}.getClass()),
+                () -> assertNotSupported(CalendarItems.WithId.class),
+                () -> assertNotSupported(CalendarItems.WithFlattenedEmbeddableId.class),
+                () -> assertNotSupported(CalendarItems.WithBasicPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithArrayPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithCollectionPersistentAttribute.class),
 
                 // Flattened Embeddable
-                () -> assertNotSupported(new ItemWithEmbeddableWithBasicPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithEmbeddableWithArrayPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithEmbeddableWithCollectionPersistentAttribute<Calendar>() {}.getClass()),
+                () -> assertNotSupported(CalendarItems.WithEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Nested flattened embeddable
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<Calendar>() {}.getClass()),
+                () -> assertNotSupported(CalendarItems.WithNestedEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithNestedEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithNestedEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Aggregate embeddable
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<Calendar>() {}.getClass()),
+                () -> assertNotSupported(CalendarItems.WithAggregateEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithAggregateEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithCollectionOfAggregateEmbeddable.class),
 
                 // Nested aggregate embeddable
+                () -> assertNotSupported(CalendarItems.WithNestedAggregateEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithNestedAggregateEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<Calendar>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
-                                Calendar>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<Calendar>() {}.getClass()));
+                        CalendarItems.WithNestedAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(CalendarItems.WithNestedCollectionOfAggregateEmbeddable.class));
     }
 
+    // package-private because it's used by all the tests in this package
     static void assertNotSupported(Class<?> entityClass) {
         assertThatThrownBy(() ->
                         new MetadataSources().addAnnotatedClass(entityClass).buildMetadata())

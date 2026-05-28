@@ -251,6 +251,13 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         return true;
     }
 
+    // Hibernate 7's `AggregateComponentSecondPass` rejects `@Struct` mappings unless this returns `true`.
+    // MQL supports embedded documents as user-defined struct types via `MongoStructJdbcType`.
+    @Override
+    public boolean supportsUserDefinedTypes() {
+        return true;
+    }
+
     /**
      *
      *

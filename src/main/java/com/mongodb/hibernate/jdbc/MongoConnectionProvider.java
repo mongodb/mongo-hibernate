@@ -193,6 +193,31 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
 
         @Override
+        public @Nullable String getSchema() {
+            return null;
+        }
+
+        @Override
+        public @Nullable String getCatalog() {
+            return null;
+        }
+
+        @Override
+        public @Nullable Integer getJdbcFetchSize() {
+            return null;
+        }
+
+        @Override
+        public boolean hasSchema() {
+            return false;
+        }
+
+        @Override
+        public boolean hasCatalog() {
+            return false;
+        }
+
+        @Override
         public String toInfoString() {
             var dbmsVersion = getDialectVersion();
             return "\tDMBS: " + MONGO_DBMS_NAME + (dbmsVersion == null ? "" : " " + dbmsVersion)
