@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.Struct;
+import org.hibernate.query.sqm.InterpretationException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -589,11 +590,13 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     @Test
     void testLateralUnnestThrows() {
         // TODO-HIBERNATE-111 https://jira.mongodb.org/browse/HIBERNATE-111
-        // Currently throws AssertionError from Hibernate internals instead of FeatureNotSupportedException
+        // Hibernate 7.3 fails at HQL semantic translation (SQM level) with InterpretationException because the
+        // MongoDB dialect does not register an "unnest" set-returning function descriptor. Our
+        // FunctionTableReference guard in buildJoinStages is therefore unreachable via HQL for this construct.
         getSessionFactoryScope().fromTransaction(session -> org.assertj.core.api.Assertions.assertThatThrownBy(
                         () -> session.createSelectionQuery("FROM OrderWithArray o JOIN o.items i", Object[].class)
                                 .getResultList())
-                .isInstanceOf(AssertionError.class));
+                .isInstanceOf(InterpretationException.class));
     }
 
     @Test
