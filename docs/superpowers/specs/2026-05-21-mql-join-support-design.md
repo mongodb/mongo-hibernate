@@ -21,7 +21,7 @@ Joins in the MongoDB aggregation pipeline use two stages:
 - INNER JOIN: `{ "$unwind": "$o1_0" }` — drops outer documents with no matches (default `preserveNullAndEmptyArrays: false`)
 - LEFT OUTER JOIN: `{ "$unwind": { "path": "$o1_0", "preserveNullAndEmptyArrays": true } }` — keeps outer documents with no matches, setting the joined path to `null`
 
-After `$unwind`, joined-table columns are accessible at dotted paths (e.g., `o1_0.total`). All downstream stages (`$match`, `$sort`, `$project`) reference them this way transparently.
+After `$unwind`, joined-table columns are accessible at dotted paths (e.g., `o1_0.total`). `$match` and `$sort` reference them via these dotted paths. `$project` uses flat field-path expressions with `#` as the separator (e.g., `"o1_0#total": "$o1_0.total"`) — see the Result Reading section.
 
 This initial implementation uses the simple `$lookup` form (`localField`/`foreignField`), which supports a single field-pair equijoin. Complex ON conditions require the `$lookup` pipeline form with `$expr` and are tracked as follow-up tickets.
 
@@ -45,7 +45,7 @@ HQL: `SELECT c.id, o.total FROM Customer c JOIN Order o ON c.id = o.customerId W
   { "$lookup": { "from": "orders", "localField": "_id", "foreignField": "customerId", "as": "o1_0" } },
   { "$unwind": "$o1_0" },
   { "$match": { "o1_0.total": { "$gt": 100 } } },
-  { "$project": { "_id": true, "o1_0.total": true } }
+  { "$project": { "_id": true, "o1_0#total": "$o1_0.total" } }
 ]}
 ```
 
@@ -57,11 +57,11 @@ HQL: `SELECT c.id, o.total FROM Customer c LEFT JOIN Order o ON c.id = o.custome
 { "aggregate": "customers", "pipeline": [
   { "$lookup": { "from": "orders", "localField": "_id", "foreignField": "customerId", "as": "o1_0" } },
   { "$unwind": { "path": "$o1_0", "preserveNullAndEmptyArrays": true } },
-  { "$project": { "_id": true, "o1_0.total": true } }
+  { "$project": { "_id": true, "o1_0#total": "$o1_0.total" } }
 ]}
 ```
 
-Customers with no orders appear with `o1_0.total` projected as `null`.
+Customers with no orders appear with `o1_0#total` projected as `null`.
 
 ### Chained (Three-Way) INNER JOIN
 
@@ -73,7 +73,7 @@ HQL: `SELECT c.id, o.id, li.quantity FROM Customer c JOIN Order o ON c.id = o.cu
   { "$unwind": "$o1_0" },
   { "$lookup": { "from": "line_items", "localField": "o1_0._id", "foreignField": "orderId",    "as": "li1_0" } },
   { "$unwind": "$li1_0" },
-  { "$project": { "_id": true, "o1_0._id": true, "li1_0.quantity": true } }
+  { "$project": { "_id": true, "o1_0#_id": "$o1_0._id", "li1_0#quantity": "$li1_0.quantity" } }
 ]}
 ```
 
@@ -87,7 +87,7 @@ Approach A — surgical additions to `AbstractMqlTranslator` plus two new AST no
 
 ### New AST Nodes
 
-Two new classes in `mongoast/command/aggregate/`:
+Three new classes in `mongoast/command/aggregate/`:
 
 **`AstLookupStage`**
 ```java
@@ -102,6 +102,15 @@ record AstLookupStage(String from, String localField, String foreignField, Strin
 record AstUnwindStage(String path, boolean preserveNullAndEmptyArrays) implements AstStage {
     // preserveNullAndEmptyArrays=false: { "$unwind": "$<path>" }
     // preserveNullAndEmptyArrays=true:  { "$unwind": { "path": "$<path>", "preserveNullAndEmptyArrays": true } }
+}
+```
+
+**`AstProjectStageFieldPathSpecification`**
+```java
+record AstProjectStageFieldPathSpecification(String field, String fieldPath)
+        implements AstProjectStageSpecification {
+    // renders: { "<field>": "$<fieldPath>" }
+    // e.g. "o1_0#total": "$o1_0.total"
 }
 ```
 
@@ -165,7 +174,7 @@ private List<AstStage> buildJoinStages(TableGroup tableGroup) {
         }
 
         var joinedCollection = joinedNtr.getTableExpression();
-        var joinedAlias = joinedGroup.getIdentificationVariable();
+        var joinedAlias = joinedNtr.getIdentificationVariable();
         affectedTableNames.add(joinedCollection);
 
         var preserve = switch (tgj.getJoinType()) {
@@ -223,21 +232,28 @@ public void visitColumnReference(ColumnReference columnReference) {
 }
 ```
 
+**`visitSelectClause`** — branches on whether the resolved field path is dotted (joined column) or plain (root column):
+```java
+var field = acceptAndYield(columnReference, FIELD_PATH);
+AstProjectStageSpecification spec = field.contains(".")
+        ? new AstProjectStageFieldPathSpecification(field.replace('.', '#'), field)
+        : new AstProjectStageIncludeSpecification(field);
+projectStageSpecifications.add(spec);
+```
+
+Root columns produce `"fieldName": true`; joined columns produce `"alias#column": "$alias.column"`. The `.` check is safe because the validator blocks `.` in mapped field names, so any `.` in a resolved path is always the qualifier separator.
+
 ## JOIN FETCH
 
 `JOIN FETCH` in HQL tells Hibernate to eagerly load an association in the same query. From the translator's perspective it produces an identical SQL AST to a plain `JOIN` — the same `TableGroupJoin` with the same `SqlAstJoinType`. The result-set population of the association is handled by Hibernate's result-set processing layer, not the translator. JOIN FETCH therefore requires no special handling and is supported for free once INNER and LEFT joins work.
 
 ## Result Reading
 
-After `$lookup + $unwind`, MongoDB returns joined-table fields as nested documents inside the outer document. For example, a row from the INNER JOIN example arrives as `{"_id": 1, "o1_0": {"total": 100}}`. Hibernate asks for column `"o1_0.total"` using the dotted path produced by `resolveFieldPath`, but `MongoResultSet.getValue` previously called `BsonDocument.get(key)` with the full dotted string as a literal key, which returns `null` for nested fields.
+`$project` flattens joined-table columns into top-level fields using `#` as the separator between the table alias and the column name. For example, a row from the INNER JOIN example arrives as `{"_id": 1, "o1_0#total": 100}` — a flat document. `MongoResultSet.getValue` calls `BsonDocument.get(key)` directly with the `#`-keyed field name; no path traversal is needed.
 
-To fix this, `getNestedBsonValue(BsonDocument, String)` was added. It performs an iterative dotted-path traversal: it splits the key on `.` segments, descending one `BsonDocument` level per segment, and returns `current.get(remainingKey)` at the end. If any intermediate segment does not resolve to a `BsonDocument` the method returns `null` (no crash).
+The `#` separator is reserved: `MongoAdditionalMappingContributor` validates at `SessionFactory` initialization that no mapped field name contains `.`, `$`, or `#`. Any `#` in a key produced by `visitSelectClause` is therefore always the join-alias separator, never a literal field name character.
 
-The traversal is iterative rather than recursive because `getValue` is called once per column per row — it is a hot path — and iterative code avoids unnecessary stack frame allocation compared to a recursive descent.
-
-There is no ambiguity between a literal `.` in a field name and a path separator: `MongoAdditionalMappingContributor` validates at `SessionFactory` initialization that no mapped field name contains `.` or `$`. Any `.` appearing in a key produced by `resolveFieldPath` is therefore always a path separator, never a literal field name character.
-
-For non-join queries the key contains no `.`, so `indexOf('.')` returns -1 immediately and `current.get(key.substring(0))` is identical to `current.get(key)` — the same flat lookup as before. There is zero overhead for queries that do not involve joins.
+For non-join queries the projected keys contain no `#` and the result documents are unchanged flat documents — identical behaviour to before join support was added.
 
 ## PluralTableGroup in checkFromClauseSupportability
 
@@ -318,7 +334,7 @@ New test class `JoinSelectQueryIntegrationTests` (same package as `SimpleSelectQ
 
 Most negative tests assert that executing the query throws `FeatureNotSupportedException`. Two tests document cases where Hibernate's own internals intercept the query before translation reaches our throw site:
 
-- `testLateralUnnestThrows` (`FROM OrderWithArray o JOIN o.items i`): Hibernate crashes with an `AssertionError` internally before our code is reached. The HIBERNATE-111 `FeatureNotSupportedException` throw in `buildJoinStages` is unreachable via HQL.
+- `testLateralUnnestThrows` (`FROM OrderWithArray o JOIN o.items i`): In Hibernate 7.3, `getSetReturningFunctionDescriptor("unnest")` returns null because the MongoDB dialect does not register an unnest set-returning function descriptor — the query fails at HQL semantic translation with `InterpretationException` before our translator is reached. The HIBERNATE-111 `FeatureNotSupportedException` throw in `buildJoinStages` is unreachable via HQL. (Verified: registering `"unnest"` in the dialect causes the query to reach our `FunctionTableReference` guard and throw correctly.)
 - `testSubqueryJoinThrows` (`JOIN (SELECT ...) ord ON ...`): The HQL parser rejects this syntax with `SemanticException` before translation. The HIBERNATE-167 throw is unreachable via HQL.
 
 Both tests are kept to document the actual behavior and serve as regression guards if Hibernate changes its handling of these constructs.
@@ -333,7 +349,7 @@ For `testCompoundOnConditionThrows`, the HQL `JOIN Order o ON c.id = o.id AND c.
 | `testNonEquijoinThrows` | Non-equality ON condition | `JOIN Order o ON c.id > o.total` | `FeatureNotSupportedException` (HIBERNATE-165) |
 | `testCompoundOnConditionThrows` | Compound ON condition (AND-ed predicates) | `JOIN Order o ON c.id = o.id AND c.id < 100` | `FeatureNotSupportedException` (HIBERNATE-164) |
 | `testNonColumnOnExpressionThrows` | Non-`ColumnReference` ON expression | `JOIN Order o ON c.id = o.total + 1` (arithmetic in ON clause) | `FeatureNotSupportedException` (HIBERNATE-166) |
-| `testLateralUnnestThrows` | LATERAL UNNEST (function table join) | `FROM OrderWithArray o JOIN o.items i` | `AssertionError` (Hibernate internal, HIBERNATE-111 unreachable) |
+| `testLateralUnnestThrows` | LATERAL UNNEST (function table join) | `FROM OrderWithArray o JOIN o.items i` | `InterpretationException` (Hibernate 7.3 SQM translation, HIBERNATE-111 unreachable) |
 | `testSubqueryJoinThrows` | Subquery/derived-table join | `SELECT c.id FROM Customer c JOIN (SELECT o.id FROM Order o) ord ON c.id = ord.id` | `SemanticException` (HQL parser, HIBERNATE-167 unreachable) |
 | `testOnConditionWithAssociationNavigationThrows` | ON navigates association (creates nested implicit sub-join) | `SELECT c.id FROM Customer c JOIN c.orders o ON o.customer.name = 'Alice'` | `FeatureNotSupportedException` (HIBERNATE-168) |
 | `testEntitySyntaxJoinThrows` | Entity join syntax where ON navigates association (e.g. `ON c = o.customer`) | `SELECT c.id, o.total FROM Customer c JOIN Order o ON c = o.customer` | `FeatureNotSupportedException` (HIBERNATE-168) |
@@ -343,8 +359,10 @@ For `testCompoundOnConditionThrows`, the HQL `JOIN Order o ON c.id = o.id AND c.
 **Before writing any code:** Jira tickets for all unsupported shapes are already filed. Use the real ticket numbers in the throw messages from the start.
 
 **Single implementation PR** covering the complete feature:
-- `AstLookupStage` and `AstUnwindStage` (new AST nodes)
-- All `AbstractMqlTranslator` changes (`buildJoinStages`, `extractEquijoinFields`, `resolveFieldPath`, `visitColumnReference`, `visitFromClause`, mutation guard)
+- `AstLookupStage`, `AstUnwindStage`, and `AstProjectStageFieldPathSpecification` (new AST nodes)
+- All `AbstractMqlTranslator` changes (`buildJoinStages`, `extractEquijoinFields`, `resolveFieldPath`, `visitColumnReference`, `visitSelectClause`, `visitFromClause`, mutation guard)
+- `MongoStatement.isExcludeProjectSpecification` — relaxed to accept single-`$` field-path strings; error message updated
+- `MongoAdditionalMappingContributor` — `#` added to `UNSUPPORTED_FIELD_NAME_CHARACTERS`
+- `JoinSelectQueryIntegrationTests` — test class restructured (positive tests hoisted to outer class, negative tests wrapped in `Unsupported` nested class) to match module conventions
 - All integration tests: INNER JOIN, LEFT OUTER JOIN, JOIN FETCH, chained joins, all negative tests
-
-Splitting the AST nodes into a separate PR would introduce dead code not yet wired up, making that PR harder to review in isolation. The full feature is a coherent, reviewable unit — two small record classes, focused changes to one translator class, and a new test class.
+- `IdentifierIntegrationTests` — `#` character tests added
