@@ -199,7 +199,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0.total": true
+                        "o1_0#total": "$o1_0.total"
                       }
                     }
                   ]
@@ -236,7 +236,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0.total": true
+                        "o1_0#total": "$o1_0.total"
                       }
                     }
                   ]
@@ -271,7 +271,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0.total": true
+                        "o1_0#total": "$o1_0.total"
                       }
                     }
                   ]
@@ -314,7 +314,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0.total": true
+                        "o1_0#total": "$o1_0.total"
                       }
                     }
                   ]
@@ -348,8 +348,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                 {
                                   "$project": {
                                     "_id": true,
-                                    "c1_0._id": true,
-                                    "c1_0.name": true,
+                                    "c1_0#_id": "$c1_0._id",
+                                    "c1_0#name": "$c1_0.name",
                                     "total": true
                                   }
                                 }
@@ -394,9 +394,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                   "$project": {
                                     "_id": true,
                                     "name": true,
-                                    "o1_0.customerId": true,
-                                    "o1_0._id": true,
-                                    "o1_0.total": true
+                                    "o1_0#customerId": "$o1_0.customerId",
+                                    "o1_0#_id": "$o1_0._id",
+                                    "o1_0#total": "$o1_0.total"
                                   }
                                 }
                               ]
@@ -438,8 +438,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0._id": true,
-                        "li1_0.quantity": true
+                        "o1_0#_id": "$o1_0._id",
+                        "li1_0#quantity": "$li1_0.quantity"
                       }
                     }
                   ]
@@ -483,8 +483,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "c1_0.name": true,
-                        "li1_0.quantity": true
+                        "c1_0#name": "$c1_0.name",
+                        "li1_0#quantity": "$li1_0.quantity"
                       }
                     }
                   ]
@@ -519,7 +519,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0.total": true
+                        "o1_0#total": "$o1_0.total"
                       }
                     }
                   ]

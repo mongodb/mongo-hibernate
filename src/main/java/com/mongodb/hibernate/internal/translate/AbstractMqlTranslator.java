@@ -66,6 +66,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLi
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSkipStage;
@@ -599,7 +600,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException();
             }
             var field = acceptAndYield(columnReference, FIELD_PATH);
-            projectStageSpecifications.add(new AstProjectStageIncludeSpecification(field));
+            AstProjectStageSpecification spec = field.contains(".")
+                    ? new AstProjectStageFieldPathSpecification(field.replace('.', '#'), field)
+                    : new AstProjectStageIncludeSpecification(field);
+            projectStageSpecifications.add(spec);
         }
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
     }
