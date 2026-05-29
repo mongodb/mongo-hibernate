@@ -193,15 +193,16 @@ class MongoStatementTests {
                 () -> successAsserter.accept("{title: 1, publishYear: 1}", List.of("title", "publishYear", "_id")),
                 () -> failureAsserter.accept("{title: 1, publishYear: 0}", "Exclusions are not allowed"),
                 () -> failureAsserter.accept("{title: 1, publishYear: false}", "Exclusions are not allowed"),
-                () -> failureAsserter.accept("{title: '$field.path'}", "Expressions and literals are not supported"),
-                () -> failureAsserter.accept("{title: '$$REMOVE'}", "Expressions and literals are not supported"),
-                () -> failureAsserter.accept("{title: {$literal: 1}}", "Expressions and literals are not supported"),
-                () -> failureAsserter.accept("{title: 'string literal'}", "Expressions and literals are not supported"),
-                () -> failureAsserter.accept("{title: []}", "Expressions and literals are not supported"),
+                () -> successAsserter.accept("{'o1_0#total': '$o1_0.total', _id: 1}", List.of("o1_0#total", "_id")),
+                () -> failureAsserter.accept("{title: '$$REMOVE'}", "Unsupported value in '$project' specification"),
+                () -> failureAsserter.accept("{title: {$literal: 1}}", "Unsupported value in '$project' specification"),
                 () -> failureAsserter.accept(
-                        "{title: ['array literal']}", "Expressions and literals are not supported"),
+                        "{title: 'string literal'}", "Unsupported value in '$project' specification"),
+                () -> failureAsserter.accept("{title: []}", "Unsupported value in '$project' specification"),
                 () -> failureAsserter.accept(
-                        "{title: {fieldName: 'document literal'}}", "Expressions and literals are not supported"));
+                        "{title: ['array literal']}", "Unsupported value in '$project' specification"),
+                () -> failureAsserter.accept(
+                        "{title: {fieldName: 'document literal'}}", "Unsupported value in '$project' specification"));
     }
 
     @Nested
