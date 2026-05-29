@@ -360,6 +360,16 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
             assertThrows(IdWithDollar.class, '$');
         }
 
+        @Test
+        void idWithHash() {
+            assertThrows(IdWithHash.class, '#');
+        }
+
+        @Test
+        void columnWithHash() {
+            assertThrows(ColumnWithHash.class, '#');
+        }
+
         private static void assertThrows(Class<?> annotatedClass, char unsupportedCharacter) {
             assertThatThrownBy(() -> new MetadataSources()
                             .addAnnotatedClass(annotatedClass)
@@ -396,6 +406,22 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
             int id;
 
             @Column(name = "field name with $dollar")
+            int v;
+        }
+
+        @Entity
+        static class IdWithHash {
+            @Id
+            @Column(name = "ID field name with #hash")
+            int id;
+        }
+
+        @Entity
+        static class ColumnWithHash {
+            @Id
+            int id;
+
+            @Column(name = "field name with #hash")
             int v;
         }
     }
