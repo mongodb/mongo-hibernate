@@ -25,6 +25,7 @@ import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
+import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
@@ -357,6 +358,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         functionRegistry.register("array_contains_nullable", new MongoArrayContainsFunction(true, typeConfiguration));
         functionRegistry.register("array_includes", new MongoArrayIncludesFunction(false, typeConfiguration));
         functionRegistry.register("array_includes_nullable", new MongoArrayIncludesFunction(true, typeConfiguration));
+        functionRegistry.register("unnest", new MongoUnnestFunction());
     }
 
     /** @mongoCme The {@link MutationOperation} returned from this method does not have to be thread-safe. */
