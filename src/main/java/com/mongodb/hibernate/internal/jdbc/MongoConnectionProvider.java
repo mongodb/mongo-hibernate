@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+package com.mongodb.hibernate.internal.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
@@ -22,7 +22,6 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_JDBC_DRIVER_NA
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 
 import com.mongodb.MongoDriverInformation;
-import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.hibernate.internal.BuildConfig;
@@ -46,20 +45,11 @@ import org.hibernate.service.spi.Stoppable;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link ConnectionProvider} for the MongoDB Extension for Hibernate ORM.
- *
- * <p>All the work done via a {@link Connection} {@linkplain MongoConnectionProvider#getConnection() obtained} from this
- * {@linkplain ConnectionProvider} is done within the same {@link ClientSession}.
- * {@linkplain ClientSession#startTransaction() MongoDB transactions} are used only if
- * {@linkplain Connection#getAutoCommit() auto-commit} is disabled.
- *
- * <p>This {@link ConnectionProvider} does not respect the {@value org.hibernate.cfg.AvailableSettings#AUTOCOMMIT}
- * configuration property, and {@linkplain MongoConnectionProvider#getConnection() provides} {@link Connection}s with
- * {@linkplain Connection#getAutoCommit() auto-commit} enabled.
- *
+ * @hidden
  * @mongoCme The methods {@link #getConnection()}/{@link #closeConnection(Connection)} must be thread-safe. It is
  *     unclear about the other methods.
  */
+@SuppressWarnings("MissingSummary")
 public final class MongoConnectionProvider implements ConnectionProvider, Stoppable {
     @Serial
     private static final long serialVersionUID = 1L;

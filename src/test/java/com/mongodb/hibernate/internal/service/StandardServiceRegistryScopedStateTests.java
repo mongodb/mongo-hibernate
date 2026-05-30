@@ -16,11 +16,12 @@
 
 package com.mongodb.hibernate.internal.service;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DIALECT_SHORT_NAME;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hibernate.cfg.AvailableSettings.CONNECTION_PROVIDER;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
@@ -45,21 +46,18 @@ class StandardServiceRegistryScopedStateTests {
         standardServiceRegistryBuilder.clearSettings();
         try (var standardServiceRegistry = standardServiceRegistryBuilder.build()) {
             assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
-                    .hasRootCauseMessage("com.mongodb.hibernate.dialect.MongoDialect must be plugged in"
-                            + ", for example, via the [hibernate.dialect] configuration property");
+                    .hasRootCauseMessage("[hibernate.dialect] must be set to [MongoDB]");
         }
     }
 
     @Test
-    void testMongoConnectionProviderNotPluggedIn() {
-        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
-        standardServiceRegistryBuilder.clearSettings();
-        try (var standardServiceRegistry = standardServiceRegistryBuilder
-                .applySetting(DIALECT, MongoDialect.class)
-                .build()) {
-            assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
-                    .hasRootCauseMessage("com.mongodb.hibernate.jdbc.MongoConnectionProvider must be plugged in"
-                            + ", for example, via the [hibernate.connection.provider_class] configuration property");
-        }
+    void testIncompatibleConnectionProvider() {
+        assertThatThrownBy(() -> new StandardServiceRegistryBuilder()
+                        .clearSettings()
+                        .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                        .applySetting(CONNECTION_PROVIDER, "com.example.SomeOtherConnectionProvider")
+                        .build())
+                .hasMessageContaining(
+                        "[hibernate.connection.provider_class] is automatically configured and must not be set explicitly");
     }
 }

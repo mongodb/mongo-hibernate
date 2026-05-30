@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+package com.mongodb.hibernate.internal.jdbc;
 
 import static java.lang.String.format;
 
@@ -22,7 +22,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
-import com.mongodb.hibernate.internal.jdbc.MongoArray;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;

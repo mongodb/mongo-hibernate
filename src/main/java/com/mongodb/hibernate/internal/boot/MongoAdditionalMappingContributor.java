@@ -23,8 +23,8 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Embeddable;
 import java.sql.Time;
 import java.sql.Timestamp;

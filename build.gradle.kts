@@ -45,13 +45,7 @@ tasks.withType<Javadoc> {
         // TODO-HIBERNATE-129 addStringOption("-link-modularity-mismatch", "info")
         addBooleanOption("serialwarn", true)
         addBooleanOption("Xdoclint:all", true)
-        addBooleanOption(
-            "Xdoclint/package:-" +
-                "com.mongodb.hibernate.internal.*" +
-                ",com.mongodb.hibernate.dialect.*" +
-                ",com.mongodb.hibernate.jdbc.*",
-            true,
-        )
+        addBooleanOption("Xdoclint/package:-com.mongodb.hibernate.internal.*", true)
         addStringOption("-show-module-contents", "api")
         addStringOption("-show-packages", "exported")
         addStringOption("-show-types", "protected")

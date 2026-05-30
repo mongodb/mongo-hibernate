@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.service;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DIALECT_SHORT_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
 import static org.hibernate.cfg.AvailableSettings.DIALECT_RESOLVERS;
@@ -24,11 +25,11 @@ import static org.hibernate.cfg.AvailableSettings.JAVA_TIME_USE_DIRECT_JDBC;
 import static org.hibernate.cfg.AvailableSettings.PREFERRED_INSTANT_JDBC_TYPE;
 
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
-import com.mongodb.hibernate.jdbc.MongoConnectionProvider;
+import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
+import com.mongodb.hibernate.internal.jdbc.MongoConnectionProvider;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
@@ -84,6 +85,24 @@ public final class StandardServiceRegistryScopedState implements Service {
 
         @Override
         public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
+            var settings = serviceRegistryBuilder.getSettings();
+            if (isMongoDialect(settings.get(AvailableSettings.DIALECT))) {
+                var connectionProvider = settings.get(AvailableSettings.CONNECTION_PROVIDER);
+                if (connectionProvider != null) {
+                    if (!MongoConnectionProvider.class.getName().equals(connectionProvider)) {
+                        throw new RuntimeException("[%s] is automatically configured and must not be set explicitly"
+                                .formatted(AvailableSettings.CONNECTION_PROVIDER));
+                    }
+                } else {
+                    // Autoconfigure: set the class name directly so ConnectionProviderInitiator
+                    // resolves it without registering it as a named strategy (which would trigger
+                    // Hibernate's single-registered-provider auto-selection for non-MongoDB sessions).
+                    serviceRegistryBuilder.applySetting(
+                            AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
+                }
+            }
+            // The initiator is registered unconditionally so that checkMongoDialectIsPluggedIn provides
+            // a helpful error whenever the service is requested from a misconfigured session.
             serviceRegistryBuilder.addInitiator(new StandardServiceInitiator<StandardServiceRegistryScopedState>() {
                 /**
                  * @mongoCme This method may be called multiple times when
@@ -102,11 +121,15 @@ public final class StandardServiceRegistryScopedState implements Service {
                 public StandardServiceRegistryScopedState initiateService(
                         Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
                     checkMongoDialectIsPluggedIn(configurationValues, serviceRegistry);
-                    checkMongoConnectionProviderIsPluggedIn(configurationValues);
                     return new StandardServiceRegistryScopedState(
                             createMongoConfiguration(configurationValues, serviceRegistry));
                 }
             });
+        }
+
+        private static boolean isMongoDialect(@Nullable Object dialect) {
+            return dialect instanceof String dialectName
+                    && (dialectName.equals(MONGO_DIALECT_SHORT_NAME) || isTestMongoDialectSubclass(dialectName));
         }
 
         private static void checkMongoDialectIsPluggedIn(
@@ -119,27 +142,20 @@ public final class StandardServiceRegistryScopedState implements Service {
                 // `DIALECT_RESOLVERS` is specified, then we cannot detect whether `MongoDialect` is plugged in.
                 // Otherwise, we know that `DIALECT` is the only way to plug `MongoDialect` in,
                 // and we can detect whether it is plugged in.
-                var dialect = configurationValues.get(AvailableSettings.DIALECT);
-                if (!((dialect instanceof MongoDialect)
-                        || (dialect instanceof Class<?> dialectClass
-                                && MongoDialect.class.isAssignableFrom(dialectClass))
-                        || (dialect instanceof String dialectName
-                                && dialectName.startsWith("com.mongodb.hibernate")))) {
-                    throw new RuntimeException("%s must be plugged in, for example, via the [%s] configuration property"
-                            .formatted(MongoDialect.class.getName(), AvailableSettings.DIALECT));
+                if (!isMongoDialect(configurationValues.get(AvailableSettings.DIALECT))) {
+                    throw new RuntimeException(
+                            "[%s] must be set to [%s]".formatted(AvailableSettings.DIALECT, MONGO_DIALECT_SHORT_NAME));
                 }
             }
         }
 
-        private static void checkMongoConnectionProviderIsPluggedIn(Map<String, Object> configurationValues) {
-            var connectionProvider = configurationValues.get(AvailableSettings.CONNECTION_PROVIDER);
-            if (!((connectionProvider instanceof MongoConnectionProvider)
-                    || (connectionProvider instanceof Class<?> connectionProviderClass
-                            && MongoConnectionProvider.class.isAssignableFrom(connectionProviderClass))
-                    || (connectionProvider instanceof String connectionProviderName
-                            && connectionProviderName.startsWith("com.mongodb.hibernate")))) {
-                throw new RuntimeException("%s must be plugged in, for example, via the [%s] configuration property"
-                        .formatted(MongoConnectionProvider.class.getName(), AvailableSettings.CONNECTION_PROVIDER));
+        // Only subclasses of TestMongoDialect pass — intentional test dialects, not a misconfiguration.
+        // (MongoDialect itself is rejected here, enforcing the short name for production use.)
+        private static boolean isTestMongoDialectSubclass(String className) {
+            try {
+                return TestMongoDialect.class.isAssignableFrom(Class.forName(className));
+            } catch (ClassNotFoundException e) {
+                return false;
             }
         }
 

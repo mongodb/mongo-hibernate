@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+package com.mongodb.hibernate.internal.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +27,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -117,7 +118,7 @@ class MongoStatementIntegrationTests {
     }
 
     @Nested
-    class ExecuteUpdateTests {
+    class ExecuteUpdateTests implements MongoServiceRegistryProducer {
 
         private static final String INSERT_MQL =
                 """

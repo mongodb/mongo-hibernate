@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+package com.mongodb.hibernate.internal.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
-import static com.mongodb.hibernate.jdbc.MongoStatement.NO_ERROR_CODE;
+import static com.mongodb.hibernate.internal.jdbc.MongoStatement.NO_ERROR_CODE;
 import static java.sql.Statement.SUCCESS_NO_INFO;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
