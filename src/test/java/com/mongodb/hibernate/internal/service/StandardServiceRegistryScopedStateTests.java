@@ -17,11 +17,14 @@
 package com.mongodb.hibernate.internal.service;
 
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DIALECT_SHORT_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.CONNECTION_PROVIDER;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
+import com.mongodb.hibernate.internal.jdbc.MongoConnectionProvider;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,50 @@ class StandardServiceRegistryScopedStateTests {
                         standardServiceRegistry1.requireService(StandardServiceRegistryScopedState.class),
                         standardServiceRegistry2.requireService(StandardServiceRegistryScopedState.class));
             }
+        }
+    }
+
+    @Test
+    void testDialectInferredFromMongoUrl() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT)).isEqualTo(MONGO_DIALECT_SHORT_NAME);
+        assertThat(builder.getSettings().get(CONNECTION_PROVIDER)).isEqualTo(MongoConnectionProvider.class.getName());
+    }
+
+    @Test
+    void testDialectInferredFromMongoSrvUrl() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(JAKARTA_JDBC_URL, "mongodb+srv://cluster.example.com/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT)).isEqualTo(MONGO_DIALECT_SHORT_NAME);
+        assertThat(builder.getSettings().get(CONNECTION_PROVIDER)).isEqualTo(MongoConnectionProvider.class.getName());
+    }
+
+    @Test
+    void testExplicitDialectNotOverriddenByMongoUrl() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT)).isEqualTo(MONGO_DIALECT_SHORT_NAME);
+        assertThat(builder.getSettings().get(CONNECTION_PROVIDER)).isEqualTo(MongoConnectionProvider.class.getName());
+    }
+
+    @Test
+    void testNonMongoDialectWithMongoUrlIsSilent() {
+        // Deliberately not calling requireService — the service is never accessed in production
+        // when a non-MongoDB dialect is configured alongside a MongoDB URL.
+        try (var registry = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, "org.hibernate.dialect.H2Dialect")
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db")
+                .build()) {
+            assertThat(registry).isNotNull();
         }
     }
 

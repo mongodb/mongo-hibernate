@@ -86,6 +86,12 @@ public final class StandardServiceRegistryScopedState implements Service {
         @Override
         public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
             var settings = serviceRegistryBuilder.getSettings();
+            var url = settings.get(JAKARTA_JDBC_URL);
+            if (settings.get(AvailableSettings.DIALECT) == null
+                    && url instanceof String urlString
+                    && (urlString.startsWith("mongodb://") || urlString.startsWith("mongodb+srv://"))) {
+                serviceRegistryBuilder.applySetting(AvailableSettings.DIALECT, MONGO_DIALECT_SHORT_NAME);
+            }
             if (isMongoDialect(settings.get(AvailableSettings.DIALECT))) {
                 var connectionProvider = settings.get(AvailableSettings.CONNECTION_PROVIDER);
                 if (connectionProvider != null) {
