@@ -99,6 +99,9 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
+import org.hibernate.persister.entity.SingleTableEntityPersister;
+import org.hibernate.persister.entity.UnionSubclassEntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.spi.Limit;
 import org.hibernate.query.spi.QueryOptions;
@@ -161,6 +164,7 @@ import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.PluralTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
+import org.hibernate.sql.ast.tree.from.UnionTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
 import org.hibernate.sql.ast.tree.from.ValuesTableReference;
@@ -1226,8 +1230,20 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException("Only named table references are supported");
             }
         } else {
-            if (!(root.getModelPart() instanceof EntityPersister entityPersister)
-                    || entityPersister.getQuerySpaces().length != 1) {
+            if (!(root.getModelPart() instanceof EntityPersister entityPersister)) {
+                throw new FeatureNotSupportedException("Only single table from clause is supported");
+            }
+            if (entityPersister.getQuerySpaces().length != 1) {
+                if (entityPersister instanceof JoinedSubclassEntityPersister) {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
+                } else if (entityPersister instanceof UnionSubclassEntityPersister) {
+                    throw new FeatureNotSupportedException(
+                            "TABLE_PER_CLASS inheritance is not supported");
+                } else if (entityPersister instanceof SingleTableEntityPersister) {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-181 https://jira.mongodb.org/browse/HIBERNATE-181 @SecondaryTable is not supported");
+                }
                 throw new FeatureNotSupportedException("Only single table from clause is supported");
             }
         }
@@ -1279,14 +1295,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException(
                         "TODO-HIBERNATE-167 https://jira.mongodb.org/browse/HIBERNATE-167");
             }
+            if (primaryRef instanceof UnionTableReference) {
+                throw new FeatureNotSupportedException(
+                        "TABLE_PER_CLASS inheritance joins are not supported");
+            }
             if (!(primaryRef instanceof NamedTableReference joinedNtr)) {
                 throw new FeatureNotSupportedException("Unsupported table reference type: "
                         + primaryRef.getClass().getSimpleName());
             }
 
-            // TODO-HIBERNATE-171: when JOINED inheritance and @SecondaryTable are supported, reject (or handle)
-            // joined entities whose persister spans multiple query spaces — a single $lookup covers only the
-            // primary table.
+            // TODO-HIBERNATE-171: if the joined entity has JOINED inheritance or @SecondaryTable, its persister
+            // spans multiple tables — we need to emit additional $lookup stages for each TableReferenceJoin.
             var joinedCollection = joinedNtr.getTableExpression();
             var joinedAlias = joinedNtr.getIdentificationVariable();
 
@@ -1315,6 +1334,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var rhsCr = extractColumnReference(cp.getRightHandExpression());
         if (lhsCr == null || rhsCr == null) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
+        }
+        if (lhsCr.isColumnExpressionFormula() || rhsCr.isColumnExpressionFormula()) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
         }
         var lhsIsJoined = joinedAlias.equals(lhsCr.getQualifier());
         var rhsIsJoined = joinedAlias.equals(rhsCr.getQualifier());
