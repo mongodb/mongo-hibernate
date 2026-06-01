@@ -28,6 +28,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import org.assertj.core.api.AbstractThrowableAssert;
@@ -143,6 +144,20 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             Consumer<Iterable<? extends T>> resultListVerifier,
             Set<String> expectedAffectedCollections) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier, expectedAffectedCollections);
+    }
+
+    protected <T> List<T> assertSelectionQuery(
+            String hql,
+            Class<T> resultType,
+            String expectedMql) {
+        return sessionFactoryScope.fromTransaction(session -> {
+            var selectionQuery = session.createSelectionQuery(hql, resultType);
+            var resultList = selectionQuery.getResultList();
+
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
+
+            return resultList;
+        });
     }
 
     protected <T> AbstractThrowableAssert<?, ? extends Throwable> assertSelectQueryFailure(

@@ -32,7 +32,6 @@ import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import org.bson.BsonDocument;
 import org.hibernate.annotations.Struct;
 import org.hibernate.query.sqm.InterpretationException;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -325,37 +324,33 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Test
     void testJoinFetchManyToOne() {
-        var orders = new ArrayList<Order>();
-        getSessionFactoryScope().inTransaction(session -> {
-            orders.addAll(session.createSelectionQuery("FROM Order o JOIN FETCH o.customer ORDER BY o.id", Order.class)
-                    .getResultList());
-            assertActualCommandsInOrder(
-                    BsonDocument.parse(
-                            """
-                            {
-                              "aggregate": "orders",
-                              "pipeline": [
-                                {
-                                  "$lookup": {
-                                    "from": "customers",
-                                    "localField": "customerId",
-                                    "foreignField": "_id",
-                                    "as": "#c1_0"
-                                  }
-                                },
-                                { "$unwind": "$#c1_0" },
-                                { "$sort": { "_id": { "$numberInt": "1" } } },
-                                {
-                                  "$project": {
-                                    "_id": true,
-                                    "c1_0#_id": "$#c1_0._id",
-                                    "c1_0#name": "$#c1_0.name",
-                                    "total": true
-                                  }
-                                }
-                              ]
-                            }"""));
-        });
+        var orders = assertSelectionQuery(
+                "FROM Order o JOIN FETCH o.customer ORDER BY o.id",
+                Order.class,
+                """
+                {
+                  "aggregate": "orders",
+                  "pipeline": [
+                    {
+                      "$lookup": {
+                        "from": "customers",
+                        "localField": "customerId",
+                        "foreignField": "_id",
+                         "as": "#c1_0"
+                      }
+                    },
+                     { "$unwind": "$#c1_0" },
+                    { "$sort": { "_id": { "$numberInt": "1" } } },
+                    {
+                      "$project": {
+                        "_id": true,
+                        "c1_0#_id": "$#c1_0._id",
+                        "c1_0#name": "$#c1_0.name",
+                        "total": true
+                      }
+                    }
+                  ]
+                }""");
         // Session is closed — these pass only if JOIN FETCH initialized the association
         assertThat(orders).hasSize(3);
         assertThat(orders.get(0).customer.name).isEqualTo("Alice");
@@ -365,43 +360,38 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Test
     void testJoinFetchOneToMany() {
-        var customers = new ArrayList<Customer>();
-        getSessionFactoryScope().inTransaction(session -> {
-            customers.addAll(
-                    session.createSelectionQuery("FROM Customer c JOIN FETCH c.orders WHERE c.id = 1", Customer.class)
-                            .getResultList());
-            assertActualCommandsInOrder(
-                    BsonDocument.parse(
-                            """
-                            {
-                              "aggregate": "customers",
-                              "pipeline": [
-                                {
-                                  "$lookup": {
-                                    "from": "orders",
-                                    "localField": "_id",
-                                    "foreignField": "customerId",
-                                    "as": "#o1_0"
-                                  }
-                                },
-                                { "$unwind": "$#o1_0" },
-                                {
-                                  "$match": {
-                                    "_id": { "$eq": { "$numberInt": "1" } }
-                                  }
-                                },
-                                {
-                                  "$project": {
-                                    "_id": true,
-                                    "name": true,
-                                    "o1_0#customerId": "$#o1_0.customerId",
-                                    "o1_0#_id": "$#o1_0._id",
-                                    "o1_0#total": "$#o1_0.total"
-                                  }
-                                }
-                              ]
-                            }"""));
-        });
+        var customers = assertSelectionQuery(
+                "FROM Customer c JOIN FETCH c.orders WHERE c.id = 1",
+                Customer.class,
+                """
+                {
+                  "aggregate": "customers",
+                  "pipeline": [
+                    {
+                      "$lookup": {
+                        "from": "orders",
+                        "localField": "_id",
+                        "foreignField": "customerId",
+                         "as": "#o1_0"
+                      }
+                    },
+                     { "$unwind": "$#o1_0" },
+                    {
+                      "$match": {
+                        "_id": { "$eq": { "$numberInt": "1" } }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id": true,
+                        "name": true,
+                        "o1_0#customerId": "$#o1_0.customerId",
+                        "o1_0#_id": "$#o1_0._id",
+                        "o1_0#total": "$#o1_0.total"
+                      }
+                    }
+                  ]
+                }""");
         // Session is closed — these pass only if JOIN FETCH initialized the collection
         assertThat(customers).hasSize(1);
         assertThat(customers.get(0).orders).hasSize(1);
