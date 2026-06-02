@@ -215,6 +215,10 @@ import org.jspecify.annotations.Nullable;
 @SuppressWarnings("MissingSummary")
 public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
 
+    // '#' is blocked in mapped field names, so prefixing join aliases with it prevents $lookup from shadowing
+    // a local field that happens to share the Hibernate-generated alias name (e.g. "o1_0").
+    private static final String JOIN_ALIAS_PREFIX = "#";
+
     private final SessionFactoryImplementor sessionFactory;
 
     private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
@@ -600,8 +604,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException();
             }
             var field = acceptAndYield(columnReference, FIELD_PATH);
-            AstProjectStageSpecification spec = field.contains(".")
-                    ? new AstProjectStageFieldPathSpecification(field.replace('.', '#'), field)
+            AstProjectStageSpecification spec = field.startsWith(JOIN_ALIAS_PREFIX)
+                    ? new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field)
                     : new AstProjectStageIncludeSpecification(field);
             projectStageSpecifications.add(spec);
         }
@@ -619,8 +623,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private String resolveFieldPath(ColumnReference columnReference) {
         var qualifier = columnReference.getQualifier();
         return (qualifier != null && joinedTableQualifiers.contains(qualifier))
-                ? qualifier + "." + columnReference.getColumnExpression()
+                ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()
                 : columnReference.getColumnExpression();
+    }
+
+    // Converts the internal "#qualifier.field" path to the "qualifier#field" projection key.
+    private static String joinFieldProjectionKey(String joinedFieldPath) {
+        return joinedFieldPath.substring(JOIN_ALIAS_PREFIX.length()).replace('.', '#');
     }
 
     private static @Nullable ColumnReference extractColumnReference(Expression expression) {
@@ -1287,8 +1296,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
             joinedTableQualifiers.add(joinedAlias);
 
-            stages.add(new AstLookupStage(joinedCollection, fields.localField(), fields.foreignField(), joinedAlias));
-            stages.add(new AstUnwindStage(joinedAlias, preserve));
+            stages.add(new AstLookupStage(
+                    joinedCollection, fields.localField(), fields.foreignField(), JOIN_ALIAS_PREFIX + joinedAlias));
+            stages.add(new AstUnwindStage(JOIN_ALIAS_PREFIX + joinedAlias, preserve));
             stages.addAll(buildJoinStages(joinedGroup));
         }
         return stages;

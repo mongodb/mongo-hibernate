@@ -192,14 +192,14 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "orders",
                         "localField": "_id",
                         "foreignField": "customerId",
-                        "as": "o1_0"
+                        "as": "#o1_0"
                       }
                     },
-                    { "$unwind": "$o1_0" },
+                    { "$unwind": "$#o1_0" },
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0#total": "$o1_0.total"
+                        "o1_0#total": "$#o1_0.total"
                       }
                     }
                   ]
@@ -222,13 +222,13 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "orders",
                         "localField": "_id",
                         "foreignField": "customerId",
-                        "as": "o1_0"
+                        "as": "#o1_0"
                       }
                     },
-                    { "$unwind": "$o1_0" },
+                    { "$unwind": "$#o1_0" },
                     {
                       "$match": {
-                        "o1_0.total": {
+                        "#o1_0.total": {
                           "$gt": { "$numberInt": "100" }
                         }
                       }
@@ -236,7 +236,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0#total": "$o1_0.total"
+                        "o1_0#total": "$#o1_0.total"
                       }
                     }
                   ]
@@ -259,10 +259,10 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "orders",
                         "localField": "_id",
                         "foreignField": "customerId",
-                        "as": "o1_0"
+                        "as": "#o1_0"
                       }
                     },
-                    { "$unwind": "$o1_0" },
+                    { "$unwind": "$#o1_0" },
                     {
                       "$match": {
                         "_id": { "$eq": { "$numberInt": "1" } }
@@ -271,7 +271,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0#total": "$o1_0.total"
+                        "o1_0#total": "$#o1_0.total"
                       }
                     }
                   ]
@@ -294,12 +294,12 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "orders",
                         "localField": "_id",
                         "foreignField": "customerId",
-                        "as": "o1_0"
+                        "as": "#o1_0"
                       }
                     },
                     {
                       "$unwind": {
-                        "path": "$o1_0",
+                        "path": "$#o1_0",
                         "preserveNullAndEmptyArrays": true
                       }
                     },
@@ -314,7 +314,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0#total": "$o1_0.total"
+                        "o1_0#total": "$#o1_0.total"
                       }
                     }
                   ]
@@ -340,16 +340,16 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                     "from": "customers",
                                     "localField": "customerId",
                                     "foreignField": "_id",
-                                    "as": "c1_0"
+                                    "as": "#c1_0"
                                   }
                                 },
-                                { "$unwind": "$c1_0" },
+                                { "$unwind": "$#c1_0" },
                                 { "$sort": { "_id": { "$numberInt": "1" } } },
                                 {
                                   "$project": {
                                     "_id": true,
-                                    "c1_0#_id": "$c1_0._id",
-                                    "c1_0#name": "$c1_0.name",
+                                    "c1_0#_id": "$#c1_0._id",
+                                    "c1_0#name": "$#c1_0.name",
                                     "total": true
                                   }
                                 }
@@ -381,10 +381,10 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                     "from": "orders",
                                     "localField": "_id",
                                     "foreignField": "customerId",
-                                    "as": "o1_0"
+                                    "as": "#o1_0"
                                   }
                                 },
-                                { "$unwind": "$o1_0" },
+                                { "$unwind": "$#o1_0" },
                                 {
                                   "$match": {
                                     "_id": { "$eq": { "$numberInt": "1" } }
@@ -394,9 +394,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                   "$project": {
                                     "_id": true,
                                     "name": true,
-                                    "o1_0#customerId": "$o1_0.customerId",
-                                    "o1_0#_id": "$o1_0._id",
-                                    "o1_0#total": "$o1_0.total"
+                                    "o1_0#customerId": "$#o1_0.customerId",
+                                    "o1_0#_id": "$#o1_0._id",
+                                    "o1_0#total": "$#o1_0.total"
                                   }
                                 }
                               ]
@@ -422,24 +422,24 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "orders",
                         "localField": "_id",
                         "foreignField": "customerId",
-                        "as": "o1_0"
+                        "as": "#o1_0"
                       }
                     },
-                    { "$unwind": "$o1_0" },
+                    { "$unwind": "$#o1_0" },
                     {
                       "$lookup": {
                         "from": "line_items",
-                        "localField": "o1_0._id",
+                        "localField": "#o1_0._id",
                         "foreignField": "orderId",
-                        "as": "li1_0"
+                        "as": "#li1_0"
                       }
                     },
-                    { "$unwind": "$li1_0" },
+                    { "$unwind": "$#li1_0" },
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0#_id": "$o1_0._id",
-                        "li1_0#quantity": "$li1_0.quantity"
+                        "o1_0#_id": "$#o1_0._id",
+                        "li1_0#quantity": "$#li1_0.quantity"
                       }
                     }
                   ]
@@ -462,19 +462,19 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "customers",
                         "localField": "customerId",
                         "foreignField": "_id",
-                        "as": "c1_0"
+                        "as": "#c1_0"
                       }
                     },
-                    { "$unwind": "$c1_0" },
+                    { "$unwind": "$#c1_0" },
                     {
                       "$lookup": {
                         "from": "line_items",
                         "localField": "_id",
                         "foreignField": "orderId",
-                        "as": "li1_0"
+                        "as": "#li1_0"
                       }
                     },
-                    { "$unwind": "$li1_0" },
+                    { "$unwind": "$#li1_0" },
                     {
                       "$match": {
                         "_id": { "$eq": { "$numberInt": "1" } }
@@ -483,8 +483,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "_id": true,
-                        "c1_0#name": "$c1_0.name",
-                        "li1_0#quantity": "$li1_0.quantity"
+                        "c1_0#name": "$#c1_0.name",
+                        "li1_0#quantity": "$#li1_0.quantity"
                       }
                     }
                   ]
@@ -507,19 +507,19 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "from": "orders",
                         "localField": "_id",
                         "foreignField": "customerId",
-                        "as": "o1_0"
+                        "as": "#o1_0"
                       }
                     },
-                    { "$unwind": "$o1_0" },
+                    { "$unwind": "$#o1_0" },
                     {
                       "$sort": {
-                        "o1_0.total": { "$numberInt": "-1" }
+                        "#o1_0.total": { "$numberInt": "-1" }
                       }
                     },
                     {
                       "$project": {
                         "_id": true,
-                        "o1_0#total": "$o1_0.total"
+                        "o1_0#total": "$#o1_0.total"
                       }
                     }
                   ]
