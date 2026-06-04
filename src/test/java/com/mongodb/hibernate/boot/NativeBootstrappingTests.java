@@ -33,7 +33,6 @@ import jakarta.persistence.Table;
 import org.hibernate.InstantiationException;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.engine.jdbc.connections.internal.DriverManagerConnectionProviderImpl;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.junit.jupiter.api.Test;
 
@@ -88,7 +87,12 @@ class NativeBootstrappingTests {
                         .applySetting(DIALECT, "org.hibernate.dialect.PostgreSQLDialect")
                         .applySetting(JAKARTA_JDBC_URL, "jdbc:postgresql://host/")
                         .applySetting(ALLOW_METADATA_ON_BOOT, false)
-                        .applySetting(DriverManagerConnectionProviderImpl.INITIAL_SIZE, 0)
+                        // Hibernate 7's `DriverManagerConnectionProvider` eagerly opens a connection during
+                        // configure(); the pre-7 INITIAL_SIZE=0 trick no longer prevents that. Plug in a mock
+                        // ConnectionProvider so no real JDBC connection is attempted at boot.
+                        .applySetting(
+                                CONNECTION_PROVIDER,
+                                mock(ConnectionProvider.class, withSettings().withoutAnnotations()))
                         .build())
                 .buildSessionFactory()) {
             assertThatThrownBy(

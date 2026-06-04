@@ -17,59 +17,47 @@
 package com.mongodb.hibernate.type.temporal;
 
 import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
-import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.OffsetDateTimeItems;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import java.time.OffsetDateTime;
 import org.junit.jupiter.api.Test;
 
 class OffsetDateTimeIntegrationTests {
+
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new ItemWithId<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(OffsetDateTimeItems.WithId.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithFlattenedEmbeddableId.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithBasicPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithArrayPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithCollectionPersistentAttribute.class),
 
                 // Flattened Embeddable
-                () -> assertNotSupported(
-                        new ItemWithEmbeddableWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithEmbeddableWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithEmbeddableWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                () -> assertNotSupported(OffsetDateTimeItems.WithEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Nested flattened embeddable
+                () -> assertNotSupported(OffsetDateTimeItems.WithNestedEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithNestedEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<OffsetDateTime>() {}.getClass()),
+                        OffsetDateTimeItems.WithNestedEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Aggregate embeddable
+                () -> assertNotSupported(OffsetDateTimeItems.WithAggregateEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithAggregateEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<OffsetDateTime>() {}.getClass()),
+                        OffsetDateTimeItems.WithAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithCollectionOfAggregateEmbeddable.class),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
+                        OffsetDateTimeItems.WithNestedAggregateEmbeddableWithBasicPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
+                        OffsetDateTimeItems.WithNestedAggregateEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
-                                OffsetDateTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedCollectionOfAggregateEmbeddable<OffsetDateTime>() {}.getClass()));
+                        OffsetDateTimeItems.WithNestedAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(OffsetDateTimeItems.WithNestedCollectionOfAggregateEmbeddable.class));
     }
 }

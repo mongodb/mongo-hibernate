@@ -17,53 +17,46 @@
 package com.mongodb.hibernate.type.temporal;
 
 import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
-import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.SqlTimestampItems;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import java.sql.Timestamp;
 import org.junit.jupiter.api.Test;
 
 class SqlTimestampIntegrationTests {
+
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new ItemWithId<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<Timestamp>() {}.getClass()),
+                () -> assertNotSupported(SqlTimestampItems.WithId.class),
+                () -> assertNotSupported(SqlTimestampItems.WithFlattenedEmbeddableId.class),
+                () -> assertNotSupported(SqlTimestampItems.WithBasicPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithArrayPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithCollectionPersistentAttribute.class),
 
                 // Flattened Embeddable
-                () -> assertNotSupported(new ItemWithEmbeddableWithBasicPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithEmbeddableWithArrayPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithEmbeddableWithCollectionPersistentAttribute<Timestamp>() {}.getClass()),
+                () -> assertNotSupported(SqlTimestampItems.WithEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Nested flattened embeddable
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<Timestamp>() {}.getClass()),
+                () -> assertNotSupported(SqlTimestampItems.WithNestedEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithNestedEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithNestedEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Aggregate embeddable
+                () -> assertNotSupported(SqlTimestampItems.WithAggregateEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithAggregateEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<Timestamp>() {}.getClass()),
+                        SqlTimestampItems.WithAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithCollectionOfAggregateEmbeddable.class),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<Timestamp>() {}.getClass()),
+                        SqlTimestampItems.WithNestedAggregateEmbeddableWithBasicPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<Timestamp>() {}.getClass()),
+                        SqlTimestampItems.WithNestedAggregateEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
-                                Timestamp>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<Timestamp>() {}.getClass()));
+                        SqlTimestampItems.WithNestedAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(SqlTimestampItems.WithNestedCollectionOfAggregateEmbeddable.class));
     }
 }

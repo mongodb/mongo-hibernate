@@ -23,6 +23,7 @@ import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import org.jspecify.annotations.Nullable;
 
 interface DatabaseMetaDataAdapter extends DatabaseMetaData {
 
@@ -47,7 +48,7 @@ interface DatabaseMetaDataAdapter extends DatabaseMetaData {
     }
 
     @Override
-    default String getURL() throws SQLException {
+    default @Nullable String getURL() throws SQLException {
         throw new SQLFeatureNotSupportedException("getURL not implemented");
     }
 
