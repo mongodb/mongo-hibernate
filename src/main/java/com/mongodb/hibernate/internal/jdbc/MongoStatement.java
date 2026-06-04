@@ -45,7 +45,6 @@ import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -96,7 +95,6 @@ class MongoStatement implements StatementAdapter {
     public ResultSet executeQuery(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        MongoAggregateSupport.checkSupported(mql);
         var command = parse(mql);
         checkSupportedQueryCommand(command);
         return executeQuery(command);
@@ -175,7 +173,6 @@ class MongoStatement implements StatementAdapter {
     public int executeUpdate(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        MongoAggregateSupport.checkSupported(mql);
         var command = parse(mql);
         checkSupportedUpdateCommand(command);
         return executeUpdate(command);
@@ -248,7 +245,6 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        MongoAggregateSupport.checkSupported(mql);
         throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
     }
 
