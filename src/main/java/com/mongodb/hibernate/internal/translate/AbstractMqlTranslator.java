@@ -74,6 +74,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSo
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
@@ -213,6 +214,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private final SessionFactoryImplementor sessionFactory;
 
     private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
+
+    private @Nullable String elemMatchInnerAlias;
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
@@ -599,6 +602,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitColumnReference(ColumnReference columnReference) {
         if (columnReference.isColumnExpressionFormula()) {
             throw new FeatureNotSupportedException("Formula is not supported");
+        }
+        if (elemMatchInnerAlias != null) {
+            var qualifier = columnReference.getQualifier();
+            if (qualifier != null && !qualifier.equals(elemMatchInnerAlias)) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-177 https://jira.mongodb.org/browse/HIBERNATE-177");
+            }
         }
         astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
     }
@@ -997,8 +1007,71 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitExistsPredicate(ExistsPredicate existsPredicate) {
-        throw new FeatureNotSupportedException();
+        var shape = recognizeExistsOverUnnest(existsPredicate);
+        if (shape == null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-178 https://jira.mongodb.org/browse/HIBERNATE-178");
+        }
+        AstFilter bodyFilter;
+        if (shape.body() != null) {
+            var previousInnerAlias = elemMatchInnerAlias;
+            elemMatchInnerAlias = shape.innerAlias();
+            try {
+                bodyFilter = acceptAndYield(shape.body(), FILTER);
+            } finally {
+                elemMatchInnerAlias = previousInnerAlias;
+            }
+        } else {
+            bodyFilter = AstEmptyFilter.INSTANCE;
+        }
+        AstFilter filter =
+                new AstFieldOperationFilter(shape.arrayFieldName(), new AstElemMatchFilterOperation(bodyFilter));
+        if (existsPredicate.isNegated()) {
+            filter = new AstLogicalFilter(NOR, List.of(filter));
+        }
+        astVisitorValueHolder.yield(FILTER, filter);
     }
+
+    private static @Nullable ExistsOverUnnestShape recognizeExistsOverUnnest(ExistsPredicate existsPredicate) {
+        var select = existsPredicate.getExpression();
+        if (!(select.getQueryPart() instanceof QuerySpec qs)) {
+            return null;
+        }
+        if (qs.getFromClause().getRoots().size() != 1
+                || !qs.getGroupByClauseExpressions().isEmpty()
+                || qs.hasSortSpecifications()
+                || qs.hasOffsetOrFetchClause()) {
+            return null;
+        }
+        var root = qs.getFromClause().getRoots().get(0);
+        if (!root.getTableGroupJoins().isEmpty()
+                || !root.getNestedTableGroupJoins().isEmpty()) {
+            return null;
+        }
+        if (!(root.getPrimaryTableReference() instanceof FunctionTableReference ftr)
+                || !"unnest".equals(ftr.getFunctionExpression().getFunctionName())) {
+            return null;
+        }
+        var args = ftr.getFunctionExpression().getArguments();
+        if (args.size() != 1) {
+            return null;
+        }
+        var arg = args.get(0);
+        if (!(arg instanceof BasicValuedPathInterpretation<?> bvpi)) {
+            return null;
+        }
+        var columnReference = bvpi.getColumnReference();
+        if (columnReference == null) {
+            return null;
+        }
+        var arrayFieldName = columnReference.getColumnExpression();
+        return new ExistsOverUnnestShape(
+                arrayFieldName, ftr.getIdentificationVariable(), qs.getWhereClauseRestrictions());
+    }
+
+    private record ExistsOverUnnestShape(
+            String arrayFieldName,
+            String innerAlias,
+            @Nullable Predicate body) {}
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
