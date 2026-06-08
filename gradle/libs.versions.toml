@@ -43,6 +43,7 @@ plugin-buildconfig = "5.6.8"
 plugin-palantir = "2.77.0"
 plugin-ktfmt = "0.59"
 plugin-nexus-publish = "2.0.0"
+spring-boot = "4.0.6"
 
 [libraries]
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -59,6 +60,12 @@ logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "lo
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
 checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "checker-qual" }
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
+spring-boot-persistence = { module = "org.springframework.boot:spring-boot-persistence" }
+spring-boot-test-autoconfigure = { module = "org.springframework.boot:spring-boot-test-autoconfigure" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-data-jpa = { module = "org.springframework.data:spring-data-jpa" }
 
 [bundles]
 test-common = ["junit-jupiter", "assertj", "logback-classic"]

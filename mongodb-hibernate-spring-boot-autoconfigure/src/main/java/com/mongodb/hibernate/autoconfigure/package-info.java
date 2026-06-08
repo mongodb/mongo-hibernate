@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
-rootProject.name = "mongo-hibernate"
+@NullMarked
+package com.mongodb.hibernate.autoconfigure;
 
-include("mongodb-hibernate-spring-boot-autoconfigure")
+import org.jspecify.annotations.NullMarked;
