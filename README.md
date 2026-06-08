@@ -53,6 +53,93 @@ The Java module with example applications is located in
 
 The examples may be run by running the smoke tests as specified in [Run Smoke Tests](#run-smoke-tests).
 
+### Spring Boot
+
+A [Spring Boot](https://spring.io/projects/spring-boot) starter lets a Spring Boot 4.x application use
+MongoDB through JPA. Add the starter
+
+`org.mongodb:mongodb-hibernate-spring-boot-starter`
+
+declare MongoDB as the JPA platform, and configure the connection with Spring Boot's standard
+`spring.mongodb.*` properties (the value is a [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/)):
+
+```properties
+spring.jpa.database-platform=MongoDB
+spring.mongodb.uri=mongodb://localhost/mydb
+```
+
+When `spring.jpa.database-platform` is `MongoDB`, the starter auto-configures a JPA
+`EntityManagerFactory`, a `JpaTransactionManager`, and Spring Data JPA repositories backed by MongoDB.
+The connection is configured through Spring Boot's `spring-boot-mongodb` support (the `spring.mongodb.*`
+namespace), and the integration **borrows that `MongoClient`** rather than creating its own — a single
+connection pool shared with health checks, metrics, and any other use of the Spring-managed client. This
+reuses `spring-boot-mongodb`'s client infrastructure and is **not** Spring Data MongoDB.
+
+The starter brings no SQL connection pool, so a MongoDB-only application needs no `spring.datasource.url`
+and Spring Boot's `DataSourceAutoConfiguration` stays inert. Without `spring.jpa.database-platform=MongoDB`
+the starter contributes nothing — it is safe to have on the classpath of a non-MongoDB application.
+
+#### Requirements
+
+The starter requires **Spring Boot 4.x** and **Hibernate ORM 7.3 or later** (the version the MongoDB
+extension is built against). Spring Boot manages the Hibernate version through its BOM, and some
+Spring Boot 4.x releases still ship an older Hibernate — for example, Spring Boot 4.0.6 manages
+Hibernate 7.2.12. When the managed version is below 7.3, the application fails to start with a
+`NoSuchMethodError` from the MongoDB dialect. Until your Spring Boot version's BOM ships Hibernate 7.3
+or later, override the managed version:
+
+Gradle (with the Spring Boot or `io.spring.dependency-management` plugin):
+
+```groovy
+ext['hibernate.version'] = '7.3.6.Final'
+```
+
+Maven:
+
+```xml
+<properties>
+    <hibernate.version>7.3.6.Final</hibernate.version>
+</properties>
+```
+
+#### Configuration
+
+The standard Spring Boot JPA properties under `spring.jpa.*` are honored — for example
+`spring.jpa.show-sql`, `spring.jpa.hibernate.ddl-auto`, and `spring.jpa.properties.*`, along with any
+`HibernatePropertiesCustomizer` / `EntityManagerFactoryBuilderCustomizer` beans and
+`spring.jpa.open-in-view` (Open Session in View, on by default in servlet web applications).
+
+The MongoDB connection uses Spring Boot's `spring.mongodb.*` properties. To customize the borrowed
+client further — connection pool sizing, command listeners, UUID representation, and so on — declare a
+`MongoClientSettingsBuilderCustomizer` bean, exactly as for any other `spring-boot-mongodb` application.
+
+#### Field naming
+
+Unlike a SQL Spring Boot application, the default physical naming strategy is **Hibernate's own** (the
+Java property name, e.g. `publishYear`) rather than Spring Boot's `snake_case`. MongoDB has no schema
+to catch a naming mismatch, so a `snake_case` default could silently leave a collection holding a mix
+of field names; keeping Hibernate's default means an entity persists the same way whether bootstrapped
+through this starter or through plain Hibernate ORM. To use `snake_case` (or any other strategy), set
+it explicitly:
+
+```properties
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategySnakeCaseImpl
+```
+
+> **Note:** changing the naming strategy after documents have been written changes the field names of
+> *new* documents only; existing documents are not migrated, which can leave a collection with mixed
+> field names.
+
+#### Limitations
+
+- **Testing:** the `@DataJpaTest` slice is not supported (it wires Spring Boot's SQL JPA
+  auto-configuration); use `@SpringBootTest` to test against MongoDB. Slice support is tracked by
+  [HIBERNATE-179](https://jira.mongodb.org/browse/HIBERNATE-179).
+- **Single persistence unit:** a single `@Primary` `EntityManagerFactory` is auto-configured.
+- **Native image:** GraalVM native-image execution is not yet validated.
+- A [replica set](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-replica-set) is
+  required, as transactions are (see [User Documentation](#user-documentation) above).
+
 ### Bug Reports
 
 Use ["Extension for Hibernate ORM" at jira.mongodb.org](https://jira.mongodb.org/projects/HIBERNATE/issues).

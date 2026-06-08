@@ -17,3 +17,5 @@
 rootProject.name = "mongo-hibernate"
 
 include("mongodb-hibernate-spring-boot-autoconfigure")
+
+include("mongodb-hibernate-spring-boot-starter")
