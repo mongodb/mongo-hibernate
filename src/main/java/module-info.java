@@ -114,7 +114,7 @@ module com.mongodb.hibernate {
     requires transitive org.hibernate.orm.core;
     requires org.mongodb.bson;
     requires transitive org.mongodb.driver.core;
-    requires org.mongodb.driver.sync.client;
+    requires transitive org.mongodb.driver.sync.client;
     requires org.jspecify;
 
     provides ServiceContributor with

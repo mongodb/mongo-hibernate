@@ -16,13 +16,16 @@
 
 package com.mongodb.hibernate.internal.cfg;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -65,6 +68,17 @@ class MongoConfigurationBuilderTests {
                 "testReplicaSetName",
                 config.mongoClientSettings().getClusterSettings().getRequiredReplicaSetName());
         assertEquals("testDbName2", config.databaseName());
+    }
+
+    @Test
+    void suppliedMongoClientIsCarriedIntoConfiguration() {
+        var client = mock(MongoClient.class);
+        var config = new MongoConfigurationBuilder()
+                .databaseName("db")
+                .mongoClient(client)
+                .build();
+        assertThat(config.mongoClient()).isSameAs(client);
+        assertThat(config.mongoClientSettings()).isNull();
     }
 
     @Nested

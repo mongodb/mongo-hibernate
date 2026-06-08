@@ -18,6 +18,7 @@ package com.mongodb.hibernate.cfg;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
@@ -74,6 +75,17 @@ import org.hibernate.service.spi.Configurable;
  *             if {@linkplain ConnectionString#getDatabase() configured};
  *             otherwise a value must be configured via {@link MongoConfigurator#databaseName(String)}.</td>
  *         </tr>
+ *         <tr>
+ *             <td>{@link #mongoClient(MongoClient)}</td>
+ *             <td>✓</td>
+ *             <td>&mdash;</td>
+ *             <td>&mdash;</td>
+ *             <td>No externally managed client; the extension creates one from the configured
+ *             {@link MongoClientSettings}. When a client is supplied, it is used as-is and not closed, and
+ *             {@link #applyToMongoClientSettings(Consumer)} and the {@value AvailableSettings#JAKARTA_JDBC_URL}
+ *             connection string are not used to build a connection (the database name must still be configured via
+ *             {@link #databaseName(String)} or come from {@value AvailableSettings#JAKARTA_JDBC_URL}).</td>
+ *         </tr>
  *     </tbody>
  * </table>
  *
@@ -88,6 +100,8 @@ public sealed interface MongoConfigurator permits MongoConfigurationBuilder {
      * must configure the database name via {@link MongoConfigurator#databaseName(String)}, as there is no way for that
      * to happen automatically.
      *
+     * <p>These settings are not used if an externally managed client is supplied via {@link #mongoClient(MongoClient)}.
+     *
      * @param configurator The {@link Consumer} of the {@link MongoClientSettings.Builder}.
      * @return {@code this}.
      */
@@ -100,4 +114,15 @@ public sealed interface MongoConfigurator permits MongoConfigurationBuilder {
      * @return {@code this}.
      */
     MongoConfigurator databaseName(String databaseName);
+
+    /**
+     * Supplies an externally managed {@link MongoClient} to use instead of creating one from the configured
+     * {@link MongoClientSettings}. When supplied, the client's lifecycle is owned by the caller: the extension uses it
+     * as-is and does not close it, and {@link #applyToMongoClientSettings(Consumer)} and the
+     * {@value AvailableSettings#JAKARTA_JDBC_URL} connection string are not used to build a connection.
+     *
+     * @param mongoClient the externally managed client to use.
+     * @return {@code this}.
+     */
+    MongoConfigurator mongoClient(MongoClient mongoClient);
 }
