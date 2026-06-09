@@ -844,6 +844,24 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     "TODO-HIBERNATE-168 https://jira.mongodb.org/browse/HIBERNATE-168");
         }
 
+        @Test
+        void testOnConditionWithBothSidesFromOuterTableThrows() {
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = c.id",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
+        }
+
+        @Test
+        void testOnConditionWithBothSidesFromJoinedTableThrows() {
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON o.id = o.total",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
+        }
+
         @Nested
         @DomainModel(
                 annotatedClasses = {
