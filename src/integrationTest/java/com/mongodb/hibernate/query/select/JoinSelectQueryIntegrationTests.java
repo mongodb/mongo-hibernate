@@ -23,7 +23,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -955,7 +954,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                 .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage(null);
+                        .hasMessage("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
             }
 
             @Test
@@ -964,12 +963,11 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                 .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage(null);
+                        .hasMessage("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
             }
 
             @Entity(name = "ItemWithJoinedInheritance")
             @Inheritance(strategy = InheritanceType.JOINED)
-            @DiscriminatorColumn(name = "kind")
             static class ItemWithJoinedInheritance {
                 @Id
                 int id;
