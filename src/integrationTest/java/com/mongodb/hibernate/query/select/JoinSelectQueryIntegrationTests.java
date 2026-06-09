@@ -954,7 +954,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                 .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
+                        .hasMessage(
+                                "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
             }
 
             @Test
@@ -963,7 +964,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                 .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
+                        .hasMessage(
+                                "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
             }
 
             @Entity(name = "ItemWithJoinedInheritance")
