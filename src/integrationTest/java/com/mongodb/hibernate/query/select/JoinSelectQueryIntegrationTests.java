@@ -16,6 +16,10 @@
 
 package com.mongodb.hibernate.query.select;
 
+import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Column;
@@ -33,6 +37,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SecondaryTable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.FilterJoinTable;
 import org.hibernate.annotations.JoinFormula;
@@ -42,14 +49,6 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
-import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DomainModel(
         annotatedClasses = {
@@ -122,10 +121,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @BeforeEach
     void beforeEach() {
-        var customers = List.of(
-                new Customer(1, "Alice"),
-                new Customer(2, "Bob"),
-                new Customer(3, "Charlie"));
+        var customers = List.of(new Customer(1, "Alice"), new Customer(2, "Bob"), new Customer(3, "Charlie"));
         var orders = List.of(
                 new Order(1, customers.get(0), 100),
                 new Order(2, customers.get(1), 200),
@@ -487,8 +483,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     @DomainModel(annotatedClasses = {ManyToManyJoin.ItemA.class, ManyToManyJoin.ItemB.class})
     class ManyToManyJoin extends AbstractQueryIntegrationTests {
 
-        private static final List<ItemB> TESTING_ITEMS_B = List.of(new ItemB(1, "a"),
-                new ItemB(2, "b"));
+        private static final List<ItemB> TESTING_ITEMS_B = List.of(new ItemB(1, "a"), new ItemB(2, "b"));
         private static final List<ItemA> TESTING_ITEMS_A = List.of(new ItemA(1, TESTING_ITEMS_B));
 
         @BeforeEach
@@ -562,6 +557,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         static class ItemB {
             @Id
             int id;
+
             String name;
 
             public ItemB() {}
@@ -642,8 +638,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         }
                       ]
                     }""",
-                    results -> assertThat((List<String>) results)
-                            .containsExactlyInAnyOrder("java", "mongodb"),
+                    results -> assertThat((List<String>) results).containsExactlyInAnyOrder("java", "mongodb"),
                     Set.of("Item", "Item_stringsList"));
         }
     }
@@ -668,11 +663,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     @DomainModel(annotatedClasses = {OneToOneJoin.ItemA.class, OneToOneJoin.ItemB.class})
     class OneToOneJoin extends AbstractQueryIntegrationTests {
 
-        private static final List<ItemA> TESTING_ITEMS = List.of(
-                new ItemA(1,
-                        new ItemB(1, "c1")),
-                new ItemA(2,
-                        new ItemB(2, "c2")));
+        private static final List<ItemA> TESTING_ITEMS =
+                List.of(new ItemA(1, new ItemB(1, "c1")), new ItemA(2, new ItemB(2, "c2")));
 
         @BeforeEach
         void beforeEach() {
@@ -865,17 +857,16 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @Nested
         @DomainModel(
                 annotatedClasses = {
-                        TablePerClassInheritanceJoin.Item.class,
-                        TablePerClassInheritanceJoin.ItemWithInheritance.class,
-                        TablePerClassInheritanceJoin.ItemA.class,
-                        TablePerClassInheritanceJoin.ItemB.class
+                    TablePerClassInheritanceJoin.Item.class,
+                    TablePerClassInheritanceJoin.ItemWithInheritance.class,
+                    TablePerClassInheritanceJoin.ItemA.class,
+                    TablePerClassInheritanceJoin.ItemB.class
                 })
         class TablePerClassInheritanceJoin extends AbstractQueryIntegrationTests {
             @Test
             void testTablePerClassJoinThrows() {
-                assertThat(assertThrows(
-                                RuntimeException.class,
-                                () -> getSessionFactoryScope().getSessionFactory()))
+                assertThat(assertThrows(RuntimeException.class, () -> getSessionFactoryScope()
+                                .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
                         .hasMessage("TABLE_PER_CLASS inheritance is not supported");
@@ -952,13 +943,16 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Nested
-        @DomainModel(annotatedClasses = {JoinedInheritanceJoin.ItemWithJoinedInheritance.class, JoinedInheritanceJoin.Item.class})
+        @DomainModel(
+                annotatedClasses = {
+                    JoinedInheritanceJoin.ItemWithJoinedInheritance.class,
+                    JoinedInheritanceJoin.Item.class
+                })
         class JoinedInheritanceJoin extends AbstractQueryIntegrationTests {
             @Test
             void testJoinedInheritanceThrows() {
-                assertThat(assertThrows(
-                                RuntimeException.class,
-                                () -> getSessionFactoryScope().getSessionFactory()))
+                assertThat(assertThrows(RuntimeException.class, () -> getSessionFactoryScope()
+                                .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
                         .hasMessage(null);
@@ -966,9 +960,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
             @Test
             void testJoinTreatThrows() {
-                assertThat(assertThrows(
-                                RuntimeException.class,
-                                () -> getSessionFactoryScope().getSessionFactory()))
+                assertThat(assertThrows(RuntimeException.class, () -> getSessionFactoryScope()
+                                .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
                         .hasMessage(null);
@@ -993,12 +986,12 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class SecondaryTableJoin extends AbstractQueryIntegrationTests {
             @Test
             void testSecondaryTableThrows() {
-                assertThat(assertThrows(
-                                RuntimeException.class,
-                                () -> getSessionFactoryScope().getSessionFactory()))
+                assertThat(assertThrows(RuntimeException.class, () -> getSessionFactoryScope()
+                                .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage("TODO-HIBERNATE-181 https://jira.mongodb.org/browse/HIBERNATE-181 @SecondaryTable is not supported");
+                        .hasMessage(
+                                "TODO-HIBERNATE-181 https://jira.mongodb.org/browse/HIBERNATE-181 @SecondaryTable is not supported");
             }
         }
 
@@ -1017,12 +1010,12 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class JoinFormulaJoin extends AbstractQueryIntegrationTests {
             @Test
             void testJoinFormulaThrows() {
-                assertThat(assertThrows(
-                                RuntimeException.class,
-                                () -> getSessionFactoryScope().getSessionFactory()))
+                assertThat(assertThrows(RuntimeException.class, () -> getSessionFactoryScope()
+                                .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage("TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
+                        .hasMessage(
+                                "TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
             }
         }
 
@@ -1049,17 +1042,16 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class FilterJoinTableJoin extends AbstractQueryIntegrationTests {
             @Test
             void testFilterJoinTableThrows() {
-                assertThat(assertThrows(
-                                FeatureNotSupportedException.class,
-                                () -> getSessionFactoryScope().inTransaction(session -> {
+                assertThat(assertThrows(FeatureNotSupportedException.class, () -> getSessionFactoryScope()
+                                .inTransaction(session -> {
                                     session.enableFilter("activeOnly");
                                     session.createSelectionQuery(
-                                                    "FROM ItemWithFilterJoin i JOIN i.items is",
-                                                    Object[].class)
+                                                    "FROM ItemWithFilterJoin i JOIN i.items is", Object[].class)
                                             .getResultList();
                                 })))
                         .hasMessage("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
             }
+
             @FilterDef(name = "activeOnly", defaultCondition = "1 = 1")
             @Entity(name = "ItemWithFilterJoin")
             static class ItemWithFilterJoin {

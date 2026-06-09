@@ -146,10 +146,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier, expectedAffectedCollections);
     }
 
-    protected <T> List<T> assertSelectionQuery(
-            String hql,
-            Class<T> resultType,
-            String expectedMql) {
+    protected <T> List<T> assertSelectionQuery(String hql, Class<T> resultType, String expectedMql) {
         return sessionFactoryScope.fromTransaction(session -> {
             var selectionQuery = session.createSelectionQuery(hql, resultType);
             var resultList = selectionQuery.getResultList();

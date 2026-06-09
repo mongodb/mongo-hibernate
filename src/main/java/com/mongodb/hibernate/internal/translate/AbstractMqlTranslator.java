@@ -164,9 +164,9 @@ import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.PluralTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
-import org.hibernate.sql.ast.tree.from.UnionTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
+import org.hibernate.sql.ast.tree.from.UnionTableReference;
 import org.hibernate.sql.ast.tree.from.ValuesTableReference;
 import org.hibernate.sql.ast.tree.insert.InsertSelectStatement;
 import org.hibernate.sql.ast.tree.predicate.BetweenPredicate;
@@ -1238,8 +1238,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     throw new FeatureNotSupportedException(
                             "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
                 } else if (entityPersister instanceof UnionSubclassEntityPersister) {
-                    throw new FeatureNotSupportedException(
-                            "TABLE_PER_CLASS inheritance is not supported");
+                    throw new FeatureNotSupportedException("TABLE_PER_CLASS inheritance is not supported");
                 } else if (entityPersister instanceof SingleTableEntityPersister) {
                     throw new FeatureNotSupportedException(
                             "TODO-HIBERNATE-181 https://jira.mongodb.org/browse/HIBERNATE-181 @SecondaryTable is not supported");
@@ -1296,8 +1295,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         "TODO-HIBERNATE-167 https://jira.mongodb.org/browse/HIBERNATE-167");
             }
             if (primaryRef instanceof UnionTableReference) {
-                throw new FeatureNotSupportedException(
-                        "TABLE_PER_CLASS inheritance joins are not supported");
+                throw new FeatureNotSupportedException("TABLE_PER_CLASS inheritance joins are not supported");
             }
             if (!(primaryRef instanceof NamedTableReference joinedNtr)) {
                 throw new FeatureNotSupportedException("Unsupported table reference type: "
@@ -1305,7 +1303,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             }
 
             // TODO-HIBERNATE-69 TODO-HIBERNATE-181: if the joined entity has JOINED inheritance or @SecondaryTable,
-            // its persister spans multiple tables — we need to emit additional $lookup stages for each TableReferenceJoin.
+            // its persister spans multiple tables — we need to emit additional $lookup stages for each
+            // TableReferenceJoin.
             var joinedCollection = joinedNtr.getTableExpression();
             var joinedAlias = joinedNtr.getIdentificationVariable();
 
@@ -1336,7 +1335,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
         }
         if (lhsCr.isColumnExpressionFormula() || rhsCr.isColumnExpressionFormula()) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
         }
         var lhsIsJoined = joinedAlias.equals(lhsCr.getQualifier());
         var rhsIsJoined = joinedAlias.equals(rhsCr.getQualifier());
