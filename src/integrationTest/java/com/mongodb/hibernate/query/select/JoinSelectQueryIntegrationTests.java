@@ -827,7 +827,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testEntitySyntaxJoinThrows() {
+        void testRootEntityJoinSyntaxThrows() {
             assertSelectQueryFailure(
                     "SELECT c.id, o.total FROM Customer c JOIN Order o ON c = o.customer",
                     Object[].class,
