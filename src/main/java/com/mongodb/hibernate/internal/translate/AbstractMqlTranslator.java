@@ -1304,8 +1304,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         + primaryRef.getClass().getSimpleName());
             }
 
-            // TODO-HIBERNATE-171: if the joined entity has JOINED inheritance or @SecondaryTable, its persister
-            // spans multiple tables — we need to emit additional $lookup stages for each TableReferenceJoin.
+            // TODO-HIBERNATE-69 TODO-HIBERNATE-181: if the joined entity has JOINED inheritance or @SecondaryTable,
+            // its persister spans multiple tables — we need to emit additional $lookup stages for each TableReferenceJoin.
             var joinedCollection = joinedNtr.getTableExpression();
             var joinedAlias = joinedNtr.getIdentificationVariable();
 
