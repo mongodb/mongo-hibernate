@@ -722,7 +722,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
             String string;
 
-            protected ItemB() {}
+            ItemB() {}
 
             ItemB(int id, String string) {
                 this.id = id;
@@ -738,7 +738,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
             @OneToOne
             ItemB itemB;
 
-            protected ItemA() {}
+            ItemA() {}
 
             ItemA(int id, ItemB itemB) {
                 this.id = id;
