@@ -65,9 +65,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
      * described in <a href="https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/">Field Names with
-     * Periods and Dollar Signs</a>.
+     * Periods and Dollar Signs</a>. We also reserve '#' as a separator for computed projections in MQL joins.
      */
-    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
+    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$", "#");
 
     private static final Set<Class<?>> UNSUPPORTED_TYPES = Set.of(
             Calendar.class,
