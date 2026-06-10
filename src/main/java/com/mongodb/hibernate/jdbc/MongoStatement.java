@@ -144,6 +144,10 @@ class MongoStatement implements StatementAdapter {
         return fieldNames;
     }
 
+    /**
+     * Returns {@code true} if the specification is an exclusion (value {@code false} or {@code 0}), {@code false} if it
+     * is a valid inclusion or field-path expression, and throws {@link FeatureNotSupportedException} otherwise.
+     */
     private static boolean isExcludeProjectSpecification(Map.Entry<String, BsonValue> specification) {
         var key = specification.getKey();
         var value = specification.getValue();
@@ -154,9 +158,15 @@ class MongoStatement implements StatementAdapter {
                     "Exclusions are not allowed in `$project` specifications, except for the [%s] field: [%s, %s]",
                     ID_FIELD_NAME, key, value));
         }
+        if (value.isString()) {
+            var stringValue = value.asString().getValue();
+            if (stringValue.startsWith("$") && !stringValue.startsWith("$$")) {
+                return false;
+            }
+        }
         if (!value.isBoolean() && !value.isNumber()) {
-            throw new FeatureNotSupportedException(format(
-                    "Expressions and literals are not supported in `$project` specifications: [%s: %s]", key, value));
+            throw new FeatureNotSupportedException(
+                    format("Unsupported value in '$project' specification: [%s: %s]", key, value));
         }
         return exclude;
     }
