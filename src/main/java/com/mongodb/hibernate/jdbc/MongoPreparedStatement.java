@@ -39,7 +39,6 @@ import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -88,7 +87,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
                 throw new SQLException(format("Parameter with index [%d] is not set", i + 1));
             }
         }
-        checkComparatorNotComparingWithNullValues(command);
     }
 
     @Override
@@ -335,33 +333,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
 
         boolean isUsed() {
             return used;
-        }
-    }
-
-    /**
-     * Temporary method to ensure exception is thrown when comparison query operators are comparing with {@code null}
-     * values.
-     *
-     * <p>Note that only find expression is involved before HIBERNATE-74. TODO-HIBERNATE-74 delete this temporary method
-     */
-    private static void checkComparatorNotComparingWithNullValues(BsonDocument document)
-            throws SQLFeatureNotSupportedException {
-        var comparisonOperators = Set.of("$ne", "$gt", "$gte", "$lt", "$lte", "$in", "$nin");
-        for (var entry : document.entrySet()) {
-            var value = entry.getValue();
-            if (value.isNull() && comparisonOperators.contains(entry.getKey())) {
-                throw new SQLFeatureNotSupportedException(
-                        "TODO-HIBERNATE-74 https://jira.mongodb.org/browse/HIBERNATE-74");
-            }
-            if (value instanceof BsonDocument documentValue) {
-                checkComparatorNotComparingWithNullValues(documentValue);
-            } else if (value instanceof BsonArray arrayValue) {
-                for (var element : arrayValue) {
-                    if (element instanceof BsonDocument documentElement) {
-                        checkComparatorNotComparingWithNullValues(documentElement);
-                    }
-                }
-            }
         }
     }
 }
