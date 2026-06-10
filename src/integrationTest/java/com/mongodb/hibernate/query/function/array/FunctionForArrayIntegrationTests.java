@@ -53,7 +53,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {FunctionForArrayIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
-// TODO-HIBERNATE-74 We need to make sure the functions behave in accordance with the ternary logic
 public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAware {
     private static final String COLLECTION_NAME = "items";
 
