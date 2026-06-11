@@ -93,6 +93,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -1050,7 +1051,15 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
-        throw new FeatureNotSupportedException();
+        var expression = nullnessPredicate.getExpression();
+        if (!isFieldPathExpression(expression)) {
+            throw new FeatureNotSupportedException(
+                    "Only the following nullness predicates are supported: field is [not] null");
+        }
+        var fieldPath = acceptAndYield(expression, FIELD_PATH);
+        var operator = nullnessPredicate.isNegated() ? NE : EQ;
+        var operation = new AstComparisonFilterOperation(operator, new AstLiteral(BsonNull.VALUE));
+        astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
     }
 
     @Override
