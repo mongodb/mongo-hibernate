@@ -51,6 +51,6 @@ class NativeBootstrappingIntegrationTests {
                     new MetadataSources().buildMetadata();
                 })
                 .hasRootCauseMessage(
-                        "Could not instantiate [com.mongodb.hibernate.dialect.MongoDialect], see the earlier exceptions to find out why");
+                        "Could not instantiate [com.mongodb.hibernate.internal.dialect.MongoDialect], see the earlier exceptions to find out why");
     }
 }

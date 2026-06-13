@@ -34,6 +34,7 @@ import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTest
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.ColumnResult;
 import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.ElementCollection;
@@ -73,7 +74,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
-public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware {
+public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -863,7 +864,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
 
         @Test
         void testBoxedBytesArrayValue() {

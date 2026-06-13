@@ -51,8 +51,7 @@ public final class AppWithMongoConfiguratorContributorAddedDirectly {
                 // ...
                 .addAnnotatedClasses(Item.class)
                 .getMetadataBuilder(new StandardServiceRegistryBuilder()
-                        .applySetting(AvailableSettings.DIALECT, "com.mongodb.hibernate.dialect.MongoDialect")
-                        .applySetting(AvailableSettings.CONNECTION_PROVIDER, "com.mongodb.hibernate.jdbc.MongoConnectionProvider")
+                        .applySetting(AvailableSettings.DIALECT, "MongoDB")
                         .applySetting(AvailableSettings.STATEMENT_BATCH_SIZE, 2)
                         .addService(MongoConfigurationContributor.class, configurator ->
                                 configurator.applyToMongoClientSettings(mongoClientSettings -> mongoClientSettings

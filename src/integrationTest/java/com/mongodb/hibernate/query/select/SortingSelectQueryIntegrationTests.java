@@ -27,6 +27,7 @@ import static org.hibernate.query.SortDirection.ASCENDING;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
@@ -276,7 +277,7 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         @Test
         void testSortFieldNotFieldPathExpressionNotSupported() {
             assertSelectQueryFailure(
@@ -322,7 +323,7 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class SortKeyTupleTests {
+    class SortKeyTupleTests implements MongoServiceRegistryProducer {
         @Test
         void testOrderBySimpleTuple() {
             assertSelectionQuery(

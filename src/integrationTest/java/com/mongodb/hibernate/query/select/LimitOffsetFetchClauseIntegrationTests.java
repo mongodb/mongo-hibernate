@@ -26,6 +26,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
@@ -88,7 +89,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class WithoutQueryOptionsLimit {
+    class WithoutQueryOptionsLimit implements MongoServiceRegistryProducer {
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
@@ -255,10 +256,10 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class WithQueryOptionsLimit {
+    class WithQueryOptionsLimit implements MongoServiceRegistryProducer {
 
         @Nested
-        class WithoutHqlClauses {
+        class WithoutHqlClauses implements MongoServiceRegistryProducer {
             @Test
             void testQueryOptionsSetFirstResultOnly() {
                 assertSelectionQuery(
@@ -375,7 +376,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         }
 
         @Nested
-        class WithHqlClauses {
+        class WithHqlClauses implements MongoServiceRegistryProducer {
 
             private static final String EXPECTED_MQL_TEMPLATE =
                     """
@@ -460,7 +461,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
 
         @ParameterizedTest
         @EnumSource(value = FetchClauseType.class, mode = EXCLUDE, names = "ROWS_ONLY")
