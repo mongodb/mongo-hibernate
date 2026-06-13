@@ -873,6 +873,195 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
     }
 
+    /**
+     * HQL {@code is null} / {@code is not null} are translated to MongoDB's native equality against {@code null}, so
+     * {@code is null} matches both null-valued and missing fields and {@code is not null} matches the complement
+     * (existing and non-null). This is consistent with the MQL semantics adopted in HIBERNATE-74.
+     */
+    @Nested
+    class IsNull {
+
+        private static final List<Contact> testingContacts = List.of(
+                new Contact(1, "Bob", 18, Country.USA),
+                new Contact(2, "Mary", 35, null),
+                new Contact(3, "Dylan", 7, Country.CANADA),
+                new Contact(4, "Lucy", 78, null));
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
+            getTestCommandListener().clear();
+        }
+
+        private static List<Contact> getTestingContacts(final Predicate<Contact> filter) {
+            return testingContacts.stream().filter(filter).toList();
+        }
+
+        @Test
+        void testIsNull() {
+            assertSelectionQuery(
+                    "from Contact where country is null",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "country": {
+                              "$eq": null
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(contact -> contact.country == null),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testIsNullOnAliasQualifiedPath() {
+            // Goes through BasicValuedPathInterpretation rather than a bare ColumnReference
+            assertSelectionQuery(
+                    "from Contact c where c.country is null",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "country": {
+                              "$eq": null
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(contact -> contact.country == null),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testIsNotNull() {
+            assertSelectionQuery(
+                    "from Contact where country is not null",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "country": {
+                              "$ne": null
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(contact -> contact.country != null),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testIsNullAndOtherPredicate() {
+            assertSelectionQuery(
+                    "from Contact where country is null and age > 30",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$and": [
+                              {
+                                "country": {
+                                  "$eq": null
+                                }
+                              },
+                              {
+                                "age": {
+                                  "$gt": 30
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(contact -> contact.country == null && contact.age > 30),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
+        void testNotIsNull() {
+            assertSelectionQuery(
+                    "from Contact where not (country is null)",
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$nor": [
+                              {
+                                "country": {
+                                  "$eq": null
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }""",
+                    getTestingContacts(contact -> contact.country != null),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         @Test
@@ -920,6 +1109,16 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     q -> q.setParameter("param", 1),
                     FeatureNotSupportedException.class,
                     "Only the following comparisons are supported: field vs literal, field vs parameter");
+        }
+
+        @Test
+        void testIsNullOnParameterNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where :param is null",
+                    Contact.class,
+                    q -> q.setParameter("param", "x"),
+                    FeatureNotSupportedException.class,
+                    "Only the following nullness predicates are supported: field is [not] null");
         }
 
         @Test

@@ -26,12 +26,13 @@ assertj = "3.27.6"
 google-errorprone-core = "2.42.0"
 nullaway = "0.12.14"
 jspecify = "1.0.0" # Remember to update javadoc links
-hibernate-orm = "7.3.6.Final" # Remember to update javadoc links
+hibernate-orm = "7.4.1.Final" # Remember to update javadoc links
 mongo-java-driver-sync = "5.6.2" # Remember to update javadoc links
 findbugs-jsr = "3.0.2"
 slf4j-api = "2.0.17"
 logback-classic = "1.5.21"
 mockito = "5.21.0"
+h2 = "2.3.232"
 checker-qual = "3.52.1"
 
 plugin-spotless = "8.1.0"
@@ -56,6 +57,7 @@ findbugs-jsr = { module = "com.google.code.findbugs:jsr305", version.ref = "find
 sl4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j-api" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback-classic" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
 checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "checker-qual" }
 
 [bundles]
