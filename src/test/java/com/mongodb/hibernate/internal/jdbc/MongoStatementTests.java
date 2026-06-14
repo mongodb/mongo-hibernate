@@ -195,14 +195,13 @@ class MongoStatementTests {
                 () -> failureAsserter.accept("{title: 1, publishYear: false}", "Exclusions are not allowed"),
                 () -> successAsserter.accept("{'o1_0#total': '$o1_0.total', _id: 1}", List.of("o1_0#total", "_id")),
                 () -> failureAsserter.accept("{title: '$$REMOVE'}", "Unsupported value in '$project' specification"),
-                () -> failureAsserter.accept("{title: {$literal: 1}}", "Unsupported value in '$project' specification"),
+                () -> successAsserter.accept("{title: {$literal: 1}}", List.of("title", "_id")),
                 () -> failureAsserter.accept(
                         "{title: 'string literal'}", "Unsupported value in '$project' specification"),
                 () -> failureAsserter.accept("{title: []}", "Unsupported value in '$project' specification"),
                 () -> failureAsserter.accept(
                         "{title: ['array literal']}", "Unsupported value in '$project' specification"),
-                () -> failureAsserter.accept(
-                        "{title: {fieldName: 'document literal'}}", "Unsupported value in '$project' specification"));
+                () -> successAsserter.accept("{title: {fieldName: 'document literal'}}", List.of("title", "_id")));
     }
 
     @Nested
