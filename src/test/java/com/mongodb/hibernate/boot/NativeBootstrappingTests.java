@@ -17,13 +17,8 @@
 package com.mongodb.hibernate.boot;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.AvailableSettings.ALLOW_METADATA_ON_BOOT;
-import static org.hibernate.cfg.AvailableSettings.CONNECTION_PROVIDER;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.withSettings;
 
 import com.mongodb.hibernate.internal.boot.MongoAdditionalMappingContributor;
 import jakarta.persistence.Embeddable;
@@ -32,7 +27,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.junit.jupiter.api.Test;
 
 class NativeBootstrappingTests {
