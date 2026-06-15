@@ -19,6 +19,7 @@ package com.mongodb.hibernate.type.temporal;
 import static com.mongodb.hibernate.MongoTestAssertions.assertEq;
 
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
@@ -50,7 +51,7 @@ import org.junit.jupiter.params.provider.MethodSource;
             InstantIntegrationTests.Item.class,
         })
 @ExtendWith(MongoExtension.class)
-class InstantIntegrationTests implements SessionFactoryScopeAware {
+class InstantIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
 
     private static final TimeZone ORIGINAL_JVM_TIMEZONE = TimeZone.getDefault();
     private static final String ZONE_OFFSET_ID = "+11:13";

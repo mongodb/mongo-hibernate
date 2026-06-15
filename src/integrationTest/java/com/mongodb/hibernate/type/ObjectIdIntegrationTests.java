@@ -27,6 +27,7 @@ import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -53,7 +54,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             ObjectIdIntegrationTests.ItemGeneratedWithPropertyAccess.class
         })
 @ExtendWith(MongoExtension.class)
-class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
+class ObjectIdIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "items";
 
     @InjectMongoCollection(COLLECTION_NAME)
@@ -97,7 +98,7 @@ class ObjectIdIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class Generated {
+    class Generated implements MongoServiceRegistryProducer {
         @Test
         void insert() {
             var item = new ItemGenerated();

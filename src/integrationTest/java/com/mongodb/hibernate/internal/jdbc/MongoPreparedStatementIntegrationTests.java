@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.jdbc;
+package com.mongodb.hibernate.internal.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.doWorkWithSpecifiedAutoCommit;
-import static com.mongodb.hibernate.jdbc.MongoStatementIntegrationTests.insertTestData;
+import static com.mongodb.hibernate.internal.jdbc.MongoStatementIntegrationTests.doWorkWithSpecifiedAutoCommit;
+import static com.mongodb.hibernate.internal.jdbc.MongoStatementIntegrationTests.insertTestData;
 import static java.sql.Statement.SUCCESS_NO_INFO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -33,6 +33,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import java.math.BigDecimal;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
@@ -233,7 +234,7 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @Nested
-    class ExecuteBatchTests {
+    class ExecuteBatchTests implements MongoServiceRegistryProducer {
         private static final String INSERT_MQL =
                 """
                 {
@@ -476,7 +477,7 @@ class MongoPreparedStatementIntegrationTests {
     }
 
     @Nested
-    class ExecuteUpdateTests {
+    class ExecuteUpdateTests implements MongoServiceRegistryProducer {
 
         private static final String INSERT_MQL =
                 """

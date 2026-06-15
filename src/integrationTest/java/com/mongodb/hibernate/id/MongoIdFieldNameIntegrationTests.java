@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -42,7 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithInvalidNameElement.class
         })
 @ExtendWith(MongoExtension.class)
-class MongoIdFieldNameIntegrationTests {
+class MongoIdFieldNameIntegrationTests implements MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "movies";
 
     @InjectMongoCollection(COLLECTION_NAME)

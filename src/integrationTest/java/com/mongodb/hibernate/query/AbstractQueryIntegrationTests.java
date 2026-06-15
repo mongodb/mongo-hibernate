@@ -28,6 +28,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -66,7 +67,8 @@ import org.mockito.stubbing.Answer;
                         value =
                                 "com.mongodb.hibernate.query.AbstractQueryIntegrationTests$TranslateResultAwareDialect"))
 @ExtendWith(MongoExtension.class)
-public abstract class AbstractQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
+public abstract class AbstractQueryIntegrationTests
+        implements SessionFactoryScopeAware, ServiceRegistryScopeAware, MongoServiceRegistryProducer {
 
     private SessionFactoryScope sessionFactoryScope;
 

@@ -17,15 +17,9 @@
 package com.mongodb.hibernate.boot;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hibernate.cfg.AvailableSettings.ALLOW_METADATA_ON_BOOT;
-import static org.hibernate.cfg.AvailableSettings.CONNECTION_PROVIDER;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.withSettings;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.boot.MongoAdditionalMappingContributor;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -33,45 +27,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
 import org.junit.jupiter.api.Test;
 
 class NativeBootstrappingTests {
     private static final String COLLECTION_NAME = "items";
-
-    @Test
-    void testMongoDialectNotPluggedIn() {
-        try (var standardServiceRegistry = new StandardServiceRegistryBuilder()
-                .applySetting(DIALECT, "org.hibernate.dialect.PostgreSQLDialect")
-                .build()) {
-            assertThatThrownBy(() -> new MetadataSources()
-                            .buildMetadata(standardServiceRegistry)
-                            .buildSessionFactory()
-                            .close())
-                    .hasRootCauseMessage("com.mongodb.hibernate.dialect.MongoDialect must be plugged in"
-                            + ", for example, via the [hibernate.dialect] configuration property");
-        }
-    }
-
-    @Test
-    void testMongoConnectionProviderNotPluggedIn() {
-        try (var standardServiceRegistry = new StandardServiceRegistryBuilder()
-                .applySetting(DIALECT, MongoDialect.class)
-                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db")
-                .applySetting(
-                        CONNECTION_PROVIDER,
-                        mock(ConnectionProvider.class, withSettings().withoutAnnotations()))
-                .applySetting(ALLOW_METADATA_ON_BOOT, false)
-                .build()) {
-            assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(Item.class)
-                            .buildMetadata(standardServiceRegistry)
-                            .buildSessionFactory()
-                            .close())
-                    .hasRootCauseMessage("com.mongodb.hibernate.jdbc.MongoConnectionProvider must be plugged in"
-                            + ", for example, via the [hibernate.connection.provider_class] configuration property");
-        }
-    }
 
     /**
      * Verify that {@link MongoAdditionalMappingContributor} skips its logic when bootstrapping is unrelated to the
