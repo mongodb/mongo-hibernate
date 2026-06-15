@@ -879,7 +879,7 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
      * (existing and non-null). This is consistent with the MQL semantics adopted in HIBERNATE-74.
      */
     @Nested
-    class IsNull {
+    class IsNull implements MongoServiceRegistryProducer {
 
         private static final List<Contact> testingContacts = List.of(
                 new Contact(1, "Bob", 18, Country.USA),
