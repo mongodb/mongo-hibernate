@@ -88,3 +88,7 @@ curl -s -X PUT \
 - **Nullness:** JSpecify annotations enforced by NullAway (via Error Prone at compile time). Annotate all API boundaries.
 - **Line length:** 120 characters.
 - **Test class naming:** suffix `Tests`, not `Test`.
+- **Integration test registry setup:** every integration test that builds a Hibernate SessionFactory/ServiceRegistry 
+  through the testing framework must implement MongoServiceRegistryProducer (in com.mongodb.hibernate.junit). It strips the 
+  SharedDriverManagerConnectionProvider that Hibernate's test framework injects, which would otherwise trip the 
+  auto-configured connection provider.
