@@ -51,6 +51,7 @@ import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -77,6 +78,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSt
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstUnwindStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
@@ -227,6 +229,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private final SessionFactoryImplementor sessionFactory;
 
     private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
+
+    private @Nullable String elemMatchInnerAlias;
 
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
@@ -621,6 +625,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitColumnReference(ColumnReference columnReference) {
         if (columnReference.isColumnExpressionFormula()) {
             throw new FeatureNotSupportedException("Formula is not supported");
+        }
+        if (elemMatchInnerAlias != null) {
+            var qualifier = assertNotNull(columnReference.getQualifier());
+            if (!qualifier.equals(elemMatchInnerAlias)) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-177 https://jira.mongodb.org/browse/HIBERNATE-177");
+            }
         }
         astVisitorValueHolder.yield(FIELD_PATH, resolveFieldPath(columnReference));
     }
@@ -1041,8 +1052,75 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitExistsPredicate(ExistsPredicate existsPredicate) {
-        throw new FeatureNotSupportedException();
+        astVisitorValueHolder.yield(FILTER, translateExistsOverUnnest(existsPredicate));
     }
+
+    private AstFilter translateExistsOverUnnest(ExistsPredicate existsPredicate) {
+        var shape = recognizeExistsOverUnnest(existsPredicate)
+                .orElseThrow(() -> new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-178 https://jira.mongodb.org/browse/HIBERNATE-178"));
+        AstFilter bodyFilter;
+        if (shape.body() != null) {
+            var previousInnerAlias = elemMatchInnerAlias;
+            elemMatchInnerAlias = shape.innerAlias();
+            try {
+                bodyFilter = acceptAndYield(shape.body(), FILTER);
+            } finally {
+                elemMatchInnerAlias = previousInnerAlias;
+            }
+        } else {
+            bodyFilter = AstEmptyFilter.INSTANCE;
+        }
+        AstFilter filter =
+                new AstFieldOperationFilter(shape.arrayFieldName(), new AstElemMatchFilterOperation(bodyFilter));
+        if (existsPredicate.isNegated()) {
+            filter = new AstLogicalFilter(NOR, List.of(filter));
+        }
+        return filter;
+    }
+
+    private static Optional<ExistsOverUnnestShape> recognizeExistsOverUnnest(ExistsPredicate existsPredicate) {
+        var select = existsPredicate.getExpression();
+        if (!(select.getQueryPart() instanceof QuerySpec qs)) {
+            return Optional.empty();
+        }
+        if (qs.getFromClause().getRoots().size() != 1
+                || !qs.getGroupByClauseExpressions().isEmpty()
+                || qs.hasSortSpecifications()
+                || qs.hasOffsetOrFetchClause()) {
+            return Optional.empty();
+        }
+        var root = qs.getFromClause().getRoots().get(0);
+        if (!root.getTableGroupJoins().isEmpty()
+                || !root.getNestedTableGroupJoins().isEmpty()) {
+            return Optional.empty();
+        }
+        if (!(root.getPrimaryTableReference() instanceof FunctionTableReference ftr)
+                || !MongoUnnestFunction.FUNCTION_NAME.equals(
+                        ftr.getFunctionExpression().getFunctionName())) {
+            return Optional.empty();
+        }
+        var args = ftr.getFunctionExpression().getArguments();
+        if (args.size() != 1) {
+            return Optional.empty();
+        }
+        var arg = args.get(0);
+        if (!(arg instanceof BasicValuedPathInterpretation<?> bvpi)) {
+            return Optional.empty();
+        }
+        var columnReference = bvpi.getColumnReference();
+        if (columnReference == null) {
+            return Optional.empty();
+        }
+        var arrayFieldName = columnReference.getColumnExpression();
+        return Optional.of(new ExistsOverUnnestShape(
+                arrayFieldName, ftr.getIdentificationVariable(), qs.getWhereClauseRestrictions()));
+    }
+
+    private record ExistsOverUnnestShape(
+            String arrayFieldName,
+            String innerAlias,
+            @Nullable Predicate body) {}
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
