@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.query.select;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
@@ -398,7 +399,7 @@ class ExistsSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
 
         @Test
         void testExistsOverEntity() {

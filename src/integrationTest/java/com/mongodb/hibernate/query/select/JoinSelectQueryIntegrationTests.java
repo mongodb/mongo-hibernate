@@ -44,7 +44,6 @@ import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.FilterJoinTable;
 import org.hibernate.annotations.JoinFormula;
 import org.hibernate.annotations.Struct;
-import org.hibernate.query.sqm.InterpretationException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -904,14 +903,11 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class LateralUnnestJoin extends AbstractQueryIntegrationTests {
             @Test
             void testLateralUnnestThrows() {
-                // TODO-HIBERNATE-111 https://jira.mongodb.org/browse/HIBERNATE-111
-                // Hibernate 7.3 fails at HQL semantic translation (SQM level) because the
-                // MongoDB dialect does not register an "unnest" set-returning function descriptor.
                 assertSelectQueryFailure(
                         "FROM ItemWithArray o JOIN o.itemStructs i",
                         Object[].class,
-                        InterpretationException.class,
-                        "Error interpreting query");
+                        FeatureNotSupportedException.class,
+                        "TODO-HIBERNATE-111");
             }
         }
 
