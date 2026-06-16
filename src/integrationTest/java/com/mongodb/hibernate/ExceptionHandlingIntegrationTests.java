@@ -20,9 +20,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.hibernate.dialect.MongoDialect;
+import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import com.mongodb.hibernate.junit.InjectMongoClient;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -46,7 +47,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
-class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware {
+class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "items";
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_OPERATION_TIMED_OUT =
@@ -98,7 +99,7 @@ class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware {
     @ExtendWith(MongoExtension.class)
     @SessionFactory(exportSchema = false)
     @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTests.Item.class})
-    class Batch implements SessionFactoryScopeAware {
+    class Batch implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
         private SessionFactoryScope sessionFactoryScope;
 
         @Override

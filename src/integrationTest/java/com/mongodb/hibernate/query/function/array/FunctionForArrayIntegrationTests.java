@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import com.mongodb.MongoCommandException;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -53,8 +54,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {FunctionForArrayIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
-// TODO-HIBERNATE-74 We need to make sure the functions behave in accordance with the ternary logic
-public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAware {
+public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "items";
 
     private SessionFactoryScope sessionFactoryScope;
@@ -121,7 +121,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     @Nested
     @ParameterizedClass
     @ValueSource(booleans = {true, false})
-    class ArrayContains {
+    class ArrayContains implements MongoServiceRegistryProducer {
         @Parameter
         private boolean testNullable;
 
@@ -229,7 +229,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     }
 
     @Nested
-    class ArrayContainsNull {
+    class ArrayContainsNull implements MongoServiceRegistryProducer {
         private Item item;
 
         @BeforeEach
@@ -273,7 +273,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     @Nested
     @ParameterizedClass
     @ValueSource(booleans = {true, false})
-    class ArrayIncludes {
+    class ArrayIncludes implements MongoServiceRegistryProducer {
         @Parameter
         private boolean testNullable;
 
@@ -382,7 +382,7 @@ public class FunctionForArrayIntegrationTests implements SessionFactoryScopeAwar
     }
 
     @Nested
-    class ArrayIncludesNull {
+    class ArrayIncludesNull implements MongoServiceRegistryProducer {
         private Item item;
 
         @BeforeEach
