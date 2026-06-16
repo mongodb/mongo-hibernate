@@ -37,9 +37,11 @@ import org.hibernate.sql.ast.tree.SqlAstNode;
  */
 public final class MongoUnnestFunction extends AbstractSqmSelfRenderingSetReturningFunctionDescriptor {
 
+    public static final String FUNCTION_NAME = "unnest";
+
     public MongoUnnestFunction() {
         super(
-                "unnest",
+                FUNCTION_NAME,
                 ArrayArgumentValidator.DEFAULT_INSTANCE,
                 new UnnestSetReturningFunctionTypeResolver("value", "ordinality"),
                 null);

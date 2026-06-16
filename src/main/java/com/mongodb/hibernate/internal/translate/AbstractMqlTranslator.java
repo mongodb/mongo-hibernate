@@ -51,6 +51,7 @@ import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -604,8 +605,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("Formula is not supported");
         }
         if (elemMatchInnerAlias != null) {
-            var qualifier = columnReference.getQualifier();
-            if (qualifier != null && !qualifier.equals(elemMatchInnerAlias)) {
+            var qualifier = assertNotNull(columnReference.getQualifier());
+            if (!qualifier.equals(elemMatchInnerAlias)) {
                 throw new FeatureNotSupportedException(
                         "TODO-HIBERNATE-177 https://jira.mongodb.org/browse/HIBERNATE-177");
             }
@@ -1007,10 +1008,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitExistsPredicate(ExistsPredicate existsPredicate) {
-        var shape = recognizeExistsOverUnnest(existsPredicate);
-        if (shape == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-178 https://jira.mongodb.org/browse/HIBERNATE-178");
-        }
+        astVisitorValueHolder.yield(FILTER, translateExistsOverUnnest(existsPredicate));
+    }
+
+    private AstFilter translateExistsOverUnnest(ExistsPredicate existsPredicate) {
+        var shape = recognizeExistsOverUnnest(existsPredicate)
+                .orElseThrow(() -> new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-178 https://jira.mongodb.org/browse/HIBERNATE-178"));
         AstFilter bodyFilter;
         if (shape.body() != null) {
             var previousInnerAlias = elemMatchInnerAlias;
@@ -1028,44 +1032,45 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (existsPredicate.isNegated()) {
             filter = new AstLogicalFilter(NOR, List.of(filter));
         }
-        astVisitorValueHolder.yield(FILTER, filter);
+        return filter;
     }
 
-    private static @Nullable ExistsOverUnnestShape recognizeExistsOverUnnest(ExistsPredicate existsPredicate) {
+    private static Optional<ExistsOverUnnestShape> recognizeExistsOverUnnest(ExistsPredicate existsPredicate) {
         var select = existsPredicate.getExpression();
         if (!(select.getQueryPart() instanceof QuerySpec qs)) {
-            return null;
+            return Optional.empty();
         }
         if (qs.getFromClause().getRoots().size() != 1
                 || !qs.getGroupByClauseExpressions().isEmpty()
                 || qs.hasSortSpecifications()
                 || qs.hasOffsetOrFetchClause()) {
-            return null;
+            return Optional.empty();
         }
         var root = qs.getFromClause().getRoots().get(0);
         if (!root.getTableGroupJoins().isEmpty()
                 || !root.getNestedTableGroupJoins().isEmpty()) {
-            return null;
+            return Optional.empty();
         }
         if (!(root.getPrimaryTableReference() instanceof FunctionTableReference ftr)
-                || !"unnest".equals(ftr.getFunctionExpression().getFunctionName())) {
-            return null;
+                || !MongoUnnestFunction.FUNCTION_NAME.equals(
+                        ftr.getFunctionExpression().getFunctionName())) {
+            return Optional.empty();
         }
         var args = ftr.getFunctionExpression().getArguments();
         if (args.size() != 1) {
-            return null;
+            return Optional.empty();
         }
         var arg = args.get(0);
         if (!(arg instanceof BasicValuedPathInterpretation<?> bvpi)) {
-            return null;
+            return Optional.empty();
         }
         var columnReference = bvpi.getColumnReference();
         if (columnReference == null) {
-            return null;
+            return Optional.empty();
         }
         var arrayFieldName = columnReference.getColumnExpression();
-        return new ExistsOverUnnestShape(
-                arrayFieldName, ftr.getIdentificationVariable(), qs.getWhereClauseRestrictions());
+        return Optional.of(new ExistsOverUnnestShape(
+                arrayFieldName, ftr.getIdentificationVariable(), qs.getWhereClauseRestrictions()));
     }
 
     private record ExistsOverUnnestShape(
