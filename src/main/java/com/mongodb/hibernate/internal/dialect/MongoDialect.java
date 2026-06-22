@@ -114,9 +114,8 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     }
 
     /**
-     * Supplies the parameter marker used for native queries. Hibernate ORM uses this only when
-     * {@link AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS} is enabled, which
-     * {@code StandardServiceRegistryScopedState} forces on for MongoDB sessions.
+     * Supplies the parameter marker used for native queries. Used only when
+     * {@link AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS} is enabled
      *
      * @see MongoParameterMarkerStrategy
      */
