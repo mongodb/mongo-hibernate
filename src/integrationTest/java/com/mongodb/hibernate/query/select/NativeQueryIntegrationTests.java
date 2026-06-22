@@ -58,7 +58,9 @@ import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonParseException;
 import org.bson.types.ObjectId;
+import org.hibernate.JDBCException;
 import org.hibernate.query.QueryProducer;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -624,6 +626,96 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                                                                                 [])
                                                                         tuple[2])))
                                         .getSingleResult()));
+            });
+        }
+    }
+
+    /**
+     * See <a
+     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-query-parameters">
+     * Using parameters in native queries</a>.
+     *
+     * <p>Hibernate ORM hard-codes the JDBC {@code ?} marker for native queries, but MQL is BSON, so
+     * {@link com.mongodb.hibernate.internal.dialect.MongoParameterMarkerStrategy} substitutes the BSON
+     * {@code undefined} marker instead, which the JDBC adapter binds.
+     */
+    @Nested
+    class WithParameters implements MongoServiceRegistryProducer {
+        @Test
+        void testNamedParameter() {
+            sessionFactoryScope.inSession(session -> {
+                // The named-parameter token runs until an HQL separator, and `}` is not one, so a space must
+                // follow the placeholder to terminate the name (otherwise the trailing `}}` is parsed into it).
+                var mql = """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id }}, %s]}"""
+                        .formatted(
+                                COLLECTION_NAME,
+                                ID_FIELD_NAME,
+                                Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .getSingleResult());
+            });
+        }
+
+        @Test
+        void testOrdinalParameter() {
+            sessionFactoryScope.inSession(session -> {
+                // As with named parameters, the ordinal label runs until an HQL separator; `}` is not one,
+                // so a space must follow `?1` (otherwise `1}` is parsed as the label and rejected as non-integer).
+                var mql = """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": ?1 }}, %s]}"""
+                        .formatted(
+                                COLLECTION_NAME,
+                                ID_FIELD_NAME,
+                                Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter(1, item.id)
+                                .getSingleResult());
+            });
+        }
+
+        @Test
+        void testMultipleParameters() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": :string }}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .setParameter("string", item.string)
+                                .getSingleResult());
+            });
+        }
+
+        /**
+         * Multi-valued (collection) parameters are not supported: Hibernate ORM expands them into a SQL-style
+         * parenthesized list (e.g. {@code ({"$undefined": true},{"$undefined": true})}), which is not valid MQL.
+         */
+        @Test
+        void testMultiValuedParameterIsUnsupported() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": {"$in": [:ids] }}}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                var query = session.createNativeQuery(mql, Item.class).setParameter("ids", List.of(item.id, 999));
+                assertThatThrownBy(query::getResultList)
+                        .isInstanceOf(JDBCException.class)
+                        .hasRootCauseInstanceOf(JsonParseException.class);
             });
         }
     }

@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.CONNECTION_PROVIDER;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.DIALECT_NATIVE_PARAM_MARKERS;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
@@ -95,6 +96,38 @@ class StandardServiceRegistryScopedStateTests {
             assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
                     .hasRootCauseMessage("[hibernate.dialect] must be set to [MongoDB]");
         }
+    }
+
+    @Test
+    void testNativeParamMarkersForcedOn() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT_NATIVE_PARAM_MARKERS)).isEqualTo(true);
+    }
+
+    @Test
+    void testExplicitTrueNativeParamMarkersAccepted() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db")
+                .applySetting(DIALECT_NATIVE_PARAM_MARKERS, true);
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT_NATIVE_PARAM_MARKERS)).isEqualTo(true);
+    }
+
+    @Test
+    void testExplicitFalseNativeParamMarkersRejected() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(DIALECT_NATIVE_PARAM_MARKERS, false);
+        assertThatThrownBy(() -> new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder))
+                .hasMessageContaining(
+                        "[hibernate.dialect.native_param_markers] is automatically configured and must not be set to [false]");
     }
 
     @Test
