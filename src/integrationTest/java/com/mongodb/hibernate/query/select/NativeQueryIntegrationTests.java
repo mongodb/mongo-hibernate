@@ -642,10 +642,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
     @Nested
     class WithParameters implements MongoServiceRegistryProducer {
         @Test
-        void testNamedParameter() {
+        void testSingleNamedParameter() {
             sessionFactoryScope.inSession(session -> {
-                // The named-parameter token runs until an HQL separator, and `}` is not one, so a space must
-                // follow the placeholder to terminate the name (otherwise the trailing `}}` is parsed into it).
                 var mql = """
                         {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id }}, %s]}"""
                         .formatted(
@@ -680,7 +678,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
         }
 
         @Test
-        void testMultipleParameters() {
+        void testMultipleNamedParameters() {
             sessionFactoryScope.inSession(session -> {
                 var mql =
                         """

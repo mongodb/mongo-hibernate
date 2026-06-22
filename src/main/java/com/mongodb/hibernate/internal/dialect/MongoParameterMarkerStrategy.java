@@ -22,14 +22,8 @@ import org.hibernate.sql.ast.spi.ParameterMarkerStrategy;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 
 /**
- * Renders the parameter marker for native queries.
- *
- * <p>Hibernate ORM defaults to the JDBC standard {@code ?} marker, but MQL is BSON rather than SQL text: {@code ?} is
- * not a valid BSON value. This strategy emits the {@linkplain org.bson.BsonType#UNDEFINED BSON undefined} marker in its
- * <a href="https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/">Extended JSON</a> form,
- * {@code {"$undefined": true}}, which {@link org.bson.BsonDocument#parse(String)} round-trips to the same
- * {@code undefined} value that {@link AstParameterMarker} emits for AST-translated queries. The JDBC adapter recognizes
- * that value as the parameter marker to bind, so native and AST-translated queries use the same marker.
+ * Renders the parameter marker for native queries. This class overrides {@link ParameterMarkerStrategy} to use MQL
+ * {$undefined:true}
  *
  * @see AstParameterMarker
  * @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS
