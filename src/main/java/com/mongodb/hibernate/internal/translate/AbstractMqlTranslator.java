@@ -203,6 +203,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
+import org.hibernate.sql.model.ast.ColumnValueBinding;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
@@ -371,34 +372,32 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException();
         }
         var keyFilter = createKeyFilter(tableUpdate);
-        var updates = new ArrayList<AstFieldUpdate>(tableUpdate.getNumberOfValueBindings());
-        for (var valueBinding : tableUpdate.getValueBindings()) {
-            var fieldName = valueBinding.getColumnReference().getColumnExpression();
-            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
-            updates.add(new AstFieldUpdate(fieldName, fieldValue));
-        }
+        List<ColumnValueBinding> valueBindings = tableUpdate.getValueBindings();
+        String tableName = tableUpdate.getMutatingTable().getTableName();
+        var astUpdateCommand = createAstUpdateCommand(valueBindings, tableName, keyFilter);
         astVisitorValueHolder.yield(
-                MODEL_MUTATION_RESULT,
-                ModelMutationMqlTranslator.Result.create(
-                        new AstUpdateCommand(tableUpdate.getMutatingTable().getTableName(), keyFilter, updates),
-                        parameterBinders));
+                MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders));
     }
 
     private AstFilter createKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
-        if (tableMutation.getNumberOfOptimisticLockBindings() > 0) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-51 https://jira.mongodb.org/browse/HIBERNATE-51");
-        }
-
         if (tableMutation.getNumberOfKeyBindings() > 1) {
             throw new FeatureNotSupportedException(
                     format("%s does not support primary key spanning multiple columns", MONGO_DBMS_NAME));
         }
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
-        var keyBinding = tableMutation.getKeyBindings().get(0);
 
-        var astFilterFieldPath = keyBinding.getColumnReference().getColumnExpression();
-        var fieldValue = acceptAndYield(keyBinding.getValueExpression(), VALUE);
-        return new AstFieldOperationFilter(astFilterFieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
+        var predicates = new ArrayList<AstFilter>(1 + tableMutation.getNumberOfOptimisticLockBindings());
+        predicates.add(createEqualityFiler(tableMutation.getKeyBindings().get(0)));
+        for (var lockBinding : tableMutation.getOptimisticLockBindings()) {
+            predicates.add(createEqualityFiler(lockBinding));
+        }
+        return predicates.size() == 1 ? predicates.get(0) : new AstLogicalFilter(AND, predicates);
+    }
+
+    private AstFieldOperationFilter createEqualityFiler(ColumnValueBinding binding) {
+        var fieldPath = acceptAndYield(binding.getColumnReference(), FIELD_PATH);
+        var fieldValue = acceptAndYield(binding.getValueExpression(), VALUE);
+        return new AstFieldOperationFilter(fieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
     }
 
     @Override
@@ -806,6 +805,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         return restriction == null ? AstEmptyFilter.INSTANCE : acceptAndYield(restriction, FILTER);
     }
 
+    private AstUpdateCommand createAstUpdateCommand(
+            final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
+        var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
+        for (var valueBinding : valueBindings) {
+            var fieldName = valueBinding.getColumnReference().getColumnExpression();
+            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
+            updates.add(new AstFieldUpdate(fieldName, fieldValue));
+        }
+        return new AstUpdateCommand(tableName, keyFilter, updates);
+    }
+
     @Override
     public void visitInsertStatement(InsertSelectStatement insertStatement) {
         checkMutationStatementSupportability(insertStatement);
@@ -1178,7 +1188,15 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitOptionalTableUpdate(OptionalTableUpdate optionalTableUpdate) {
-        throw new FeatureNotSupportedException();
+        if (optionalTableUpdate.getMutatingTable().getTableMapping().isOptional()) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
+        }
+        var keyFilter = createKeyFilter(optionalTableUpdate);
+        List<ColumnValueBinding> valueBindings = optionalTableUpdate.getValueBindings();
+        String tableName = optionalTableUpdate.getMutatingTable().getTableName();
+        var astUpdateCommand = createAstUpdateCommand(valueBindings, tableName, keyFilter);
+        astVisitorValueHolder.yield(
+                MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders));
     }
 
     @Override
