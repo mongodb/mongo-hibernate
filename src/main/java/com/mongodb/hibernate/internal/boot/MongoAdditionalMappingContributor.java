@@ -23,8 +23,8 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Embeddable;
 import java.lang.reflect.AnnotatedElement;
 import java.sql.Time;
@@ -41,7 +41,10 @@ import java.util.Set;
 import java.util.StringJoiner;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Struct;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
@@ -53,15 +56,20 @@ import org.hibernate.mapping.Property;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
-/** @hidden */
+/**
+ * @hidden
+ * @mongoCme The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple
+ *     {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
+ *     {@link BootstrapServiceRegistry}.
+ */
 @SuppressWarnings("MissingSummary")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
      * described in <a href="https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/">Field Names with
-     * Periods and Dollar Signs</a>.
+     * Periods and Dollar Signs</a>. We also reserve '#' as a separator for computed projections in MQL joins.
      */
-    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
+    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$", "#");
 
     private static final Set<Class<?>> UNSUPPORTED_TYPES = Set.of(
             Calendar.class,

@@ -26,6 +26,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
@@ -36,13 +37,13 @@ import org.bson.BsonDocument;
 import org.hibernate.Session;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.query.sqm.FetchClauseType;
+import org.hibernate.query.common.FetchClauseType;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
-import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.hibernate.stat.QueryStatistics;
@@ -60,7 +61,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @DomainModel(annotatedClasses = Book.class)
 class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTests {
 
-    private static final List<Book> testingBooks = List.of(
+    private static final List<Book> TESTING_BOOKS = List.of(
             new Book(0, "Nostromo", 1904, true),
             new Book(1, "The Age of Innocence", 1920, false),
             new Book(2, "Remembrance of Things Past", 1913, true),
@@ -74,13 +75,13 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
 
     @BeforeEach
     void beforeEach() {
-        getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
+        getSessionFactoryScope().inTransaction(session -> TESTING_BOOKS.forEach(session::persist));
         getTestCommandListener().clear();
     }
 
     private static List<Book> getBooksByIds(int... ids) {
         return Arrays.stream(ids)
-                .mapToObj(id -> testingBooks.stream()
+                .mapToObj(id -> TESTING_BOOKS.stream()
                         .filter(c -> c.id == id)
                         .findAny()
                         .orElseThrow(() -> fail("id does not exist: " + id)))
@@ -88,7 +89,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class WithoutQueryOptionsLimit {
+    class WithoutQueryOptionsLimit implements MongoServiceRegistryProducer {
 
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
@@ -255,10 +256,10 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class WithQueryOptionsLimit {
+    class WithQueryOptionsLimit implements MongoServiceRegistryProducer {
 
         @Nested
-        class WithoutHqlClauses {
+        class WithoutHqlClauses implements MongoServiceRegistryProducer {
             @Test
             void testQueryOptionsSetFirstResultOnly() {
                 assertSelectionQuery(
@@ -375,7 +376,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         }
 
         @Nested
-        class WithHqlClauses {
+        class WithHqlClauses implements MongoServiceRegistryProducer {
 
             private static final String EXPECTED_MQL_TEMPLATE =
                     """
@@ -460,7 +461,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
 
         @ParameterizedTest
         @EnumSource(value = FetchClauseType.class, mode = EXCLUDE, names = "ROWS_ONLY")
@@ -636,7 +637,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
             return new SqlAstTranslatorFactory() {
                 @Override
-                public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
+                public SqlAstTranslator<JdbcSelect> buildSelectTranslator(
                         SessionFactoryImplementor sessionFactory, SelectStatement statement) {
                     selectTranslatingCounter.incrementAndGet();
                     return TranslatingCacheTestingDialect.super

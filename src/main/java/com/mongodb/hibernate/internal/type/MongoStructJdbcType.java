@@ -25,7 +25,7 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.isNull;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
-import static org.hibernate.dialect.StructHelper.instantiate;
+import static org.hibernate.type.descriptor.jdbc.StructHelper.instantiate;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.IOException;
@@ -42,7 +42,6 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
-import org.hibernate.dialect.StructAttributeValues;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.descriptor.ValueBinder;
@@ -52,15 +51,16 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
-import org.hibernate.type.descriptor.jdbc.StructJdbcType;
+import org.hibernate.type.descriptor.jdbc.StructAttributeValues;
+import org.hibernate.type.descriptor.jdbc.StructuredJdbcType;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Thread-safe.
- *
  * @hidden
+ * @mongoCme Must be thread-safe.
  */
-public final class MongoStructJdbcType implements StructJdbcType {
+@SuppressWarnings("MissingSummary")
+public final class MongoStructJdbcType implements StructuredJdbcType {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -221,7 +221,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
                 "This class is not designed to be serialized despite it having to implement `Serializable`");
     }
 
-    /** Thread-safe. */
+    /** @mongoCme Must be thread-safe. */
     private final class Binder<X> extends BasicBinder<X> {
         @Serial
         private static final long serialVersionUID = 1L;
@@ -251,7 +251,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
         }
     }
 
-    /** Thread-safe. */
+    /** @mongoCme Must be thread-safe. */
     private final class Extractor<X> extends BasicExtractor<X> {
         @Serial
         private static final long serialVersionUID = 1L;
@@ -276,10 +276,7 @@ public final class MongoStructJdbcType implements StructJdbcType {
             } else {
                 var embeddableMappingType = getEmbeddableMappingType();
                 assertTrue(classX.equals(embeddableMappingType.getJavaType().getJavaTypeClass()));
-                result = instantiate(
-                        embeddableMappingType,
-                        new StructAttributeValues(jdbcValues.length, jdbcValues),
-                        options.getSessionFactory());
+                result = instantiate(embeddableMappingType, new StructAttributeValues(jdbcValues.length, jdbcValues));
             }
             return classX.cast(result);
         }

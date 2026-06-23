@@ -33,8 +33,6 @@ class MongoAdditionalMappingContributorTests {
         assertThatThrownBy(() -> new MetadataSources()
                 .addAnnotatedClass(Item.class)
                 .buildMetadata(new StandardServiceRegistryBuilder()
-                        .applySetting(AvailableSettings.DIALECT, "com.mongodb.hibernate.dialect.MongoDialect")
-                        .applySetting(AvailableSettings.CONNECTION_PROVIDER, "com.mongodb.hibernate.jdbc.MongoConnectionProvider")
                         .applySetting(AvailableSettings.ALLOW_METADATA_ON_BOOT, false)
                         .applySetting(AvailableSettings.JAKARTA_JDBC_URL, "mongodb://host/db")
                         .build()))

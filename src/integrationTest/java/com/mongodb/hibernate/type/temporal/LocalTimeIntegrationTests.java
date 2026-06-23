@@ -17,53 +17,45 @@
 package com.mongodb.hibernate.type.temporal;
 
 import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
-import static com.mongodb.hibernate.type.temporal.UnsupportedItems.*;
+import static com.mongodb.hibernate.type.temporal.UnsupportedItems.LocalTimeItems;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 
 class LocalTimeIntegrationTests {
+
     @Test
     void unsupported() {
         assertAll(
-                () -> assertNotSupported(new ItemWithId<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithFlattenedEmbeddableId<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionPersistentAttribute<LocalTime>() {}.getClass()),
+                () -> assertNotSupported(LocalTimeItems.WithId.class),
+                () -> assertNotSupported(LocalTimeItems.WithFlattenedEmbeddableId.class),
+                () -> assertNotSupported(LocalTimeItems.WithBasicPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithArrayPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithCollectionPersistentAttribute.class),
 
                 // Flattened Embeddable
-                () -> assertNotSupported(new ItemWithEmbeddableWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithEmbeddableWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithEmbeddableWithCollectionPersistentAttribute<LocalTime>() {}.getClass()),
+                () -> assertNotSupported(LocalTimeItems.WithEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Nested flattened embeddable
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithNestedEmbeddableWithCollectionPersistentAttribute<LocalTime>() {}.getClass()),
+                () -> assertNotSupported(LocalTimeItems.WithNestedEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithNestedEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithNestedEmbeddableWithCollectionPersistentAttribute.class),
 
                 // Aggregate embeddable
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(
-                        new ItemWithAggregateEmbeddableWithCollectionPersistentAttribute<LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithCollectionOfAggregateEmbeddable<LocalTime>() {}.getClass()),
+                () -> assertNotSupported(LocalTimeItems.WithAggregateEmbeddableWithBasicPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithAggregateEmbeddableWithArrayPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithCollectionOfAggregateEmbeddable.class),
 
                 // Nested aggregate embeddable
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithBasicPersistentAttribute<LocalTime>() {}.getClass()),
+                        LocalTimeItems.WithNestedAggregateEmbeddableWithBasicPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithArrayPersistentAttribute<LocalTime>() {}.getClass()),
+                        LocalTimeItems.WithNestedAggregateEmbeddableWithArrayPersistentAttribute.class),
                 () -> assertNotSupported(
-                        new ItemWithNestedAggregateEmbeddableWithCollectionPersistentAttribute<
-                                LocalTime>() {}.getClass()),
-                () -> assertNotSupported(new ItemWithNestedCollectionOfAggregateEmbeddable<LocalTime>() {}.getClass()));
+                        LocalTimeItems.WithNestedAggregateEmbeddableWithCollectionPersistentAttribute.class),
+                () -> assertNotSupported(LocalTimeItems.WithNestedCollectionOfAggregateEmbeddable.class));
     }
 }

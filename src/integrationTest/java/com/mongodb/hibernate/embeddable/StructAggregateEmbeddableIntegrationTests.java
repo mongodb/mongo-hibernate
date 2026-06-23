@@ -28,6 +28,7 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -64,7 +65,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingEmbeddable.class
         })
 @ExtendWith(MongoExtension.class)
-public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class StructAggregateEmbeddableIntegrationTests
+        implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -722,7 +724,7 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         @Test
         void testStructPrimaryKey() {
             assertThatThrownBy(() -> new MetadataSources()
@@ -803,7 +805,8 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairHavingNonInsertable")
-        record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
+        record PairHavingNonInsertable(
+                @Column(insertable = false) int a, int b) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)
@@ -836,7 +839,9 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairAllNonInsertable")
-        record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
+        record PairAllNonInsertable(
+                @Column(insertable = false) int a,
+                @Column(insertable = false) int b) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)

@@ -19,14 +19,15 @@ package com.mongodb.hibernate.query.select;
 import static com.mongodb.hibernate.MongoTestAssertions.assertIterableEq;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static jakarta.persistence.criteria.Nulls.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.DEFAULT_NULL_ORDERING;
-import static org.hibernate.query.NullPrecedence.NONE;
 import static org.hibernate.query.SortDirection.ASCENDING;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import java.util.Arrays;
@@ -276,7 +277,7 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         @Test
         void testSortFieldNotFieldPathExpressionNotSupported() {
             assertSelectQueryFailure(
@@ -322,7 +323,7 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class SortKeyTupleTests {
+    class SortKeyTupleTests implements MongoServiceRegistryProducer {
         @Test
         void testOrderBySimpleTuple() {
             assertSelectionQuery(

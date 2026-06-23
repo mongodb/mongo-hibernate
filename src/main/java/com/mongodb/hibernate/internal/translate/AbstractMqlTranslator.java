@@ -48,9 +48,10 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogica
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static java.lang.String.format;
-import static org.hibernate.query.sqm.FetchClauseType.ROWS_ONLY;
+import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -63,8 +64,10 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSkipStage;
@@ -72,13 +75,16 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSo
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstUnwindStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import com.mongodb.hibernate.internal.type.ValueConversions;
+import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.sql.PreparedStatement;
@@ -89,13 +95,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.bson.BsonNull;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
+import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
+import org.hibernate.persister.entity.SingleTableEntityPersister;
+import org.hibernate.persister.entity.UnionSubclassEntityPersister;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
-import org.hibernate.query.NullPrecedence;
 import org.hibernate.query.spi.Limit;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
@@ -107,6 +117,7 @@ import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.AbstractMutationStatement;
@@ -153,10 +164,12 @@ import org.hibernate.sql.ast.tree.expression.UnparsedNumericLiteral;
 import org.hibernate.sql.ast.tree.from.FromClause;
 import org.hibernate.sql.ast.tree.from.FunctionTableReference;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
+import org.hibernate.sql.ast.tree.from.PluralTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
+import org.hibernate.sql.ast.tree.from.UnionTableReference;
 import org.hibernate.sql.ast.tree.from.ValuesTableReference;
 import org.hibernate.sql.ast.tree.insert.InsertSelectStatement;
 import org.hibernate.sql.ast.tree.predicate.BetweenPredicate;
@@ -201,17 +214,29 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.hibernate.type.BasicType;
 import org.jspecify.annotations.Nullable;
 
-/** @hidden */
+/**
+ * @hidden
+ * @mongoCme This class and its subclasses do not have to be thread-safe because they are
+ *     {@linkplain SqlAstTranslatorFactory single-use}.
+ */
 @SuppressWarnings("MissingSummary")
 public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+
+    // '#' is blocked in mapped field names, so prefixing join aliases with it prevents $lookup from shadowing
+    // a local field that happens to share the Hibernate-generated alias name (e.g. "o1_0").
+    private static final String JOIN_ALIAS_PREFIX = "#";
 
     private final SessionFactoryImplementor sessionFactory;
 
     private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
 
+    private @Nullable String elemMatchInnerAlias;
+
     private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
 
     private final Set<String> affectedTableNames = new HashSet<>();
+
+    private final Set<String> joinedTableQualifiers = new HashSet<>();
 
     private @Nullable QueryOptionsLimit queryOptionsLimit;
 
@@ -238,7 +263,23 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     @Override
-    public boolean supportsFilterClause() {
+    @SuppressWarnings("TypeParameterUnusedInFormals")
+    public <X> X getLiteralValue(Expression expression) {
+        throw new FeatureNotSupportedException();
+    }
+
+    @Override
+    public Statement getSqlAst() {
+        throw new FeatureNotSupportedException();
+    }
+
+    @Override
+    public void renderNamedSetReturningFunction(
+            String functionName,
+            java.util.List<? extends SqlAstNode> sqlAstArguments,
+            org.hibernate.query.sqm.tuple.internal.AnonymousTupleTableGroupProducer tupleType,
+            String tableIdentifierVariable,
+            SqlAstNodeRenderingMode argumentRenderingMode) {
         throw new FeatureNotSupportedException();
     }
 
@@ -254,6 +295,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public Set<String> getAffectedTableNames() {
+        throw fail();
+    }
+
+    @Override
+    public void addAffectedTableName(String tableName) {
         throw fail();
     }
 
@@ -380,6 +426,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         var stages = new ArrayList<AstStage>();
 
+        var root = querySpec.getFromClause().getRoots().get(0);
+        stages.addAll(buildJoinStages(root));
+
         createMatchStage(querySpec).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
 
@@ -478,7 +527,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
 
         record StagesAndJdbcParameters(
-                List<AstStage> stages, @Nullable JdbcParameter offset, @Nullable JdbcParameter limit) {}
+                List<AstStage> stages,
+                @Nullable JdbcParameter offset,
+                @Nullable JdbcParameter limit) {}
     }
 
     void applyQueryOptions(QueryOptions queryOptions) {
@@ -496,9 +547,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitFromClause(FromClause fromClause) {
         checkFromClauseSupportability(fromClause);
         var tableGroup = fromClause.getRoots().get(0);
-        var entityPersister = (EntityPersister) tableGroup.getModelPart();
-        affectedTableNames.add(((String[]) entityPersister.getQuerySpaces())[0]);
-        tableGroup.getPrimaryTableReference().accept(this);
+        var primaryTableRef = assertInstanceOf(tableGroup.getPrimaryTableReference(), NamedTableReference.class);
+        affectedTableNames.add(primaryTableRef.getTableExpression());
+        primaryTableRef.accept(this);
     }
 
     @Override
@@ -562,7 +613,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException();
             }
             var field = acceptAndYield(columnReference, FIELD_PATH);
-            projectStageSpecifications.add(new AstProjectStageIncludeSpecification(field));
+            AstProjectStageSpecification spec = field.startsWith(JOIN_ALIAS_PREFIX)
+                    ? new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field)
+                    : new AstProjectStageIncludeSpecification(field);
+            projectStageSpecifications.add(spec);
         }
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
     }
@@ -572,7 +626,36 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (columnReference.isColumnExpressionFormula()) {
             throw new FeatureNotSupportedException("Formula is not supported");
         }
-        astVisitorValueHolder.yield(FIELD_PATH, columnReference.getColumnExpression());
+        if (elemMatchInnerAlias != null) {
+            var qualifier = assertNotNull(columnReference.getQualifier());
+            if (!qualifier.equals(elemMatchInnerAlias)) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-177 https://jira.mongodb.org/browse/HIBERNATE-177");
+            }
+        }
+        astVisitorValueHolder.yield(FIELD_PATH, resolveFieldPath(columnReference));
+    }
+
+    private String resolveFieldPath(ColumnReference columnReference) {
+        var qualifier = columnReference.getQualifier();
+        return (qualifier != null && joinedTableQualifiers.contains(qualifier))
+                ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()
+                : columnReference.getColumnExpression();
+    }
+
+    // Converts the internal "#qualifier.field" path to the "qualifier#field" projection key.
+    private static String joinFieldProjectionKey(String joinedFieldPath) {
+        return joinedFieldPath.substring(JOIN_ALIAS_PREFIX.length()).replace('.', '#');
+    }
+
+    private static @Nullable ColumnReference extractColumnReference(Expression expression) {
+        if (expression instanceof ColumnReference cr) {
+            return cr;
+        }
+        if (expression instanceof BasicValuedPathInterpretation<?> bvpi) {
+            return bvpi.getColumnReference();
+        }
+        return null;
     }
 
     @Override
@@ -621,10 +704,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitSortSpecification(SortSpecification sortSpecification) {
         var nullPrecedence = sortSpecification.getNullPrecedence();
-        if (nullPrecedence == null || nullPrecedence == NullPrecedence.NONE) {
+        if (nullPrecedence == null || nullPrecedence == Nulls.NONE) {
             nullPrecedence = sessionFactory.getSessionFactoryOptions().getDefaultNullPrecedence();
         }
-        if (nullPrecedence != null && nullPrecedence != NullPrecedence.NONE) {
+        if (nullPrecedence != null && nullPrecedence != Nulls.NONE) {
             throw new FeatureNotSupportedException(
                     format("%s does not support null precedence: NULLS %s", MONGO_DBMS_NAME, nullPrecedence));
         }
@@ -969,8 +1052,75 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitExistsPredicate(ExistsPredicate existsPredicate) {
-        throw new FeatureNotSupportedException();
+        astVisitorValueHolder.yield(FILTER, translateExistsOverUnnest(existsPredicate));
     }
+
+    private AstFilter translateExistsOverUnnest(ExistsPredicate existsPredicate) {
+        var shape = recognizeExistsOverUnnest(existsPredicate)
+                .orElseThrow(() -> new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-178 https://jira.mongodb.org/browse/HIBERNATE-178"));
+        AstFilter bodyFilter;
+        if (shape.body() != null) {
+            var previousInnerAlias = elemMatchInnerAlias;
+            elemMatchInnerAlias = shape.innerAlias();
+            try {
+                bodyFilter = acceptAndYield(shape.body(), FILTER);
+            } finally {
+                elemMatchInnerAlias = previousInnerAlias;
+            }
+        } else {
+            bodyFilter = AstEmptyFilter.INSTANCE;
+        }
+        AstFilter filter =
+                new AstFieldOperationFilter(shape.arrayFieldName(), new AstElemMatchFilterOperation(bodyFilter));
+        if (existsPredicate.isNegated()) {
+            filter = new AstLogicalFilter(NOR, List.of(filter));
+        }
+        return filter;
+    }
+
+    private static Optional<ExistsOverUnnestShape> recognizeExistsOverUnnest(ExistsPredicate existsPredicate) {
+        var select = existsPredicate.getExpression();
+        if (!(select.getQueryPart() instanceof QuerySpec qs)) {
+            return Optional.empty();
+        }
+        if (qs.getFromClause().getRoots().size() != 1
+                || !qs.getGroupByClauseExpressions().isEmpty()
+                || qs.hasSortSpecifications()
+                || qs.hasOffsetOrFetchClause()) {
+            return Optional.empty();
+        }
+        var root = qs.getFromClause().getRoots().get(0);
+        if (!root.getTableGroupJoins().isEmpty()
+                || !root.getNestedTableGroupJoins().isEmpty()) {
+            return Optional.empty();
+        }
+        if (!(root.getPrimaryTableReference() instanceof FunctionTableReference ftr)
+                || !MongoUnnestFunction.FUNCTION_NAME.equals(
+                        ftr.getFunctionExpression().getFunctionName())) {
+            return Optional.empty();
+        }
+        var args = ftr.getFunctionExpression().getArguments();
+        if (args.size() != 1) {
+            return Optional.empty();
+        }
+        var arg = args.get(0);
+        if (!(arg instanceof BasicValuedPathInterpretation<?> bvpi)) {
+            return Optional.empty();
+        }
+        var columnReference = bvpi.getColumnReference();
+        if (columnReference == null) {
+            return Optional.empty();
+        }
+        var arrayFieldName = columnReference.getColumnExpression();
+        return Optional.of(new ExistsOverUnnestShape(
+                arrayFieldName, ftr.getIdentificationVariable(), qs.getWhereClauseRestrictions()));
+    }
+
+    private record ExistsOverUnnestShape(
+            String arrayFieldName,
+            String innerAlias,
+            @Nullable Predicate body) {}
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
@@ -979,7 +1129,15 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
-        throw new FeatureNotSupportedException();
+        var expression = nullnessPredicate.getExpression();
+        if (!isFieldPathExpression(expression)) {
+            throw new FeatureNotSupportedException(
+                    "Only the following nullness predicates are supported: field is [not] null");
+        }
+        var fieldPath = acceptAndYield(expression, FIELD_PATH);
+        var operator = nullnessPredicate.isNegated() ? NE : EQ;
+        var operation = new AstComparisonFilterOperation(operator, new AstLiteral(BsonNull.VALUE));
+        astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
     }
 
     @Override
@@ -1135,7 +1293,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("Returning columns from mutation statements is not supported");
         }
         if (mutationStatement instanceof AbstractUpdateOrDeleteStatement updateOrDeleteStatement) {
-            checkFromClauseSupportability(updateOrDeleteStatement.getFromClause());
+            var fromClause = updateOrDeleteStatement.getFromClause();
+            if (!fromClause.getRoots().isEmpty() && fromClause.getRoots().get(0).hasRealJoins()) {
+                throw new FeatureNotSupportedException("Joins in UPDATE/DELETE statements are not supported");
+            }
+            checkFromClauseSupportability(fromClause);
         }
     }
 
@@ -1144,13 +1306,133 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("Only single root from clause is supported");
         }
         var root = fromClause.getRoots().get(0);
-        if (root.hasRealJoins()) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-65 https://jira.mongodb.org/browse/HIBERNATE-65");
+        if (root instanceof PluralTableGroup pluralRoot) {
+            var elementDescriptor = pluralRoot.getModelPart().getElementDescriptor();
+            if (elementDescriptor instanceof EmbeddableValuedModelPart embeddablePart
+                    && embeddablePart.getEmbeddableTypeDescriptor().getAggregateMapping() == null) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-169 https://jira.mongodb.org/browse/HIBERNATE-169");
+            }
+            if (!(root.getPrimaryTableReference() instanceof NamedTableReference)) {
+                throw new FeatureNotSupportedException("Only named table references are supported");
+            }
+        } else {
+            if (!(root.getModelPart() instanceof EntityPersister entityPersister)) {
+                throw new FeatureNotSupportedException("Only single table from clause is supported");
+            }
+            if (entityPersister.getQuerySpaces().length != 1) {
+                if (entityPersister instanceof JoinedSubclassEntityPersister) {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
+                } else if (entityPersister instanceof UnionSubclassEntityPersister) {
+                    throw new FeatureNotSupportedException("TABLE_PER_CLASS inheritance is not supported");
+                } else if (entityPersister instanceof SingleTableEntityPersister) {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-181 https://jira.mongodb.org/browse/HIBERNATE-181 @SecondaryTable is not supported");
+                }
+                throw new FeatureNotSupportedException("Only single table from clause is supported");
+            }
         }
-        if (!(root.getModelPart() instanceof EntityPersister entityPersister)
-                || entityPersister.getQuerySpaces().length != 1) {
-            throw new FeatureNotSupportedException("Only single table from clause is supported");
+    }
+
+    private record EquijoinFields(String localField, String foreignField) {}
+
+    private List<AstStage> buildJoinStages(TableGroup tableGroup) {
+        var stages = new ArrayList<AstStage>();
+        for (var tgj : tableGroup.getTableGroupJoins()) {
+            var joinedGroup = tgj.getJoinedGroup();
+
+            // Uninitialized groups are FK-only path navigation; virtual groups are synthetic joins
+            // not rendered to SQL. Both match Hibernate's hasRealJoins() semantics.
+            if (!joinedGroup.isInitialized() || joinedGroup.isVirtual()) {
+                continue;
+            }
+
+            // TODO-HIBERNATE-169: when non-@Struct @ElementCollection join targets are supported, add a
+            // PluralTableGroup embeddable check here mirroring the root-level guard in checkFromClauseSupportability.
+
+            var preserve =
+                    switch (tgj.getJoinType()) {
+                        case INNER -> false;
+                        case LEFT -> true;
+                        case RIGHT ->
+                            throw new FeatureNotSupportedException(
+                                    "TODO-HIBERNATE-161 https://jira.mongodb.org/browse/HIBERNATE-161");
+                        case FULL ->
+                            throw new FeatureNotSupportedException(
+                                    "TODO-HIBERNATE-162 https://jira.mongodb.org/browse/HIBERNATE-162");
+                        case CROSS ->
+                            throw new FeatureNotSupportedException(
+                                    "TODO-HIBERNATE-163 https://jira.mongodb.org/browse/HIBERNATE-163");
+                    };
+
+            if (!joinedGroup.getNestedTableGroupJoins().isEmpty()) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-168 https://jira.mongodb.org/browse/HIBERNATE-168");
+            }
+
+            var primaryRef = joinedGroup.getPrimaryTableReference();
+
+            if (primaryRef instanceof FunctionTableReference) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-111 https://jira.mongodb.org/browse/HIBERNATE-111");
+            }
+            if (primaryRef instanceof QueryPartTableReference) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-167 https://jira.mongodb.org/browse/HIBERNATE-167");
+            }
+            if (primaryRef instanceof UnionTableReference) {
+                throw new FeatureNotSupportedException("TABLE_PER_CLASS inheritance joins are not supported");
+            }
+            if (!(primaryRef instanceof NamedTableReference joinedNtr)) {
+                throw new FeatureNotSupportedException("Unsupported table reference type: "
+                        + primaryRef.getClass().getSimpleName());
+            }
+
+            // TODO-HIBERNATE-69 TODO-HIBERNATE-181: if the joined entity has JOINED inheritance or @SecondaryTable,
+            // its persister spans multiple tables — we need to emit additional $lookup stages for each
+            // TableReferenceJoin.
+            var joinedCollection = joinedNtr.getTableExpression();
+            var joinedAlias = joinedNtr.getIdentificationVariable();
+
+            affectedTableNames.add(joinedCollection);
+
+            var fields = extractEquijoinFields(tgj.getPredicate(), joinedAlias);
+
+            joinedTableQualifiers.add(joinedAlias);
+
+            stages.add(new AstLookupStage(
+                    joinedCollection, fields.localField(), fields.foreignField(), JOIN_ALIAS_PREFIX + joinedAlias));
+            stages.add(new AstUnwindStage(JOIN_ALIAS_PREFIX + joinedAlias, preserve));
+            stages.addAll(buildJoinStages(joinedGroup));
         }
+        return stages;
+    }
+
+    private EquijoinFields extractEquijoinFields(@Nullable Predicate predicate, String joinedAlias) {
+        if (predicate instanceof Junction) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
+        }
+        if (!(predicate instanceof ComparisonPredicate cp) || cp.getOperator() != ComparisonOperator.EQUAL) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-165 https://jira.mongodb.org/browse/HIBERNATE-165");
+        }
+        var lhsCr = extractColumnReference(cp.getLeftHandExpression());
+        var rhsCr = extractColumnReference(cp.getRightHandExpression());
+        if (lhsCr == null || rhsCr == null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
+        }
+        if (lhsCr.isColumnExpressionFormula() || rhsCr.isColumnExpressionFormula()) {
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
+        }
+        var lhsIsJoined = joinedAlias.equals(lhsCr.getQualifier());
+        var rhsIsJoined = joinedAlias.equals(rhsCr.getQualifier());
+        if (lhsIsJoined == rhsIsJoined) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
+        }
+        var outerCr = lhsIsJoined ? rhsCr : lhsCr;
+        var innerCr = lhsIsJoined ? lhsCr : rhsCr;
+        return new EquijoinFields(resolveFieldPath(outerCr), innerCr.getColumnExpression());
     }
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {

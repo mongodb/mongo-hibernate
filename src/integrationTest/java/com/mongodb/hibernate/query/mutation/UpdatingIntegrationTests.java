@@ -23,6 +23,7 @@ import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTest
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
 import jakarta.persistence.Entity;
@@ -326,7 +327,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         @Test
         void testFunctionExpressionAssignment() {
             var hql = "update Book b set b.title = upper(b.title) where b.id = 1";

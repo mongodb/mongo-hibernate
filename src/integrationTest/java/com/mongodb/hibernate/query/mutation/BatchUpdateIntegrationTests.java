@@ -21,6 +21,7 @@ import static org.bson.RawBsonDocument.parse;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = BatchUpdateIntegrationTests.Item.class)
 @ServiceRegistry(settings = @Setting(name = AvailableSettings.STATEMENT_BATCH_SIZE, value = "3"))
-class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests {
+class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests implements MongoServiceRegistryProducer {
 
     private static final String COLLECTION_NAME = "items";
     private static final int ENTITIES_TO_PERSIST_COUNT = 5;

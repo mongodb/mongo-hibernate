@@ -29,6 +29,7 @@ import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.ColumnResult;
 import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.Entity;
@@ -55,7 +56,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             BasicCrudIntegrationTests.ItemDynamicallyUpdated.class,
         })
 @ExtendWith(MongoExtension.class)
-public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
+public class BasicCrudIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
 
     @InjectMongoCollection(Item.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
@@ -68,7 +69,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class InsertTests {
+    class InsertTests implements MongoServiceRegistryProducer {
         @Test
         void testSimpleEntityInsertion() {
             sessionFactoryScope.inTransaction(session -> session.persist(new Item(
@@ -151,7 +152,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class DeleteTests {
+    class DeleteTests implements MongoServiceRegistryProducer {
 
         @Test
         void testSimpleDeletion() {
@@ -185,7 +186,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class UpdateTests {
+    class UpdateTests implements MongoServiceRegistryProducer {
 
         @Test
         void testSimpleUpdate() {
@@ -329,7 +330,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class SelectTests {
+    class SelectTests implements MongoServiceRegistryProducer {
 
         @Test
         void testFindByPrimaryKey() {
