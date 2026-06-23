@@ -49,6 +49,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCo
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 
@@ -86,6 +87,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperatio
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
@@ -1148,7 +1150,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
-        throw new FeatureNotSupportedException();
+        Character escape = null;
+        if (likePredicate.getEscapeCharacter() != null) {
+            escape = extractLiteral(likePredicate.getEscapeCharacter(), Character.class, "escape character in LIKE");
+        }
+        var pattern = extractLiteral(likePredicate.getPattern(), String.class, "pattern in LIKE");
+
+        var fieldPath = acceptAndYield(likePredicate.getMatchExpression(), FIELD_PATH);
+        final var filter = new AstFieldOperationFilter(
+                fieldPath,
+                new AstRegularExpressionFilterOperation(
+                        quoteMeta(pattern, escape), likePredicate.isCaseSensitive() ? "s" : "is"));
+        astVisitorValueHolder.yield(
+                FILTER, likePredicate.isNegated() ? new AstLogicalFilter(NOR, List.of(filter)) : filter);
     }
 
     @Override
@@ -1357,6 +1371,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException("Only single table from clause is supported");
             }
         }
+    }
+
+    private static <T> T extractLiteral(Expression expression, Class<T> type, String context) {
+        if (expression instanceof Literal literal) {
+            if (type.isInstance(literal.getLiteralValue())) {
+                return type.cast(literal.getLiteralValue());
+            }
+        }
+        throw new FeatureNotSupportedException(String.format(
+                "Expression must be a literal %s in %s, but other expression was found.",
+                type.getSimpleName(), context));
     }
 
     private record EquijoinFields(String localField, String foreignField) {}
