@@ -21,7 +21,7 @@ plugins {
 
 repositories { mavenCentral() }
 
-// No source code — just dependency aggregation following the Spring Boot starter convention:
+// No source code, just dependency aggregation following the Spring Boot starter convention:
 // https://docs.spring.io/spring-boot/reference/features/developing-auto-configuration.html#features.developing-auto-configuration.custom-starter
 
 dependencies {
@@ -37,7 +37,7 @@ dependencies {
     // MongoDB adds HikariCP + a url themselves, and Spring behaves normally.
     //
     // No dependency on the base spring-boot-starter: a feature starter should not impose a logging backend or
-    // other application foundation — the application's primary starter (spring-boot-starter-web, or plain
+    // other application foundation. The application's primary starter (spring-boot-starter-web, or plain
     // spring-boot-starter) provides that. spring-boot-data-jpa already brings the auto-configure engine.
     api("org.springframework.boot:spring-boot-data-jpa")
     api("org.springframework.boot:spring-boot-mongodb") // the MongoClient infrastructure the integration borrows
@@ -50,7 +50,7 @@ publishing {
             artifactId = "mongodb-hibernate-spring-boot-starter"
             from(components["java"])
             pom {
-                name = "MongoDB Extension for Hibernate ORM — Spring Boot Starter"
+                name = "Spring Boot Starter of MongoDB Extension for Hibernate ORM"
                 description = "Spring Boot starter for the MongoDB Extension for Hibernate ORM"
                 // url, licenses, developers, scm injected by mongo-hibernate-publish plugin
             }

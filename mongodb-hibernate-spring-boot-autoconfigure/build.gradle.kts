@@ -22,7 +22,7 @@ plugins {
 
 repositories { mavenCentral() }
 
-// This module ships no module-info.java — like Spring Boot's own autoconfigure jars (which are
+// This module ships no module-info.java. Like Spring Boot's own autoconfigure jars (which are
 // automatic modules), it lives in a Spring ecosystem that is entirely automatic modules, so a full
 // JPMS module descriptor would force an explicit module onto a sea of automatic ones for no benefit
 // (module-path execution is not a tested mode). A stable Automatic-Module-Name is declared instead.
@@ -49,14 +49,14 @@ listOf("compileOnly", "testImplementation").forEach { cfg ->
         }
 
 dependencies {
-    // The Spring Boot BOM — published as a <dependencyManagement> import via api(platform) — manages
+    // The Spring Boot BOM, published as a <dependencyManagement> import via api(platform), manages
     // the versions of the version-less spring-*/jakarta.* entries below.
     api(platform(libs.spring.boot.bom))
 
     // Hard dependencies: required whenever the auto-configuration is active.
     api(project(":")) // mongodb-hibernate: required, and exposes the MongoConfigurationContributor SPI to consumers
     implementation(libs.spring.boot.autoconfigure) // @AutoConfiguration, @ConditionalOn*, AbstractRepositoryConfigurationSourceSupport
-    implementation(libs.spring.boot.persistence) // EntityScanPackages — used unconditionally on the EntityManagerFactory path
+    implementation(libs.spring.boot.persistence) // EntityScanPackages, used unconditionally on the EntityManagerFactory path
     implementation("org.springframework.boot:spring-boot-jpa") // JpaProperties, EntityManagerFactoryBuilder, EntityManagerFactoryBuilderCustomizer
     implementation("org.springframework.boot:spring-boot-hibernate") // HibernateProperties, HibernateSettings, HibernatePropertiesCustomizer
     implementation("org.springframework:spring-orm") // LocalContainerEntityManagerFactoryBean, JpaTransactionManager
@@ -113,7 +113,7 @@ publishing {
             artifactId = "mongodb-hibernate-spring-boot-autoconfigure"
             from(components["java"])
             pom {
-                name = "MongoDB Extension for Hibernate ORM — Spring Boot Auto-Configuration"
+                name = "Spring Boot Auto-Configuration of MongoDB Extension for Hibernate ORM"
                 description = "Spring Boot auto-configuration for the MongoDB Extension for Hibernate ORM"
                 // url, licenses, developers, scm injected by mongo-hibernate-publish plugin
             }

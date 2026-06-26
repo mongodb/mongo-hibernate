@@ -18,7 +18,7 @@ package com.mongodb.hibernate.naming;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-// Lives in this package — NOT com.mongodb.hibernate.autoconfigure — so its component scan does not
+// Lives in this package, not com.mongodb.hibernate.autoconfigure, so its component scan does not
 // double-register the production auto-configuration classes. Shared by both naming test classes.
 @SpringBootApplication
 class NamingTestApplication {}

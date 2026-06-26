@@ -45,7 +45,7 @@ class MongoHibernateSqlCoexistenceIntegrationTests {
     void sqlApplicationIsUnaffectedByMongoHibernateOnClasspath() throws SQLException {
         var saved = repository.save(new SqlWidget("gadget"));
 
-        // Prove the write physically landed in the H2 SQL database — not MongoDB — by reading it back over a
+        // Prove the write physically landed in the H2 SQL database, not MongoDB, by reading it back over a
         // raw JDBC connection on the autowired DataSource, bypassing JPA entirely. A repository round-trip
         // alone would pass regardless of which store backs the EntityManagerFactory; querying the SQL table
         // directly is what confirms Hibernate persisted through the SQL DataSource and that our Mongo

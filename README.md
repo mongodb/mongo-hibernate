@@ -71,40 +71,40 @@ spring.mongodb.uri=mongodb://localhost/mydb
 When `spring.jpa.database-platform` is `MongoDB`, the starter auto-configures a JPA
 `EntityManagerFactory`, a `JpaTransactionManager`, and Spring Data JPA repositories backed by MongoDB.
 The connection is configured through Spring Boot's `spring-boot-mongodb` support (the `spring.mongodb.*`
-namespace), and the integration **borrows that `MongoClient`** rather than creating its own — a single
+namespace), and the integration **borrows that `MongoClient`** rather than creating its own: a single
 connection pool shared with health checks, metrics, and any other use of the Spring-managed client. This
 reuses `spring-boot-mongodb`'s client infrastructure and is **not** Spring Data MongoDB.
 
 The starter brings no SQL connection pool, so a MongoDB-only application needs no `spring.datasource.url`
 and Spring Boot's `DataSourceAutoConfiguration` stays inert. Without `spring.jpa.database-platform=MongoDB`
-the starter contributes nothing — it is safe to have on the classpath of a non-MongoDB application.
+the starter contributes nothing. It is safe to have on the classpath of a non-MongoDB application.
 
 #### Requirements
 
-The starter requires **Spring Boot 4.x** and **Hibernate ORM 7.3 or later** (the version the MongoDB
+The starter requires **Spring Boot 4.x** and **Hibernate ORM 7.4 or later** (the version the MongoDB
 extension is built against). Spring Boot manages the Hibernate version through its BOM, and some
-Spring Boot 4.x releases still ship an older Hibernate — for example, Spring Boot 4.0.6 manages
-Hibernate 7.2.12. When the managed version is below 7.3, the application fails to start with a
-`NoSuchMethodError` from the MongoDB dialect. Until your Spring Boot version's BOM ships Hibernate 7.3
+Spring Boot 4.x releases still ship an older Hibernate, for example, Spring Boot 4.0.6 manages
+Hibernate 7.2.12. When the managed version is below 7.4, the application fails to start with a
+`NoSuchMethodError` from the MongoDB dialect. Until your Spring Boot version's BOM ships Hibernate 7.4
 or later, override the managed version:
 
 Gradle (with the Spring Boot or `io.spring.dependency-management` plugin):
 
 ```groovy
-ext['hibernate.version'] = '7.3.6.Final'
+ext['hibernate.version'] = '7.4.1.Final'
 ```
 
 Maven:
 
 ```xml
 <properties>
-    <hibernate.version>7.3.6.Final</hibernate.version>
+    <hibernate.version>7.4.1.Final</hibernate.version>
 </properties>
 ```
 
 #### Configuration
 
-The standard Spring Boot JPA properties under `spring.jpa.*` are honored — for example
+The standard Spring Boot JPA properties under `spring.jpa.*` are honored. For example
 `spring.jpa.show-sql`, `spring.jpa.hibernate.ddl-auto`, and `spring.jpa.properties.*`, along with any
 `HibernatePropertiesCustomizer` / `EntityManagerFactoryBuilderCustomizer` beans and
 `spring.jpa.open-in-view` (Open Session in View, on by default in servlet web applications).

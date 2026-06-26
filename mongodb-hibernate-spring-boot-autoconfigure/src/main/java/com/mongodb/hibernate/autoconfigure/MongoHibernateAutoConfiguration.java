@@ -75,8 +75,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * <p>Activated when {@link MongoConfigurationContributor} is on the classpath and {@code spring.jpa.database-platform}
  * is {@code MongoDB}. It reuses Spring Boot's own JPA property machinery ({@link JpaProperties},
  * {@link HibernateProperties}, {@link EntityManagerFactoryBuilder}) so the full {@code spring.jpa.*} surface is honored
- * — {@code ddl-auto}, {@code show-sql}, naming strategies, {@link HibernatePropertiesCustomizer} and
- * {@link EntityManagerFactoryBuilderCustomizer} beans — rather than only the raw {@code spring.jpa.properties.*}
+ * - {@code ddl-auto}, {@code show-sql}, naming strategies, {@link HibernatePropertiesCustomizer} and
+ * {@link EntityManagerFactoryBuilderCustomizer} beans - rather than only the raw {@code spring.jpa.properties.*}
  * passthrough. Spring Boot's {@code HibernateJpaAutoConfiguration} cannot be reused directly because it requires a
  * {@code DataSource}; this module has none (Hibernate connects to MongoDB via {@code jakarta.persistence.jdbc.url}).
  *
@@ -193,7 +193,7 @@ public class MongoHibernateAutoConfiguration {
         // default. putIfAbsent means an explicit spring.jpa.hibernate.naming.* (which Spring Boot applies
         // with put) or a raw spring.jpa.properties.hibernate.*_naming_strategy still wins; only the unset
         // case falls back to Hibernate's identity (camelCase) mapping. A schemaless store must not
-        // silently reshape field names — see the design spec.
+        // silently reshape field names.
         var base = new HashMap<>(jpaProperties.getProperties());
         base.putIfAbsent(
                 MappingSettings.IMPLICIT_NAMING_STRATEGY, ImplicitNamingStrategyJpaCompliantImpl.class.getName());
@@ -229,7 +229,7 @@ public class MongoHibernateAutoConfiguration {
     @Primary
     @ConditionalOnMissingBean({LocalContainerEntityManagerFactoryBean.class, EntityManagerFactory.class})
     // EntityManagerFactoryBuilder only exposes build() via dataSource(...), but MongoDB has no JDBC
-    // DataSource — Hibernate connects through jakarta.persistence.jdbc.url. null is the correct
+    // DataSource. Hibernate connects through jakarta.persistence.jdbc.url. null is the correct
     // "no DataSource" value (LocalContainerEntityManagerFactoryBean tolerates it); NullAway cannot see
     // that the builder's parameter is effectively nullable.
     @SuppressWarnings("NullAway")

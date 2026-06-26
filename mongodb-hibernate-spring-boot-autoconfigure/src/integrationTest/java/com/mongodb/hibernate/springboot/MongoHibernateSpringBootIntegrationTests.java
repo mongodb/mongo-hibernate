@@ -34,7 +34,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-// The @SpringBootApplication lives in this package — NOT com.mongodb.hibernate.autoconfigure —
+// The @SpringBootApplication lives in this package, not com.mongodb.hibernate.autoconfigure,
 // so its component scan does not pick up the production auto-configuration classes (which would
 // otherwise be registered both by scanning and by the auto-configuration imports). With
 // spring.jpa.database-platform=MongoDB set (in application.properties), the auto-configuration
