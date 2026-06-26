@@ -61,24 +61,27 @@ class MongoHibernateSpringBootIntegrationTests {
         }
     }
 
-    @Autowired
+    @Autowired(required = false)
     EntityManagerFactory entityManagerFactory;
 
-    @Autowired
+    @Autowired(required = false)
     JpaTransactionManager transactionManager;
 
-    @Autowired
+    @Autowired(required = false)
     BookRepository bookRepository;
 
     @AfterEach
     void cleanUp() {
-        bookRepository.deleteAll();
+        if (bookRepository != null) {
+            bookRepository.deleteAll();
+        }
     }
 
     @Test
-    void entityManagerFactoryAndTransactionManagerAreCreated() {
+    void allBeansCreated() {
         assertThat(entityManagerFactory).isNotNull();
         assertThat(transactionManager).isNotNull();
+        assertThat(bookRepository).isNotNull();
     }
 
     @Test
@@ -92,11 +95,6 @@ class MongoHibernateSpringBootIntegrationTests {
         var found = bookRepository.findById(id);
         assertThat(found).isPresent();
         assertThat(found.get().title).isEqualTo("The Hobbit");
-    }
-
-    @Test
-    void jpaRepositoryBeanIsCreated() {
-        assertThat(bookRepository).isNotNull();
     }
 
     @Test
