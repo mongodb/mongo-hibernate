@@ -320,6 +320,11 @@ public class MongoHibernateAutoConfiguration {
             this.jpaProperties = jpaProperties;
         }
 
+        /**
+         * Registers an {@link OpenEntityManagerInViewInterceptor} for MongoDB-backed JPA.
+         *
+         * @return the interceptor
+         */
         @Bean
         public OpenEntityManagerInViewInterceptor openEntityManagerInViewInterceptor() {
             if (jpaProperties.getOpenInView() == null) {
@@ -330,6 +335,12 @@ public class MongoHibernateAutoConfiguration {
             return new OpenEntityManagerInViewInterceptor();
         }
 
+        /**
+         * Registers the {@link OpenEntityManagerInViewInterceptor} as a Spring MVC interceptor.
+         *
+         * @param interceptor the interceptor to register
+         * @return a {@link WebMvcConfigurer} that adds the interceptor
+         */
         @Bean
         public WebMvcConfigurer mongoOpenEntityManagerInViewInterceptorConfigurer(
                 OpenEntityManagerInViewInterceptor interceptor) {

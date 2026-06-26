@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/** Spring Boot auto-configuration for the MongoDB Extension for Hibernate ORM. */
 @NullMarked
 package com.mongodb.hibernate.autoconfigure;
 
