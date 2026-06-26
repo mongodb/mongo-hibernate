@@ -56,6 +56,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
 
     private @Nullable StandardServiceRegistryScopedState standardServiceRegistryScopedState;
     private transient @Nullable MongoClient mongoClient;
+    private transient boolean ownsMongoClient;
 
     public MongoConnectionProvider() {}
 
@@ -103,7 +104,7 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
 
     @Override
     public void stop() {
-        if (mongoClient != null) {
+        if (ownsMongoClient && mongoClient != null) {
             mongoClient.close();
         }
     }
@@ -112,13 +113,25 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
     public void injectStandardServiceRegistryScopedState(
             StandardServiceRegistryScopedState standardServiceRegistryScopedState) {
         this.standardServiceRegistryScopedState = standardServiceRegistryScopedState;
-        var mongoClientSettings =
-                standardServiceRegistryScopedState.getConfiguration().mongoClientSettings();
+        var configuration = standardServiceRegistryScopedState.getConfiguration();
         var driverInfo = MongoDriverInformation.builder()
                 .driverName(assertNotNull(BuildConfig.NAME))
                 .driverVersion(assertNotNull(BuildConfig.VERSION))
                 .build();
-        mongoClient = MongoClients.create(mongoClientSettings, driverInfo);
+        var suppliedClient = configuration.mongoClient();
+        if (suppliedClient != null) {
+            // We borrowed this client rather than creating it; append our driver metadata so telemetry still
+            // attributes connections to mongo-hibernate.
+            suppliedClient.appendMetadata(driverInfo);
+            this.mongoClient = suppliedClient;
+            this.ownsMongoClient = false;
+        } else {
+            // XOR invariant: when mongoClient() is null, mongoClientSettings() is non-null. NullAway cannot
+            // see the invariant, so assert it.
+            var mongoClientSettings = assertNotNull(configuration.mongoClientSettings());
+            this.mongoClient = MongoClients.create(mongoClientSettings, driverInfo);
+            this.ownsMongoClient = true;
+        }
     }
 
     @Serial
@@ -142,8 +155,9 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
 
         @Override
-        public String getJdbcUrl() {
-            return configuration.mongoClientSettings().toString();
+        public @Nullable String getJdbcUrl() {
+            var settings = configuration.mongoClientSettings();
+            return settings != null ? settings.toString() : null;
         }
 
         @Override
@@ -167,19 +181,15 @@ public final class MongoConnectionProvider implements ConnectionProvider, Stoppa
         }
 
         @Override
-        public Integer getPoolMinSize() {
-            return configuration
-                    .mongoClientSettings()
-                    .getConnectionPoolSettings()
-                    .getMinSize();
+        public @Nullable Integer getPoolMinSize() {
+            var settings = configuration.mongoClientSettings();
+            return settings != null ? settings.getConnectionPoolSettings().getMinSize() : null;
         }
 
         @Override
-        public Integer getPoolMaxSize() {
-            return configuration
-                    .mongoClientSettings()
-                    .getConnectionPoolSettings()
-                    .getMaxSize();
+        public @Nullable Integer getPoolMaxSize() {
+            var settings = configuration.mongoClientSettings();
+            return settings != null ? settings.getConnectionPoolSettings().getMaxSize() : null;
         }
 
         @Override

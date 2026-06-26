@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,20 @@
  * limitations under the License.
  */
 
-rootProject.name = "mongo-hibernate"
+package com.mongodb.hibernate.scannedentities;
 
-include("mongodb-hibernate-spring-boot-autoconfigure")
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import org.bson.types.ObjectId;
 
-include("mongodb-hibernate-spring-boot-starter")
+// Lives outside any test application's package, so it is discoverable only via @EntityScan.
+@Entity
+public class ScannedBook {
+
+    @Id
+    public ObjectId id;
+
+    public String title;
+
+    public ScannedBook() {}
+}

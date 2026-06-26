@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2025-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
-rootProject.name = "mongo-hibernate"
+package com.mongodb.hibernate.naming;
 
-include("mongodb-hibernate-spring-boot-autoconfigure")
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-include("mongodb-hibernate-spring-boot-starter")
+// Lives in this package, not com.mongodb.hibernate.autoconfigure, so its component scan does not
+// double-register the production auto-configuration classes. Shared by both naming test classes.
+@SpringBootApplication
+class NamingTestApplication {}
