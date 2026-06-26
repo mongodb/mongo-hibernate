@@ -53,7 +53,7 @@ The Java module with example applications is located in
 
 The examples may be run by running the smoke tests as specified in [Run Smoke Tests](#run-smoke-tests).
 
-### Spring Boot
+### Spring Boot & Spring Data JPA
 
 A [Spring Boot](https://spring.io/projects/spring-boot) starter lets a Spring Boot 4.x application use
 MongoDB through JPA. Add the starter
@@ -137,8 +137,6 @@ spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.Ph
   [HIBERNATE-179](https://jira.mongodb.org/browse/HIBERNATE-179).
 - **Single persistence unit:** a single `@Primary` `EntityManagerFactory` is auto-configured.
 - **Native image:** GraalVM native-image execution is not yet validated.
-- A [replica set](https://www.mongodb.com/docs/manual/reference/glossary/#std-term-replica-set) is
-  required, as transactions are (see [User Documentation](#user-documentation) above).
 
 ### Bug Reports
 
