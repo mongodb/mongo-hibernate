@@ -147,6 +147,7 @@ dependencies {
     errorprone(libs.google.errorprone.core)
 
     api(libs.hibernate.core)
+    implementation("org.hibernate.models:hibernate-models")
     api(libs.mongo.java.driver.sync)
     // We need the `libs.findbugs.jsr` dependency to stop `javadoc` from emitting
     // `warning: unknown enum constant When.MAYBE`
