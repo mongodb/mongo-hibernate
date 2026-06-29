@@ -16,24 +16,34 @@
 
 package com.mongodb.hibernate.query.mutation;
 
+import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static java.util.Collections.emptyList;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DomainModel(annotatedClasses = Book.class)
+@DomainModel(annotatedClasses = {Book.class, DeletionIntegrationTests.ItemWithNestedValue.class})
 class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private static MongoCollection<BsonDocument> booksCollection;
+
+    @InjectMongoCollection(COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> itemsCollection;
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
@@ -69,7 +79,7 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                   ]
                 }
                 """,
-                mongoCollection,
+                booksCollection,
                 List.of(
                         BsonDocument.parse(
                                 """
@@ -131,7 +141,7 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                   ]
                 }
                 """,
-                mongoCollection,
+                booksCollection,
                 List.of(
                         BsonDocument.parse(
                                 """
@@ -212,8 +222,71 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                    ]
                 }
                 """,
-                mongoCollection,
+                booksCollection,
                 emptyList(),
                 Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Nested
+    class StructAggregateEmbeddablePathExpressionTests implements MongoServiceRegistryProducer {
+
+        @BeforeEach
+        void seed() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.persist(new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(0)));
+                session.persist(new ItemWithNestedValue(2, new StructAggregateEmbeddableIntegrationTests.Single(2)));
+            });
+            getTestCommandListener().clear();
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionDeletion() {
+            assertMutationQuery(
+                    "delete from ItemWithNestedValue where nested.a = 0",
+                    1,
+                    """
+                    {
+                      "delete": "items",
+                      "deletes": [
+                        {
+                          "limit": 0,
+                          "q": {
+                            "nested.a": {
+                              "$eq": 0
+                            }
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    itemsCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                      "_id": 2,
+                                      "nested": {
+                                        "a": 2
+                                      }
+                                    }
+                                    """)),
+                    Set.of(COLLECTION_NAME));
+        }
+    }
+
+    @Entity(name = "ItemWithNestedValue")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithNestedValue {
+        @Id
+        int id;
+
+        StructAggregateEmbeddableIntegrationTests.Single nested;
+
+        ItemWithNestedValue() {}
+
+        ItemWithNestedValue(int id, StructAggregateEmbeddableIntegrationTests.Single nested) {
+            this.id = id;
+            this.nested = nested;
+        }
     }
 }

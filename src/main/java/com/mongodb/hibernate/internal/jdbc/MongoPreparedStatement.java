@@ -23,7 +23,6 @@ import static java.lang.String.format;
 
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
@@ -56,7 +55,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        MongoAggregateSupport.checkSupported(mql);
         this.command = MongoStatement.parse(mql);
         this.commandBatch = new ArrayList<>();
         this.parameterValueSetters = new ArrayList<>();

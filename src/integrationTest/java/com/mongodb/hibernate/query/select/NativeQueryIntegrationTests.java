@@ -39,7 +39,6 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.BasicCrudIntegrationTests.Item;
 import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.ColumnResult;
@@ -648,7 +647,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                             assertThatThrownBy(() -> session.createNativeQuery(mql, ItemWithNestedValue.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                                    .hasMessageContaining("Unknown column label [nested.");
                         },
                         () -> {
                             var mql = mql(
@@ -660,7 +659,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                                                     mql, ItemWithNestedValueHavingArraysAndCollections.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                                    .hasMessageContaining("Unknown column label [nested.");
                         });
             });
         }
