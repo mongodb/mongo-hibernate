@@ -37,6 +37,16 @@ public final class MongoAggregateSupport extends AggregateSupportImpl {
     private MongoAggregateSupport() {}
 
     @Override
+    public String aggregateComponentAssignmentExpression(
+            String aggregateParentAssignmentExpression,
+            String columnExpression,
+            int aggregateColumnTypeCode,
+            Column column) {
+        assertStructOrArrayType(aggregateColumnTypeCode);
+        return aggregateParentAssignmentExpression + "." + columnExpression;
+    }
+
+    @Override
     public String aggregateComponentCustomReadExpression(
             String template,
             String placeholder,
@@ -45,34 +55,32 @@ public final class MongoAggregateSupport extends AggregateSupportImpl {
             int aggregateColumnTypeCode,
             SqlTypedMapping column,
             TypeConfiguration typeConfiguration) {
-        return aggregateComponentExpression(aggregateParentReadExpression, columnExpression, aggregateColumnTypeCode);
-    }
-
-    @Override
-    public String aggregateComponentAssignmentExpression(
-            String aggregateParentAssignmentExpression,
-            String columnExpression,
-            int aggregateColumnTypeCode,
-            Column column) {
-        return aggregateComponentExpression(
-                aggregateParentAssignmentExpression, columnExpression, aggregateColumnTypeCode);
+        assertStructOrArrayType(aggregateColumnTypeCode);
+        // `template` is non-empty when the field declares its own read fragment via @ColumnTransformer(read = ...).
+        // (A @Formula component is rejected by Hibernate before reaching this method.) The MQL translator never renders
+        // read expressions (visitColumnReference resolves field paths from getColumnExpression(), the assignment
+        // expression), so such a request cannot be honored; reject it rather than silently dropping it.
+        if (!template.isEmpty()) {
+            throw new FeatureNotSupportedException(
+                    "Custom read expression on an aggregate embeddable field is not supported");
+        }
+        // Otherwise there is no custom read: MongoDB reads the struct as a whole column (preferSelectAggregateMapping()
+        // returns true) and the per-component read is never used. Returning "" makes Hibernate record no custom read
+        // (Column.setCustomRead runs it through nullIfEmpty), instead of a fabricated, incorrect value.
+        return "";
     }
 
     @Override
     public boolean requiresAggregateCustomWriteExpressionRenderer(int aggregateSqlTypeCode) {
-        if (isStructOrArrayType(aggregateSqlTypeCode)) {
-            return false;
-        }
-        throw new FeatureNotSupportedException(format("The SQL type code [%d] is not supported", aggregateSqlTypeCode));
+        assertStructOrArrayType(aggregateSqlTypeCode);
+        return false;
     }
 
-    private static String aggregateComponentExpression(
-            String aggregateParentExpression, String columnExpression, int aggregateColumnTypeCode) {
-        if (isStructOrArrayType(aggregateColumnTypeCode)) {
-            return aggregateParentExpression + "." + columnExpression;
+    private static void assertStructOrArrayType(int aggregateColumnTypeCode) {
+        if (!isStructOrArrayType(aggregateColumnTypeCode)) {
+            throw new FeatureNotSupportedException(
+                    format("The SQL type code [%d] is not supported", aggregateColumnTypeCode));
         }
-        throw new FeatureNotSupportedException(
-                format("The SQL type code [%d] is not supported", aggregateColumnTypeCode));
     }
 
     private static boolean isStructOrArrayType(int aggregateColumnTypeCode) {
