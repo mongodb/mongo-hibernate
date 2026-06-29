@@ -105,8 +105,9 @@ fire (116 assignment + 112 read calls observed) and our logic still runs. Switch
 safe. The type codes passed are `2002` for `STRUCT` and `3016` for `STRUCT_ARRAY`, matching `SqlTypes.STRUCT` /
 `SqlTypes.STRUCT_ARRAY`.
 
-Both new-signature methods produce the same value — the parent path plus `.` plus the column — so they delegate to a
-shared `aggregateComponentExpression` helper, with the type guard factored into `isStructOrArrayType`:
+The two new-signature methods differ. `aggregateComponentAssignmentExpression` returns the dot-notation path that
+becomes the field key; `aggregateComponentCustomReadExpression` returns `""` (the read expression is never used). The
+type guard is factored into `isStructOrArrayType` / `assertStructOrArrayType`:
 ```java
 @Override
 public String aggregateComponentAssignmentExpression(
@@ -114,8 +115,8 @@ public String aggregateComponentAssignmentExpression(
         String columnExpression,
         int aggregateColumnTypeCode,
         Column column) {
-    return aggregateComponentExpression(
-            aggregateParentAssignmentExpression, columnExpression, aggregateColumnTypeCode);
+    assertStructOrArrayType(aggregateColumnTypeCode);
+    return aggregateParentAssignmentExpression + "." + columnExpression;
 }
 
 @Override
@@ -127,16 +128,25 @@ public String aggregateComponentCustomReadExpression(
         int aggregateColumnTypeCode,
         SqlTypedMapping column,
         TypeConfiguration typeConfiguration) {
-    return aggregateComponentExpression(aggregateParentReadExpression, columnExpression, aggregateColumnTypeCode);
+    assertStructOrArrayType(aggregateColumnTypeCode);
+    if (!template.isEmpty()) {
+        throw new FeatureNotSupportedException(
+                "Custom read expression on an aggregate embeddable field is not supported");
+    }
+    return "";
 }
 
-private static String aggregateComponentExpression(
-        String aggregateParentExpression, String columnExpression, int aggregateColumnTypeCode) {
-    if (isStructOrArrayType(aggregateColumnTypeCode)) {
-        return aggregateParentExpression + "." + columnExpression;
+@Override
+public boolean requiresAggregateCustomWriteExpressionRenderer(int aggregateSqlTypeCode) {
+    assertStructOrArrayType(aggregateSqlTypeCode);
+    return false;
+}
+
+private static void assertStructOrArrayType(int aggregateColumnTypeCode) {
+    if (!isStructOrArrayType(aggregateColumnTypeCode)) {
+        throw new FeatureNotSupportedException(
+                format("The SQL type code [%d] is not supported", aggregateColumnTypeCode));
     }
-    throw new FeatureNotSupportedException(
-            format("The SQL type code [%d] is not supported", aggregateColumnTypeCode));
 }
 
 private static boolean isStructOrArrayType(int aggregateColumnTypeCode) {
@@ -145,29 +155,24 @@ private static boolean isStructOrArrayType(int aggregateColumnTypeCode) {
 }
 ```
 
-`isStructOrArrayType` is also used by `requiresAggregateCustomWriteExpressionRenderer`, replacing its prior
-`MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()` check — `SqlTypes.STRUCT == java.sql.Types.STRUCT`, so the guard is
-equivalent and now uniform across all three methods.
+- **`assertStructOrArrayType` replaces the prior `MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber()` check** in
+  `requiresAggregateCustomWriteExpressionRenderer` — `SqlTypes.STRUCT == java.sql.Types.STRUCT`, so the guard is
+  equivalent and now uniform across the methods.
 
-The value returned for `aggregateComponentCustomReadExpression` is not actually used by the MQL translator. Investigation
-showed that it feeds `ColumnReference.readExpression`, which `visitColumnReference` ignores — the MQL translator only
-reads `getColumnExpression()`, which comes from `aggregateComponentAssignmentExpression`. The read expression is only
-consumed by `AbstractSqlAstTranslator.appendReadExpression`, a SQL rendering path MongoDB never takes, and by
-`visitNestedColumnReference` which throws `FeatureNotSupportedException` in our translator.
+- **The assignment expression must come out as a clean dot path** (`nested.a`, `nested2.nested.bigDecimal`); it becomes
+  `ColumnReference.getColumnExpression()` and thus the `$match`/`$sort`/`$set`/`$project` field key. Verified by
+  instrumenting bootstrap: the methods are invoked once per nesting level and Hibernate strips a leading `{@}.`
+  (`Template.TEMPLATE`) from the parent before each level, so leaf keys never contain `{@}`.
 
-`aggregateComponentCustomReadExpression` must still return a value (throwing breaks bootstrap), which is why it shares
-the helper rather than being elided. That value need not be a clean dot path. The instrumented run confirmed how `{@}`
-(`Template.TEMPLATE`) flows:
+- **The read expression is never used by the MQL translator**, so it returns `""`. `visitColumnReference` resolves field
+  paths from `getColumnExpression()` (the assignment expression), and a struct is read as a whole column
+  (`preferSelectAggregateMapping()` returns true). The base implementation throws and Hibernate calls this during
+  bootstrap, so we cannot throw unconditionally; `""` makes Hibernate record no custom read (`Column.setCustomRead` runs
+  it through `nullIfEmpty`) rather than a fabricated value.
 
-- **Scalar leaf assignment expressions — the keys `$match`/`$sort`/`$set` actually use — come out clean.** The methods
-  are invoked once per nesting level; Hibernate strips a leading `{@}.` from the parent before processing each level's
-  sub-columns. Observed: `parent=[nested] column=[a]` → `nested.a`; `parent=[nested2.nested] column=[bigDecimal]` →
-  `nested2.nested.bigDecimal`. No scalar leaf key contains `{@}`.
-- **`{@}` survives only in places the translator never uses as a query key:** the intermediate template built for a
-  nested *struct column* (observed `parent=[{@}.nested2] column=[nested]` → `{@}.nested2.nested`, which Hibernate strips
-  back to `nested2.nested` before the next level), and the read expression — notably the bare-`{@}` array read seed,
-  where `{@}` has no trailing dot and is not stripped. The read expression is never consumed by the MQL translator (see
-  above), so its `{@}` is harmless.
+- **A non-empty `template`** means the field declares `@ColumnTransformer(read = ...)`; the translator cannot honor it,
+  so it is rejected rather than silently dropped. (A `@Formula` component is rejected by Hibernate before reaching this
+  method.)
 
 **Remove entirely:**
 - `UNSUPPORTED_MESSAGE_PREFIX` constant
@@ -362,6 +367,15 @@ dot-notation field resolution):
 | Test | HQL | Key MQL assertion |
 |------|-----|-------------------|
 | `testStructAggregateEmbeddablePathExpressionDeletion` | `delete from ItemWithNestedValue where nested.a = 0` | delete `q: {"nested.a": {$eq: 0}}` |
+
+### `MongoAggregateSupport` contract tests
+
+- Unit test `MongoAggregateSupportTests`: assignment returns the dot path for `STRUCT`/`STRUCT_ARRAY`; read returns `""`
+  for an empty `template` and throws `FeatureNotSupportedException` for a non-empty one; both the assignment guard and
+  `requiresAggregateCustomWriteExpressionRenderer` reject an unsupported type code.
+- Integration test `StructAggregateEmbeddableIntegrationTests.Unsupported.testCustomReadExpression`: a struct field with
+  `@ColumnTransformer(read = ...)` fails `buildMetadata()` with `FeatureNotSupportedException` (end-to-end, through the
+  real dialect).
 
 ---
 
