@@ -112,6 +112,7 @@ module com.mongodb.hibernate {
     requires java.sql;
     requires jakarta.persistence;
     requires transitive org.hibernate.orm.core;
+    requires org.hibernate.models;
     requires org.mongodb.bson;
     requires transitive org.mongodb.driver.core;
     requires transitive org.mongodb.driver.sync.client;
