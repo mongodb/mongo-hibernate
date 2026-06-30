@@ -55,7 +55,7 @@ tasks.withType<Javadoc> {
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/bson/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-core/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-sync/",
-                "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/",
+                "https://jspecify.dev/docs/api",
             )
         // specify the custom `@mongoCme` `javadoc` block tag
         tags("mongoCme:TM:Concurrency, Mutability, Execution\\:")
