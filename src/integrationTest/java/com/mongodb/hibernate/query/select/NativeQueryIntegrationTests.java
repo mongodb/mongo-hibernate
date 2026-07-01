@@ -631,7 +631,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
     /**
      * See <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-query-parameters">
+     * href="https://docs.hibernate.org/orm/7.4/userguide/html_single/#sql-query-parameters">
      * Using parameters in native queries</a>.
      *
      * <p>Hibernate hard-codes the JDBC {@code ?} marker for native queries, and expands a multi-valued parameter
@@ -660,8 +660,6 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
         @Test
         void testOrdinalParameter() {
             sessionFactoryScope.inSession(session -> {
-                // As with named parameters, the ordinal label runs until an HQL separator; `}` is not one,
-                // so a space must follow `?1` (otherwise `1}` is parsed as the label and rejected as non-integer).
                 var mql = """
                         {"aggregate": "%s", "pipeline": [{"$match": {"%s": ?1 }}, %s]}"""
                         .formatted(
@@ -724,8 +722,6 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
          * item's {@code string} value {@code "str"} (the {@code (ab)*} group repeats zero times); were the grouping
          * parentheses stripped to {@code /^ab*str$/}, it would not match.
          *
-         * <p>Note: a regex {@code ?} quantifier cannot be exercised here because Hibernate ORM's own native-query
-         * parameter scanner treats an unquoted {@code ?} as a JDBC ordinal marker before the JDBC adapter runs.
          */
         @Test
         void testRegexLiteralWithGroupingAlongsideParameter() {
@@ -747,13 +743,13 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
         /**
          * A regex {@code ?} quantifier cannot be combined with a named parameter in the same native query: Hibernate
-         * ORM's own parameter scanner ({@code org.hibernate.query.sql.internal.ParameterParser}) only recognizes
+         * own parameter scanner ({@code org.hibernate.query.sql.internal.ParameterParser}) only recognizes
          * {@code '} and {@code "} as literal contexts, so the unquoted {@code ?} inside {@code /st?r/} is treated as a
          * JDBC ordinal marker and clashes with the named {@code :id} marker. This fails at query-construction time,
          * before the JDBC adapter (and its regex-aware marker rewriting) ever runs.
          */
         @Test
-        void testRegexLiteralWithQuantifierMixedWithNamedParameterIsRejectedByHibernate() {
+        void testRegexLiteralWithQuestionMarkIsRejectedByHibernate() {
             sessionFactoryScope.inSession(session -> {
                 var mql =
                         """

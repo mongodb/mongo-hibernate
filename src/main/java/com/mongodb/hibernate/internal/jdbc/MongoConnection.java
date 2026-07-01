@@ -154,11 +154,11 @@ final class MongoConnection implements ConnectionAdapter {
      * </ul>
      */
     static String translateParameterMarkers(String mql) {
-        var result = new StringBuilder(mql.length());
-        var inString = false;
-        var inRegex = false;
-        var escaped = false;
-        for (var i = 0; i < mql.length(); i++) {
+        StringBuilder result = new StringBuilder(mql.length());
+        boolean inString = false;
+        boolean inRegex = false;
+        boolean escaped = false;
+        for (int i = 0; i < mql.length(); i++) {
             var c = mql.charAt(i);
             if (inString || inRegex) {
                 result.append(c);
