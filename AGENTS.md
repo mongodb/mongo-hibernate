@@ -92,3 +92,6 @@ curl -s -X PUT \
   through the testing framework must implement MongoServiceRegistryProducer (in com.mongodb.hibernate.junit). It strips the 
   SharedDriverManagerConnectionProvider that Hibernate's test framework injects, which would otherwise trip the 
   auto-configured connection provider.
+- **Checked-in docs:** Use repo-relative paths, not developer-local absolute paths (e.g. `/Users/name/...`),
+  when referencing files in design specs, plans, or other markdown committed to the repo — these are read
+  on GitHub by people whose checkouts differ from yours.
