@@ -86,6 +86,21 @@ import org.hibernate.service.spi.Configurable;
  *             connection string are not used to build a connection (the database name must still be configured via
  *             {@link #databaseName(String)} or come from {@value AvailableSettings#JAKARTA_JDBC_URL}).</td>
  *         </tr>
+ *         <tr>
+ *             <td>&mdash;</td>
+ *             <td>✗</td>
+ *             <td>{@code com.mongodb.hibernate.semantics.nulls}</td>
+ *             <td>
+ *                 <ul>
+ *                     <li>{@link String}</li>
+ *                 </ul>
+ *             </td>
+ *             <td>
+ *                 Must be {@code "MQL"} (the only supported value). Declares that null-comparison semantics are
+ *                 whatever MQL's translation produces, which is not part of the contract and may change release
+ *                 to release. A future release may add {@code "SQL"} semantics.
+ *             </td>
+ *         </tr>
  *     </tbody>
  * </table>
  *

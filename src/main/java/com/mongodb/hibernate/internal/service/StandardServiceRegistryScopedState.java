@@ -176,6 +176,7 @@ public final class StandardServiceRegistryScopedState implements Service {
                         JAKARTA_JDBC_URL, MongoConfigurationContributor.class.getName()));
             }
             forbidTemporalConfiguration(configurationValues);
+            checkNullSemantics(configurationValues);
             var mongoConfigurationBuilder = new MongoConfigurationBuilder(configurationValues);
             if (mongoConfigurationContributor != null) {
                 mongoConfigurationContributor.configure(mongoConfigurationBuilder);
@@ -210,6 +211,19 @@ public final class StandardServiceRegistryScopedState implements Service {
                     throw new HibernateException(
                             format("Configuration property [%s] is not supported", JAVA_TIME_USE_DIRECT_JDBC));
                 }
+            }
+        }
+
+        private static void checkNullSemantics(Map<String, Object> configurationValues) {
+            var nullSemantics = configurationValues.get("com.mongodb.hibernate.semantics.nulls");
+            if (nullSemantics == null) {
+                throw new HibernateException(
+                        "Configuration property [com.mongodb.hibernate.semantics.nulls] is required");
+            }
+            if (!"MQL".equals(nullSemantics)) {
+                throw new HibernateException(format(
+                        "Configuration property [com.mongodb.hibernate.semantics.nulls] with value [%s] must be [MQL]",
+                        nullSemantics));
             }
         }
     }
