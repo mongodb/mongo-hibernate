@@ -58,7 +58,7 @@ documented via javadoc and exception text, not a symbol users import.
 ## Validation
 
 Add a new private static method to `StandardServiceRegistryScopedState.ServiceContributor`
-(`/Users/jeff/git/m/mongo-hibernate/src/main/java/com/mongodb/hibernate/internal/service/StandardServiceRegistryScopedState.java`),
+(`src/main/java/com/mongodb/hibernate/internal/service/StandardServiceRegistryScopedState.java`),
 sibling to the existing `forbidTemporalConfiguration`:
 
 ```java
@@ -91,7 +91,7 @@ can't supply it.
 
 Add a row to the "Supported configuration properties" table in
 `MongoConfigurator`'s class javadoc
-(`/Users/jeff/git/m/mongo-hibernate/src/main/java/com/mongodb/hibernate/cfg/MongoConfigurator.java`):
+(`src/main/java/com/mongodb/hibernate/cfg/MongoConfigurator.java`):
 
 | Method | Has default | Property name | Supported value types | Value |
 |---|---|---|---|---|
@@ -100,7 +100,7 @@ Add a row to the "Supported configuration properties" table in
 ## Tests
 
 All in
-`/Users/jeff/git/m/mongo-hibernate/src/test/java/com/mongodb/hibernate/internal/service/StandardServiceRegistryScopedStateTests.java`:
+`src/test/java/com/mongodb/hibernate/internal/service/StandardServiceRegistryScopedStateTests.java`:
 
 | Test | Covers |
 |---|---|
