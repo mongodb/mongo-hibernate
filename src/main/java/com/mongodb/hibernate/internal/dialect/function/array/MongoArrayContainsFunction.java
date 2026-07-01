@@ -34,7 +34,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstTypeFilterOpe
 import java.util.List;
 import org.bson.BsonType;
 import org.hibernate.dialect.function.array.AbstractArrayContainsFunction;
-import org.hibernate.query.ReturnableType;
+import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
@@ -55,9 +55,8 @@ import org.hibernate.type.spi.TypeConfiguration;
  *
  * <p>See <a href="https://www.mongodb.com/docs/manual/tutorial/query-arrays/">Query an Array</a>.
  *
- * <p>Thread-safe.
- *
  * @hidden
+ * @mongoCme Must be thread-safe.
  */
 public final class MongoArrayContainsFunction extends AbstractArrayContainsFunction {
     public MongoArrayContainsFunction(boolean nullable, TypeConfiguration typeConfiguration) {

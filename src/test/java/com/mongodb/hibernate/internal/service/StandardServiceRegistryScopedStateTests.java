@@ -16,11 +16,18 @@
 
 package com.mongodb.hibernate.internal.service;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DIALECT_SHORT_NAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hibernate.cfg.AvailableSettings.CONNECTION_PROVIDER;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
+import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
+import com.mongodb.hibernate.internal.jdbc.MongoConnectionProvider;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
@@ -40,26 +47,86 @@ class StandardServiceRegistryScopedStateTests {
     }
 
     @Test
+    void testDialectInferredFromMongoUrl() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT)).isEqualTo(MONGO_DIALECT_SHORT_NAME);
+        assertThat(builder.getSettings().get(CONNECTION_PROVIDER)).isEqualTo(MongoConnectionProvider.class.getName());
+    }
+
+    @Test
+    void testDialectInferredFromMongoSrvUrl() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(JAKARTA_JDBC_URL, "mongodb+srv://cluster.example.com/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT)).isEqualTo(MONGO_DIALECT_SHORT_NAME);
+        assertThat(builder.getSettings().get(CONNECTION_PROVIDER)).isEqualTo(MongoConnectionProvider.class.getName());
+    }
+
+    @Test
+    void testExplicitDialectNotOverriddenByMongoUrl() {
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db");
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        assertThat(builder.getSettings().get(DIALECT)).isEqualTo(MONGO_DIALECT_SHORT_NAME);
+        assertThat(builder.getSettings().get(CONNECTION_PROVIDER)).isEqualTo(MongoConnectionProvider.class.getName());
+    }
+
+    @Test
+    void testNonMongoDialectWithMongoUrlIsSilent() {
+        // Deliberately not calling requireService — the service is never accessed in production
+        // when a non-MongoDB dialect is configured alongside a MongoDB URL.
+        try (var registry = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, "org.hibernate.dialect.H2Dialect")
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db")
+                .build()) {
+            assertThat(registry).isNotNull();
+        }
+    }
+
+    @Test
     void testMongoDialectNotPluggedIn() {
         var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
         standardServiceRegistryBuilder.clearSettings();
         try (var standardServiceRegistry = standardServiceRegistryBuilder.build()) {
             assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
-                    .hasRootCauseMessage("com.mongodb.hibernate.dialect.MongoDialect must be plugged in"
-                            + ", for example, via the [hibernate.dialect] configuration property");
+                    .hasRootCauseMessage("[hibernate.dialect] must be set to [MongoDB]");
         }
     }
 
     @Test
-    void testMongoConnectionProviderNotPluggedIn() {
-        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder();
-        standardServiceRegistryBuilder.clearSettings();
-        try (var standardServiceRegistry = standardServiceRegistryBuilder
-                .applySetting(DIALECT, MongoDialect.class)
-                .build()) {
-            assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
-                    .hasRootCauseMessage("com.mongodb.hibernate.jdbc.MongoConnectionProvider must be plugged in"
-                            + ", for example, via the [hibernate.connection.provider_class] configuration property");
+    void contributorFromConfigurationValuesIsInvoked() {
+        var called = new AtomicBoolean(false);
+        MongoConfigurationContributor contributor = cfg -> called.set(true);
+
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://localhost/db")
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME);
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        // Simulate what MongoHibernateAutoConfiguration does: put the contributor in settings
+        builder.applySetting(MONGO_CONFIGURATION_CONTRIBUTOR_KEY, contributor);
+
+        try (var registry = builder.build()) {
+            registry.requireService(StandardServiceRegistryScopedState.class);
         }
+        assertThat(called).isTrue();
+    }
+
+    @Test
+    void testIncompatibleConnectionProvider() {
+        assertThatThrownBy(() -> new StandardServiceRegistryBuilder()
+                        .clearSettings()
+                        .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                        .applySetting(CONNECTION_PROVIDER, "com.example.SomeOtherConnectionProvider")
+                        .build())
+                .hasMessageContaining(
+                        "[hibernate.connection.provider_class] is automatically configured and must not be set explicitly");
     }
 }

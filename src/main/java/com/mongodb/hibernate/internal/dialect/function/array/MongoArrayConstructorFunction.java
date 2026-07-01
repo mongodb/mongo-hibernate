@@ -23,7 +23,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstArray;
 import java.util.List;
 import java.util.Set;
 import org.hibernate.dialect.function.array.ArrayConstructorFunction;
-import org.hibernate.query.ReturnableType;
+import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.SqlAstNode;
@@ -33,9 +33,8 @@ import org.hibernate.sql.ast.tree.SqlAstNode;
  * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
  * {@code array}, {@code array_list}</a>.
  *
- * <p>Thread-safe.
- *
  * @hidden
+ * @mongoCme Must be thread-safe.
  */
 public final class MongoArrayConstructorFunction extends ArrayConstructorFunction {
     static final Set<String> NAMES = Set.of("array", "array_list");

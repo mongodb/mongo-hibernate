@@ -23,8 +23,9 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
-import com.mongodb.hibernate.dialect.MongoDialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.MongoDialect;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -39,7 +40,10 @@ import java.util.Date;
 import java.util.Set;
 import java.util.StringJoiner;
 import org.hibernate.annotations.Struct;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
@@ -48,18 +52,24 @@ import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.SimpleValue;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
-/** @hidden */
+/**
+ * @hidden
+ * @mongoCme The instance methods of {@link AdditionalMappingContributor} are called multiple times if multiple
+ *     {@link Metadata} instances are {@linkplain MetadataSources#buildMetadata() built} using the same
+ *     {@link BootstrapServiceRegistry}.
+ */
 @SuppressWarnings("MissingSummary")
 public final class MongoAdditionalMappingContributor implements AdditionalMappingContributor {
     /**
      * We do not support these characters because BSON fields with names containing them must be handled specially as
      * described in <a href="https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/">Field Names with
-     * Periods and Dollar Signs</a>.
+     * Periods and Dollar Signs</a>. We also reserve '#' as a separator for computed projections in MQL joins.
      */
-    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$");
+    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$", "#");
 
     private static final Set<Class<?>> UNSUPPORTED_TYPES = Set.of(
             Calendar.class,
@@ -195,6 +205,19 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         }
         assertTrue(idColumns.size() == 1);
         var idColumn = idColumns.get(0);
+        if (!ID_FIELD_NAME.equals(idColumn.getName()) && identifier instanceof SimpleValue simpleValue) {
+            var memberDetails = simpleValue.getMemberDetails();
+            if (memberDetails != null) {
+                var columnAnnotation = memberDetails.getDirectAnnotationUsage(Column.class);
+                if (columnAnnotation != null && !columnAnnotation.name().isBlank()) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s: the @Id column name cannot be overridden to [%s];"
+                                    + " MongoDB requires the primary key field to be named [%s]"
+                                    + " — remove @Column(name = \"%s\") or change it to @Column(name = \"%s\")",
+                            persistentClass, idColumn.getName(), ID_FIELD_NAME, idColumn.getName(), ID_FIELD_NAME));
+                }
+            }
+        }
         idColumn.setName(ID_FIELD_NAME);
     }
 }

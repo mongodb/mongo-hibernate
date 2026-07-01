@@ -16,27 +16,18 @@
 
 import java.time.Duration
 import net.ltgt.gradle.errorprone.errorprone
-import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     id("eclipse")
-    id("idea")
-    id("java-library")
-    id("spotless-java-extension")
-    id("maven-publish")
-    id("signing")
+    id("mongo-hibernate-java")
+    id("mongo-hibernate-integration-test")
+    id("mongo-hibernate-publish")
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.nexus.publish)
 }
 
 repositories { mavenCentral() }
-
-java {
-    toolchain { languageVersion = JavaLanguageVersion.of(17) } // Remember to update javadoc links
-    withJavadocJar()
-    withSourcesJar()
-}
 
 tasks.withType<Javadoc> {
     val standardDocletOptions = options as StandardJavadocDocletOptions
@@ -45,12 +36,7 @@ tasks.withType<Javadoc> {
         // TODO-HIBERNATE-129 addStringOption("-link-modularity-mismatch", "info")
         addBooleanOption("serialwarn", true)
         addBooleanOption("Xdoclint:all", true)
-        addBooleanOption(
-            "Xdoclint/package:-" +
-                "com.mongodb.hibernate.internal.*" +
-                ",com.mongodb.hibernate.dialect.*" +
-                ",com.mongodb.hibernate.jdbc.*",
-            true)
+        addBooleanOption("Xdoclint/package:-com.mongodb.hibernate.internal.*", true)
         addStringOption("-show-module-contents", "api")
         addStringOption("-show-packages", "exported")
         addStringOption("-show-types", "protected")
@@ -65,53 +51,14 @@ tasks.withType<Javadoc> {
             listOf(
                 "https://docs.oracle.com/en/java/javase/17/docs/api/",
                 "https://jakarta.ee/specifications/persistence/3.1/apidocs/",
-                "https://docs.hibernate.org/orm/6.6/javadocs/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/bson/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-core/",
-                "https://mongodb.github.io/mongo-java-driver/5.3/apidocs/mongodb-driver-sync/",
-                "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/")
-    }
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// Integration Test
-
-// Added `Action` explicitly due to an intellij 2025.2 false positive: https://youtrack.jetbrains.com/issue/KTIJ-34210
-sourceSets {
-    create(
-        "integrationTest",
-        Action {
-            compileClasspath += sourceSets.main.get().output
-            runtimeClasspath += sourceSets.main.get().output
-        })
-}
-
-val integrationTestSourceSet: SourceSet = sourceSets["integrationTest"]
-
-val integrationTestImplementation: Configuration by
-    configurations.getting { extendsFrom(configurations.implementation.get()) }
-val integrationTestRuntimeOnly: Configuration by
-    configurations.getting { extendsFrom(configurations.runtimeOnly.get()) }
-
-val integrationTestTask =
-    tasks.register<Test>("integrationTest") {
-        group = LifecycleBasePlugin.VERIFICATION_GROUP
-        testClassesDirs = integrationTestSourceSet.output.classesDirs
-        classpath = integrationTestSourceSet.runtimeClasspath
-    }
-
-tasks.check { dependsOn(integrationTestTask) }
-
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
-    testLogging { events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED) }
-}
-
-// https://youtrack.jetbrains.com/issue/IDEA-234382/Gradle-integration-tests-are-not-marked-as-test-sources-resources
-idea {
-    module {
-        testSources.from(integrationTestSourceSet.allSource.srcDirs)
-        testResources.from(integrationTestSourceSet.resources.srcDirs)
+                "https://docs.hibernate.org/orm/7.4/javadocs/",
+                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/bson/",
+                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-core/",
+                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-sync/",
+                "https://jspecify.dev/docs/api",
+            )
+        // specify the custom `@mongoCme` `javadoc` block tag
+        tags("mongoCme:TM:Concurrency, Mutability, Execution\\:")
     }
 }
 
@@ -146,16 +93,16 @@ spotless {
     }
 }
 
-tasks.check { dependsOn(tasks.spotlessApply) }
-
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(
-        listOf("-Xlint:all", "-Xlint:-requires-automatic", "-Xlint:-requires-transitive-automatic", "-Werror"))
+        listOf("-Xlint:all", "-Xlint:-requires-automatic", "-Xlint:-requires-transitive-automatic", "-Werror")
+    )
     when (this) {
         tasks.compileJava.get() ->
             options.errorprone {
                 disableWarningsInGeneratedCode = true
-                // Error Prone does not understand the `@hidden` standard tag
+                // Error Prone does not understand the `@hidden` standard tag.
+                // It also complains about the `javadoc` tags registered via the `-tag`/`-taglet` options
                 disable("InvalidBlockTag")
                 disable("AssignmentExpression")
                 option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
@@ -172,7 +119,8 @@ buildConfig {
     useJavaOutput()
     packageName("com.mongodb.hibernate.internal")
     documentation.set(
-        "Generated by the <a href=\"https://github.com/gmazzo/gradle-buildconfig-plugin\">BuildConfig</a> plugin.\n\n@hidden")
+        "Generated by the <a href=\"https://github.com/gmazzo/gradle-buildconfig-plugin\">BuildConfig</a> plugin.\n\n@hidden"
+    )
     buildConfigField("NAME", provider { project.name })
     buildConfigField("VERSION", provider { "${project.version}" })
 }
@@ -183,6 +131,7 @@ buildConfig {
 dependencies {
     testImplementation(libs.bundles.test.common)
     testImplementation(libs.mockito.junit.jupiter)
+    testRuntimeOnly(libs.h2)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testCompileOnly(libs.checker.qual)
 
@@ -197,7 +146,9 @@ dependencies {
     errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
+    implementation(platform(libs.hibernate.platform))
     api(libs.hibernate.core)
+    implementation(libs.hibernate.models)
     api(libs.mongo.java.driver.sync)
     // We need the `libs.findbugs.jsr` dependency to stop `javadoc` from emitting
     // `warning: unknown enum constant When.MAYBE`
@@ -209,25 +160,7 @@ dependencies {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Publishing
 
-val localBuildRepo: Provider<Directory> = project.layout.buildDirectory.dir("repo")
-
-tasks.named<Delete>("clean") { delete.add(localBuildRepo) }
-
-tasks.withType<GenerateModuleMetadata> { enabled = false }
-
 publishing {
-    repositories {
-        // publish to local build dir for testing
-        // `./gradlew publishMavenPublicationToLocalBuildRepository`
-        //
-        // publish to the local Maven cache
-        // `./gradlew publishToMavenLocal`
-        maven {
-            url = uri(localBuildRepo.get())
-            name = "LocalBuild"
-        }
-    }
-
     publications {
         create<MavenPublication>("mavenJava") {
             groupId = "org.mongodb"
@@ -236,53 +169,18 @@ publishing {
             pom {
                 name = "MongoDB Extension for Hibernate ORM"
                 description = "An extension providing MongoDB support to Hibernate ORM"
-                url = "https://www.mongodb.com/"
-                licenses {
-                    license {
-                        name = "Apache License, Version 2.0"
-                        url = "https://www.apache.org/licenses/LICENSE-2.0"
-                    }
-                }
-                developers {
-                    developer {
-                        name.set("Various")
-                        organization.set("MongoDB")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/mongodb/mongo-hibernate")
-                    connection.set("scm:git:https://github.com/mongodb/mongo-hibernate.git")
-                    developerConnection.set("scm:git:https://github.com/mongodb/mongo-hibernate.git")
-                }
+                // url, licenses, developers, scm injected by mongo-hibernate-publish plugin
             }
         }
     }
 }
 
-// Artifact signing
-signing {
-    val signingKey: String? = providers.gradleProperty("signingKey").getOrNull()
-    val signingPassword: String? = providers.gradleProperty("signingPassword").getOrNull()
-    if (signingKey != null && signingPassword != null) {
-        logger.info("[${project.displayName}] Signing is enabled")
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications["mavenJava"])
-    } else {
-        logger.info("[${project.displayName}] No Signing keys found, skipping signing configuration")
-    }
-}
-
-// Publishing to the central sonatype portal currently requires the gradle nexus publishing plugin
-// Adds a `publishToSonatype` task
-val nexusUsername: Provider<String> = providers.gradleProperty("nexusUsername")
-val nexusPassword: Provider<String> = providers.gradleProperty("nexusPassword")
-
 nexusPublishing {
     packageGroup.set("org.mongodb")
     repositories {
         sonatype {
-            username.set(nexusUsername)
-            password.set(nexusPassword)
+            username.set(providers.gradleProperty("nexusUsername"))
+            password.set(providers.gradleProperty("nexusPassword"))
 
             // central portal URLs
             nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))

@@ -30,13 +30,18 @@ import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.internal.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
+import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.jspecify.annotations.Nullable;
 
-final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcOperationQuerySelect> {
+/**
+ * @mongoCme Does not have to be thread-safe because it is
+ *     {@linkplain MongoTranslatorFactory#buildSelectTranslator(SessionFactoryImplementor, SelectStatement) single-use}.
+ */
+final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcSelect> {
 
     private final SelectStatement selectStatement;
 

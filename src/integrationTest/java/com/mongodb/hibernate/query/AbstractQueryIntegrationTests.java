@@ -28,6 +28,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import org.assertj.core.api.AbstractThrowableAssert;
@@ -41,10 +43,10 @@ import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.tree.MutationStatement;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.spi.AbstractJdbcOperationQuery;
+import org.hibernate.sql.exec.internal.AbstractJdbcOperationQuery;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
-import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -65,7 +67,8 @@ import org.mockito.stubbing.Answer;
                         value =
                                 "com.mongodb.hibernate.query.AbstractQueryIntegrationTests$TranslateResultAwareDialect"))
 @ExtendWith(MongoExtension.class)
-public abstract class AbstractQueryIntegrationTests implements SessionFactoryScopeAware, ServiceRegistryScopeAware {
+public abstract class AbstractQueryIntegrationTests
+        implements SessionFactoryScopeAware, ServiceRegistryScopeAware, MongoServiceRegistryProducer {
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -143,6 +146,17 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
             Consumer<Iterable<? extends T>> resultListVerifier,
             Set<String> expectedAffectedCollections) {
         assertSelectionQuery(hql, resultType, null, expectedMql, resultListVerifier, expectedAffectedCollections);
+    }
+
+    protected <T> List<T> assertSelectionQuery(String hql, Class<T> resultType, String expectedMql) {
+        return sessionFactoryScope.fromTransaction(session -> {
+            var selectionQuery = session.createSelectionQuery(hql, resultType);
+            var resultList = selectionQuery.getResultList();
+
+            assertActualCommandsInOrder(BsonDocument.parse(expectedMql));
+
+            return resultList;
+        });
     }
 
     protected <T> AbstractThrowableAssert<?, ? extends Throwable> assertSelectQueryFailure(
@@ -262,7 +276,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
         public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
             return new SqlAstTranslatorFactory() {
                 @Override
-                public SqlAstTranslator<JdbcOperationQuerySelect> buildSelectTranslator(
+                public SqlAstTranslator<JdbcSelect> buildSelectTranslator(
                         SessionFactoryImplementor sessionFactory, SelectStatement statement) {
                     return createCapturingTranslator(TranslateResultAwareDialect.super
                             .getSqlAstTranslatorFactory()

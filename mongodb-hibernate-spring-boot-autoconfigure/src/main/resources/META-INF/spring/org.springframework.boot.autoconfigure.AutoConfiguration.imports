@@ -1,0 +1,2 @@
+com.mongodb.hibernate.autoconfigure.MongoHibernateAutoConfiguration
+com.mongodb.hibernate.autoconfigure.MongoJpaRepositoriesAutoConfiguration

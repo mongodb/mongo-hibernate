@@ -17,15 +17,36 @@
 package com.mongodb.hibernate.internal.cfg;
 
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.cfg.MongoConfigurator;
-import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The configuration of the MongoDB Extension for Hibernate ORM.
  *
- * @param mongoClientSettings {@link MongoConfigurator#applyToMongoClientSettings(Consumer)}.
+ * @param mongoClientSettings settings to create a client from, or {@code null} when {@code mongoClient} is supplied.
+ * @param mongoClient an externally supplied {@link MongoClient} to use as-is (the provider does not own or close it),
+ *     or {@code null} when {@code mongoClientSettings} is supplied.
  * @param databaseName {@link MongoConfigurator#databaseName(String)}.
  * @see MongoConfigurationBuilder#build()
  * @hidden
  */
-public record MongoConfiguration(MongoClientSettings mongoClientSettings, String databaseName) {}
+public record MongoConfiguration(
+        @Nullable MongoClientSettings mongoClientSettings,
+        @Nullable MongoClient mongoClient,
+        String databaseName) {
+
+    public MongoConfiguration {
+        if ((mongoClientSettings == null) == (mongoClient == null)) {
+            throw new IllegalArgumentException("Exactly one of mongoClientSettings and mongoClient must be non-null");
+        }
+    }
+
+    public MongoConfiguration(MongoClientSettings mongoClientSettings, String databaseName) {
+        this(mongoClientSettings, null, databaseName);
+    }
+
+    public MongoConfiguration(MongoClient mongoClient, String databaseName) {
+        this(null, mongoClient, databaseName);
+    }
+}

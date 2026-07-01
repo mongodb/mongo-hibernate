@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -54,7 +55,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             IdentifierIntegrationTests.EndingWithRightSquareBracket.class
         })
 @ExtendWith(MongoExtension.class)
-class IdentifierIntegrationTests implements SessionFactoryScopeAware {
+class IdentifierIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(WithSpaceAndDotAndMixedCase.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollectionWithSpaceAndDotAndMixedCase;
 
@@ -339,7 +340,7 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class UnsupportedFieldNames {
+    class UnsupportedFieldNames implements MongoServiceRegistryProducer {
         @Test
         void idWithDot() {
             assertThrows(IdWithDot.class, '.');
@@ -358,6 +359,16 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
         @Test
         void columnWithDollar() {
             assertThrows(IdWithDollar.class, '$');
+        }
+
+        @Test
+        void idWithHash() {
+            assertThrows(IdWithHash.class, '#');
+        }
+
+        @Test
+        void columnWithHash() {
+            assertThrows(ColumnWithHash.class, '#');
         }
 
         private static void assertThrows(Class<?> annotatedClass, char unsupportedCharacter) {
@@ -396,6 +407,22 @@ class IdentifierIntegrationTests implements SessionFactoryScopeAware {
             int id;
 
             @Column(name = "field name with $dollar")
+            int v;
+        }
+
+        @Entity
+        static class IdWithHash {
+            @Id
+            @Column(name = "ID field name with #hash")
+            int id;
+        }
+
+        @Entity
+        static class ColumnWithHash {
+            @Id
+            int id;
+
+            @Column(name = "field name with #hash")
             int v;
         }
     }

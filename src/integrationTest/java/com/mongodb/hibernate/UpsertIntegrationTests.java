@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -33,7 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {UpsertIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
-class UpsertIntegrationTests implements SessionFactoryScopeAware {
+class UpsertIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private SessionFactoryScope sessionFactoryScope;
 
     @Override

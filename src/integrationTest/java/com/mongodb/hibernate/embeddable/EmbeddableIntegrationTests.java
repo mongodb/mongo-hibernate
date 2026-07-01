@@ -30,6 +30,7 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
@@ -65,7 +66,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             EmbeddableIntegrationTests.Unsupported.ItemWithFlattenedValueHavingStructAggregateEmbeddable.class
         })
 @ExtendWith(MongoExtension.class)
-public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class EmbeddableIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -804,7 +805,7 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         @Test
         void testPrimaryKeySpanningMultipleFields() {
             assertThatThrownBy(() -> new MetadataSources()

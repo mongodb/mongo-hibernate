@@ -39,8 +39,8 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.BasicCrudIntegrationTests.Item;
 import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.ColumnResult;
 import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.Entity;
@@ -83,7 +83,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         })
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
 @ExtendWith(MongoExtension.class)
-class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
+class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private SessionFactoryScope sessionFactoryScope;
     private Item item;
     private ItemWithFlattenedValue itemWithFlattenedValue;
@@ -404,7 +404,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
      * Returning DTOs (Data Transfer Objects)</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
      */
     @Nested
-    class Dto {
+    class Dto implements MongoServiceRegistryProducer {
         @Test
         void testBasicValues() {
             sessionFactoryScope.inSession(session -> {
@@ -628,7 +628,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         /**
          * We do not support this due to what seem to be a Hibernate ORM bug: <a
          * href="https://hibernate.atlassian.net/browse/HHH-19866">Entity native query incorrectly handles
@@ -647,7 +647,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                             assertThatThrownBy(() -> session.createNativeQuery(mql, ItemWithNestedValue.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                                    .hasMessageContaining("Unknown column label [nested.");
                         },
                         () -> {
                             var mql = mql(
@@ -659,7 +659,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware {
                                                     mql, ItemWithNestedValueHavingArraysAndCollections.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                                    .hasMessageContaining("Unknown column label [nested.");
                         });
             });
         }

@@ -23,6 +23,7 @@ import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.hibernate.cfg.MongoConfigurator;
 import com.mongodb.hibernate.internal.VisibleForTesting;
 import java.lang.reflect.Type;
@@ -38,6 +39,7 @@ import org.jspecify.annotations.Nullable;
 public final class MongoConfigurationBuilder implements MongoConfigurator {
     private final MongoClientSettings.Builder mongoClientSettingsBuilder;
     private @Nullable String databaseName;
+    private @Nullable MongoClient mongoClient;
 
     public MongoConfigurationBuilder(Map<String, Object> configurationValues) {
         mongoClientSettingsBuilder = MongoClientSettings.builder();
@@ -66,8 +68,17 @@ public final class MongoConfigurationBuilder implements MongoConfigurator {
         return this;
     }
 
+    @Override
+    public MongoConfigurationBuilder mongoClient(MongoClient mongoClient) {
+        this.mongoClient = notNull("mongoClient", mongoClient);
+        return this;
+    }
+
     public MongoConfiguration build() {
-        return new MongoConfiguration(mongoClientSettingsBuilder.build(), notNull("databaseName", databaseName));
+        var db = notNull("databaseName", databaseName);
+        return mongoClient != null
+                ? new MongoConfiguration(mongoClient, db)
+                : new MongoConfiguration(mongoClientSettingsBuilder.build(), db);
     }
 
     private static final class ConfigPropertiesParser {

@@ -28,6 +28,7 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
@@ -64,7 +66,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingEmbeddable.class
         })
 @ExtendWith(MongoExtension.class)
-public class StructAggregateEmbeddableIntegrationTests implements SessionFactoryScopeAware {
+public class StructAggregateEmbeddableIntegrationTests
+        implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
 
@@ -722,13 +725,22 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
     }
 
     @Nested
-    class Unsupported {
+    class Unsupported implements MongoServiceRegistryProducer {
         @Test
         void testStructPrimaryKey() {
             assertThatThrownBy(() -> new MetadataSources()
                             .addAnnotatedClass(ItemWithSingleAsId.class)
                             .buildMetadata())
                     .hasMessageContaining("aggregate embeddable primary keys are not supported");
+        }
+
+        @Test
+        void testCustomReadExpression() {
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(ItemWithNestedValueHavingCustomRead.class)
+                            .buildMetadata())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("on an aggregate embeddable field is not supported");
         }
 
         @Test
@@ -799,11 +811,21 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Entity
         @Table(name = COLLECTION_NAME)
+        record ItemWithNestedValueHavingCustomRead(@Id int id, SingleHavingCustomRead nested) {}
+
+        @Embeddable
+        @Struct(name = "SingleHavingCustomRead")
+        record SingleHavingCustomRead(
+                @ColumnTransformer(read = "a * 5") int a) {}
+
+        @Entity
+        @Table(name = COLLECTION_NAME)
         record ItemWithNestedValueHavingNonInsertable(@Id int id, PairHavingNonInsertable nested) {}
 
         @Embeddable
         @Struct(name = "PairHavingNonInsertable")
-        record PairHavingNonInsertable(@Column(insertable = false) int a, int b) {}
+        record PairHavingNonInsertable(
+                @Column(insertable = false) int a, int b) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)
@@ -836,7 +858,9 @@ public class StructAggregateEmbeddableIntegrationTests implements SessionFactory
 
         @Embeddable
         @Struct(name = "PairAllNonInsertable")
-        record PairAllNonInsertable(@Column(insertable = false) int a, @Column(insertable = false) int b) {}
+        record PairAllNonInsertable(
+                @Column(insertable = false) int a,
+                @Column(insertable = false) int b) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)
