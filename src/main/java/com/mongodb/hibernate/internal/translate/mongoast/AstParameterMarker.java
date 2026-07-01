@@ -27,6 +27,9 @@ public final class AstParameterMarker implements AstValue {
 
     public static final AstParameterMarker INSTANCE = new AstParameterMarker();
 
+    /** The MQL ({@linkplain org.bson.json.JsonMode#EXTENDED extended JSON}) rendering of {@link #render}. */
+    public static final String MARKER = "{\"$undefined\": true}";
+
     private AstParameterMarker() {}
 
     @Override

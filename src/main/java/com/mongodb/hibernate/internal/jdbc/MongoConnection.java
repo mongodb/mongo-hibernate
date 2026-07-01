@@ -22,6 +22,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
+import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -131,6 +132,59 @@ final class MongoConnection implements ConnectionAdapter {
         return prepareStatement(mql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
     }
 
+    /**
+     * Rewrites the JDBC parameter markers that Hibernate hard-codes into native queries into MQL.
+     *
+     * <p>Hibernate always renders parameters using {@code ?} marker, and wraps a multi-valued (collection) parameter in
+     * a SQL-style parenthesized list, e.g. {@code $in: [(?,?,?)]}. Neither {@code ?} nor the surrounding parentheses
+     * are valid MQL, so before parsing we replace each {@code ?} with the BSON {@code undefined} marker (which
+     * {@link MongoPreparedStatement} binds) and drop the list-wrapping parentheses, turning {@code $in: [(?,?,?)]} into
+     * {@code $in: [{"$undefined": true},{"$undefined": true},{"$undefined": true}]}.
+     *
+     * <p>A {@code ?}, {@code (} or {@code )} is rewritten only when it is structural MQL syntax, i.e. outside any
+     * literal. Two literal forms can legitimately contain those characters and must be copied verbatim:
+     *
+     * <ul>
+     *   <li>a double-quoted string, e.g. {@code "a?b"}, delimited by {@code "} with {@code \} escapes;
+     *   <li>a shell-style regular-expression literal that MongoDB extended JSON accepts in a value position, e.g.
+     *       {@code /a(bc)?d/i}, delimited by {@code /} with {@code \} escapes (a regex commonly contains {@code ?}
+     *       quantifiers and {@code (} {@code )} groups). Outside a string, a {@code /} can only begin such a literal
+     *       because MQL has no division operator.
+     * </ul>
+     */
+    static String translateParameterMarkers(String mql) {
+        StringBuilder result = new StringBuilder(mql.length());
+        boolean inString = false;
+        boolean inRegex = false;
+        boolean escaped = false;
+        for (int i = 0; i < mql.length(); i++) {
+            var c = mql.charAt(i);
+            if (inString || inRegex) {
+                result.append(c);
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (inString && c == '"') {
+                    inString = false;
+                } else if (inRegex && c == '/') {
+                    inRegex = false;
+                }
+            } else if (c == '"') {
+                inString = true;
+                result.append(c);
+            } else if (c == '/') {
+                inRegex = true;
+                result.append(c);
+            } else if (c == '?') {
+                result.append(AstParameterMarker.MARKER);
+            } else if (c != '(' && c != ')') {
+                result.append(c);
+            }
+        }
+        return result.toString();
+    }
+
     @Override
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
@@ -143,7 +197,7 @@ final class MongoConnection implements ConnectionAdapter {
             throw new SQLFeatureNotSupportedException(
                     "Unsupported result set concurrency (only CONCUR_READ_ONLY is supported): " + resultSetConcurrency);
         }
-        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
+        return new MongoPreparedStatement(mongoDatabase, clientSession, this, translateParameterMarkers(mql));
     }
 
     @Override

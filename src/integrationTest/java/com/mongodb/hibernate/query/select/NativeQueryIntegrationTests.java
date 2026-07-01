@@ -58,6 +58,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.hibernate.engine.query.ParameterRecognitionException;
 import org.hibernate.query.QueryProducer;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -623,6 +624,140 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                                                                                 [])
                                                                         tuple[2])))
                                         .getSingleResult()));
+            });
+        }
+    }
+
+    /**
+     * See <a href="https://docs.hibernate.org/orm/7.4/userguide/html_single/#sql-query-parameters">Using parameters in
+     * native queries</a>.
+     *
+     * <p>Hibernate hard-codes the JDBC {@code ?} marker for native queries, and expands a multi-valued parameter into a
+     * SQL-style parenthesized list. Neither is valid MQL, so the JDBC adapter rewrites the markers in
+     * {@link com.mongodb.hibernate.internal.jdbc.MongoConnection#prepareStatement(String)} before parsing.
+     */
+    @Nested
+    class WithParameters implements MongoServiceRegistryProducer {
+        @Test
+        void testSingleNamedParameter() {
+            sessionFactoryScope.inSession(session -> {
+                var mql = """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id }}, %s]}"""
+                        .formatted(
+                                COLLECTION_NAME,
+                                ID_FIELD_NAME,
+                                Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .getSingleResult());
+            });
+        }
+
+        @Test
+        void testOrdinalParameter() {
+            sessionFactoryScope.inSession(session -> {
+                var mql = """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": ?1 }}, %s]}"""
+                        .formatted(
+                                COLLECTION_NAME,
+                                ID_FIELD_NAME,
+                                Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter(1, item.id)
+                                .getSingleResult());
+            });
+        }
+
+        @Test
+        void testMultipleNamedParameters() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": :string }}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .setParameter("string", item.string)
+                                .getSingleResult());
+            });
+        }
+
+        /**
+         * Hibernate expands a multi-valued (collection) parameter into a SQL-style parenthesized list, e.g. {@code $in:
+         * [(?,?)]}. The JDBC adapter strips the wrapping parentheses so the markers become valid MQL.
+         */
+        @Test
+        void testMultiValuedParameter() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": {"$in": [:ids] }}}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("ids", List.of(item.id, 999))
+                                .getSingleResult());
+            });
+        }
+
+        /**
+         * A shell-style regex literal may legitimately contain {@code (}/{@code )} (grouping) outside of any string;
+         * the parentheses must survive the marker rewrite (which otherwise strips list-wrapping parentheses) while a
+         * real parameter marker in the same query is still bound. The {@code /^(ab)*str$/} regex matches the seed
+         * item's {@code string} value {@code "str"} (the {@code (ab)*} group repeats zero times); were the grouping
+         * parentheses stripped to {@code /^ab*str$/}, it would not match.
+         */
+        @Test
+        void testRegexLiteralWithGroupingAlongsideParameter() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": /^(ab)*str$/ }}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .getSingleResult());
+            });
+        }
+
+        /**
+         * A regex {@code ?} quantifier cannot be combined with a named parameter in the same native query: Hibernate
+         * own parameter scanner ({@code org.hibernate.query.sql.internal.ParameterParser}) only recognizes {@code '}
+         * and {@code "} as literal contexts, so the unquoted {@code ?} inside {@code /st?r/} is treated as a JDBC
+         * ordinal marker and clashes with the named {@code :id} marker. This fails at query-construction time, before
+         * the JDBC adapter (and its regex-aware marker rewriting) ever runs.
+         */
+        @Test
+        void testRegexLiteralWithQuestionMarkIsRejectedByHibernate() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": /st?r/ }}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertThatThrownBy(() -> session.createNativeQuery(mql, Item.class))
+                        .isInstanceOf(ParameterRecognitionException.class)
+                        .hasMessageContaining("Cannot mix parameter styles");
             });
         }
     }
