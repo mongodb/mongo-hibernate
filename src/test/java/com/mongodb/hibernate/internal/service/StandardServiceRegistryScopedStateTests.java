@@ -101,6 +101,45 @@ class StandardServiceRegistryScopedStateTests {
     }
 
     @Test
+    void testNullSemanticsRequired() {
+        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db");
+        try (var standardServiceRegistry = standardServiceRegistryBuilder.build()) {
+            assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
+                    .hasRootCauseMessage("Configuration property [com.mongodb.hibernate.semantics.nulls] is required");
+        }
+    }
+
+    @Test
+    void testNullSemanticsUnsupportedValue() {
+        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db")
+                .applySetting("com.mongodb.hibernate.semantics.nulls", "SQL");
+        try (var standardServiceRegistry = standardServiceRegistryBuilder.build()) {
+            assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
+                    .hasRootCauseMessage(
+                            "Configuration property [com.mongodb.hibernate.semantics.nulls] with value [SQL] must be [MQL]");
+        }
+    }
+
+    @Test
+    void testNullSemanticsMql() {
+        var standardServiceRegistryBuilder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://host/db")
+                .applySetting("com.mongodb.hibernate.semantics.nulls", "MQL");
+        try (var standardServiceRegistry = standardServiceRegistryBuilder.build()) {
+            assertThat(standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
+                    .isNotNull();
+        }
+    }
+
+    @Test
     void contributorFromConfigurationValuesIsInvoked() {
         var called = new AtomicBoolean(false);
         MongoConfigurationContributor contributor = cfg -> called.set(true);
@@ -108,7 +147,8 @@ class StandardServiceRegistryScopedStateTests {
         var builder = new StandardServiceRegistryBuilder()
                 .clearSettings()
                 .applySetting(JAKARTA_JDBC_URL, "mongodb://localhost/db")
-                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME);
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME)
+                .applySetting("com.mongodb.hibernate.semantics.nulls", "MQL");
         new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
         // Simulate what MongoHibernateAutoConfiguration does: put the contributor in settings
         builder.applySetting(MONGO_CONFIGURATION_CONTRIBUTOR_KEY, contributor);
