@@ -58,9 +58,8 @@ import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.conversions.Bson;
-import org.bson.json.JsonParseException;
 import org.bson.types.ObjectId;
-import org.hibernate.JDBCException;
+import org.hibernate.engine.query.ParameterRecognitionException;
 import org.hibernate.query.QueryProducer;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -635,9 +634,9 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-query-parameters">
      * Using parameters in native queries</a>.
      *
-     * <p>Hibernate ORM hard-codes the JDBC {@code ?} marker for native queries, but MQL is BSON, so
-     * {@link com.mongodb.hibernate.internal.dialect.MongoParameterMarkerStrategy} substitutes the BSON
-     * {@code undefined} marker instead, which the JDBC adapter binds.
+     * <p>Hibernate hard-codes the JDBC {@code ?} marker for native queries, and expands a multi-valued parameter
+     * into a SQL-style parenthesized list. Neither is valid MQL, so the JDBC adapter rewrites the markers in
+     * {@link com.mongodb.hibernate.internal.jdbc.MongoConnection#prepareStatement(String)} before parsing.
      */
     @Nested
     class WithParameters implements MongoServiceRegistryProducer {
@@ -697,11 +696,11 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
         }
 
         /**
-         * Multi-valued (collection) parameters are not supported: Hibernate ORM expands them into a SQL-style
-         * parenthesized list (e.g. {@code ({"$undefined": true},{"$undefined": true})}), which is not valid MQL.
+         * Hibernate expands a multi-valued (collection) parameter into a SQL-style parenthesized list, e.g.
+         * {@code $in: [(?,?)]}. The JDBC adapter strips the wrapping parentheses so the markers become valid MQL.
          */
         @Test
-        void testMultiValuedParameterIsUnsupported() {
+        void testMultiValuedParameter() {
             sessionFactoryScope.inSession(session -> {
                 var mql =
                         """
@@ -710,10 +709,62 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                                         COLLECTION_NAME,
                                         ID_FIELD_NAME,
                                         Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
-                var query = session.createNativeQuery(mql, Item.class).setParameter("ids", List.of(item.id, 999));
-                assertThatThrownBy(query::getResultList)
-                        .isInstanceOf(JDBCException.class)
-                        .hasRootCauseInstanceOf(JsonParseException.class);
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("ids", List.of(item.id, 999))
+                                .getSingleResult());
+            });
+        }
+
+        /**
+         * A shell-style regex literal may legitimately contain {@code (}/{@code )} (grouping) outside of any string;
+         * the parentheses must survive the marker rewrite (which otherwise strips list-wrapping parentheses) while a
+         * real parameter marker in the same query is still bound. The {@code /^(ab)*str$/} regex matches the seed
+         * item's {@code string} value {@code "str"} (the {@code (ab)*} group repeats zero times); were the grouping
+         * parentheses stripped to {@code /^ab*str$/}, it would not match.
+         *
+         * <p>Note: a regex {@code ?} quantifier cannot be exercised here because Hibernate ORM's own native-query
+         * parameter scanner treats an unquoted {@code ?} as a JDBC ordinal marker before the JDBC adapter runs.
+         */
+        @Test
+        void testRegexLiteralWithGroupingAlongsideParameter() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": /^(ab)*str$/ }}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .getSingleResult());
+            });
+        }
+
+        /**
+         * A regex {@code ?} quantifier cannot be combined with a named parameter in the same native query: Hibernate
+         * ORM's own parameter scanner ({@code org.hibernate.query.sql.internal.ParameterParser}) only recognizes
+         * {@code '} and {@code "} as literal contexts, so the unquoted {@code ?} inside {@code /st?r/} is treated as a
+         * JDBC ordinal marker and clashes with the named {@code :id} marker. This fails at query-construction time,
+         * before the JDBC adapter (and its regex-aware marker rewriting) ever runs.
+         */
+        @Test
+        void testRegexLiteralWithQuantifierMixedWithNamedParameterIsRejectedByHibernate() {
+            sessionFactoryScope.inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": /st?r/ }}, %s]}"""
+                                .formatted(
+                                        COLLECTION_NAME,
+                                        ID_FIELD_NAME,
+                                        Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS));
+                assertThatThrownBy(() -> session.createNativeQuery(mql, Item.class))
+                        .isInstanceOf(ParameterRecognitionException.class)
+                        .hasMessageContaining("Cannot mix parameter styles");
             });
         }
     }

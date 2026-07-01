@@ -43,7 +43,6 @@ import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.jdbc.dialect.spi.DialectFactory;
-import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.service.Service;
 import org.hibernate.service.UnknownServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -107,16 +106,6 @@ public final class StandardServiceRegistryScopedState implements Service {
                     serviceRegistryBuilder.applySetting(
                             AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
                 }
-                // Native queries must use the marker supplied by `MongoDialect.getNativeParameterMarkerStrategy`
-                // instead of the JDBC standard `?`. This setting is what makes
-                // Hibernate use the dialect's strategy
-                // disabling it would leave native-query parameters unbindable.
-                if (settings.containsKey(AvailableSettings.DIALECT_NATIVE_PARAM_MARKERS)
-                        && !ConfigurationHelper.getBoolean(AvailableSettings.DIALECT_NATIVE_PARAM_MARKERS, settings)) {
-                    throw new RuntimeException("[%s] is automatically configured and must not be set to [false]"
-                            .formatted(AvailableSettings.DIALECT_NATIVE_PARAM_MARKERS));
-                }
-                serviceRegistryBuilder.applySetting(AvailableSettings.DIALECT_NATIVE_PARAM_MARKERS, true);
             }
             // The initiator is registered unconditionally so that checkMongoDialectIsPluggedIn provides
             // a helpful error whenever the service is requested from a misconfigured session.

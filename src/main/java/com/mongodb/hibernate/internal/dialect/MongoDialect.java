@@ -50,7 +50,6 @@ import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.sql.ast.spi.ParameterMarkerStrategy;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
@@ -111,17 +110,6 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     @Override
     public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
         return MongoTranslatorFactory.INSTANCE;
-    }
-
-    /**
-     * Supplies the parameter marker used for native queries. Used only when
-     * {@link AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS} is enabled
-     *
-     * @see MongoParameterMarkerStrategy
-     */
-    @Override
-    public ParameterMarkerStrategy getNativeParameterMarkerStrategy() {
-        return new MongoParameterMarkerStrategy();
     }
 
     @Override
