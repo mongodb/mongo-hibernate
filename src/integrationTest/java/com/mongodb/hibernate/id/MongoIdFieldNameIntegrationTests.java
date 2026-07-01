@@ -18,8 +18,10 @@ package com.mongodb.hibernate.id;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
@@ -28,9 +30,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.bson.BsonDocument;
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -39,8 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
         annotatedClasses = {
             MongoIdFieldNameIntegrationTests.EntityWithoutIdColumnAnnotation.class,
             MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithoutNameElement.class,
-            MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithValidNameElement.class,
-            MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithInvalidNameElement.class
+            MongoIdFieldNameIntegrationTests.EntityWithIdColumnAnnotationWithValidNameElement.class
         })
 @ExtendWith(MongoExtension.class)
 class MongoIdFieldNameIntegrationTests implements MongoServiceRegistryProducer {
@@ -79,16 +82,6 @@ class MongoIdFieldNameIntegrationTests implements MongoServiceRegistryProducer {
         assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
-    @Test
-    void testEntityWithIdColumnAnnotationWithInvalidNameElement(SessionFactoryScope scope) {
-        scope.inTransaction(session -> {
-            var movie = new EntityWithIdColumnAnnotationWithInvalidNameElement();
-            movie.id = 1;
-            session.persist(movie);
-        });
-        assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
-    }
-
     private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
         assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }
@@ -116,11 +109,44 @@ class MongoIdFieldNameIntegrationTests implements MongoServiceRegistryProducer {
         int id;
     }
 
-    @Entity
-    @Table(name = COLLECTION_NAME)
-    static class EntityWithIdColumnAnnotationWithInvalidNameElement {
-        @Id
-        @Column(name = "silentlyReplaced")
-        int id;
+    @Nested
+    class Unsupported implements MongoServiceRegistryProducer {
+        @Test
+        void testEntityWithIdColumnAnnotationWithInvalidNameElement() {
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(EntityWithIdColumnAnnotationWithInvalidNameElement.class)
+                            .buildMetadata()
+                            .buildSessionFactory()
+                            .close())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("customId");
+        }
+
+        @Test
+        void testExplicitNonIdColumnNameViaOrmXml() {
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(EntityWithOrmXmlIdColumnOverride.class)
+                            .addResource("com/mongodb/hibernate/id/id-column-orm-override.xml")
+                            .buildMetadata()
+                            .buildSessionFactory()
+                            .close())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("ormOverriddenId");
+        }
+
+        @Entity
+        @Table(name = COLLECTION_NAME)
+        static class EntityWithIdColumnAnnotationWithInvalidNameElement {
+            @Id
+            @Column(name = "customId")
+            int id;
+        }
+
+        @Entity
+        @Table(name = COLLECTION_NAME)
+        static class EntityWithOrmXmlIdColumnOverride {
+            @Id
+            int id;
+        }
     }
 }

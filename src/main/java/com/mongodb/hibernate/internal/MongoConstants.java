@@ -33,4 +33,12 @@ public final class MongoConstants {
     public static final String ID_FIELD_NAME = "_id";
 
     public static final String MONGO_DIALECT_SHORT_NAME = "MongoDB";
+
+    /**
+     * JPA property key used to pass a {@code MongoConfigurationContributor} object via the JPA properties map. Read by
+     * {@code StandardServiceRegistryScopedState}, written by {@code MongoHibernateAutoConfiguration} in the Spring Boot
+     * autoconfigure module (which duplicates this string as a private constant since it cannot access this internal
+     * class).
+     */
+    public static final String MONGO_CONFIGURATION_CONTRIBUTOR_KEY = "com.mongodb.hibernate.configurationContributor";
 }

@@ -25,6 +25,7 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoDialect;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -51,6 +52,7 @@ import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.SimpleValue;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
@@ -203,6 +205,19 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         }
         assertTrue(idColumns.size() == 1);
         var idColumn = idColumns.get(0);
+        if (!ID_FIELD_NAME.equals(idColumn.getName()) && identifier instanceof SimpleValue simpleValue) {
+            var memberDetails = simpleValue.getMemberDetails();
+            if (memberDetails != null) {
+                var columnAnnotation = memberDetails.getDirectAnnotationUsage(Column.class);
+                if (columnAnnotation != null && !columnAnnotation.name().isBlank()) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s: the @Id column name cannot be overridden to [%s];"
+                                    + " MongoDB requires the primary key field to be named [%s]"
+                                    + " — remove @Column(name = \"%s\") or change it to @Column(name = \"%s\")",
+                            persistentClass, idColumn.getName(), ID_FIELD_NAME, idColumn.getName(), ID_FIELD_NAME));
+                }
+            }
+        }
         idColumn.setName(ID_FIELD_NAME);
     }
 }
