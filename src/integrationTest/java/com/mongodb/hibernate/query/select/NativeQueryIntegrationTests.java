@@ -630,12 +630,11 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
     }
 
     /**
-     * See <a
-     * href="https://docs.hibernate.org/orm/7.4/userguide/html_single/#sql-query-parameters">
-     * Using parameters in native queries</a>.
+     * See <a href="https://docs.hibernate.org/orm/7.4/userguide/html_single/#sql-query-parameters">Using parameters in
+     * native queries</a>.
      *
-     * <p>Hibernate hard-codes the JDBC {@code ?} marker for native queries, and expands a multi-valued parameter
-     * into a SQL-style parenthesized list. Neither is valid MQL, so the JDBC adapter rewrites the markers in
+     * <p>Hibernate hard-codes the JDBC {@code ?} marker for native queries, and expands a multi-valued parameter into a
+     * SQL-style parenthesized list. Neither is valid MQL, so the JDBC adapter rewrites the markers in
      * {@link com.mongodb.hibernate.internal.jdbc.MongoConnection#prepareStatement(String)} before parsing.
      */
     @Nested
@@ -694,8 +693,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
         }
 
         /**
-         * Hibernate expands a multi-valued (collection) parameter into a SQL-style parenthesized list, e.g.
-         * {@code $in: [(?,?)]}. The JDBC adapter strips the wrapping parentheses so the markers become valid MQL.
+         * Hibernate expands a multi-valued (collection) parameter into a SQL-style parenthesized list, e.g. {@code $in:
+         * [(?,?)]}. The JDBC adapter strips the wrapping parentheses so the markers become valid MQL.
          */
         @Test
         void testMultiValuedParameter() {
@@ -721,7 +720,6 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
          * real parameter marker in the same query is still bound. The {@code /^(ab)*str$/} regex matches the seed
          * item's {@code string} value {@code "str"} (the {@code (ab)*} group repeats zero times); were the grouping
          * parentheses stripped to {@code /^ab*str$/}, it would not match.
-         *
          */
         @Test
         void testRegexLiteralWithGroupingAlongsideParameter() {
@@ -743,10 +741,10 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
         /**
          * A regex {@code ?} quantifier cannot be combined with a named parameter in the same native query: Hibernate
-         * own parameter scanner ({@code org.hibernate.query.sql.internal.ParameterParser}) only recognizes
-         * {@code '} and {@code "} as literal contexts, so the unquoted {@code ?} inside {@code /st?r/} is treated as a
-         * JDBC ordinal marker and clashes with the named {@code :id} marker. This fails at query-construction time,
-         * before the JDBC adapter (and its regex-aware marker rewriting) ever runs.
+         * own parameter scanner ({@code org.hibernate.query.sql.internal.ParameterParser}) only recognizes {@code '}
+         * and {@code "} as literal contexts, so the unquoted {@code ?} inside {@code /st?r/} is treated as a JDBC
+         * ordinal marker and clashes with the named {@code :id} marker. This fails at query-construction time, before
+         * the JDBC adapter (and its regex-aware marker rewriting) ever runs.
          */
         @Test
         void testRegexLiteralWithQuestionMarkIsRejectedByHibernate() {

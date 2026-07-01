@@ -135,12 +135,11 @@ final class MongoConnection implements ConnectionAdapter {
     /**
      * Rewrites the JDBC parameter markers that Hibernate hard-codes into native queries into MQL.
      *
-     * <p>Hibernate always renders parameters using {@code ?} marker, and wraps a multi-valued
-     * (collection) parameter in a SQL-style parenthesized list, e.g. {@code $in: [(?,?,?)]}.
-     * Neither {@code ?} nor the surrounding parentheses are valid MQL, so before parsing we replace each {@code ?} with the BSON
-     * {@code undefined} marker (which {@link MongoPreparedStatement} binds) and drop the list-wrapping parentheses,
-     * turning {@code $in: [(?,?,?)]} into {@code $in: [{"$undefined": true},{"$undefined": true},{"$undefined":
-     * true}]}.
+     * <p>Hibernate always renders parameters using {@code ?} marker, and wraps a multi-valued (collection) parameter in
+     * a SQL-style parenthesized list, e.g. {@code $in: [(?,?,?)]}. Neither {@code ?} nor the surrounding parentheses
+     * are valid MQL, so before parsing we replace each {@code ?} with the BSON {@code undefined} marker (which
+     * {@link MongoPreparedStatement} binds) and drop the list-wrapping parentheses, turning {@code $in: [(?,?,?)]} into
+     * {@code $in: [{"$undefined": true},{"$undefined": true},{"$undefined": true}]}.
      *
      * <p>A {@code ?}, {@code (} or {@code )} is rewritten only when it is structural MQL syntax, i.e. outside any
      * literal. Two literal forms can legitimately contain those characters and must be copied verbatim:
