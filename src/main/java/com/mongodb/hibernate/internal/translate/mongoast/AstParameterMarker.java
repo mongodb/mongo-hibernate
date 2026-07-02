@@ -27,7 +27,11 @@ public final class AstParameterMarker implements AstValue {
 
     public static final AstParameterMarker INSTANCE = new AstParameterMarker();
 
-    /** The MQL ({@linkplain org.bson.json.JsonMode#EXTENDED extended JSON}) rendering of {@link #render}. */
+    /**
+     * The BSON {@code undefined} value in ({@linkplain org.bson.json.JsonMode#EXTENDED extended}) JSON. This is the
+     * marker the JDBC adapter parses and binds; a query parameter renders as the JDBC standard {@code ?} in MQL (see
+     * {@code MongoConstants#EXTENDED_JSON_WRITER_SETTINGS}), which the adapter rewrites to this before parsing.
+     */
     public static final String MARKER = "{\"$undefined\": true}";
 
     private AstParameterMarker() {}

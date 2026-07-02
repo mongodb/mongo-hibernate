@@ -141,40 +141,30 @@ final class MongoConnection implements ConnectionAdapter {
      * {@link MongoPreparedStatement} binds) and drop the list-wrapping parentheses, turning {@code $in: [(?,?,?)]} into
      * {@code $in: [{"$undefined": true},{"$undefined": true},{"$undefined": true}]}.
      *
-     * <p>A {@code ?}, {@code (} or {@code )} is rewritten only when it is structural MQL syntax, i.e. outside any
-     * literal. Two literal forms can legitimately contain those characters and must be copied verbatim:
+     * <p>A {@code ?}, {@code (} or {@code )} is rewritten only when it is structural MQL syntax, i.e. outside a string
+     * literal; the same characters inside a double-quoted string, e.g. {@code "a?b"}, are copied verbatim (respecting
+     * {@code \} escapes).
      *
-     * <ul>
-     *   <li>a double-quoted string, e.g. {@code "a?b"}, delimited by {@code "} with {@code \} escapes;
-     *   <li>a shell-style regular-expression literal that MongoDB extended JSON accepts in a value position, e.g.
-     *       {@code /a(bc)?d/i}, delimited by {@code /} with {@code \} escapes (a regex commonly contains {@code ?}
-     *       quantifiers and {@code (} {@code )} groups). Outside a string, a {@code /} can only begin such a literal
-     *       because MQL has no division operator.
-     * </ul>
+     * <p>Native queries must be written using MongoDB <a
+     * href="https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/">Extended JSON</a>.
      */
     static String translateParameterMarkers(String mql) {
         StringBuilder result = new StringBuilder(mql.length());
         boolean inString = false;
-        boolean inRegex = false;
         boolean escaped = false;
         for (int i = 0; i < mql.length(); i++) {
             var c = mql.charAt(i);
-            if (inString || inRegex) {
+            if (inString) {
                 result.append(c);
                 if (escaped) {
                     escaped = false;
                 } else if (c == '\\') {
                     escaped = true;
-                } else if (inString && c == '"') {
+                } else if (c == '"') {
                     inString = false;
-                } else if (inRegex && c == '/') {
-                    inRegex = false;
                 }
             } else if (c == '"') {
                 inString = true;
-                result.append(c);
-            } else if (c == '/') {
-                inRegex = true;
                 result.append(c);
             } else if (c == '?') {
                 result.append(AstParameterMarker.MARKER);

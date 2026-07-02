@@ -388,33 +388,6 @@ class MongoConnectionTests {
                       {"$match": {"name": "a \\" ? b"}}""";
             assertEquals(mql, MongoConnection.translateParameterMarkers(mql));
         }
-
-        @Test
-        @DisplayName("Does not touch `?`, `(`, or `)` inside a shell-style regex literal")
-        void testCharactersInsideRegexLiteralArePreserved() {
-            var mql = """
-                      {"$match": {"name": /a(bc)?d/i}}""";
-            assertEquals(mql, MongoConnection.translateParameterMarkers(mql));
-        }
-
-        @Test
-        @DisplayName("Treats an escaped slash as part of the regex literal")
-        void testEscapedSlashInsideRegexLiteral() {
-            var mql = """
-                      {"$match": {"name": /a\\/b?c/}}""";
-            assertEquals(mql, MongoConnection.translateParameterMarkers(mql));
-        }
-
-        @Test
-        @DisplayName("Still replaces a `?` marker that follows a regex literal")
-        void testMarkerAfterRegexLiteral() {
-            assertEquals(
-                    """
-                    {"$match": {"name": /ab?c/, "_id": {"$undefined": true}}}""",
-                    MongoConnection.translateParameterMarkers(
-                            """
-                            {"$match": {"name": /ab?c/, "_id": ?}}"""));
-        }
     }
 
     @Nested
