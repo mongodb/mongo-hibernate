@@ -279,6 +279,71 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     Set.of(Contact.COLLECTION_NAME));
         }
 
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        void testComparisonByIn(boolean negated) {
+            assertSelectionQuery(
+                    "from Contact where age %s in (?1, :foo, 7)".formatted(negated ? "not" : ""),
+                    Contact.class,
+                    q -> q.setParameter(1, 18).setParameter("foo", 35),
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "age": {
+                              "$%s": [18, 35, 7]
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }"""
+                            .formatted(negated ? "nin" : "in"),
+                    negated ? getTestingContacts(4, 5) : getTestingContacts(1, 2, 3),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        void testComparisonByInEmpty(boolean negated) {
+            assertSelectionQuery(
+                    "from Contact where age %s in ()".formatted(negated ? "not" : ""),
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "age": {
+                              "$%s": []
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }"""
+                            .formatted(negated ? "nin" : "in"),
+                    negated ? testingContacts : List.of(),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
         @Test
         void testAndFilter() {
             assertSelectionQuery(

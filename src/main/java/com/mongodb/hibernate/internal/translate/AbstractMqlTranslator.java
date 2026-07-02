@@ -44,6 +44,8 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.IN;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.NIN;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
@@ -82,6 +84,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilt
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
@@ -1046,7 +1049,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
-        throw new FeatureNotSupportedException();
+        var expression = inListPredicate.getTestExpression();
+        if (!isFieldPathExpression(expression)) {
+            throw new FeatureNotSupportedException(
+                    "Only the following list predicates are supported: field in [not] (...)");
+        }
+        var fieldPath = acceptAndYield(expression, FIELD_PATH);
+        var operator = inListPredicate.isNegated() ? NIN : IN;
+        var operation = new AstListComparisonFilterOperation(
+                operator,
+                inListPredicate.getListExpressions().stream()
+                        .map(item -> acceptAndYield(item, VALUE))
+                        .toList());
+        astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
     }
 
     @Override
