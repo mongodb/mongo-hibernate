@@ -19,15 +19,31 @@ package com.mongodb.hibernate.boot;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoClient;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoClient;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import java.time.Instant;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.CurrentTimestamp;
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.GeneratedColumn;
+import org.hibernate.annotations.SourceType;
 import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(MongoExtension.class)
-class NativeBootstrappingIntegrationTests {
+class NativeBootstrappingIntegrationTests extends AbstractQueryIntegrationTests
+        implements MongoServiceRegistryProducer {
     @InjectMongoClient
     private static MongoClient mongoClient;
 
@@ -52,5 +68,105 @@ class NativeBootstrappingIntegrationTests {
                 })
                 .hasRootCauseMessage(
                         "Could not instantiate [com.mongodb.hibernate.internal.dialect.MongoDialect], see the earlier exceptions to find out why");
+    }
+
+    @Nested
+    class Unsupported implements MongoServiceRegistryProducer {
+
+        @Entity(name = "ItemWithDbTimestamp")
+        @Table(name = "ItemWithDbTimestamp")
+        static class ItemWithDbTimestamp {
+            @Id
+            int id;
+
+            String string;
+
+            @Version
+            @CurrentTimestamp(source = SourceType.DB)
+            Instant version;
+        }
+
+        @Entity(name = "ItemWithGenerated")
+        @Table(name = "ItemWithGenerated")
+        static class ItemWithGenerated {
+            @Id
+            int id;
+
+            String string;
+
+            @Version
+            @Generated(sql = "does not matter")
+            Instant version;
+        }
+
+        @Entity(name = "ItemWithGeneratedColumn")
+        @Table(name = "ItemWithGeneratedColumn")
+        static class ItemWithGeneratedColumn {
+            @Id
+            int id;
+
+            String string;
+
+            @Version
+            @GeneratedColumn(value = "does not matter")
+            Instant version;
+        }
+
+        @Entity(name = "ItemWithGeneratedValue")
+        @Table(name = "ItemWithGeneratedValue")
+        static class ItemWithGeneratedValue {
+            @Id
+            @GeneratedValue
+            int id;
+
+            String string;
+        }
+
+        @Test
+        void testForbidCurrentTimestampSourceDbAnnotation() {
+            assertBootstrapThrows(() -> new MetadataSources()
+                            .addAnnotatedClass(
+                                    NativeBootstrappingIntegrationTests.Unsupported.ItemWithDbTimestamp.class)
+                            .buildMetadata(new StandardServiceRegistryBuilder().build())
+                            .buildSessionFactory())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage(
+                            "Field version of class com.mongodb.hibernate.boot.NativeBootstrappingIntegrationTests.Unsupported.ItemWithDbTimestamp is not supported: Annotation @CurrentTimestamp(source=DB) is forbidden");
+        }
+
+        @Test
+        void testForbidGeneratedAnnotation() {
+            assertBootstrapThrows(() -> new MetadataSources()
+                            .addAnnotatedClass(NativeBootstrappingIntegrationTests.Unsupported.ItemWithGenerated.class)
+                            .buildMetadata(new StandardServiceRegistryBuilder().build())
+                            .buildSessionFactory())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage(
+                            "Field version of class com.mongodb.hibernate.boot.NativeBootstrappingIntegrationTests.Unsupported.ItemWithGenerated is not supported: Annotation org.hibernate.annotations.Generated is forbidden");
+        }
+
+        @Test
+        void testForbidGeneratedValueAnnotation() {
+            assertBootstrapThrows(() -> new MetadataSources()
+                            .addAnnotatedClass(
+                                    NativeBootstrappingIntegrationTests.Unsupported.ItemWithGeneratedValue.class)
+                            .buildMetadata(new StandardServiceRegistryBuilder().build())
+                            .buildSessionFactory())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage(
+                            "Field id of class com.mongodb.hibernate.boot.NativeBootstrappingIntegrationTests.Unsupported.ItemWithGeneratedValue is not supported: Annotation jakarta.persistence.GeneratedValue is forbidden");
+        }
+
+        @Test
+        void testForbidGeneratedColumnAnnotation() {
+            assertBootstrapThrows(() -> new MetadataSources()
+                            .addAnnotatedClass(
+                                    NativeBootstrappingIntegrationTests.Unsupported.ItemWithGeneratedColumn.class)
+                            .buildMetadata(new StandardServiceRegistryBuilder().build())
+                            .buildSessionFactory())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage(
+                            "Field version of class com.mongodb.hibernate.boot.NativeBootstrappingIntegrationTests.Unsupported.ItemWithGeneratedColumn is not supported: Annotation org.hibernate.annotations.GeneratedColumn is forbidden");
+        }
     }
 }

@@ -468,8 +468,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                         .buildMetadata(new StandardServiceRegistryBuilder().build())
                         .buildSessionFactory())
                 .isInstanceOf(FeatureNotSupportedException.class)
-                .hasMessage(
-                        "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
+                .hasMessage("@ColumnTransformer expressions are not supported");
     }
 
     @Entity(name = "ItemWithColumnTransformer")

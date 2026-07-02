@@ -113,6 +113,6 @@ class JdbcTypeCodeIntegrationTests {
         assertThatThrownBy(() ->
                         new MetadataSources().addAnnotatedClass(entityClass).buildMetadata())
                 .isInstanceOf(FeatureNotSupportedException.class)
-                .hasMessageContaining("@JdbcTypeCode is not supported");
+                .hasMessageContaining("Annotation org.hibernate.annotations.JdbcTypeCode is forbidden");
     }
 }

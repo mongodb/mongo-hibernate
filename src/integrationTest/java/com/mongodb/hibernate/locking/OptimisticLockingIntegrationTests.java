@@ -524,18 +524,6 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
-
-        @Test
-        void testVersionWithCurrentTimestampSourceDbThrows() {
-            assertBootstrapThrows(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithDbTimestamp.class)
-                            .buildMetadata(new StandardServiceRegistryBuilder().build())
-                            .buildSessionFactory())
-                    .isInstanceOf(FeatureNotSupportedException.class)
-                    .hasMessage(
-                            "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
-        }
-
         @Test
         void testSecondaryTableThrows() {
             assertBootstrapThrows(() -> new MetadataSources()
@@ -557,19 +545,6 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage(
                             "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
-        }
-
-        @Entity(name = "ItemWithDbTimestamp")
-        @Table(name = "ItemWithDbTimestamp")
-        static class ItemWithDbTimestamp {
-            @Id
-            int id;
-
-            String string;
-
-            @Version
-            @CurrentTimestamp(source = SourceType.DB)
-            Instant version;
         }
 
         @Entity(name = "ItemWithSecondaryTable")
