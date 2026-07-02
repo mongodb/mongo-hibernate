@@ -22,7 +22,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
-import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.sql.Array;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -36,6 +35,14 @@ import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
 
 final class MongoConnection implements ConnectionAdapter {
+
+    /**
+     * The BSON {@code undefined} value in ({@linkplain org.bson.json.JsonMode#EXTENDED extended}) JSON, used to model a
+     * query parameter marker (see {@code AstParameterMarker}). A parameter renders as the JDBC standard {@code ?} in
+     * MQL (see {@code MongoConstants#EXTENDED_JSON_WRITER_SETTINGS}), which {@link #translateParameterMarkers} rewrites
+     * to this before parsing so that {@code MongoPreparedStatement} can bind it.
+     */
+    private static final String PARAMETER_MARKER = "{\"$undefined\": true}";
 
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
@@ -167,7 +174,7 @@ final class MongoConnection implements ConnectionAdapter {
                 inString = true;
                 result.append(c);
             } else if (c == '?') {
-                result.append(AstParameterMarker.MARKER);
+                result.append(PARAMETER_MARKER);
             } else if (c != '(' && c != ')') {
                 result.append(c);
             }
