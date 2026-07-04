@@ -392,14 +392,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
 
         var predicates = new ArrayList<AstFilter>(1 + tableMutation.getNumberOfOptimisticLockBindings());
-        predicates.add(createEqualityFiler(tableMutation.getKeyBindings().get(0)));
+        predicates.add(createEqualityFilter(tableMutation.getKeyBindings().get(0)));
         for (var lockBinding : tableMutation.getOptimisticLockBindings()) {
-            predicates.add(createEqualityFiler(lockBinding));
+            predicates.add(createEqualityFilter(lockBinding));
         }
         return predicates.size() == 1 ? predicates.get(0) : new AstLogicalFilter(AND, predicates);
     }
 
-    private AstFieldOperationFilter createEqualityFiler(ColumnValueBinding binding) {
+    private AstFieldOperationFilter createEqualityFilter(ColumnValueBinding binding) {
         var fieldPath = acceptAndYield(binding.getColumnReference(), FIELD_PATH);
         var fieldValue = acceptAndYield(binding.getValueExpression(), VALUE);
         return new AstFieldOperationFilter(fieldPath, new AstComparisonFilterOperation(EQ, fieldValue));
