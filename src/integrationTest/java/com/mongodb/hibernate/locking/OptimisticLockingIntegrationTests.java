@@ -533,7 +533,8 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
                             .buildSessionFactory()
                             .close())
                     .isInstanceOf(FeatureNotSupportedException.class)
-                    .hasMessage(null);
+                    .hasMessage(
+                            "TODO-HIBERNATE-195 https://jira.mongodb.org/browse/HIBERNATE-195: @CurrentTimestamp with DB as a source is not supported");
         }
 
         @Test

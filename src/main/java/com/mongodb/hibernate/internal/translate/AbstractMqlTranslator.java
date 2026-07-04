@@ -344,6 +344,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitColumnWriteFragment(ColumnWriteFragment columnWriteFragment) {
+        if (columnWriteFragment.getFragment().equals("current_timestamp")) {
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-195 https://jira.mongodb.org/browse/HIBERNATE-195: @CurrentTimestamp with DB as a source is not supported");
+        }
         if (columnWriteFragment.getParameters().size() != 1) {
             throw new FeatureNotSupportedException();
         }
