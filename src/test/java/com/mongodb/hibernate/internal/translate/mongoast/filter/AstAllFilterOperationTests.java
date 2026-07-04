@@ -32,7 +32,7 @@ class AstAllFilterOperationTests {
         assertAll(
                 () -> assertRendering(
                         """
-                        {"$all": {"$undefined": true}}""",
+                        {"$all": ?}""",
                         new AstAllFilterOperation(AstParameterMarker.INSTANCE)),
                 () -> assertRendering(
                         """

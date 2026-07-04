@@ -21,11 +21,11 @@ import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NA
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -34,6 +34,7 @@ import java.util.Set;
 import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.ColumnTransformer;
+import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -41,11 +42,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DomainModel(annotatedClasses = {Book.class, UpdatingIntegrationTests.Unsupported.ItemWithNestedValue.class})
+@DomainModel(
+        annotatedClasses = {
+            Book.class,
+            UpdatingIntegrationTests.ItemWithNestedValue.class,
+            UpdatingIntegrationTests.ItemWithPair.class
+        })
 class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private static MongoCollection<BsonDocument> booksCollection;
+
+    @InjectMongoCollection(COLLECTION_NAME)
+    private static MongoCollection<BsonDocument> itemsCollection;
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War & Peace", 1869, true),
@@ -87,7 +96,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                    ]
                 }
                 """,
-                mongoCollection,
+                booksCollection,
                 List.of(
                         BsonDocument.parse(
                                 """
@@ -178,7 +187,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                    ]
                 }
                 """,
-                mongoCollection,
+                booksCollection,
                 List.of(
                         BsonDocument.parse(
                                 """
@@ -265,7 +274,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                    ]
                 }
                 """,
-                mongoCollection,
+                booksCollection,
                 List.of(
                         BsonDocument.parse(
                                 """
@@ -361,53 +370,165 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     FeatureNotSupportedException.class,
                     "Path expression as update assignment value for field path [publishYear] is not supported");
         }
+    }
+
+    @Nested
+    class StructAggregateEmbeddablePathExpressionTests implements MongoServiceRegistryProducer {
+
+        @BeforeEach
+        void seed() {
+            getSessionFactoryScope()
+                    .inTransaction(session -> session.persist(
+                            new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(7))));
+            getTestCommandListener().clear();
+        }
 
         @Test
         void testStructAggregateEmbeddablePathExpressionAssignment() {
-            assertMutationQueryFailure(
+            assertMutationQuery(
                     "update ItemWithNestedValue set nested.a = 0",
-                    null,
-                    FeatureNotSupportedException.class,
-                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                    1,
+                    """
+                    {
+                      "update": "items",
+                      "updates": [
+                        {
+                          "q": {},
+                          "u": {
+                            "$set": {
+                              "nested.a": 0
+                            }
+                          },
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    itemsCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                      "_id": 1,
+                                      "nested": {
+                                        "a": 0
+                                      }
+                                    }""")),
+                    Set.of(COLLECTION_NAME));
+        }
+    }
+
+    @Nested
+    class StructAggregateEmbeddableMultiFieldPathExpressionTests implements MongoServiceRegistryProducer {
+
+        @BeforeEach
+        void seed() {
+            getSessionFactoryScope().inTransaction(session -> session.persist(new ItemWithPair(1, new Pair(10, 20))));
+            getTestCommandListener().clear();
         }
 
         @Test
-        void testColumnTransformerWriteExpressionThrows() {
-            Assertions.assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithColumnTransformer.class)
-                            .buildMetadata(new StandardServiceRegistryBuilder().build())
-                            .buildSessionFactory()
-                            .close())
-                    .isInstanceOf(FeatureNotSupportedException.class)
-                    .hasMessage(
-                            "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
+        void testStructAggregateEmbeddableMultiFieldAssignment() {
+            assertMutationQuery(
+                    "update ItemWithPair set pair.a = 1, pair.b = 2",
+                    1,
+                    """
+                    {
+                      "update": "items",
+                      "updates": [
+                        {
+                          "q": {},
+                          "u": {
+                            "$set": {
+                              "pair.a": 1,
+                              "pair.b": 2
+                            }
+                          },
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    itemsCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {
+                                      "_id": 1,
+                                      "pair": {
+                                        "a": 1,
+                                        "b": 2
+                                      }
+                                    }""")),
+                    Set.of(COLLECTION_NAME));
         }
+    }
 
-        @Entity(name = "ItemWithNestedValue")
-        @Table(name = COLLECTION_NAME)
-        static class ItemWithNestedValue {
-            @Id
-            int id;
+    @Test
+    void testColumnTransformerWriteExpressionThrows() {
+        Assertions.assertThatThrownBy(() -> new MetadataSources()
+                        .addAnnotatedClass(ItemWithColumnTransformer.class)
+                        .buildMetadata(new StandardServiceRegistryBuilder().build())
+                        .buildSessionFactory()
+                        .close())
+                .isInstanceOf(FeatureNotSupportedException.class)
+                .hasMessage(
+                        "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
+    }
 
-            StructAggregateEmbeddableIntegrationTests.Single nested;
+    @Entity(name = "ItemWithColumnTransformer")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithColumnTransformer {
+        @Id
+        int id;
 
-            ItemWithNestedValue() {}
+        @ColumnTransformer(write = "test(?)")
+        String value;
 
-            ItemWithNestedValue(StructAggregateEmbeddableIntegrationTests.Single nested) {
-                this.nested = nested;
-            }
+        ItemWithColumnTransformer() {}
+    }
+
+    @Entity(name = "ItemWithNestedValue")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithNestedValue {
+        @Id
+        int id;
+
+        StructAggregateEmbeddableIntegrationTests.Single nested;
+
+        ItemWithNestedValue() {}
+
+        ItemWithNestedValue(int id, StructAggregateEmbeddableIntegrationTests.Single nested) {
+            this.id = id;
+            this.nested = nested;
         }
+    }
 
-        @Entity(name = "ItemWithColumnTransformer")
-        @Table(name = COLLECTION_NAME)
-        static class ItemWithColumnTransformer {
-            @Id
-            int id;
+    @Embeddable
+    @Struct(name = "Pair")
+    static class Pair {
+        int a;
+        int b;
 
-            @ColumnTransformer(write = "test(?)")
-            String value;
+        Pair() {}
 
-            ItemWithColumnTransformer() {}
+        Pair(int a, int b) {
+            this.a = a;
+            this.b = b;
+        }
+    }
+
+    @Entity(name = "ItemWithPair")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithPair {
+        @Id
+        int id;
+
+        Pair pair;
+
+        ItemWithPair() {}
+
+        ItemWithPair(int id, Pair pair) {
+            this.id = id;
+            this.pair = pair;
         }
     }
 }

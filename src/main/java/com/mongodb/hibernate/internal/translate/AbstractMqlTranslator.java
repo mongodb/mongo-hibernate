@@ -618,9 +618,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException();
             }
             var field = acceptAndYield(columnReference, FIELD_PATH);
-            AstProjectStageSpecification spec = field.startsWith(JOIN_ALIAS_PREFIX)
-                    ? new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field)
-                    : new AstProjectStageIncludeSpecification(field);
+            AstProjectStageSpecification spec;
+            if (field.startsWith(JOIN_ALIAS_PREFIX)) {
+                spec = new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field);
+            } else if (field.contains(".")) {
+                spec = new AstProjectStageFieldPathSpecification(nestFieldProjectionKey(field), field);
+            } else {
+                spec = new AstProjectStageIncludeSpecification(field);
+            }
             projectStageSpecifications.add(spec);
         }
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
@@ -651,6 +656,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Converts the internal "#qualifier.field" path to the "qualifier#field" projection key.
     private static String joinFieldProjectionKey(String joinedFieldPath) {
         return joinedFieldPath.substring(JOIN_ALIAS_PREFIX.length()).replace('.', '#');
+    }
+
+    private static String nestFieldProjectionKey(String field) {
+        return field.replace('.', '#');
     }
 
     private static @Nullable ColumnReference extractColumnReference(Expression expression) {

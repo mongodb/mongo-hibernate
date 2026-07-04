@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.service;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DIALECT_SHORT_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
 import static java.lang.String.format;
@@ -168,7 +169,7 @@ public final class StandardServiceRegistryScopedState implements Service {
         private static MongoConfiguration createMongoConfiguration(
                 Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
             var jdbcUrl = configurationValues.get(JAKARTA_JDBC_URL);
-            var mongoConfigurationContributor = getMongoConfigurationContributor(serviceRegistry);
+            var mongoConfigurationContributor = getMongoConfigurationContributor(configurationValues, serviceRegistry);
             if (jdbcUrl == null && mongoConfigurationContributor == null) {
                 throw new HibernateException(format(
                         "Configuration property [%s] is required unless %s is provided",
@@ -183,7 +184,13 @@ public final class StandardServiceRegistryScopedState implements Service {
         }
 
         private static @Nullable MongoConfigurationContributor getMongoConfigurationContributor(
-                ServiceRegistryImplementor serviceRegistry) {
+                Map<String, Object> configurationValues, ServiceRegistryImplementor serviceRegistry) {
+            // The JPA properties map is checked first — before the service registry —
+            // so Spring Boot auto-configuration can bridge a contributor without touching Hibernate internals.
+            if (configurationValues.get(MONGO_CONFIGURATION_CONTRIBUTOR_KEY)
+                    instanceof MongoConfigurationContributor contributor) {
+                return contributor;
+            }
             MongoConfigurationContributor result = null;
             try {
                 result = serviceRegistry.getService(MongoConfigurationContributor.class);

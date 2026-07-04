@@ -39,9 +39,8 @@ import com.mongodb.hibernate.BasicCrudIntegrationTests;
 import com.mongodb.hibernate.BasicCrudIntegrationTests.Item;
 import com.mongodb.hibernate.embeddable.EmbeddableIntegrationTests;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
-import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
+import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.ColumnResult;
 import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.Entity;
@@ -62,16 +61,11 @@ import org.bson.types.ObjectId;
 import org.hibernate.query.QueryProducer;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
-import org.hibernate.testing.orm.junit.SessionFactory;
-import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-@SessionFactory(exportSchema = false)
 @DomainModel(
         annotatedClasses = {
             Item.class,
@@ -83,9 +77,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections.class
         })
 @ServiceRegistry(settings = {@Setting(name = WRAPPER_ARRAY_HANDLING, value = "allow")})
-@ExtendWith(MongoExtension.class)
-class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
-    private SessionFactoryScope sessionFactoryScope;
+class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
     private Item item;
     private ItemWithFlattenedValue itemWithFlattenedValue;
     private ItemWithFlattenedValueHavingArraysAndCollections itemWithFlattenedValueHavingArraysAndCollections;
@@ -94,11 +86,6 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
     private ItemWithArrayAndCollectionValues itemWithArrayAndCollectionValues;
     private ItemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections
             itemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections;
-
-    @Override
-    public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
-        this.sessionFactoryScope = sessionFactoryScope;
-    }
 
     @BeforeEach
     void beforeEach() {
@@ -249,7 +236,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                         7,
                         new StructAggregateEmbeddableIntegrationTests.ArraysAndCollections[] {arraysAndCollections},
                         List.of(arraysAndCollections));
-        sessionFactoryScope.inTransaction(session -> {
+        getSessionFactoryScope().inTransaction(session -> {
             session.persist(item);
             session.persist(itemWithFlattenedValue);
             session.persist(itemWithFlattenedValueHavingArraysAndCollections);
@@ -258,6 +245,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
             session.persist(itemWithArrayAndCollectionValues);
             session.persist(itemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections);
         });
+        // Discard the insert commands from seeding so tests can assert only their own query command.
+        getTestCommandListener().clear();
     }
 
     /**
@@ -269,7 +258,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
      */
     @Test
     void testEntity() {
-        sessionFactoryScope.inSession(session -> {
+        getSessionFactoryScope().inSession(session -> {
             assertAll(
                     () -> {
                         var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), Item.projectAll()));
@@ -334,69 +323,78 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
      */
     @Test
     void testScalar() {
-        sessionFactoryScope.inSession(session -> assertAll(
-                () -> {
-                    var mql = mql(
-                            COLLECTION_NAME,
-                            List.of(
-                                    match(eq(item.id)),
-                                    exclude(Item.projectAll(), List.of("primitiveChar", "boxedChar"))));
-                    assertEq(
-                            new Object[] {
-                                item.id,
-                                item.primitiveInt,
-                                item.primitiveLong,
-                                item.primitiveDouble,
-                                item.primitiveBoolean,
-                                item.boxedInt,
-                                item.boxedLong,
-                                item.boxedDouble,
-                                item.boxedBoolean,
-                                item.string,
-                                item.bigDecimal,
-                                item.objectId,
-                                item.instant
-                            },
-                            session.createNativeQuery(mql, Object[].class).getSingleResult());
-                },
-                () -> {
-                    var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), project(include("primitiveChar"))));
-                    assertEq(
-                            item.primitiveChar,
-                            session.createNativeQuery(mql, char.class).getSingleResult());
-                },
-                () -> {
-                    var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), project(include("boxedChar"))));
-                    assertEq(
-                            item.boxedChar,
-                            session.createNativeQuery(mql, Character.class).getSingleResult());
-                },
-                () -> {
-                    var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), project(include("objectId"))));
-                    assertEq(
-                            item.objectId,
-                            session.createNativeQuery(mql, ObjectId.class).getSingleResult());
-                },
-                () -> {
-                    var mql = mql(
-                            COLLECTION_NAME, List.of(match(eq(itemWithNestedValue.id)), project(include("nested"))));
-                    assertEq(
-                            itemWithNestedValue.nested,
-                            session.createNativeQuery(mql, StructAggregateEmbeddableIntegrationTests.Plural.class)
-                                    .getSingleResult());
-                },
-                () -> {
-                    var mql = mql(
-                            COLLECTION_NAME,
-                            List.of(
-                                    match(eq(itemWithNestedValueHavingArraysAndCollections.id)),
-                                    project(include("nested"))));
-                    assertEq(
-                            itemWithNestedValueHavingArraysAndCollections.nested,
-                            session.createNativeQuery(
-                                            mql, StructAggregateEmbeddableIntegrationTests.ArraysAndCollections.class)
-                                    .getSingleResult());
-                }));
+        getSessionFactoryScope()
+                .inSession(session -> assertAll(
+                        () -> {
+                            var mql = mql(
+                                    COLLECTION_NAME,
+                                    List.of(
+                                            match(eq(item.id)),
+                                            exclude(Item.projectAll(), List.of("primitiveChar", "boxedChar"))));
+                            assertEq(
+                                    new Object[] {
+                                        item.id,
+                                        item.primitiveInt,
+                                        item.primitiveLong,
+                                        item.primitiveDouble,
+                                        item.primitiveBoolean,
+                                        item.boxedInt,
+                                        item.boxedLong,
+                                        item.boxedDouble,
+                                        item.boxedBoolean,
+                                        item.string,
+                                        item.bigDecimal,
+                                        item.objectId,
+                                        item.instant
+                                    },
+                                    session.createNativeQuery(mql, Object[].class)
+                                            .getSingleResult());
+                        },
+                        () -> {
+                            var mql = mql(
+                                    COLLECTION_NAME, List.of(match(eq(item.id)), project(include("primitiveChar"))));
+                            assertEq(
+                                    item.primitiveChar,
+                                    session.createNativeQuery(mql, char.class).getSingleResult());
+                        },
+                        () -> {
+                            var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), project(include("boxedChar"))));
+                            assertEq(
+                                    item.boxedChar,
+                                    session.createNativeQuery(mql, Character.class)
+                                            .getSingleResult());
+                        },
+                        () -> {
+                            var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), project(include("objectId"))));
+                            assertEq(
+                                    item.objectId,
+                                    session.createNativeQuery(mql, ObjectId.class)
+                                            .getSingleResult());
+                        },
+                        () -> {
+                            var mql = mql(
+                                    COLLECTION_NAME,
+                                    List.of(match(eq(itemWithNestedValue.id)), project(include("nested"))));
+                            assertEq(
+                                    itemWithNestedValue.nested,
+                                    session.createNativeQuery(
+                                                    mql, StructAggregateEmbeddableIntegrationTests.Plural.class)
+                                            .getSingleResult());
+                        },
+                        () -> {
+                            var mql = mql(
+                                    COLLECTION_NAME,
+                                    List.of(
+                                            match(eq(itemWithNestedValueHavingArraysAndCollections.id)),
+                                            project(include("nested"))));
+                            assertEq(
+                                    itemWithNestedValueHavingArraysAndCollections.nested,
+                                    session.createNativeQuery(
+                                                    mql,
+                                                    StructAggregateEmbeddableIntegrationTests.ArraysAndCollections
+                                                            .class)
+                                            .getSingleResult());
+                        }));
     }
 
     /**
@@ -408,7 +406,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
     class Dto implements MongoServiceRegistryProducer {
         @Test
         void testBasicValues() {
-            sessionFactoryScope.inSession(session -> {
+            getSessionFactoryScope().inSession(session -> {
                 var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), Item.projectAll()));
                 assertAll(
                         () -> assertEq(
@@ -440,7 +438,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
         @Test
         void testEmbeddableValue() {
-            sessionFactoryScope.inSession(session -> {
+            getSessionFactoryScope().inSession(session -> {
                 var mql = mql(
                         COLLECTION_NAME,
                         List.of(match(eq(itemWithFlattenedValue.id)), ItemWithFlattenedValue.projectFlattened()));
@@ -477,7 +475,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
         @Test
         void testEmbeddableValueHavingArraysAndCollections() {
-            sessionFactoryScope.inSession(session -> {
+            getSessionFactoryScope().inSession(session -> {
                 var mql = mql(
                         COLLECTION_NAME,
                         List.of(
@@ -499,8 +497,8 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                                                 ItemWithFlattenedValueHavingArraysAndCollections
                                                         .MAPPING_FOR_FLATTENED_VALUE,
                                                 Tuple.class)
-                                        .setTupleTransformer((tuple, aliases) ->
-                                                new EmbeddableIntegrationTests.ArraysAndCollections(
+                                        .setTupleTransformer(
+                                                (tuple, aliases) -> new EmbeddableIntegrationTests.ArraysAndCollections(
                                                         (byte[]) tuple[0],
                                                         (char[]) tuple[1],
                                                         (int[]) tuple[2],
@@ -534,7 +532,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
         @Test
         void testArrayAndCollectionValues() {
-            sessionFactoryScope.inSession(session -> {
+            getSessionFactoryScope().inSession(session -> {
                 var mql = mql(
                         COLLECTION_NAME,
                         List.of(
@@ -586,7 +584,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
 
         @Test
         void testArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections() {
-            sessionFactoryScope.inSession(session -> {
+            getSessionFactoryScope().inSession(session -> {
                 var mql = mql(
                         COLLECTION_NAME,
                         List.of(
@@ -628,6 +626,128 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
         }
     }
 
+    /**
+     * See <a href="https://docs.hibernate.org/orm/7.4/userguide/html_single/#sql-query-parameters">Using parameters in
+     * native queries</a>.
+     *
+     * <p>Hibernate hard-codes the JDBC {@code ?} marker for native queries, and expands a multi-valued parameter into a
+     * SQL-style parenthesized list. Neither is valid MQL, so the JDBC adapter rewrites the markers in
+     * {@link com.mongodb.hibernate.internal.jdbc.MongoConnection#prepareStatement(String)} before parsing.
+     */
+    @Nested
+    class WithParameters implements MongoServiceRegistryProducer {
+        private static String projectAllJson() {
+            return Item.projectAll().toBsonDocument().toJson(EXTENDED_JSON_WRITER_SETTINGS);
+        }
+
+        private static BsonDocument matchByIdCommand(int id) {
+            return BsonDocument.parse(
+                    """
+                    {"aggregate": "%s", "pipeline": [{"$match": {"%s": %d }}, %s]}"""
+                            .formatted(COLLECTION_NAME, ID_FIELD_NAME, id, projectAllJson()));
+        }
+
+        @Test
+        void testSingleNamedParameter() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql = """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id }}, %s]}"""
+                        .formatted(COLLECTION_NAME, ID_FIELD_NAME, projectAllJson());
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .getSingleResult());
+                assertActualCommandsInOrder(matchByIdCommand(item.id));
+            });
+        }
+
+        @Test
+        void testOrdinalParameter() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql = """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": ?1 }}, %s]}"""
+                        .formatted(COLLECTION_NAME, ID_FIELD_NAME, projectAllJson());
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter(1, item.id)
+                                .getSingleResult());
+                assertActualCommandsInOrder(matchByIdCommand(item.id));
+            });
+        }
+
+        @Test
+        void testMultipleNamedParameters() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": :string }}, %s]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, projectAllJson());
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .setParameter("string", item.string)
+                                .getSingleResult());
+                assertActualCommandsInOrder(BsonDocument.parse(
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": %d, "string": "%s" }}, %s]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, item.id, item.string, projectAllJson())));
+            });
+        }
+
+        /**
+         * Hibernate expands a multi-valued (collection) parameter into a SQL-style parenthesized list, e.g. {@code $in:
+         * [(?,?)]}. The JDBC adapter strips the wrapping parentheses so the markers become valid MQL, which the command
+         * assertion confirms by expecting a flat {@code $in} array of the bound values.
+         */
+        @Test
+        void testMultiValuedParameter() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": {"$in": [:ids] }}}, %s]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, projectAllJson());
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("ids", List.of(item.id, 999))
+                                .getSingleResult());
+                assertActualCommandsInOrder(BsonDocument.parse(
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": {"$in": [%d, 999] }}}, %s]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, item.id, projectAllJson())));
+            });
+        }
+
+        /**
+         * A regular expression written in Extended JSON may contain {@code (}/{@code )} (grouping) and {@code ?}
+         * (quantifier), but only inside the double-quoted {@code pattern} string, so the marker rewrite leaves it
+         * untouched while still binding a real parameter elsewhere in the query. The {@code ^(ab)*str$} pattern matches
+         * the seed item's {@code string} value {@code "str"} (the {@code (ab)*} group repeats zero times); the command
+         * assertion confirms the pattern reaches the server intact.
+         */
+        @Test
+        void testExtendedJsonRegexAlongsideParameter() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql =
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": :id, "string": {"$regularExpression": {"pattern": "^(ab)*str$", "options": ""}} }}, %s]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, projectAllJson());
+                assertEq(
+                        item,
+                        session.createNativeQuery(mql, Item.class)
+                                .setParameter("id", item.id)
+                                .getSingleResult());
+                assertActualCommandsInOrder(BsonDocument.parse(
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": %d, "string": {"$regularExpression": {"pattern": "^(ab)*str$", "options": ""}} }}, %s]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, item.id, projectAllJson())));
+            });
+        }
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         /**
@@ -639,7 +759,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
          */
         @Test
         void testEntityWithAggregateEmbeddableValue() {
-            sessionFactoryScope.inSession(session -> {
+            getSessionFactoryScope().inSession(session -> {
                 assertAll(
                         () -> {
                             var mql = mql(
@@ -648,7 +768,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                             assertThatThrownBy(() -> session.createNativeQuery(mql, ItemWithNestedValue.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                                    .hasMessageContaining("Unknown column label [nested.");
                         },
                         () -> {
                             var mql = mql(
@@ -660,7 +780,7 @@ class NativeQueryIntegrationTests implements SessionFactoryScopeAware, MongoServ
                                                     mql, ItemWithNestedValueHavingArraysAndCollections.class)
                                             .getSingleResult())
                                     .hasRootCauseInstanceOf(SQLException.class)
-                                    .hasMessageContaining(MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
+                                    .hasMessageContaining("Unknown column label [nested.");
                         });
             });
         }

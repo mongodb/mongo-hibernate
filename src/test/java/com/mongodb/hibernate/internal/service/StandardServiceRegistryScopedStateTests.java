@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.service;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DIALECT_SHORT_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,7 +25,9 @@ import static org.hibernate.cfg.AvailableSettings.DIALECT;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.internal.jdbc.MongoConnectionProvider;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
@@ -95,6 +98,25 @@ class StandardServiceRegistryScopedStateTests {
             assertThatThrownBy(() -> standardServiceRegistry.requireService(StandardServiceRegistryScopedState.class))
                     .hasRootCauseMessage("[hibernate.dialect] must be set to [MongoDB]");
         }
+    }
+
+    @Test
+    void contributorFromConfigurationValuesIsInvoked() {
+        var called = new AtomicBoolean(false);
+        MongoConfigurationContributor contributor = cfg -> called.set(true);
+
+        var builder = new StandardServiceRegistryBuilder()
+                .clearSettings()
+                .applySetting(JAKARTA_JDBC_URL, "mongodb://localhost/db")
+                .applySetting(DIALECT, MONGO_DIALECT_SHORT_NAME);
+        new StandardServiceRegistryScopedState.ServiceContributor().contribute(builder);
+        // Simulate what MongoHibernateAutoConfiguration does: put the contributor in settings
+        builder.applySetting(MONGO_CONFIGURATION_CONTRIBUTOR_KEY, contributor);
+
+        try (var registry = builder.build()) {
+            registry.requireService(StandardServiceRegistryScopedState.class);
+        }
+        assertThat(called).isTrue();
     }
 
     @Test
