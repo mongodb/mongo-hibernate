@@ -57,6 +57,7 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
         MongoAggregateSupport.checkSupported(mql);
+        System.err.println(mql);
         this.command = MongoStatement.parse(mql);
         this.commandBatch = new ArrayList<>();
         this.parameterValueSetters = new ArrayList<>();

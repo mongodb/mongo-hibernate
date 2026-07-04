@@ -344,8 +344,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitColumnWriteFragment(ColumnWriteFragment columnWriteFragment) {
-        if (columnWriteFragment.getParameters().size() != 1) {
-            throw new FeatureNotSupportedException();
+        if (!columnWriteFragment.getFragment().equals("?")) {
+            throw new FeatureNotSupportedException(
+                    "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
         }
         columnWriteFragment.getParameters().iterator().next().accept(this);
     }

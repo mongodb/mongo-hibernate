@@ -533,7 +533,8 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
                             .buildSessionFactory()
                             .close())
                     .isInstanceOf(FeatureNotSupportedException.class)
-                    .hasMessage(null);
+                    .hasMessage(
+                            "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
         }
 
         @Test

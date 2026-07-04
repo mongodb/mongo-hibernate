@@ -31,7 +31,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
+import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.ColumnTransformer;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -367,6 +371,18 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
         }
 
+        @Test
+        void testColumnTransformerWriteExpressionThrows() {
+            Assertions.assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(ItemWithColumnTransformer.class)
+                            .buildMetadata(new StandardServiceRegistryBuilder().build())
+                            .buildSessionFactory()
+                            .close())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage(
+                            "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
+        }
+
         @Entity(name = "ItemWithNestedValue")
         @Table(name = COLLECTION_NAME)
         static class ItemWithNestedValue {
@@ -380,6 +396,18 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
             ItemWithNestedValue(StructAggregateEmbeddableIntegrationTests.Single nested) {
                 this.nested = nested;
             }
+        }
+
+        @Entity(name = "ItemWithColumnTransformer")
+        @Table(name = COLLECTION_NAME)
+        static class ItemWithColumnTransformer {
+            @Id
+            int id;
+
+            @ColumnTransformer(write = "test(?)")
+            String value;
+
+            ItemWithColumnTransformer() {}
         }
     }
 }
