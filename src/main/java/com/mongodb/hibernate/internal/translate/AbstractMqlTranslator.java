@@ -371,12 +371,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (tableUpdate.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
-        var keyFilter = createKeyFilter(tableUpdate);
-        List<ColumnValueBinding> valueBindings = tableUpdate.getValueBindings();
-        String tableName = tableUpdate.getMutatingTable().getTableName();
+        var murationResult = createMutationResult(
+                tableUpdate.getValueBindings(),
+                tableUpdate.getMutatingTable().getTableName(),
+                createKeyFilter(tableUpdate));
+        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, murationResult);
+    }
+
+    private ModelMutationMqlTranslator.Result createMutationResult(
+            List<ColumnValueBinding> valueBindings, String tableName, AstFilter keyFilter) {
         var astUpdateCommand = createAstUpdateCommand(valueBindings, tableName, keyFilter);
-        astVisitorValueHolder.yield(
-                MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders));
+        return ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders);
     }
 
     private AstFilter createKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
@@ -1191,12 +1196,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (optionalTableUpdate.getMutatingTable().getTableMapping().isOptional()) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
         }
-        var keyFilter = createKeyFilter(optionalTableUpdate);
-        List<ColumnValueBinding> valueBindings = optionalTableUpdate.getValueBindings();
-        String tableName = optionalTableUpdate.getMutatingTable().getTableName();
-        var astUpdateCommand = createAstUpdateCommand(valueBindings, tableName, keyFilter);
-        astVisitorValueHolder.yield(
-                MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders));
+        var murationResult = createMutationResult(
+                optionalTableUpdate.getValueBindings(),
+                optionalTableUpdate.getMutatingTable().getTableName(),
+                createKeyFilter(optionalTableUpdate));
+        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, murationResult);
     }
 
     @Override
