@@ -372,11 +372,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (tableUpdate.getWhereFragment() != null) {
             throw new FeatureNotSupportedException();
         }
-        var murationResult = createMutationResult(
+        var mutationResult = createMutationResult(
                 tableUpdate.getValueBindings(),
                 tableUpdate.getMutatingTable().getTableName(),
                 createKeyFilter(tableUpdate));
-        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, murationResult);
+        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, mutationResult);
     }
 
     private ModelMutationMqlTranslator.Result createMutationResult(

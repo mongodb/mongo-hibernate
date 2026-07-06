@@ -55,8 +55,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             MongoDatabase mongoDatabase, ClientSession clientSession, MongoConnection mongoConnection, String mql)
             throws SQLSyntaxErrorException {
         super(mongoDatabase, clientSession, mongoConnection);
-        MongoAggregateSupport.checkSupported(mql);
-        System.err.println(mql);
         this.command = MongoStatement.parse(mql);
         this.commandBatch = new ArrayList<>();
         this.parameterValueSetters = new ArrayList<>();
