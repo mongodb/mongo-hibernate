@@ -824,7 +824,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
         var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
         for (var valueBinding : valueBindings) {
-            var fieldName = valueBinding.getColumnReference().getColumnExpression();
+            var fieldName = acceptAndYield(valueBinding.getColumnReference(), FIELD_PATH);
             var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
