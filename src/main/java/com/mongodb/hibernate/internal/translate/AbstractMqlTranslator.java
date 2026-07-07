@@ -1206,11 +1206,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (optionalTableUpdate.getMutatingTable().getTableMapping().isOptional()) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
         }
-        var murationResult = createMutationResult(
+        var mutationResult = createMutationResult(
                 optionalTableUpdate.getValueBindings(),
                 optionalTableUpdate.getMutatingTable().getTableName(),
                 createKeyFilter(optionalTableUpdate));
-        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, murationResult);
+        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, mutationResult);
     }
 
     @Override
