@@ -18,14 +18,15 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.BasicCrudIntegrationTests.Item.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import com.mongodb.hibernate.internal.dialect.MongoAggregateSupport;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import com.mongodb.hibernate.query.Book;
+import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -34,6 +35,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import org.hibernate.annotations.Struct;
 import org.hibernate.query.SemanticException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +48,9 @@ import org.junit.jupiter.params.provider.ValueSource;
         annotatedClasses = {
             SimpleSelectQueryIntegrationTests.Contact.class,
             Book.class,
-            SimpleSelectQueryIntegrationTests.Unsupported.ItemWithNestedValue.class
+            SimpleSelectQueryIntegrationTests.ItemWithNestedValue.class,
+            SimpleSelectQueryIntegrationTests.ItemWithDeeplyNestedValue.class,
+            SimpleSelectQueryIntegrationTests.ItemWithPair.class
         })
 class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     @Test
@@ -272,6 +276,71 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                       ]
                     }""",
                     getTestingContacts(1, 2, 4, 5),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        void testComparisonByIn(boolean negated) {
+            assertSelectionQuery(
+                    "from Contact where age %s in (?1, :foo, 7)".formatted(negated ? "not" : ""),
+                    Contact.class,
+                    q -> q.setParameter(1, 18).setParameter("foo", 35),
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "age": {
+                              "$%s": [18, 35, 7]
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }"""
+                            .formatted(negated ? "nin" : "in"),
+                    negated ? getTestingContacts(4, 5) : getTestingContacts(1, 2, 3),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        void testComparisonByInEmpty(boolean negated) {
+            assertSelectionQuery(
+                    "from Contact where age %s in ()".formatted(negated ? "not" : ""),
+                    Contact.class,
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "age": {
+                              "$%s": []
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }"""
+                            .formatted(negated ? "nin" : "in"),
+                    negated ? testingContacts : List.of(),
                     Set.of(Contact.COLLECTION_NAME));
         }
 
@@ -1120,39 +1189,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     FeatureNotSupportedException.class,
                     "Only the following nullness predicates are supported: field is [not] null");
         }
-
-        @Test
-        void testStructAggregateEmbeddablePathExpressionSelection() {
-            assertSelectQueryFailure(
-                    "select nested.a from ItemWithNestedValue",
-                    int.class,
-                    FeatureNotSupportedException.class,
-                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
-        }
-
-        @Test
-        void testStructAggregateEmbeddablePathExpressionComparison() {
-            assertSelectQueryFailure(
-                    "from ItemWithNestedValue where nested.a = 0",
-                    ItemWithNestedValue.class,
-                    FeatureNotSupportedException.class,
-                    MongoAggregateSupport.UNSUPPORTED_MESSAGE_PREFIX);
-        }
-
-        @Entity(name = "ItemWithNestedValue")
-        @Table(name = COLLECTION_NAME)
-        static class ItemWithNestedValue {
-            @Id
-            int id;
-
-            StructAggregateEmbeddableIntegrationTests.Single nested;
-
-            ItemWithNestedValue() {}
-
-            ItemWithNestedValue(StructAggregateEmbeddableIntegrationTests.Single nested) {
-                this.nested = nested;
-            }
-        }
     }
 
     @Nested
@@ -1401,5 +1437,292 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     enum Country {
         USA,
         CANADA
+    }
+
+    @Entity(name = "ItemWithNestedValue")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithNestedValue {
+        @Id
+        int id;
+
+        StructAggregateEmbeddableIntegrationTests.Single nested;
+
+        ItemWithNestedValue() {}
+
+        ItemWithNestedValue(int id, StructAggregateEmbeddableIntegrationTests.Single nested) {
+            this.id = id;
+            this.nested = nested;
+        }
+    }
+
+    @Embeddable
+    @Struct(name = "Pair")
+    static class Pair {
+        int a;
+        int b;
+
+        Pair() {}
+
+        Pair(int a, int b) {
+            this.a = a;
+            this.b = b;
+        }
+    }
+
+    @Entity(name = "ItemWithPair")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithPair {
+        @Id
+        int id;
+
+        Pair pair;
+
+        ItemWithPair() {}
+
+        ItemWithPair(int id, Pair pair) {
+            this.id = id;
+            this.pair = pair;
+        }
+    }
+
+    @Embeddable
+    @Struct(name = "OuterStruct")
+    static class OuterStruct {
+        InnerStruct inner;
+
+        OuterStruct() {}
+
+        OuterStruct(InnerStruct inner) {
+            this.inner = inner;
+        }
+    }
+
+    @Embeddable
+    @Struct(name = "InnerStruct")
+    static class InnerStruct {
+        int a;
+
+        InnerStruct() {}
+
+        InnerStruct(int a) {
+            this.a = a;
+        }
+    }
+
+    @Entity(name = "ItemWithDeeplyNestedValue")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithDeeplyNestedValue {
+        @Id
+        int id;
+
+        OuterStruct outer;
+
+        ItemWithDeeplyNestedValue() {}
+
+        ItemWithDeeplyNestedValue(int id, OuterStruct outer) {
+            this.id = id;
+            this.outer = outer;
+        }
+    }
+
+    @Nested
+    class StructAggregateEmbeddablePathExpressionTests implements MongoServiceRegistryProducer {
+
+        @BeforeEach
+        void seed() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.persist(new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(0)));
+                session.persist(new ItemWithNestedValue(2, new StructAggregateEmbeddableIntegrationTests.Single(2)));
+            });
+            getTestCommandListener().clear();
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionComparison() {
+            assertSelectionQuery(
+                    "from ItemWithNestedValue where nested.a = 0",
+                    ItemWithNestedValue.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "nested.a": {
+                              "$eq": 0
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "nested": true
+                          }
+                        }
+                      ],
+                      "cursor": {}
+                    }""",
+                    resultList -> assertThat(resultList).singleElement().satisfies(item -> assertThat(item.nested.a)
+                            .isEqualTo(0)),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionSelection() {
+            assertSelectionQuery(
+                    "select nested.a from ItemWithNestedValue",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "nested#a": "$nested.a"
+                          }
+                        }
+                      ],
+                      "cursor": {}
+                    }""",
+                    List.of(0, 2),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void testStructAggregateEmbeddablePathExpressionSelectAndFilter() {
+            assertSelectionQuery(
+                    "select nested.a from ItemWithNestedValue where nested.a = 2",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "nested.a": {
+                              "$eq": 2
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "nested#a": "$nested.a"
+                          }
+                        }
+                      ],
+                      "cursor": {}
+                    }""",
+                    List.of(2),
+                    Set.of(COLLECTION_NAME));
+        }
+    }
+
+    @Nested
+    class StructAggregateEmbeddableMultiFieldPathExpressionTests implements MongoServiceRegistryProducer {
+
+        @BeforeEach
+        void seed() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.persist(new ItemWithPair(1, new Pair(10, 20)));
+                session.persist(new ItemWithPair(2, new Pair(30, 40)));
+            });
+            getTestCommandListener().clear();
+        }
+
+        @Test
+        void testStructAggregateEmbeddableMultiFieldProjection() {
+            assertSelectionQuery(
+                    "select pair.a, pair.b from ItemWithPair",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "pair#a": "$pair.a",
+                            "pair#b": "$pair.b"
+                          }
+                        }
+                      ],
+                      "cursor": {}
+                    }""",
+                    resultList -> assertThat(resultList)
+                            .satisfiesExactlyInAnyOrder(
+                                    row -> {
+                                        assertThat(((Object[]) row)[0]).isEqualTo(10);
+                                        assertThat(((Object[]) row)[1]).isEqualTo(20);
+                                    },
+                                    row -> {
+                                        assertThat(((Object[]) row)[0]).isEqualTo(30);
+                                        assertThat(((Object[]) row)[1]).isEqualTo(40);
+                                    }),
+                    Set.of(COLLECTION_NAME));
+        }
+    }
+
+    @Nested
+    class StructAggregateEmbeddableTwoLevelPathExpressionTests implements MongoServiceRegistryProducer {
+
+        @BeforeEach
+        void seed() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.persist(new ItemWithDeeplyNestedValue(1, new OuterStruct(new InnerStruct(1))));
+                session.persist(new ItemWithDeeplyNestedValue(2, new OuterStruct(new InnerStruct(5))));
+            });
+            getTestCommandListener().clear();
+        }
+
+        @Test
+        void testStructAggregateEmbeddableTwoLevelPathExpression() {
+            assertSelectionQuery(
+                    "from ItemWithDeeplyNestedValue where outer.inner.a = 1",
+                    ItemWithDeeplyNestedValue.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "outer.inner.a": {
+                              "$eq": 1
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "outer": true
+                          }
+                        }
+                      ],
+                      "cursor": {}
+                    }""",
+                    resultList -> assertThat(resultList)
+                            .singleElement()
+                            .satisfies(item -> assertThat(item.outer.inner.a).isEqualTo(1)),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void testStructAggregateEmbeddableTwoLevelPathExpressionSelection() {
+            assertSelectionQuery(
+                    "select outer.inner.a from ItemWithDeeplyNestedValue",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "outer#inner#a": "$outer.inner.a"
+                          }
+                        }
+                      ],
+                      "cursor": {}
+                    }""",
+                    List.of(1, 5),
+                    Set.of(COLLECTION_NAME));
+        }
     }
 }

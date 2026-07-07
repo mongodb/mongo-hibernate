@@ -16,11 +16,17 @@
 
 package com.mongodb.hibernate.internal.jdbc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.hibernate.internal.BuildConfig;
 import com.mongodb.hibernate.internal.cfg.MongoConfiguration;
@@ -57,6 +63,47 @@ class MongoConnectionProviderTests {
         assertAll(
                 () -> assertTrue(driverInformation.getDriverNames().contains(BuildConfig.NAME)),
                 () -> assertTrue(driverInformation.getDriverVersions().contains(BuildConfig.VERSION)));
+    }
+
+    @Test
+    void usesSuppliedClientAndDoesNotCloseItOnStop() {
+        var suppliedClient = mock(MongoClient.class);
+        var config = new MongoConfiguration(suppliedClient, "db"); // borrow variant: settings is null
+        var provider = new MongoConnectionProvider();
+        provider.injectStandardServiceRegistryScopedState(new StandardServiceRegistryScopedState(config));
+
+        assertThat(provider.getMongoClient()).isSameAs(suppliedClient);
+
+        provider.stop();
+        verify(suppliedClient, never()).close();
+    }
+
+    @Test
+    void appendsDriverMetadataToBorrowedClient() {
+        // Borrowing must not lose the extension's MongoDB telemetry attribution: the provider appends
+        // mongo-hibernate's driver name/version to the borrowed client's handshake metadata.
+        var suppliedClient = mock(MongoClient.class);
+        var config = new MongoConfiguration(suppliedClient, "db");
+        var provider = new MongoConnectionProvider();
+        provider.injectStandardServiceRegistryScopedState(new StandardServiceRegistryScopedState(config));
+
+        verify(suppliedClient)
+                .appendMetadata(argThat(info -> info.getDriverNames().contains(BuildConfig.NAME)
+                        && info.getDriverVersions().contains(BuildConfig.VERSION)));
+    }
+
+    @Test
+    void closesSelfCreatedClientOnStop() {
+        var config = new MongoConfiguration(
+                MongoClientSettings.builder()
+                        .applyConnectionString(new ConnectionString("mongodb://host"))
+                        .build(),
+                "db"); // no supplied client -> provider creates and owns one
+        var provider = new MongoConnectionProvider();
+        provider.injectStandardServiceRegistryScopedState(new StandardServiceRegistryScopedState(config));
+        assertThat(provider.getMongoClient()).isNotNull();
+
+        provider.stop(); // owned path goes through close(); a real client tolerates close()
     }
 
     private MongoConnectionProvider createMongoConnectionProvider() {

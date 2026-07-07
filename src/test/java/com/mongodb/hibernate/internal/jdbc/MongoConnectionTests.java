@@ -342,6 +342,55 @@ class MongoConnectionTests {
     }
 
     @Nested
+    class TranslateParameterMarkersTests {
+
+        @Test
+        @DisplayName("Leaves MQL without parameter markers unchanged")
+        void testNoMarkers() {
+            var mql = """
+                      {"aggregate": "items", "pipeline": [{"$match": {"_id": 1}}]}""";
+            assertEquals(mql, MongoConnection.translateParameterMarkers(mql));
+        }
+
+        @Test
+        @DisplayName("Replaces a single `?` marker with the BSON undefined marker")
+        void testSingleMarker() {
+            assertEquals(
+                    """
+                    {"$match": {"_id": {"$undefined": true} }}""",
+                    MongoConnection.translateParameterMarkers(
+                            """
+                            {"$match": {"_id": ? }}"""));
+        }
+
+        @Test
+        @DisplayName("Strips list-wrapping parentheses and replaces each `?` marker for a multi-valued parameter")
+        void testMultiValuedMarkerList() {
+            assertEquals(
+                    """
+                    {"$in": [{"$undefined": true},{"$undefined": true},{"$undefined": true}]}""",
+                    MongoConnection.translateParameterMarkers("""
+                            {"$in": [(?,?,?)]}"""));
+        }
+
+        @Test
+        @DisplayName("Does not touch `?`, `(`, or `)` inside a string literal")
+        void testCharactersInsideStringLiteralArePreserved() {
+            var mql = """
+                      {"$match": {"name": "what? (really)"}}""";
+            assertEquals(mql, MongoConnection.translateParameterMarkers(mql));
+        }
+
+        @Test
+        @DisplayName("Treats an escaped quote as part of the string literal")
+        void testEscapedQuoteInsideStringLiteral() {
+            var mql = """
+                      {"$match": {"name": "a \\" ? b"}}""";
+            assertEquals(mql, MongoConnection.translateParameterMarkers(mql));
+        }
+    }
+
+    @Nested
     class ResultSetSupportTests {
 
         private static final String EXAMPLE_MQL = "{}";

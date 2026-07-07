@@ -55,7 +55,7 @@ tasks.withType<Javadoc> {
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/bson/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-core/",
                 "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-sync/",
-                "https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/",
+                "https://jspecify.dev/docs/api",
             )
         // specify the custom `@mongoCme` `javadoc` block tag
         tags("mongoCme:TM:Concurrency, Mutability, Execution\\:")
@@ -146,7 +146,9 @@ dependencies {
     errorprone(libs.nullaway)
     errorprone(libs.google.errorprone.core)
 
+    implementation(platform(libs.hibernate.platform))
     api(libs.hibernate.core)
+    implementation(libs.hibernate.models)
     api(libs.mongo.java.driver.sync)
     // We need the `libs.findbugs.jsr` dependency to stop `javadoc` from emitting
     // `warning: unknown enum constant When.MAYBE`

@@ -25,12 +25,29 @@ public final class MongoConstants {
 
     private MongoConstants() {}
 
-    public static final JsonWriterSettings EXTENDED_JSON_WRITER_SETTINGS =
-            JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+    /**
+     * We model a query parameter marker as the BSON {@code undefined} value (see {@code AstParameterMarker}) and render
+     * it here as the JDBC standard {@code ?} marker (unquoted, hence {@link org.bson.json.StrictJsonWriter#writeRaw}).
+     * That way parameterized queries look the same in Hibernate ORM's SQL logs whether they originate from HQL or from
+     * a native query. The JDBC adapter turns {@code ?} back into the BSON {@code undefined} marker before binding, so
+     * {@code {"$undefined": true}} never escapes the driver.
+     */
+    public static final JsonWriterSettings EXTENDED_JSON_WRITER_SETTINGS = JsonWriterSettings.builder()
+            .outputMode(JsonMode.EXTENDED)
+            .undefinedConverter((value, writer) -> writer.writeRaw("?"))
+            .build();
 
     public static final String MONGO_DBMS_NAME = "MongoDB";
     public static final String MONGO_JDBC_DRIVER_NAME = MONGO_DBMS_NAME + " Java Driver JDBC Adapter";
     public static final String ID_FIELD_NAME = "_id";
 
     public static final String MONGO_DIALECT_SHORT_NAME = "MongoDB";
+
+    /**
+     * JPA property key used to pass a {@code MongoConfigurationContributor} object via the JPA properties map. Read by
+     * {@code StandardServiceRegistryScopedState}, written by {@code MongoHibernateAutoConfiguration} in the Spring Boot
+     * autoconfigure module (which duplicates this string as a private constant since it cannot access this internal
+     * class).
+     */
+    public static final String MONGO_CONFIGURATION_CONTRIBUTOR_KEY = "com.mongodb.hibernate.configurationContributor";
 }

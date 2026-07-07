@@ -36,6 +36,14 @@ import org.jspecify.annotations.Nullable;
 
 final class MongoConnection implements ConnectionAdapter {
 
+    /**
+     * The BSON {@code undefined} value in ({@linkplain org.bson.json.JsonMode#EXTENDED extended}) JSON, used to model a
+     * query parameter marker (see {@code AstParameterMarker}). A parameter renders as the JDBC standard {@code ?} in
+     * MQL (see {@code MongoConstants#EXTENDED_JSON_WRITER_SETTINGS}), which {@link #translateParameterMarkers} rewrites
+     * to this before parsing so that {@code MongoPreparedStatement} can bind it.
+     */
+    private static final String PARAMETER_MARKER = "{\"$undefined\": true}";
+
     private final MongoClient mongoClient;
     private final ClientSession clientSession;
     private final MongoDatabase mongoDatabase;
@@ -131,6 +139,49 @@ final class MongoConnection implements ConnectionAdapter {
         return prepareStatement(mql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
     }
 
+    /**
+     * Rewrites the JDBC parameter markers that Hibernate hard-codes into native queries into MQL.
+     *
+     * <p>Hibernate always renders parameters using {@code ?} marker, and wraps a multi-valued (collection) parameter in
+     * a SQL-style parenthesized list, e.g. {@code $in: [(?,?,?)]}. Neither {@code ?} nor the surrounding parentheses
+     * are valid MQL, so before parsing we replace each {@code ?} with the BSON {@code undefined} marker (which
+     * {@link MongoPreparedStatement} binds) and drop the list-wrapping parentheses, turning {@code $in: [(?,?,?)]} into
+     * {@code $in: [{"$undefined": true},{"$undefined": true},{"$undefined": true}]}.
+     *
+     * <p>A {@code ?}, {@code (} or {@code )} is rewritten only when it is structural MQL syntax, i.e. outside a string
+     * literal; the same characters inside a double-quoted string, e.g. {@code "a?b"}, are copied verbatim (respecting
+     * {@code \} escapes).
+     *
+     * <p>Native queries must be written using MongoDB <a
+     * href="https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/">Extended JSON</a>.
+     */
+    static String translateParameterMarkers(String mql) {
+        StringBuilder result = new StringBuilder(mql.length());
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = 0; i < mql.length(); i++) {
+            var c = mql.charAt(i);
+            if (inString) {
+                result.append(c);
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+            } else if (c == '"') {
+                inString = true;
+                result.append(c);
+            } else if (c == '?') {
+                result.append(PARAMETER_MARKER);
+            } else if (c != '(' && c != ')') {
+                result.append(c);
+            }
+        }
+        return result.toString();
+    }
+
     @Override
     public PreparedStatement prepareStatement(String mql, int resultSetType, int resultSetConcurrency)
             throws SQLException {
@@ -143,7 +194,7 @@ final class MongoConnection implements ConnectionAdapter {
             throw new SQLFeatureNotSupportedException(
                     "Unsupported result set concurrency (only CONCUR_READ_ONLY is supported): " + resultSetConcurrency);
         }
-        return new MongoPreparedStatement(mongoDatabase, clientSession, this, mql);
+        return new MongoPreparedStatement(mongoDatabase, clientSession, this, translateParameterMarkers(mql));
     }
 
     @Override

@@ -44,6 +44,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
+import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.hibernate.type.descriptor.ValueExtractor;
 import org.hibernate.type.descriptor.WrapperOptions;
@@ -66,6 +67,7 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
 
     public static final MongoStructJdbcType INSTANCE = new MongoStructJdbcType();
     public static final JDBCType JDBC_TYPE = JDBCType.STRUCT;
+    public static final int HIBERNATE_SQL_TYPE = SqlTypes.STRUCT;
 
     private final transient @Nullable EmbeddableMappingType embeddableMappingType;
     private final @Nullable String structTypeName;

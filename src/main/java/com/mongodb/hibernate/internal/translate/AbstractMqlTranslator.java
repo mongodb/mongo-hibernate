@@ -44,9 +44,12 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LT;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.LTE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.IN;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.NIN;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
+import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 
@@ -82,7 +85,9 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilt
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
@@ -613,9 +618,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException();
             }
             var field = acceptAndYield(columnReference, FIELD_PATH);
-            AstProjectStageSpecification spec = field.startsWith(JOIN_ALIAS_PREFIX)
-                    ? new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field)
-                    : new AstProjectStageIncludeSpecification(field);
+            AstProjectStageSpecification spec;
+            if (field.startsWith(JOIN_ALIAS_PREFIX)) {
+                spec = new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field);
+            } else if (field.contains(".")) {
+                spec = new AstProjectStageFieldPathSpecification(nestFieldProjectionKey(field), field);
+            } else {
+                spec = new AstProjectStageIncludeSpecification(field);
+            }
             projectStageSpecifications.add(spec);
         }
         astVisitorValueHolder.yield(PROJECT_STAGE_SPECIFICATIONS, projectStageSpecifications);
@@ -646,6 +656,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Converts the internal "#qualifier.field" path to the "qualifier#field" projection key.
     private static String joinFieldProjectionKey(String joinedFieldPath) {
         return joinedFieldPath.substring(JOIN_ALIAS_PREFIX.length()).replace('.', '#');
+    }
+
+    private static String nestFieldProjectionKey(String field) {
+        return field.replace('.', '#');
     }
 
     private static @Nullable ColumnReference extractColumnReference(Expression expression) {
@@ -1037,7 +1051,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
-        throw new FeatureNotSupportedException();
+        var expression = inListPredicate.getTestExpression();
+        if (!isFieldPathExpression(expression)) {
+            throw new FeatureNotSupportedException(
+                    "Only the following list predicates are supported: field in [not] (...)");
+        }
+        var fieldPath = acceptAndYield(expression, FIELD_PATH);
+        var operator = inListPredicate.isNegated() ? NIN : IN;
+        var operation = new AstListComparisonFilterOperation(
+                operator,
+                inListPredicate.getListExpressions().stream()
+                        .map(item -> acceptAndYield(item, VALUE))
+                        .toList());
+        astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
     }
 
     @Override
@@ -1124,7 +1150,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitLikePredicate(LikePredicate likePredicate) {
-        throw new FeatureNotSupportedException();
+        Character escape = null;
+        if (likePredicate.getEscapeCharacter() != null) {
+            escape = extractLiteral(likePredicate.getEscapeCharacter(), Character.class, "escape character in LIKE");
+        }
+        var pattern = extractLiteral(likePredicate.getPattern(), String.class, "pattern in LIKE");
+
+        var fieldPath = acceptAndYield(likePredicate.getMatchExpression(), FIELD_PATH);
+        final var filter = new AstFieldOperationFilter(
+                fieldPath,
+                new AstRegularExpressionFilterOperation(
+                        quoteMeta(pattern, escape), likePredicate.isCaseSensitive() ? "s" : "is"));
+        astVisitorValueHolder.yield(
+                FILTER, likePredicate.isNegated() ? new AstLogicalFilter(NOR, List.of(filter)) : filter);
     }
 
     @Override
@@ -1333,6 +1371,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 throw new FeatureNotSupportedException("Only single table from clause is supported");
             }
         }
+    }
+
+    private static <T> T extractLiteral(Expression expression, Class<T> type, String context) {
+        if (expression instanceof Literal literal) {
+            if (type.isInstance(literal.getLiteralValue())) {
+                return type.cast(literal.getLiteralValue());
+            }
+        }
+        throw new FeatureNotSupportedException(String.format(
+                "Expression must be a literal %s in %s, but other expression was found.",
+                type.getSimpleName(), context));
     }
 
     private record EquijoinFields(String localField, String foreignField) {}

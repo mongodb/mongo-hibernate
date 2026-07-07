@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
 import org.bson.types.ObjectId;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.Parent;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
@@ -734,6 +735,15 @@ public class StructAggregateEmbeddableIntegrationTests
         }
 
         @Test
+        void testCustomReadExpression() {
+            assertThatThrownBy(() -> new MetadataSources()
+                            .addAnnotatedClass(ItemWithNestedValueHavingCustomRead.class)
+                            .buildMetadata())
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("on an aggregate embeddable field is not supported");
+        }
+
+        @Test
         void testNonInsertable() {
             var item = new ItemWithNestedValueHavingNonInsertable(1, new PairHavingNonInsertable(2, 3));
             assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
@@ -798,6 +808,15 @@ public class StructAggregateEmbeddableIntegrationTests
             @Id
             Single id;
         }
+
+        @Entity
+        @Table(name = COLLECTION_NAME)
+        record ItemWithNestedValueHavingCustomRead(@Id int id, SingleHavingCustomRead nested) {}
+
+        @Embeddable
+        @Struct(name = "SingleHavingCustomRead")
+        record SingleHavingCustomRead(
+                @ColumnTransformer(read = "a * 5") int a) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)
