@@ -36,7 +36,6 @@ import java.util.function.Supplier;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
-import org.hibernate.SessionFactory;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.MutationQuery;
@@ -259,10 +258,10 @@ public abstract class AbstractQueryIntegrationTests
     }
 
     protected static AbstractThrowableAssert<?, ? extends Throwable> assertBootstrapThrows(
-            Supplier<SessionFactory> sessionFactorySupplier) {
+            Supplier<org.hibernate.SessionFactory> sessionFactorySupplier) {
         return assertThatThrownBy(() -> {
             try (var sessionFactory = sessionFactorySupplier.get()) {
-                // if the supplier succeeded, close the SessionFactory
+                assertThat(sessionFactory).isNotNull();
             }
         });
     }
