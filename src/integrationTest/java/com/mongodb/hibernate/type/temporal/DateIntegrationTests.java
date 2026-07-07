@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.type.temporal;
 
-import static com.mongodb.hibernate.type.temporal.CalendarIntegrationTests.assertNotSupported;
+import static com.mongodb.hibernate.type.UnsupportedTypeAssertions.assertNotSupported;
 import static com.mongodb.hibernate.type.temporal.UnsupportedItems.DateItems;
 import static org.junit.jupiter.api.Assertions.assertAll;
 

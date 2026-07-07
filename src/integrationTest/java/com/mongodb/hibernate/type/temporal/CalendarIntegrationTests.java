@@ -16,12 +16,10 @@
 
 package com.mongodb.hibernate.type.temporal;
 
+import static com.mongodb.hibernate.type.UnsupportedTypeAssertions.assertNotSupported;
 import static com.mongodb.hibernate.type.temporal.UnsupportedItems.CalendarItems;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import org.hibernate.boot.MetadataSources;
 import org.junit.jupiter.api.Test;
 
 class CalendarIntegrationTests {
@@ -57,13 +55,5 @@ class CalendarIntegrationTests {
                 () -> assertNotSupported(
                         CalendarItems.WithNestedAggregateEmbeddableWithCollectionPersistentAttribute.class),
                 () -> assertNotSupported(CalendarItems.WithNestedCollectionOfAggregateEmbeddable.class));
-    }
-
-    // package-private because it's used by all the tests in this package
-    static void assertNotSupported(Class<?> entityClass) {
-        assertThatThrownBy(() ->
-                        new MetadataSources().addAnnotatedClass(entityClass).buildMetadata())
-                .isInstanceOf(FeatureNotSupportedException.class)
-                .hasMessageMatching(".*persistent attribute .* has .*type .* that is not supported");
     }
 }
