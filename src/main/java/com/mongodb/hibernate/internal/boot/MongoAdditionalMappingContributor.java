@@ -149,17 +149,38 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     /** Forbid usage of {@link JdbcTypeCode} annotation. */
     private static void forbidJdbcTypeCodeAnnotation(PersistentClass persistentClass) {
         forbidJdbcTypeCodeAnnotationOnClass(persistentClass, persistentClass.getMappedClass());
+        forbidJdbcTypeCodeAnnotationOnIdentifier(persistentClass);
         forbidJdbcTypeCodeAnnotationOnProperties(persistentClass, persistentClass.getProperties());
+    }
+
+    private static void forbidJdbcTypeCodeAnnotationOnIdentifier(PersistentClass persistentClass) {
+        var identifierProperty = persistentClass.getIdentifierProperty();
+        if (identifierProperty != null) {
+            forbidJdbcTypeCodeAnnotationOnProperties(persistentClass, java.util.List.of(identifierProperty));
+        }
+        if (persistentClass.getIdentifier() instanceof Component component) {
+            forbidJdbcTypeCodeAnnotationOnComponent(persistentClass, component);
+        }
     }
 
     private static void forbidJdbcTypeCodeAnnotationOnProperties(
             PersistentClass persistentClass, java.util.List<Property> properties) {
         properties.forEach(property -> {
-            if (property.getValue() instanceof Component component) {
-                forbidJdbcTypeCodeAnnotationOnClass(persistentClass, component.getComponentClass());
-                forbidJdbcTypeCodeAnnotationOnProperties(persistentClass, component.getProperties());
+            var value = property.getValue();
+            if (value instanceof Component component) {
+                forbidJdbcTypeCodeAnnotationOnComponent(persistentClass, component);
+            } else if (!value.getColumns().isEmpty()
+                    && value.getColumns().get(0) instanceof AggregateColumn aggregateColumn) {
+                // Embeddables mapped via an AggregateColumn (e.g. arrays/collections of @Struct embeddables) hang
+                // their Component off the AggregateColumn rather than off the property value itself.
+                forbidJdbcTypeCodeAnnotationOnComponent(persistentClass, aggregateColumn.getComponent());
             }
         });
+    }
+
+    private static void forbidJdbcTypeCodeAnnotationOnComponent(PersistentClass persistentClass, Component component) {
+        forbidJdbcTypeCodeAnnotationOnClass(persistentClass, component.getComponentClass());
+        forbidJdbcTypeCodeAnnotationOnProperties(persistentClass, component.getProperties());
     }
 
     /** Forbid usage of {@link JdbcTypeCode} annotation on the given class and its superclasses. */

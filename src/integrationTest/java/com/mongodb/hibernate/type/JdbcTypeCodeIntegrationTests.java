@@ -21,11 +21,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Types;
+import java.util.List;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
 import org.junit.jupiter.api.Test;
 
@@ -53,6 +56,16 @@ class JdbcTypeCodeIntegrationTests {
     @Test
     void entityWithJdbcTypeCodeInSuperclass() {
         assertNotSupported(ItemInheritingJdbcTypeCode.class);
+    }
+
+    @Test
+    void entityWithJdbcTypeCodeInEmbeddedId() {
+        assertNotSupported(ItemWithJdbcTypeCodeInEmbeddedId.class);
+    }
+
+    @Test
+    void entityWithJdbcTypeCodeInStructArray() {
+        assertNotSupported(ItemWithJdbcTypeCodeInStructArray.class);
     }
 
     @Entity
@@ -107,6 +120,35 @@ class JdbcTypeCodeIntegrationTests {
 
         @Embedded
         OuterEmbeddable outer;
+    }
+
+    @Embeddable
+    static class EmbeddableIdWithJdbcTypeCode {
+        @JdbcTypeCode(Types.INTEGER)
+        int key;
+    }
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithJdbcTypeCodeInEmbeddedId {
+        @EmbeddedId
+        EmbeddableIdWithJdbcTypeCode id;
+    }
+
+    @Embeddable
+    @Struct(name = "structWithJdbcTypeCode")
+    static class StructWithJdbcTypeCode {
+        @JdbcTypeCode(Types.INTEGER)
+        int value;
+    }
+
+    @Entity
+    @Table(name = "items")
+    static class ItemWithJdbcTypeCodeInStructArray {
+        @Id
+        int id;
+
+        List<StructWithJdbcTypeCode> structs;
     }
 
     private static void assertNotSupported(Class<?> entityClass) {
