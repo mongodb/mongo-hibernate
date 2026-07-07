@@ -19,6 +19,7 @@ package com.mongodb.hibernate.type;
 import static com.mongodb.hibernate.type.UnsupportedTypeAssertions.assertNotSupported;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Converter;
@@ -323,6 +324,7 @@ class UnsupportedTypesIntegrationTests {
         assertThatThrownBy(() -> new MetadataSources()
                         .addAnnotatedClass(BsonInt32Item.class)
                         .buildMetadata())
+                .isNotInstanceOf(FeatureNotSupportedException.class)
                 .hasMessageContaining("org.bson.BsonInt32");
     }
 
