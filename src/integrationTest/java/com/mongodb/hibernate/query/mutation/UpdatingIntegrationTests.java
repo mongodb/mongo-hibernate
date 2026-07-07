@@ -31,7 +31,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
-import org.assertj.core.api.Assertions;
 import org.bson.BsonDocument;
 import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.Struct;
@@ -464,11 +463,10 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Test
     void testColumnTransformerWriteExpressionThrows() {
-        Assertions.assertThatThrownBy(() -> new MetadataSources()
+        assertBootstrapThrows(() -> new MetadataSources()
                         .addAnnotatedClass(ItemWithColumnTransformer.class)
                         .buildMetadata(new StandardServiceRegistryBuilder().build())
-                        .buildSessionFactory()
-                        .close())
+                        .buildSessionFactory())
                 .isInstanceOf(FeatureNotSupportedException.class)
                 .hasMessage(
                         "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");

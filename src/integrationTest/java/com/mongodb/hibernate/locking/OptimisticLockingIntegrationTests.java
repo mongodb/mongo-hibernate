@@ -527,11 +527,10 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         @Test
         void testVersionWithCurrentTimestampSourceDbThrows() {
-            assertThatThrownBy(() -> new MetadataSources()
+            assertBootstrapThrows(() -> new MetadataSources()
                             .addAnnotatedClass(ItemWithDbTimestamp.class)
                             .buildMetadata(new StandardServiceRegistryBuilder().build())
-                            .buildSessionFactory()
-                            .close())
+                            .buildSessionFactory())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage(
                             "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
@@ -539,11 +538,10 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         @Test
         void testSecondaryTableThrows() {
-            assertThatThrownBy(() -> new MetadataSources()
+            assertBootstrapThrows(() -> new MetadataSources()
                             .addAnnotatedClass(ItemWithSecondaryTable.class)
                             .buildMetadata(new StandardServiceRegistryBuilder().build())
-                            .buildSessionFactory()
-                            .close())
+                            .buildSessionFactory())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage(
                             "TODO-HIBERNATE-181 https://jira.mongodb.org/browse/HIBERNATE-181 @SecondaryTable is not supported");
@@ -551,12 +549,11 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         @Test
         void testJoinedInheritanceThrows() {
-            assertThatThrownBy(() -> new MetadataSources()
+            assertBootstrapThrows(() -> new MetadataSources()
                             .addAnnotatedClass(ItemWithJoinedInheritanceBase.class)
                             .addAnnotatedClass(ItemWithJoinedInheritanceChild.class)
                             .buildMetadata(new StandardServiceRegistryBuilder().build())
-                            .buildSessionFactory()
-                            .close())
+                            .buildSessionFactory())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage(
                             "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69 JOINED inheritance is not supported");
