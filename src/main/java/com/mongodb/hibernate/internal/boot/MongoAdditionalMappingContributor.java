@@ -27,6 +27,7 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import java.lang.reflect.AnnotatedElement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -53,6 +54,7 @@ import org.bson.types.Decimal128;
 import org.bson.types.MaxKey;
 import org.bson.types.MinKey;
 import org.bson.types.Symbol;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -137,6 +139,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             checkPropertyTypes(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
+            forbidJdbcTypeCodeAnnotation(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
     }
@@ -174,6 +177,41 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                     Embeddable.class.getSimpleName(),
                     Embeddable.class.getSimpleName(),
                     Struct.class.getSimpleName()));
+        }
+    }
+
+    /** Forbid usage of {@link JdbcTypeCode} annotation. */
+    private static void forbidJdbcTypeCodeAnnotation(PersistentClass persistentClass) {
+        forbidJdbcTypeCodeAnnotationOnClass(persistentClass, persistentClass.getMappedClass());
+        forbidJdbcTypeCodeAnnotationOnProperties(persistentClass, persistentClass.getProperties());
+    }
+
+    private static void forbidJdbcTypeCodeAnnotationOnProperties(
+            PersistentClass persistentClass, java.util.List<Property> properties) {
+        properties.forEach(property -> {
+            if (property.getValue() instanceof Component component) {
+                forbidJdbcTypeCodeAnnotationOnClass(persistentClass, component.getComponentClass());
+                forbidJdbcTypeCodeAnnotationOnProperties(persistentClass, component.getProperties());
+            }
+        });
+    }
+
+    /** Forbid usage of {@link JdbcTypeCode} annotation on the given class and its superclasses. */
+    private static void forbidJdbcTypeCodeAnnotationOnClass(PersistentClass persistentClass, Class<?> clazz) {
+        for (var c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (var field : c.getDeclaredFields()) {
+                forbidJdbcTypeCodeAnnotationOnElement(persistentClass, field);
+            }
+            for (var method : c.getDeclaredMethods()) {
+                forbidJdbcTypeCodeAnnotationOnElement(persistentClass, method);
+            }
+        }
+    }
+
+    private static void forbidJdbcTypeCodeAnnotationOnElement(
+            PersistentClass persistentClass, AnnotatedElement element) {
+        if (element.isAnnotationPresent(JdbcTypeCode.class)) {
+            throw new FeatureNotSupportedException(format("%s: @JdbcTypeCode is not supported", persistentClass));
         }
     }
 
