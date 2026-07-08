@@ -651,17 +651,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     "TODO-HIBERNATE-196");
         }
 
-        // A boolean junction (AND/OR) in expression position is not a supported expression; it must
-        // surface as FeatureNotSupportedException, not an internal descriptor-mismatch assertion.
-        @Test
-        void testBooleanJunctionInSelectIsUnsupported() {
-            assertSelectQueryFailure(
-                    "select x > 1 and y < 2 from Item",
-                    Boolean.class,
-                    FeatureNotSupportedException.class,
-                    "Expression not supported");
-        }
-
         // HQL's `%` is rewritten to a mod() function call (not the MODULO operator), so it hits the
         // unsupported-function path, unlike Criteria's cb.mod which produces the MODULO operator.
         @Test
