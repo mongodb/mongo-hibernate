@@ -40,6 +40,20 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.UUID;
+import org.bson.BsonDocument;
+import org.bson.BsonDocumentWrapper;
+import org.bson.Document;
+import org.bson.RawBsonDocument;
+import org.bson.types.BSONTimestamp;
+import org.bson.types.Binary;
+import org.bson.types.Code;
+import org.bson.types.CodeWScope;
+import org.bson.types.CodeWithScope;
+import org.bson.types.Decimal128;
+import org.bson.types.MaxKey;
+import org.bson.types.MinKey;
+import org.bson.types.Symbol;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.Metadata;
@@ -74,6 +88,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$", "#");
 
     private static final Set<Class<?>> UNSUPPORTED_TYPES = Set.of(
+            // Temporal types
             Calendar.class,
             Time.class,
             Date.class,
@@ -83,7 +98,24 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             LocalDateTime.class,
             ZonedDateTime.class,
             OffsetTime.class,
-            OffsetDateTime.class);
+            OffsetDateTime.class,
+            // BSON value types
+            BSONTimestamp.class,
+            Binary.class,
+            Code.class,
+            CodeWithScope.class,
+            CodeWScope.class,
+            MinKey.class,
+            MaxKey.class,
+            Symbol.class,
+            Decimal128.class,
+            // BSON document types
+            Document.class,
+            BsonDocument.class,
+            RawBsonDocument.class,
+            BsonDocumentWrapper.class,
+            // java.util types
+            UUID.class);
 
     public MongoAdditionalMappingContributor() {}
 
@@ -203,12 +235,13 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             if (columns.get(0) instanceof AggregateColumn aggregateColumn) {
                 checkComponentPropertyTypes(persistentClass, aggregateColumn.getComponent(), propertyPath);
             } else {
-                forbidTemporalTypes(persistentClass, pluralType.getElementType().getJavaType(), true, propertyPath);
+                forbidUnsupportedTypes(
+                        persistentClass, pluralType.getElementType().getJavaType(), true, propertyPath);
             }
         } else if (type instanceof ComponentType) {
             checkComponentPropertyTypes(persistentClass, assertInstanceOf(value, Component.class), propertyPath);
         } else {
-            forbidTemporalTypes(persistentClass, type.getReturnedClass(), false, propertyPath);
+            forbidUnsupportedTypes(persistentClass, type.getReturnedClass(), false, propertyPath);
         }
     }
 
@@ -219,7 +252,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 .forEach(componentProperty -> checkPropertyType(persistentClass, componentProperty, propertyPath));
     }
 
-    private static void forbidTemporalTypes(
+    private static void forbidUnsupportedTypes(
             PersistentClass persistentClass, Class<?> typeToCheck, boolean plural, StringJoiner propertyPath) {
         if (UNSUPPORTED_TYPES.contains(typeToCheck)) {
             throw new FeatureNotSupportedException(format(
