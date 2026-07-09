@@ -32,6 +32,7 @@ import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.bson.BsonDocument;
@@ -254,6 +255,15 @@ public abstract class AbstractQueryIntegrationTests
                 })
                 .isInstanceOf(expectedExceptionType)
                 .hasMessage(expectedExceptionMessage, expectedExceptionMessageParameters));
+    }
+
+    protected static AbstractThrowableAssert<?, ? extends Throwable> assertBootstrapThrows(
+            Supplier<org.hibernate.SessionFactory> sessionFactorySupplier) {
+        return assertThatThrownBy(() -> {
+            try (var sessionFactory = sessionFactorySupplier.get()) {
+                assertThat(sessionFactory).isNotNull();
+            }
+        });
     }
 
     private void assertAffectedCollections(Set<String> expectedAffectedCollections) {

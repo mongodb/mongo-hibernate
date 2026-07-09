@@ -32,7 +32,10 @@ import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.Struct;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -456,6 +459,29 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                     }""")),
                     Set.of(COLLECTION_NAME));
         }
+    }
+
+    @Test
+    void testColumnTransformerWriteExpressionThrows() {
+        assertBootstrapThrows(() -> new MetadataSources()
+                        .addAnnotatedClass(ItemWithColumnTransformer.class)
+                        .buildMetadata(new StandardServiceRegistryBuilder().build())
+                        .buildSessionFactory())
+                .isInstanceOf(FeatureNotSupportedException.class)
+                .hasMessage(
+                        "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
+    }
+
+    @Entity(name = "ItemWithColumnTransformer")
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithColumnTransformer {
+        @Id
+        int id;
+
+        @ColumnTransformer(write = "test(?)")
+        String value;
+
+        ItemWithColumnTransformer() {}
     }
 
     @Entity(name = "ItemWithNestedValue")
