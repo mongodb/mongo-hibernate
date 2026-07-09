@@ -24,6 +24,7 @@ import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstruct
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
+import com.mongodb.hibernate.internal.translate.MongoIndexExporter;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
@@ -35,9 +36,16 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Optional;
+import java.util.stream.Stream;
+import org.bson.BsonElement;
+import org.bson.BsonInt32;
 import org.hibernate.JDBCException;
+import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
+import org.hibernate.boot.model.relational.Exportable;
+import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
@@ -47,6 +55,10 @@ import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
+import org.hibernate.internal.util.collections.ArrayHelper;
+import org.hibernate.mapping.Index;
+import org.hibernate.mapping.Table;
+import org.hibernate.mapping.UniqueKey;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
@@ -55,6 +67,7 @@ import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
+import org.hibernate.tool.schema.spi.Exporter;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
@@ -68,6 +81,21 @@ import org.jspecify.annotations.Nullable;
 @SuppressWarnings("MissingSummary")
 public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     private static final DatabaseVersion MINIMUM_DBMS_VERSION = DatabaseVersion.make(7);
+
+    private static final class NoOpExporter<T extends Exportable> implements Exporter<T> {
+
+        @Override
+        public String[] getSqlCreateStrings(
+                final T exportable, final Metadata metadata, final SqlStringGenerationContext context) {
+            return ArrayHelper.EMPTY_STRING_ARRAY;
+        }
+
+        @Override
+        public String[] getSqlDropStrings(
+                final T exportable, final Metadata metadata, final SqlStringGenerationContext context) {
+            return ArrayHelper.EMPTY_STRING_ARRAY;
+        }
+    }
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
@@ -298,5 +326,63 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     @Override
     public SQLExceptionConversionDelegate buildSQLExceptionConversionDelegate() {
         return (sqlException, exceptionMessage, mql) -> new JDBCException(exceptionMessage, sqlException, mql);
+    }
+
+    @Override
+    public Exporter<Table> getTableExporter() {
+        return new NoOpExporter<>();
+    }
+
+    @Override
+    public Exporter<Index> getIndexExporter() {
+        return new MongoIndexExporter<>(false) {
+            @Override
+            protected Table tableForExportable(Index exportable) {
+                return exportable.getTable();
+            }
+
+            @Override
+            protected Optional<String> indexNameForExportable(Index exportable) {
+                return Optional.ofNullable(exportable.getName());
+            }
+
+            @Override
+            protected Stream<BsonElement> keysForExportable(Index exportable) {
+                return exportable.getSelectables().stream()
+                        .filter(selectable -> !selectable.isFormula())
+                        .map(selectable -> new BsonElement(selectable.getText(), new BsonInt32(1)));
+            }
+
+            @Override
+            protected String optionsForExportable(Index exportable) {
+                return exportable.getOptions();
+            }
+        };
+    }
+
+    @Override
+    public Exporter<UniqueKey> getUniqueKeyExporter() {
+        return new MongoIndexExporter<>(true) {
+            @Override
+            protected Table tableForExportable(UniqueKey exportable) {
+                return exportable.getTable();
+            }
+
+            @Override
+            protected Optional<String> indexNameForExportable(UniqueKey exportable) {
+                return Optional.ofNullable(exportable.getName());
+            }
+
+            @Override
+            protected Stream<BsonElement> keysForExportable(UniqueKey exportable) {
+                return exportable.getColumns().stream()
+                        .map(column -> new BsonElement(column.getName(), new BsonInt32(1)));
+            }
+
+            @Override
+            protected String optionsForExportable(UniqueKey exportable) {
+                return exportable.getOptions();
+            }
+        };
     }
 }
