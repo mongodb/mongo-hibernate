@@ -66,7 +66,13 @@ declare MongoDB as the JPA platform, and configure the connection with Spring Bo
 ```properties
 spring.jpa.database-platform=MongoDB
 spring.mongodb.uri=mongodb://localhost/mydb
+spring.jpa.properties.com.mongodb.hibernate.semantics.nulls=MQL
 ```
+
+`com.mongodb.hibernate.semantics.nulls` is required and must be `MQL`: it declares that
+null-comparison semantics follow whatever MongoDB's query language actually does, which is
+not part of the contract and may change release to release. A future release may add a
+`SQL`-semantics option.
 
 When `spring.jpa.database-platform` is `MongoDB`, the starter auto-configures a JPA
 `EntityManagerFactory`, a `JpaTransactionManager`, and Spring Data JPA repositories backed by MongoDB.

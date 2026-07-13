@@ -1051,7 +1051,29 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitBetweenPredicate(BetweenPredicate betweenPredicate) {
-        throw new FeatureNotSupportedException();
+        if (!isFieldPathExpression(betweenPredicate.getExpression())
+                || !isValueExpression(betweenPredicate.getLowerBound())
+                || !isValueExpression(betweenPredicate.getUpperBound())) {
+            throw new FeatureNotSupportedException(
+                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
+        }
+        var fieldPath = acceptAndYield(betweenPredicate.getExpression(), FIELD_PATH);
+        var lowerBound = acceptAndYield(betweenPredicate.getLowerBound(), VALUE);
+        var upperBound = acceptAndYield(betweenPredicate.getUpperBound(), VALUE);
+
+        astVisitorValueHolder.yield(
+                FILTER,
+                new AstLogicalFilter(
+                        betweenPredicate.isNegated() ? OR : AND,
+                        List.of(
+                                new AstFieldOperationFilter(
+                                        fieldPath,
+                                        new AstComparisonFilterOperation(
+                                                betweenPredicate.isNegated() ? LT : GTE, lowerBound)),
+                                new AstFieldOperationFilter(
+                                        fieldPath,
+                                        new AstComparisonFilterOperation(
+                                                betweenPredicate.isNegated() ? GT : LTE, upperBound)))));
     }
 
     @Override

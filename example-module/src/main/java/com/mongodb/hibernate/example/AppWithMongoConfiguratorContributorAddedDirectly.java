@@ -53,6 +53,7 @@ public final class AppWithMongoConfiguratorContributorAddedDirectly {
                 .getMetadataBuilder(new StandardServiceRegistryBuilder()
                         .applySetting(AvailableSettings.DIALECT, "MongoDB")
                         .applySetting(AvailableSettings.STATEMENT_BATCH_SIZE, 2)
+                        .applySetting("com.mongodb.hibernate.semantics.nulls", "MQL")
                         .addService(MongoConfigurationContributor.class, configurator ->
                                 configurator.applyToMongoClientSettings(mongoClientSettings -> mongoClientSettings
                                                 .applyToClusterSettings(clusterSettings -> clusterSettings
