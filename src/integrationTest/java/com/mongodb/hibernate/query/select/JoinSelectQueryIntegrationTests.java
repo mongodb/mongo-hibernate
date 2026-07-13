@@ -479,6 +479,357 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
+    class NonEquijoin implements MongoServiceRegistryProducer {
+
+        @Test
+        void testInnerLessThan() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON c.id < o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 200}, new Object[] {1, 300}, new Object[] {2, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testOperatorInversion() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON o.id > c.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 200}, new Object[] {1, 300}, new Object[] {2, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testGreaterThanOrEqual() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON c.id >= o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$gte": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 100},
+                            new Object[] {2, 100},
+                            new Object[] {2, 200},
+                            new Object[] {3, 100},
+                            new Object[] {3, 200},
+                            new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testGreaterThan() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON c.id > o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$gt": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {2, 100}, new Object[] {3, 100}, new Object[] {3, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testLessThanOrEqual() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON c.id <= o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$lte": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 100},
+                            new Object[] {1, 200},
+                            new Object[] {1, 300},
+                            new Object[] {2, 200},
+                            new Object[] {2, 300},
+                            new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testNotEqual() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON c.id != o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$ne": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 200},
+                            new Object[] {1, 300},
+                            new Object[] {2, 100},
+                            new Object[] {2, 300},
+                            new Object[] {3, 100},
+                            new Object[] {3, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testLeftOuterNonEquijoin() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c LEFT JOIN Order o ON c.id < o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        {
+                          "$unwind": {
+                            "path": "$#o1_0",
+                            "preserveNullAndEmptyArrays": true
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    results -> assertIterableEq(
+                            List.of(new Object[] {1, 200}, new Object[] {1, 300}, new Object[] {2, 300}, new Object[] {
+                                3, null
+                            }),
+                            results),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testChainedNonEquijoin() {
+            assertSelectionQuery(
+                    """
+                            SELECT c.id, o.id, li.id FROM Customer c JOIN Order o ON c.id < o.id
+                            JOIN LineItem li ON o.id < li.id ORDER BY c.id, o.id, li.id
+                    """,
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$lookup": {
+                            "from": "LineItem",
+                            "let": { "v0": "$#o1_0._id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                            ],
+                            "as": "#li1_0"
+                          }
+                        },
+                        { "$unwind": "$#li1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" },
+                            "#li1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#_id": "$#o1_0._id",
+                            "li1_0#_id": "$#li1_0._id"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.<Object[]>of(new Object[] {1, 2, 3}),
+                    Set.of("Customer", "Order", "LineItem"));
+        }
+    }
+
+    @Nested
     @DomainModel(annotatedClasses = {ManyToManyJoin.ItemA.class, ManyToManyJoin.ItemB.class})
     class ManyToManyJoin extends AbstractQueryIntegrationTests {
 
@@ -769,12 +1120,30 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testNonEquijoinThrows() {
+        void testBetweenOnConditionThrows() {
             assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id > o.total",
+                    "SELECT c.id FROM Customer c JOIN Order o ON c.id BETWEEN o.id AND o.total",
                     Object[].class,
                     FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-165 https://jira.mongodb.org/browse/HIBERNATE-165");
+                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+        }
+
+        @Test
+        void testIsNullOnConditionThrows() {
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON o.total IS NULL",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+        }
+
+        @Test
+        void testIsDistinctFromOnConditionThrows() {
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON c.id IS DISTINCT FROM o.id",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
         }
 
         @Test

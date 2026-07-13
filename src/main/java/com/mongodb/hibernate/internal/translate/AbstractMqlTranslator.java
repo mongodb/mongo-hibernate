@@ -58,6 +58,7 @@ import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
@@ -68,6 +69,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStageWithPipeline;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
@@ -83,6 +85,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperation;
@@ -1407,7 +1411,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 type.getSimpleName(), context));
     }
 
-    private record EquijoinFields(String localField, String foreignField) {}
+    private record JoinColumns(ColumnReference outer, ColumnReference joined, boolean joinedOnLeft) {}
 
     private List<AstStage> buildJoinStages(TableGroup tableGroup) {
         var stages = new ArrayList<AstStage>();
@@ -1469,25 +1473,59 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
             affectedTableNames.add(joinedCollection);
 
-            var fields = extractEquijoinFields(tgj.getPredicate(), joinedAlias);
+            var lookupStage = buildJoinLookupStage(tgj.getPredicate(), joinedCollection, joinedAlias);
 
             joinedTableQualifiers.add(joinedAlias);
 
-            stages.add(new AstLookupStage(
-                    joinedCollection, fields.localField(), fields.foreignField(), JOIN_ALIAS_PREFIX + joinedAlias));
+            stages.add(lookupStage);
             stages.add(new AstUnwindStage(JOIN_ALIAS_PREFIX + joinedAlias, preserve));
             stages.addAll(buildJoinStages(joinedGroup));
         }
         return stages;
     }
 
-    private EquijoinFields extractEquijoinFields(@Nullable Predicate predicate, String joinedAlias) {
+    /**
+     * Builds the {@code $lookup} stage for a join {@code ON} condition. An {@code EQUAL} comparison maps to the simple
+     * {@code localField}/{@code foreignField} form; the ordering and inequality operators ({@code <}, {@code <=},
+     * {@code >}, {@code >=}, {@code !=}) require the pipeline form, which binds the outer column into a {@code let}
+     * variable and compares it against the joined column with {@code $expr}.
+     */
+    private AstStage buildJoinLookupStage(@Nullable Predicate predicate, String joinedCollection, String joinedAlias) {
         if (predicate instanceof Junction) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
         }
-        if (!(predicate instanceof ComparisonPredicate cp) || cp.getOperator() != ComparisonOperator.EQUAL) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-165 https://jira.mongodb.org/browse/HIBERNATE-165");
+        if (!(predicate instanceof ComparisonPredicate cp)) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
         }
+        var operator = cp.getOperator();
+        var columns = extractJoinColumns(cp, joinedAlias);
+        var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;
+
+        if (operator == ComparisonOperator.EQUAL) {
+            return new AstLookupStage(
+                    joinedCollection,
+                    resolveFieldPath(columns.outer()),
+                    columns.joined().getColumnExpression(),
+                    joinAlias);
+        }
+
+        // The $expr array is always [<outer>, <joined>]; invert the operator when Hibernate placed the joined column
+        // on the left so the operand order stays outer-then-joined.
+        var exprOperator = createAstExprComparisonFilterOperator(columns.joinedOnLeft() ? operator.invert() : operator);
+
+        var letVariable = "v0";
+        var expr = new AstExprFilter(
+                exprOperator,
+                new AstFieldPathValue("$$" + letVariable),
+                new AstFieldPathValue("$" + columns.joined().getColumnExpression()));
+        return new AstLookupStageWithPipeline(
+                joinedCollection,
+                List.of(new AstElement(letVariable, new AstFieldPathValue("$" + resolveFieldPath(columns.outer())))),
+                List.of(new AstMatchStage(expr)),
+                joinAlias);
+    }
+
+    private JoinColumns extractJoinColumns(ComparisonPredicate cp, String joinedAlias) {
         var lhsCr = extractColumnReference(cp.getLeftHandExpression());
         var rhsCr = extractColumnReference(cp.getRightHandExpression());
         if (lhsCr == null || rhsCr == null) {
@@ -1502,9 +1540,25 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (lhsIsJoined == rhsIsJoined) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
         }
-        var outerCr = lhsIsJoined ? rhsCr : lhsCr;
-        var innerCr = lhsIsJoined ? lhsCr : rhsCr;
-        return new EquijoinFields(resolveFieldPath(outerCr), innerCr.getColumnExpression());
+        return lhsIsJoined ? new JoinColumns(rhsCr, lhsCr, true) : new JoinColumns(lhsCr, rhsCr, false);
+    }
+
+    /**
+     * Maps the non-equality comparison operators supported for non-equijoin {@code ON} conditions to their
+     * aggregation-expression counterparts. {@code EQUAL} never reaches here — it is routed to the simple
+     * {@code $lookup} form by the caller — and {@code DISTINCT_FROM}/{@code NOT_DISTINCT_FROM} are not yet supported.
+     */
+    private static AstExprComparisonFilterOperator createAstExprComparisonFilterOperator(ComparisonOperator operator) {
+        return switch (operator) {
+            case NOT_EQUAL -> AstExprComparisonFilterOperator.NE;
+            case LESS_THAN -> AstExprComparisonFilterOperator.LT;
+            case LESS_THAN_OR_EQUAL -> AstExprComparisonFilterOperator.LTE;
+            case GREATER_THAN -> AstExprComparisonFilterOperator.GT;
+            case GREATER_THAN_OR_EQUAL -> AstExprComparisonFilterOperator.GTE;
+            default ->
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+        };
     }
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
