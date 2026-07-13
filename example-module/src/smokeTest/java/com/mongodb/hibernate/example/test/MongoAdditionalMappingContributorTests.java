@@ -35,6 +35,7 @@ class MongoAdditionalMappingContributorTests {
                 .buildMetadata(new StandardServiceRegistryBuilder()
                         .applySetting(AvailableSettings.ALLOW_METADATA_ON_BOOT, false)
                         .applySetting(AvailableSettings.JAKARTA_JDBC_URL, "mongodb://host/db")
+                        .applySetting("com.mongodb.hibernate.semantics.nulls", "MQL")
                         .build()))
                 .hasMessageContaining("does not support primary key spanning multiple columns");
     }
