@@ -1,6 +1,6 @@
 # Expressions in SELECT and WHERE (HIBERNATE-86)
 
-Translating computed expressions in SELECT projections and WHERE predicates to MongoDB aggregation expressions: arithmetic operators (`+ - * / div`, unary `+/-`), comparison operators (`>`, `>=`, `<`, `<=`, `=`, `<>`), and the scalar predicate family (AND/OR junctions, NOT, IN, LIKE, IS NULL, boolean fields) as value-producing expressions.
+Translating computed expressions in SELECT projections and WHERE predicates to MongoDB aggregation expressions: arithmetic operators (`+ - * / div`, unary `+/-`), comparison operators (`>`, `>=`, `<`, `<=`, `=`, `<>`), and the scalar predicate family (AND/OR junctions, NOT, IN, LIKE, IS NULL, BETWEEN, boolean fields) as value-producing expressions.
 
 ## MongoDB Mechanism
 
@@ -42,7 +42,7 @@ No structural pipeline change — new expressions slot into the existing `$match
 
 **The Criteria API reaches operators HQL doesn't.** Criteria is a supported entry point, and it produces two arithmetic operators HQL never emits: `CriteriaBuilder.quot` → `QUOT` (behaviorally identical to `DIVIDE` — both render `/` and infer their result type the same way; the type resolver ignores the operator) and `CriteriaBuilder.mod` → the `MODULO` operator → `$mod`. HQL's `%`, by contrast, is rewritten to a `mod()` function call — not the `MODULO` operator — and remains unsupported (HIBERNATE-196). So "unreachable from HQL" is not a safe reason to omit an operator: `QUOT` and `MODULO` reach the translator through Criteria.
 
-**Predicates are also expressions.** Every predicate the translator supports as a `$match` filter (AND/OR junctions, NOT, grouped, boolean field, IN list, LIKE, IS NULL) also renders as a value-producing aggregation expression, so it works in a SELECT projection and as a nested operand — not only as a top-level filter. This removes the asymmetry where `x > 1 and y < 2` filtered in WHERE but threw in SELECT. Logical connectives use a dedicated `AstLogicalOperatorExpression` over an `AstLogicalOperator` enum (`$and`/`$or`/`$not`), mirroring `AstLogicalFilter`/`AstLogicalFilterOperator` on the filter side; IN and LIKE get `AstInExpression` (`$in`) and `AstRegexMatchExpression` (`$regexMatch`). IS NULL and boolean-field predicates are genuine equalities, so they reuse `AstBinaryOperatorExpression` with `$eq`/`$ne` against a wrapped `null`/`true`/`false` — not false sharing, but what those predicates mean. Every value operand (IN options, the `null`/`true`/`false`) is routed through `AstValueExpression`.
+**Predicates are also expressions.** Every predicate the translator supports as a `$match` filter (AND/OR junctions, NOT, grouped, boolean field, IN list, LIKE, IS NULL, BETWEEN) also renders as a value-producing aggregation expression, so it works in a SELECT projection and as a nested operand — not only as a top-level filter. This removes the asymmetry where `x > 1 and y < 2` filtered in WHERE but threw in SELECT. Logical connectives use a dedicated `AstLogicalOperatorExpression` over an `AstLogicalOperator` enum (`$and`/`$or`/`$not`), mirroring `AstLogicalFilter`/`AstLogicalFilterOperator` on the filter side; IN and LIKE get `AstInExpression` (`$in`) and `AstRegexMatchExpression` (`$regexMatch`). IS NULL and boolean-field predicates are genuine equalities, so they reuse `AstBinaryOperatorExpression` with `$eq`/`$ne` against a wrapped `null`/`true`/`false` — not false sharing, but what those predicates mean. BETWEEN is a compound comparison — `operand >= lower AND operand <= upper` (negated: `< lower OR > upper`). In expression position it is one `AstLogicalOperatorExpression` (`$and`/`$or`) of two `AstBinaryOperatorExpression` bounds. As a filter the `$and`/`$or` stays at the filter level (an `AstLogicalFilter`) and each bound comparison independently takes the compact `{field: {$gte/$lte}}` form or an `$expr` — exactly how a single comparison and a junction render, rather than burying the `$and` inside one `$expr`. Every value operand (IN options, the `null`/`true`/`false`, the bounds) is routed through `AstValueExpression`.
 
 **Negation differs by context.** The aggregation-expression form of NOT (and negated IN/LIKE) wraps the operand in `$not` — a one-element array — because that is the aggregation `$not`. The filter form uses `$nor`, because the query `$not` is field-scoped and cannot negate a whole filter. The two forms are chosen by which descriptor the visitor is yielding, so the same predicate node produces the correct shape in each position.
 
@@ -74,7 +74,7 @@ No structural pipeline change — new expressions slot into the existing `$match
 | `x % 3`, `mod(x, y)` (HQL) | HQL emits a `mod()` function call | ❌ HIBERNATE-196 |
 | `abs(x) + 1` (function call) | — | ❌ HIBERNATE-196 |
 | `case when … end` | — | ❌ HIBERNATE-83 |
-| `x between 1 and 5` | — | ❌ not supported as a filter either |
+| `x between lo and hi`, `x not between lo and hi` | `{$and: [{$gte: …}, {$lte: …}]}`, negated `{$or: [{$lt: …}, {$gt: …}]}` | ✅ |
 | `exists (…)` | — | ❌ match-only (`$elemMatch`) |
 
 ### WHERE clause
@@ -87,4 +87,5 @@ No structural pipeline change — new expressions slot into the existing `$match
 | `x + 1 = y + 2` | both sides computed | ✅ |
 | `-x > 5` | `{$expr: {$gt: [{$multiply:[-1,"$x"]}, 5]}}` | ✅ |
 | `(x + 1) is null` | `{$expr: {$eq: [{$add:[…]}, null]}}` | ✅ |
+| `(x + 1) between lo and hi` (computed operand) | `{$and: [{$expr: {$gte:…}}, {$expr: {$lte:…}}]}` | ✅ |
 | `case when … end > 3` | — | ❌ HIBERNATE-83 |

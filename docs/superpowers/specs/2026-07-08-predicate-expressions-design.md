@@ -18,10 +18,19 @@ operands. This removes the asymmetry where `x > 1 and y < 2` works in WHERE but 
 | IN list (`InListPredicate`) | `x in (1, 2, 3)` |
 | LIKE (`LikePredicate`) | `name like 'a%'` |
 | IS NULL (`NullnessPredicate`) | `x is null` |
+| BETWEEN (`BetweenPredicate`) | `x between lo and hi` — *added after this spec; see note below* |
+
+> **Added after this spec.** BETWEEN was out of scope when this was written because it was not a
+> `$match` filter yet. HIBERNATE-89 later added the compact filter form (`field` between value and
+> value), and the expression form was then added following exactly the pattern here: `$and`/`$or` of
+> two `AstBinaryOperatorExpression` bounds (`$gte`/`$lte`, negated `$lt`/`$gt`), operands routed
+> through `acceptAndYieldExpression`. The filter path was also extended: the `$and`/`$or` stays at the
+> filter level and each bound comparison independently takes the compact form or an `$expr`, so a
+> computed operand/bound in WHERE (`where (x+1) between …`) renders as `{$and: [{$expr: …}, {$expr: …}]}`
+> instead of throwing.
 
 **Out of scope** — not supported as a `$match` filter today either (all throw), tracked elsewhere:
 
-- `BETWEEN` (`visitBetweenPredicate` throws; not desugared by HQL) — not supported in filters, so not here.
 - IN-subquery, IN-array — throw in filters.
 - `EXISTS`-over-unnest — `$elemMatch`, a `$match`-only construct with no scalar `$expr` form; stays
   filter-only and is already locked by `ExistsSelectQueryIntegrationTests.testExistsInSelectIsUnsupported`.
@@ -115,8 +124,9 @@ compact, indexable `{field: {$op: value}}` form when it applies.
 - **`acceptAndYieldExpression` guard** — the blanket `Predicate` rejection is removed (predicates now translate).
   It still rejects `SqlTuple` and `ExistsPredicate` (the nodes whose visitors yield a non-EXPRESSION
   descriptor and would otherwise trip the holder assertion). Other unsupported predicates
-  (`BetweenPredicate`, IN-subquery/array, filter fragments) already throw `FeatureNotSupportedException`
-  in their own visitors, so they surface cleanly without a guard entry.
+  (IN-subquery/array, filter fragments) already throw `FeatureNotSupportedException`
+  in their own visitors, so they surface cleanly without a guard entry. (`BetweenPredicate` now has
+  its own `expects(EXPRESSION)` branch — see the note above — so it too translates rather than throws.)
 
 Dual-context helper: extend the existing pattern — a small helper per shape or an `expects(EXPRESSION)`
 check inline, consistent with `visitColumnReference`/`visitRelationalPredicate`.
@@ -138,7 +148,7 @@ check inline, consistent with `visitColumnReference`/`visitRelationalPredicate`.
 | `name not like 'a%'` | `{$not: [{$regexMatch: {…}}]}` | ✅ |
 | `x is null` / `x is not null` | `{$eq: ["$x", null]}` / `{$ne: …}` | ✅ |
 | `x + 1 is null` (computed operand) | `{$eq: [{$add: […]}, null]}` | ✅ |
-| `x between 1 and 5` | — | ❌ not supported in filters either |
+| `x between lo and hi` / `x not between …` | `{$and: [{$gte: …}, {$lte: …}]}` / `{$or: [{$lt: …}, {$gt: …}]}` | ✅ *(added later)* |
 | `exists (…)` | — | ❌ match-only (`$elemMatch`); tested |
 | `x in (subquery)` | — | ❌ IN-subquery unsupported |
 
@@ -170,12 +180,12 @@ Positive (in `@Nested class Positive`, seeded data), asserting full MQL + result
 | `select x is null` / `is not null` | `$eq`/`$ne` null |
 | `select x + 1 is null` | computed operand null-check |
 | nested / composed (e.g. `select (x > 1) and (y in (1,2))`) | operators compose |
+| `select x between 4 and 6` / `not between` / `(x + y) between …` | `$and`/`$or` bounds, negated arm, computed operand *(added later)* |
 
 Negative (outer class / `@Nested class Unsupported`):
 
 | Test | Covers |
 |---|---|
-| `select x between 1 and 5` | BETWEEN unsupported (throws `FeatureNotSupportedException`) |
 | `select exists (…)` | EXISTS match-only — already in `ExistsSelectQueryIntegrationTests` |
 
 Every non-trivial code path (each predicate's EXPRESSION branch, negated vs non-negated `IN`/`LIKE`, the
