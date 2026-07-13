@@ -660,6 +660,48 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     Set.of(Contact.COLLECTION_NAME));
         }
 
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        void testBetweenFilter(boolean negated) {
+            assertSelectionQuery(
+                    "from Contact where age %s between 18 and :age".formatted(negated ? "not" : ""),
+                    Contact.class,
+                    q -> q.setParameter("age", 35),
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$%s": [
+                              {
+                                "age": {
+                                  "$%s": 18
+                                }
+                              },
+                              {
+                                "age": {
+                                  "$%s": 35
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "age": true,
+                            "country": true,
+                            "name": true
+                          }
+                        }
+                      ]
+                    }"""
+                            .formatted(negated ? "or" : "and", negated ? "lt" : "gte", negated ? "gt" : "lte"),
+                    negated ? getTestingContacts(3, 4) : getTestingContacts(1, 2, 5),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
         @Test
         void testProjectWithoutAlias() {
             assertSelectionQuery(
@@ -1142,6 +1184,34 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     FeatureNotSupportedException.class,
                     "Only the following nullness predicates are supported: field is [not] null");
         }
+
+        @Test
+        void testBetweenParametersNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where :param between 0 and 3",
+                    Contact.class,
+                    q -> q.setParameter("param", 1),
+                    FeatureNotSupportedException.class,
+                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
+        }
+
+        @Test
+        void testBetweenValuesNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where 1 between 0 and 10",
+                    Contact.class,
+                    FeatureNotSupportedException.class,
+                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
+        }
+
+        @Test
+        void testBetweenFieldsNotSupported() {
+            assertSelectQueryFailure(
+                    "from Contact where age between id and 3",
+                    Contact.class,
+                    FeatureNotSupportedException.class,
+                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
+        }
     }
 
     @Nested
@@ -1384,6 +1454,15 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
             this.name = name;
             this.age = age;
             this.country = country == null ? null : country.name();
+        }
+
+        @Override
+        public String toString() {
+            return "Contact{" + "id="
+                    + id + ", name='"
+                    + name + '\'' + ", age="
+                    + age + ", country='"
+                    + country + '\'' + '}';
         }
     }
 
