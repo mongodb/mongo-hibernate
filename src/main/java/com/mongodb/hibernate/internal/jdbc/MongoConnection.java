@@ -155,24 +155,20 @@ final class MongoConnection implements ConnectionAdapter {
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
         checkClosed();
-        try {
-            var commandResult = mongoClient
-                    .getDatabase("admin")
-                    .runCommand(clientSession, new BsonDocument("buildInfo", new BsonInt32(1)));
-            var versionText = commandResult.getString("version");
-            var versionArray = commandResult.getList("versionArray", Integer.class);
-            if (versionArray.size() < 2) {
-                throw new SQLException(
-                        format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
-            }
-            return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
-        } catch (RuntimeException e) {
-            // TODO-HIBERNATE-43 Let's do `LOGGER.error(<message>, e)`.
-            // Hibernate ORM neither propagates, nor logs `e` (the cause of the `SQLException` we throw),
-            // so if we fail to get `DatabaseMetaData` due to being unable to connect to a MongoDB deployment,
-            // there is no easy way to know that.
-            throw new SQLException("Failed to get metadata", e);
+        // Runtime exceptions from the driver (e.g. a MongoTimeoutException when the deployment is unreachable) are
+        // deliberately left to propagate rather than being wrapped in a SQLException. When Hibernate ORM queries
+        // metadata on boot, its SQLException handling logs only the message and drops the cause, so wrapping would
+        // hide the real reason for a boot failure.
+        var commandResult = mongoClient
+                .getDatabase("admin")
+                .runCommand(clientSession, new BsonDocument("buildInfo", new BsonInt32(1)));
+        var versionText = commandResult.getString("version");
+        var versionArray = commandResult.getList("versionArray", Integer.class);
+        if (versionArray.size() < 2) {
+            throw new SQLException(
+                    format("Unexpected versionArray [%s] field length (should be 2 or more)", versionArray));
         }
+        return new MongoDatabaseMetaData(this, versionText, versionArray.get(0), versionArray.get(1));
     }
 
     @Override
