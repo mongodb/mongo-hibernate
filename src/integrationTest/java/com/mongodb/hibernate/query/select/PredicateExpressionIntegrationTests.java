@@ -288,20 +288,79 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     List.of(true, true, false),
                     Set.of(Widget.COLLECTION_NAME));
         }
+
+        @Test
+        void testBetween() {
+            assertSelectionQuery(
+                    "select x between 4 and 6 from Widget",
+                    Boolean.class,
+                    """
+                    {
+                      "aggregate": "widgets",
+                      "pipeline": [
+                        {"$project": {"#c_1": {"$and": [{"$gte": ["$x", {"$numberInt": "4"}]}, {"$lte": ["$x", {"$numberInt": "6"}]}]}}}
+                      ]
+                    }""",
+                    List.of(false, true, true),
+                    Set.of(Widget.COLLECTION_NAME));
+        }
+
+        @Test
+        void testNotBetween() {
+            assertSelectionQuery(
+                    "select x not between 4 and 6 from Widget",
+                    Boolean.class,
+                    """
+                    {
+                      "aggregate": "widgets",
+                      "pipeline": [
+                        {"$project": {"#c_1": {"$or": [{"$lt": ["$x", {"$numberInt": "4"}]}, {"$gt": ["$x", {"$numberInt": "6"}]}]}}}
+                      ]
+                    }""",
+                    List.of(true, false, false),
+                    Set.of(Widget.COLLECTION_NAME));
+        }
+
+        // A parameter in the BETWEEN operand appears in both bound comparisons, so its value must be
+        // bound twice; visiting the operand once and reusing the node emits two markers but one binder.
+        @Test
+        void testParameterOperandBetween() {
+            assertSelectionQuery(
+                    "select (x + :p) between 10 and 16 from Widget",
+                    Boolean.class,
+                    q -> q.setParameter("p", 5),
+                    """
+                    {
+                      "aggregate": "widgets",
+                      "pipeline": [
+                        {"$project": {"#c_1": {"$and": [{"$gte": [{"$add": ["$x", {"$numberInt": "5"}]}, {"$numberInt": "10"}]}, {"$lte": [{"$add": ["$x", {"$numberInt": "5"}]}, {"$numberInt": "16"}]}]}}}
+                      ]
+                    }""",
+                    List.of(true, false, true),
+                    Set.of(Widget.COLLECTION_NAME));
+        }
+
+        // The expression form routes all three operands through acceptAndYieldExpression, so a computed
+        // test operand works here even though the filter form requires a plain field path.
+        @Test
+        void testComputedOperandBetween() {
+            assertSelectionQuery(
+                    "select (x + y) between 8 and 12 from Widget",
+                    Boolean.class,
+                    """
+                    {
+                      "aggregate": "widgets",
+                      "pipeline": [
+                        {"$project": {"#c_1": {"$and": [{"$gte": [{"$add": ["$x", "$y"]}, {"$numberInt": "8"}]}, {"$lte": [{"$add": ["$x", "$y"]}, {"$numberInt": "12"}]}]}}}
+                      ]
+                    }""",
+                    List.of(false, true, true),
+                    Set.of(Widget.COLLECTION_NAME));
+        }
     }
 
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
-
-        // BETWEEN is unsupported and `visitBetweenPredicate` throws a message-less FeatureNotSupportedException,
-        // so assert the exception type only (the assertSelectQueryFailure helpers require a message substring).
-        @Test
-        void testBetweenInSelectIsUnsupported() {
-            getSessionFactoryScope().inTransaction(session -> assertThatThrownBy(
-                            () -> session.createSelectionQuery("select x between 1 and 5 from Widget", Boolean.class)
-                                    .getResultList())
-                    .isInstanceOf(FeatureNotSupportedException.class));
-        }
 
         // IN-subquery is unsupported and `visitInSubQueryPredicate` throws a message-less
         // FeatureNotSupportedException, so assert the exception type only.

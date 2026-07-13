@@ -1184,34 +1184,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     FeatureNotSupportedException.class,
                     "Only the following nullness predicates are supported: field is [not] null");
         }
-
-        @Test
-        void testBetweenParametersNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where :param between 0 and 3",
-                    Contact.class,
-                    q -> q.setParameter("param", 1),
-                    FeatureNotSupportedException.class,
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
-        }
-
-        @Test
-        void testBetweenValuesNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where 1 between 0 and 10",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
-        }
-
-        @Test
-        void testBetweenFieldsNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where age between id and 3",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
-        }
     }
 
     @Nested

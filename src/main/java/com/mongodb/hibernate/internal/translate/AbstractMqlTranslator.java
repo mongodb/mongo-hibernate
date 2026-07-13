@@ -1242,29 +1242,73 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitBetweenPredicate(BetweenPredicate betweenPredicate) {
-        if (!isFieldPathExpression(betweenPredicate.getExpression())
-                || !isValueExpression(betweenPredicate.getLowerBound())
-                || !isValueExpression(betweenPredicate.getUpperBound())) {
-            throw new FeatureNotSupportedException(
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            astVisitorValueHolder.yield(EXPRESSION, toBetweenExpression(betweenPredicate));
+        } else {
+            astVisitorValueHolder.yield(FILTER, toBetweenFilter(betweenPredicate));
         }
-        var fieldPath = acceptAndYield(betweenPredicate.getExpression(), FIELD_PATH);
-        var lowerBound = acceptAndYield(betweenPredicate.getLowerBound(), VALUE);
-        var upperBound = acceptAndYield(betweenPredicate.getUpperBound(), VALUE);
+    }
 
-        astVisitorValueHolder.yield(
-                FILTER,
-                new AstLogicalFilter(
-                        betweenPredicate.isNegated() ? AstLogicalFilterOperator.OR : AstLogicalFilterOperator.AND,
-                        List.of(
-                                new AstFieldOperationFilter(
-                                        fieldPath,
-                                        new AstComparisonFilterOperation(
-                                                betweenPredicate.isNegated() ? LT : GTE, lowerBound)),
-                                new AstFieldOperationFilter(
-                                        fieldPath,
-                                        new AstComparisonFilterOperation(
-                                                betweenPredicate.isNegated() ? GT : LTE, upperBound)))));
+    // BETWEEN is `operand >= lower AND operand <= upper` (negated: `< lower OR > upper`), joined at the
+    // filter level so each bound independently takes the compact `{field: {$op: value}}` form or `$expr`.
+    private AstFilter toBetweenFilter(BetweenPredicate betweenPredicate) {
+        var operand = betweenPredicate.getExpression();
+        return new AstLogicalFilter(
+                betweenPredicate.isNegated() ? AstLogicalFilterOperator.OR : AstLogicalFilterOperator.AND,
+                List.of(
+                        toBoundFilter(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.LESS_THAN
+                                        : ComparisonOperator.GREATER_THAN_OR_EQUAL,
+                                betweenPredicate.getLowerBound()),
+                        toBoundFilter(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.GREATER_THAN
+                                        : ComparisonOperator.LESS_THAN_OR_EQUAL,
+                                betweenPredicate.getUpperBound())));
+    }
+
+    private AstFilter toBoundFilter(Expression operand, ComparisonOperator operator, Expression bound) {
+        if (isFieldPathExpression(operand) && isValueExpression(bound)) {
+            var fieldPath = acceptAndYield(operand, FIELD_PATH);
+            var value = acceptAndYield(bound, VALUE);
+            return new AstFieldOperationFilter(
+                    fieldPath, new AstComparisonFilterOperation(createAstComparisonFilterOperator(operator), value));
+        } else {
+            var operandExpression = acceptAndYieldExpression(operand);
+            var boundExpression = acceptAndYieldExpression(bound);
+            return new AstExprFilter(new AstBinaryOperatorExpression(
+                    toExprComparisonOperator(operator), operandExpression, boundExpression));
+        }
+    }
+
+    private AstLogicalOperatorExpression toBetweenExpression(BetweenPredicate betweenPredicate) {
+        var operand = betweenPredicate.getExpression();
+        return new AstLogicalOperatorExpression(
+                betweenPredicate.isNegated() ? AstLogicalOperator.OR : AstLogicalOperator.AND,
+                List.of(
+                        toBoundExpression(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.LESS_THAN
+                                        : ComparisonOperator.GREATER_THAN_OR_EQUAL,
+                                betweenPredicate.getLowerBound()),
+                        toBoundExpression(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.GREATER_THAN
+                                        : ComparisonOperator.LESS_THAN_OR_EQUAL,
+                                betweenPredicate.getUpperBound())));
+    }
+
+    // Each bound is visited on its own (never a reused node): the operand appears in both comparisons,
+    // so a parameter in it must register a binder per occurrence to stay aligned with the rendered markers.
+    private AstBinaryOperatorExpression toBoundExpression(
+            Expression operand, ComparisonOperator operator, Expression bound) {
+        return new AstBinaryOperatorExpression(
+                toExprComparisonOperator(operator), acceptAndYieldExpression(operand), acceptAndYieldExpression(bound));
     }
 
     @Override

@@ -290,6 +290,39 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     Set.of(Item.COLLECTION_NAME));
         }
 
+        // A BETWEEN whose operand is computed cannot use the compact {field: {$gte/$lte}} form for its
+        // bounds, so each bound falls back to $expr — with the AND hoisted to the filter level, the same
+        // shape a mixed junction (testMixedAndPredicates) produces.
+        @Test
+        void testComputedOperandBetweenInWhere() {
+            assertSelectionQuery(
+                    "from Item where (x + 1) between 6 and 11",
+                    Item.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$and": [
+                              {"$expr": {"$gte": [{"$add": ["$x", {"$numberInt": "1"}]}, {"$numberInt": "6"}]}},
+                              {"$expr": {"$lte": [{"$add": ["$x", {"$numberInt": "1"}]}, {"$numberInt": "11"}]}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "x": true,
+                            "y": true
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Item(1, 10, 3), new Item(3, 5, 4)),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
         @Test
         void testMixedAndPredicates() {
             assertSelectionQuery(
