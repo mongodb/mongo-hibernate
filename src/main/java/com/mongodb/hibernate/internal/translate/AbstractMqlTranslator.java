@@ -263,7 +263,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private @Nullable QueryOptionsLimit queryOptionsLimit;
 
-    private @Nullable Map<Integer, String> projectionAliasMap;
+    private @Nullable Map<Integer, String> projectionKeyMap;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -466,7 +466,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("Subquery not supported");
         }
         checkCteContainerSupportability(selectStatement);
-        projectionAliasMap = buildProjectionAliasMap(selectStatement.getDomainResultDescriptors());
+        projectionKeyMap = buildProjectionKeyMap(selectStatement.getDomainResultDescriptors());
         selectStatement.getQueryPart().accept(this);
     }
 
@@ -762,28 +762,43 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    // Maps each scalar DomainResult's valuesArrayPosition to its AS alias.
-    // DomainResult carries the alias; SqlSelection carries the position — this bridges the two.
-    // collectValueIndexesToCache() sets a bit per JDBC column consumed; cardinality==1 identifies
-    // scalar results (entities consume multiple columns and should not claim an alias).
-    private static Map<Integer, String> buildProjectionAliasMap(List<DomainResult<?>> domainResults) {
-        var aliasMap = new HashMap<Integer, String>();
+    // Maps each scalar projection's valuesArrayPosition to the $project key it should use: its AS alias
+    // when it has one, otherwise a generated "#c_<n>". The alias lives on the DomainResult and the
+    // position on the SqlSelection, so this bridges the two up front — resolveProjectionKey is then a
+    // plain lookup. collectValueIndexesToCache() sets one bit per column a result consumes; cardinality
+    // == 1 marks a scalar (an entity consumes several columns and is projected field-by-field instead,
+    // never through this key). The "#c_" prefix keeps a generated key clear of any mapped field name
+    // (# is rejected in those); a generated key that would clash with an explicit alias is skipped,
+    // since a backtick-quoted HQL alias can be anything (e.g. `select y + 1, x + 1 as `#c_1``).
+    private static Map<Integer, String> buildProjectionKeyMap(List<DomainResult<?>> domainResults) {
+        var aliases = new HashSet<String>();
         for (DomainResult<?> domainResult : domainResults) {
             var alias = domainResult.getResultVariable();
             if (alias != null) {
-                var bitSet = new BitSet();
-                domainResult.collectValueIndexesToCache(bitSet);
-                if (bitSet.cardinality() == 1) {
-                    aliasMap.put(bitSet.nextSetBit(0), alias);
-                }
+                aliases.add(alias);
             }
         }
-        return aliasMap;
+        var keyMap = new HashMap<Integer, String>();
+        var scalarCount = 0;
+        for (DomainResult<?> domainResult : domainResults) {
+            var bitSet = new BitSet();
+            domainResult.collectValueIndexesToCache(bitSet);
+            if (bitSet.cardinality() == 1) {
+                var alias = domainResult.getResultVariable();
+                String key = alias;
+                if (key == null) {
+                    do {
+                        key = "#c_" + ++scalarCount;
+                    } while (aliases.contains(key));
+                }
+                keyMap.put(bitSet.nextSetBit(0), key);
+            }
+        }
+        return keyMap;
     }
 
     private String resolveProjectionKey(SqlSelection sqlSelection) {
-        var alias = projectionAliasMap != null ? projectionAliasMap.get(sqlSelection.getValuesArrayPosition()) : null;
-        return alias != null ? alias : "#c_" + sqlSelection.getJdbcResultSetIndex();
+        return assertNotNull(assertNotNull(projectionKeyMap).get(sqlSelection.getValuesArrayPosition()));
     }
 
     // Converts the internal "#qualifier.field" path to the "qualifier#field" projection key.

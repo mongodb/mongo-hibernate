@@ -441,6 +441,30 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     Set.of(Item.COLLECTION_NAME));
         }
 
+        // A backtick-quoted alias can be anything, including the "#c_<n>" shape we generate for
+        // unaliased columns. The generated key for `y + 1` would be "#c_1", which collides with the
+        // explicit `#c_1` alias on `x + 1`, so it is bumped to "#c_2" to keep the $project keys distinct.
+        @Test
+        void testGeneratedKeyAvoidsCollidingAlias() {
+            assertSelectionQuery(
+                    "select y + 1, x + 1 as `#c_1` from Item",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_2": {"$add": ["$y", {"$numberInt": "1"}]},
+                            "#c_1": {"$add": ["$x", {"$numberInt": "1"}]}
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {4, 11}, new Object[] {8, 5}, new Object[] {5, 6}),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
         @Test
         void testAliasOnSecondComputedValue() {
             assertSelectionQuery(
