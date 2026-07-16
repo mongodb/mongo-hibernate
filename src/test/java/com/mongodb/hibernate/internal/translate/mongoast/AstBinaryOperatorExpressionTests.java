@@ -26,9 +26,7 @@ class AstBinaryOperatorExpressionTests {
     @Test
     void testRenderingFieldPlusLiteral() {
         var expr = new AstBinaryOperatorExpression(
-                "$add",
-                new AstFieldPathExpression("x"),
-                new AstValueExpression(new AstLiteral(new BsonInt32(1)), false));
+                "$add", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(1))));
         assertExpressionRendering(
                 """
                 {"": {"$add": ["$x", {"$numberInt": "1"}]}}\
@@ -41,7 +39,7 @@ class AstBinaryOperatorExpressionTests {
         var inner = new AstBinaryOperatorExpression(
                 "$multiply", new AstFieldPathExpression("x"), new AstFieldPathExpression("y"));
         var outer = new AstBinaryOperatorExpression(
-                "$add", inner, new AstValueExpression(new AstLiteral(new BsonInt32(1)), false));
+                "$add", inner, new AstValueExpression(new AstLiteral(new BsonInt32(1))));
         assertExpressionRendering(
                 """
                 {"": {"$add": [{"$multiply": ["$x", "$y"]}, {"$numberInt": "1"}]}}\

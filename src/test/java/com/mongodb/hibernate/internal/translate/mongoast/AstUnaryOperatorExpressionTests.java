@@ -27,9 +27,7 @@ class AstUnaryOperatorExpressionTests {
     void testRendering() {
         // $toInt($divide(["$x", 2]))
         var divide = new AstBinaryOperatorExpression(
-                "$divide",
-                new AstFieldPathExpression("x"),
-                new AstValueExpression(new AstLiteral(new BsonInt32(2)), false));
+                "$divide", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(2))));
         var toInt = new AstUnaryOperatorExpression("$toInt", divide);
         assertExpressionRendering(
                 """

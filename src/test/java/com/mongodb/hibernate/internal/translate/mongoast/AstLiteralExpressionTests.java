@@ -18,16 +18,17 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
-import org.bson.BsonInt32;
+import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
 
-class AstValueExpressionTests {
+class AstLiteralExpressionTests {
 
     @Test
-    void testRendersValueVerbatim() {
-        var expr = new AstValueExpression(new AstLiteral(new BsonInt32(5)));
+    void testWrapsValueInLiteral() {
+        // Without $literal, "$foo" would be read as a field path in expression position.
+        var expr = new AstLiteralExpression(new AstLiteral(new BsonString("$foo")));
         assertExpressionRendering("""
-                {"": {"$numberInt": "5"}}\
+                {"": {"$literal": "$foo"}}\
                 """, expr);
     }
 }

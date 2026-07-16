@@ -34,7 +34,7 @@ class AstProjectStageExpressionSpecificationTests {
                 new AstBinaryOperatorExpression(
                         "$add",
                         new AstFieldPathExpression("x"),
-                        new AstValueExpression(new AstLiteral(new BsonInt32(1)), false)));
+                        new AstValueExpression(new AstLiteral(new BsonInt32(1)))));
         assertElementRendering(
                 """
                 {"total": {"$add": ["$x", {"$numberInt": "1"}]}}\

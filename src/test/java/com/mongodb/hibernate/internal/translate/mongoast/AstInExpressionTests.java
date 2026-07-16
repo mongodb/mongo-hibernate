@@ -30,8 +30,8 @@ class AstInExpressionTests {
         var expr = new AstInExpression(
                 new AstFieldPathExpression("x"),
                 List.of(
-                        new AstValueExpression(new AstLiteral(new BsonInt32(1)), false),
-                        new AstValueExpression(new AstLiteral(new BsonInt32(2)), false)));
+                        new AstValueExpression(new AstLiteral(new BsonInt32(1))),
+                        new AstValueExpression(new AstLiteral(new BsonInt32(2)))));
         assertExpressionRendering(
                 """
                 {"": {"$in": ["$x", [{"$numberInt": "1"}, {"$numberInt": "2"}]]}}\
@@ -44,8 +44,8 @@ class AstInExpressionTests {
         var expr = new AstInExpression(
                 new AstFieldPathExpression("name"),
                 List.of(
-                        new AstValueExpression(new AstLiteral(new BsonString("$x")), true),
-                        new AstValueExpression(new AstLiteral(new BsonString("a")), false)));
+                        new AstLiteralExpression(new AstLiteral(new BsonString("$x"))),
+                        new AstValueExpression(new AstLiteral(new BsonString("a")))));
         assertExpressionRendering(
                 """
                 {"": {"$in": ["$name", [{"$literal": "$x"}, "a"]]}}\

@@ -32,11 +32,11 @@ class AstLogicalOperatorExpressionTests {
                         new AstBinaryOperatorExpression(
                                 "$gt",
                                 new AstFieldPathExpression("x"),
-                                new AstValueExpression(new AstLiteral(new BsonInt32(1)), false)),
+                                new AstValueExpression(new AstLiteral(new BsonInt32(1)))),
                         new AstBinaryOperatorExpression(
                                 "$lt",
                                 new AstFieldPathExpression("y"),
-                                new AstValueExpression(new AstLiteral(new BsonInt32(2)), false))));
+                                new AstValueExpression(new AstLiteral(new BsonInt32(2))))));
         assertExpressionRendering(
                 """
                 {"": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$lt": ["$y", {"$numberInt": "2"}]}]}}\
@@ -51,7 +51,7 @@ class AstLogicalOperatorExpressionTests {
                 List.of(new AstBinaryOperatorExpression(
                         "$gt",
                         new AstFieldPathExpression("x"),
-                        new AstValueExpression(new AstLiteral(new BsonInt32(1)), false))));
+                        new AstValueExpression(new AstLiteral(new BsonInt32(1))))));
         assertExpressionRendering(
                 """
                 {"": {"$not": [{"$gt": ["$x", {"$numberInt": "1"}]}]}}\

@@ -31,9 +31,7 @@ class AstExprFilterTests {
     void testRenderingComparison() {
         // $expr: { $gt: ["$x", 5] }
         var filter = new AstExprFilter(new AstBinaryOperatorExpression(
-                "$gt",
-                new AstFieldPathExpression("x"),
-                new AstValueExpression(new AstLiteral(new BsonInt32(5)), false)));
+                "$gt", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(5)))));
         assertRendering(
                 """
                 {"$expr": {"$gt": ["$x", {"$numberInt": "5"}]}}\
@@ -44,11 +42,9 @@ class AstExprFilterTests {
     void testRenderingArithmeticInExpr() {
         // $expr: { $gt: [{ $add: ["$x", 1] }, 5] }
         var add = new AstBinaryOperatorExpression(
-                "$add",
-                new AstFieldPathExpression("x"),
-                new AstValueExpression(new AstLiteral(new BsonInt32(1)), false));
-        var filter = new AstExprFilter(new AstBinaryOperatorExpression(
-                "$gt", add, new AstValueExpression(new AstLiteral(new BsonInt32(5)), false)));
+                "$add", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(1))));
+        var filter = new AstExprFilter(
+                new AstBinaryOperatorExpression("$gt", add, new AstValueExpression(new AstLiteral(new BsonInt32(5)))));
         assertRendering(
                 """
                 {"$expr": {"$gt": [{"$add": ["$x", {"$numberInt": "1"}]}, {"$numberInt": "5"}]}}\

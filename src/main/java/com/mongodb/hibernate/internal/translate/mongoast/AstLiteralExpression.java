@@ -19,17 +19,20 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import org.bson.BsonWriter;
 
 /**
- * An {@link AstValue} (a literal or parameter) used verbatim in aggregation-expression position. Use this only when the
- * value cannot be misread there; a value that could be taken as a field path or an operator invocation (a string
- * beginning with {@code $}, or a document/array) must instead go through {@link AstLiteralExpression} so it is wrapped
- * in {@code $literal}.
+ * An {@link AstValue} (a literal or parameter) wrapped in {@code $literal} for aggregation-expression position, so it
+ * is taken verbatim rather than as a field path or an operator invocation. Use this when the value could otherwise be
+ * misread there (a string beginning with {@code $}, or a document/array); a value that cannot be misread uses
+ * {@link AstValueExpression} instead.
  *
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstValueExpression(AstValue value) implements AstExpression {
+public record AstLiteralExpression(AstValue value) implements AstExpression {
     @Override
     public void render(BsonWriter writer) {
+        writer.writeStartDocument();
+        writer.writeName("$literal");
         value.render(writer);
+        writer.writeEndDocument();
     }
 }

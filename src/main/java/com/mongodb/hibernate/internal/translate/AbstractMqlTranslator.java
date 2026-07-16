@@ -62,6 +62,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
@@ -733,12 +734,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     // A literal or parameter is a document value in FIELD/VALUE position, but in aggregation-expression
-    // position it must go through AstValueExpression: a value and an expression do not always render the
-    // same (a $-prefixed string is a field path there, a document/array is an operator invocation), so
-    // such a value is wrapped in $literal. `literalWrapped` says whether that wrapping is needed.
+    // position a value and an expression do not always render the same (a $-prefixed string is a field
+    // path there, a document/array is an operator invocation). A value that could be misread is wrapped
+    // in $literal via AstLiteralExpression; one that cannot is used verbatim via AstValueExpression.
     private void yieldValueOrExpression(AstValue value, boolean literalWrapped) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
-            astVisitorValueHolder.yield(EXPRESSION, new AstValueExpression(value, literalWrapped));
+            astVisitorValueHolder.yield(
+                    EXPRESSION, literalWrapped ? new AstLiteralExpression(value) : new AstValueExpression(value));
         } else {
             astVisitorValueHolder.yield(VALUE, value);
         }
@@ -863,7 +865,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
             var operand = acceptAndYieldExpression(booleanExpressionPredicate.getExpression());
-            var expected = new AstValueExpression(booleanExpressionPredicate.isNegated() ? FALSE : TRUE, false);
+            var expected = new AstValueExpression(booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
             var comparison = new AstBinaryOperatorExpression("$eq", operand, expected);
             astVisitorValueHolder.yield(EXPRESSION, comparison);
         } else {
@@ -1245,7 +1247,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 switch (unaryOperation.getOperator()) {
                     case UNARY_MINUS ->
                         new AstBinaryOperatorExpression(
-                                "$multiply", new AstValueExpression(new AstLiteral(new BsonInt32(-1)), false), operand);
+                                "$multiply", new AstValueExpression(new AstLiteral(new BsonInt32(-1))), operand);
                     case UNARY_PLUS -> operand;
                 });
     }
@@ -1494,7 +1496,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             astVisitorValueHolder.yield(
                     EXPRESSION,
                     new AstBinaryOperatorExpression(
-                            operator, operand, new AstValueExpression(new AstLiteral(BsonNull.VALUE), false)));
+                            operator, operand, new AstValueExpression(new AstLiteral(BsonNull.VALUE))));
         } else {
             if (!isFieldPathExpression(expression)) {
                 throw new FeatureNotSupportedException(
