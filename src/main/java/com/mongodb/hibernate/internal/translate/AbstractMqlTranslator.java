@@ -118,8 +118,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
+import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -252,6 +254,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // '#' is blocked in mapped field names, so prefixing join aliases with it prevents $lookup from shadowing
     // a local field that happens to share the Hibernate-generated alias name (e.g. "o1_0").
     private static final String JOIN_ALIAS_PREFIX = "#";
+    // Match a quoted SQL string with the contents of the string being in match group 1
+    private static final Pattern SQL_STRING = Pattern.compile("^'((?:''|[^'])*)'$");
 
     private final SessionFactoryImplementor sessionFactory;
 
@@ -383,11 +387,34 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitColumnWriteFragment(ColumnWriteFragment columnWriteFragment) {
-        if (!columnWriteFragment.getFragment().equals("?")) {
-            throw new FeatureNotSupportedException(
-                    "@CurrentTimestamp(source=DB), @Generated, and @ColumnTransformer write expressions are not supported");
+        switch (columnWriteFragment.getParameters().size()) {
+            case 0 -> {
+                // Hibernate inheritance discriminators should be string/char or integer. It is possible that other
+                // fragments are generated with other types through other code paths (_e.g._, @Generated).
+                var matcher = SQL_STRING.matcher(columnWriteFragment.getFragment());
+                BsonValue result;
+                if (matcher.matches()) {
+                    result = new BsonString(matcher.group(1).replace("''", "'"));
+                } else {
+                    try {
+                        result = new BsonInt32(Integer.parseInt(columnWriteFragment.getFragment()));
+                    } catch (NumberFormatException e) {
+                        throw new FeatureNotSupportedException(
+                                "Cannot translate fragment %s into MQL. Expecting string or integer literal."
+                                        .formatted(columnWriteFragment.getFragment()));
+                    }
+                }
+                astVisitorValueHolder.yield(VALUE, new AstLiteral(result));
+            }
+            case 1 -> {
+                if (columnWriteFragment.getFragment().equals("?")) {
+                    columnWriteFragment.getParameters().iterator().next().accept(this);
+                } else {
+                    throw new FeatureNotSupportedException("@ColumnTransformer expressions are not supported");
+                }
+            }
+            default -> throw fail("unexpected multi-parameter discriminator write fragment: " + columnWriteFragment);
         }
-        columnWriteFragment.getParameters().iterator().next().accept(this);
     }
 
     @Override

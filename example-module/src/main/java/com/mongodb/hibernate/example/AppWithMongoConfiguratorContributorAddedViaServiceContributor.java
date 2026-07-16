@@ -44,6 +44,7 @@ public final class AppWithMongoConfiguratorContributorAddedViaServiceContributor
                 .getMetadataBuilder(new StandardServiceRegistryBuilder()
                         .applySetting(AvailableSettings.DIALECT, "MongoDB")
                         .applySetting(AvailableSettings.STATEMENT_BATCH_SIZE, 2)
+                        .applySetting("com.mongodb.hibernate.semantics.nulls", "MQL")
                         .build())
                 .build()
                 .buildSessionFactory()) {
