@@ -116,10 +116,23 @@ tasks.withType<JavaCompile>().configureEach {
 // Integration test parallelism
 //
 // This module's integration tests are isolated per fork (each fork gets its own database; see MongoExtension) and so
-// run in parallel. Tests tagged "serial" manipulate mongod-global state (the `failCommand` fail point, a single shared
-// server-side switch) and cannot tolerate concurrent forks, so they run in a dedicated single-fork task instead. This
-// configuration is deliberately not in the shared `mongo-hibernate-integration-test` convention plugin: the Spring Boot
-// modules reuse that plugin but their tests are not fork-isolated.
+// run in parallel via `integrationTest`. Tests tagged "serial" manipulate mongod-global state (the `failCommand` fail
+// point, a single shared server-side switch) and cannot tolerate concurrent forks, so they run in a separate
+// single-fork `integrationTestSerial` task. That task finalizes `integrationTest`, so `./gradlew integrationTest` (and
+// anything that depends on it, such as `check`) runs the whole integration suite — the two-task split is otherwise an
+// invisible implementation detail. This configuration is deliberately not in the shared
+// `mongo-hibernate-integration-test` convention plugin: the Spring Boot modules reuse that plugin but their tests are
+// not fork-isolated.
+
+val integrationTestSerial =
+    tasks.register<Test>("integrationTestSerial") {
+        val integrationTest = tasks.named<Test>("integrationTest").get()
+        group = integrationTest.group
+        testClassesDirs = integrationTest.testClassesDirs
+        classpath = integrationTest.classpath
+        maxParallelForks = 1
+        useJUnitPlatform { includeTags("serial") }
+    }
 
 tasks.named<Test>("integrationTest") {
     // Fork count defaults to half the logical CPUs (portable across machines and CI). The fastest value is
@@ -130,21 +143,10 @@ tasks.named<Test>("integrationTest") {
         (findProperty("itForks") as String?)?.toInt()
             ?: (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
     useJUnitPlatform { excludeTags("serial") }
+    // Finalizer, so running `integrationTest` alone still runs the serial tests (strictly after this task, never
+    // overlapping — both share the one mongod, and the serial tests toggle a global fail point).
+    finalizedBy(integrationTestSerial)
 }
-
-val integrationTestSerial =
-    tasks.register<Test>("integrationTestSerial") {
-        val integrationTest = tasks.named<Test>("integrationTest").get()
-        group = integrationTest.group
-        testClassesDirs = integrationTest.testClassesDirs
-        classpath = integrationTest.classpath
-        maxParallelForks = 1
-        useJUnitPlatform { includeTags("serial") }
-        // Never overlap the parallel task: both share the one mongod, and the serial tests toggle a global fail point.
-        mustRunAfter(tasks.named("integrationTest"))
-    }
-
-tasks.check { dependsOn(integrationTestSerial) }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Build Config
