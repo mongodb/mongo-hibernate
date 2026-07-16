@@ -1176,53 +1176,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         @Test
-        void testComparisonBetweenFieldAndNonValueNotSupported1() {
-            assertSelectQueryFailure(
-                    "from Contact as c where c.age = c.id + 1",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following comparisons are supported: field vs literal, field vs parameter");
-        }
-
-        @Test
-        void testComparisonBetweenValuesNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where 1 = 1",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following comparisons are supported: field vs literal, field vs parameter");
-        }
-
-        @Test
-        void testComparisonBetweenFieldsNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where age = id",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following comparisons are supported: field vs literal, field vs parameter");
-        }
-
-        @Test
-        void testComparisonBetweenParameterAndValueNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where :param = 1",
-                    Contact.class,
-                    q -> q.setParameter("param", 1),
-                    FeatureNotSupportedException.class,
-                    "Only the following comparisons are supported: field vs literal, field vs parameter");
-        }
-
-        @Test
-        void testComparisonBetweenParametersNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where :param = :param",
-                    Contact.class,
-                    q -> q.setParameter("param", 1),
-                    FeatureNotSupportedException.class,
-                    "Only the following comparisons are supported: field vs literal, field vs parameter");
-        }
-
-        @Test
         void testIsNullOnParameterNotSupported() {
             assertSelectQueryFailure(
                     "from Contact where :param is null",
@@ -1230,34 +1183,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     q -> q.setParameter("param", "x"),
                     FeatureNotSupportedException.class,
                     "Only the following nullness predicates are supported: field is [not] null");
-        }
-
-        @Test
-        void testBetweenParametersNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where :param between 0 and 3",
-                    Contact.class,
-                    q -> q.setParameter("param", 1),
-                    FeatureNotSupportedException.class,
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
-        }
-
-        @Test
-        void testBetweenValuesNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where 1 between 0 and 10",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
-        }
-
-        @Test
-        void testBetweenFieldsNotSupported() {
-            assertSelectQueryFailure(
-                    "from Contact where age between id and 3",
-                    Contact.class,
-                    FeatureNotSupportedException.class,
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
         }
     }
 

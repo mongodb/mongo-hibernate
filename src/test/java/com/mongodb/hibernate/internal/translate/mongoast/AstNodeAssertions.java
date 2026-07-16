@@ -39,6 +39,11 @@ public final class AstNodeAssertions {
         doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.VALUE);
     }
 
+    public static void assertExpressionRendering(String expectedCanonicalExtendedJson, AstExpression node) {
+        // An expression renders in value position, so it uses the same rendering path as a value.
+        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.VALUE);
+    }
+
     private static void doAssertRendering(String expectedJson, AstNode node, AstNodeKind nodeKind) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {

@@ -419,6 +419,18 @@ class ExistsSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     FeatureNotSupportedException.class,
                     "TODO-HIBERNATE-177");
         }
+
+        // EXISTS-over-unnest translates to $elemMatch, which is a $match-only construct with no scalar
+        // aggregation-expression form, so it is not supported as a value-producing expression.
+        @Test
+        void testExistsInSelectIsUnsupported() {
+            assertSelectQueryFailure(
+                    "SELECT EXISTS (FROM c.lineItems li WHERE li.sku = :sku) FROM Cart c",
+                    Boolean.class,
+                    q -> q.setParameter("sku", "WIDGET-1"),
+                    FeatureNotSupportedException.class,
+                    "Expression not supported");
+        }
     }
 
     @Entity(name = "Cart")

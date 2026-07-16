@@ -162,7 +162,7 @@ class MongoStatement implements StatementAdapter {
                 return false;
             }
         }
-        if (!value.isBoolean() && !value.isNumber()) {
+        if (!value.isBoolean() && !value.isNumber() && !value.isDocument()) {
             throw new FeatureNotSupportedException(
                     format("Unsupported value in '$project' specification: [%s: %s]", key, value));
         }

@@ -25,6 +25,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FIELD_PATH;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.FILTER;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MODEL_MUTATION_RESULT;
@@ -46,9 +47,6 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstCompar
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.NE;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.IN;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.NIN;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.AND;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.NOR;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator.OR;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
@@ -56,12 +54,26 @@ import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstConversionExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
+import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
+import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
@@ -70,6 +82,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLi
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageExpressionSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
@@ -83,10 +96,12 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFil
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
@@ -96,8 +111,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -220,7 +238,9 @@ import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
+import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.type.BasicType;
+import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -250,6 +270,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
 
     private @Nullable QueryOptionsLimit queryOptionsLimit;
+
+    private @Nullable Map<Integer, String> projectionKeyMap;
 
     AbstractMqlTranslator(SessionFactoryImplementor sessionFactory) {
         this.sessionFactory = sessionFactory;
@@ -322,6 +344,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @SuppressWarnings("overloads")
     public <R> R acceptAndYield(SqlAstNode node, AstVisitorValueDescriptor<R> resultDescriptor) {
         return astVisitorValueHolder.execute(resultDescriptor, () -> node.accept(this));
+    }
+
+    // These yield a non-EXPRESSION descriptor from their visitors (tuple, $elemMatch), so reject them
+    // up front with a clear FeatureNotSupportedException rather than tripping the holder's assertion.
+    // Other unsupported nodes throw in their own visit methods and surface cleanly on their own.
+    private AstExpression acceptAndYieldExpression(Expression expression) {
+        if (expression instanceof SqlTuple || expression instanceof ExistsPredicate) {
+            throw new FeatureNotSupportedException(
+                    "Expression not supported: " + expression.getClass().getSimpleName());
+        }
+        return acceptAndYield(expression, EXPRESSION);
     }
 
     @SuppressWarnings("NamedLikeContextualKeyword")
@@ -430,7 +463,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         for (var lockBinding : tableMutation.getOptimisticLockBindings()) {
             predicates.add(createEqualityFilter(lockBinding));
         }
-        return predicates.size() == 1 ? predicates.get(0) : new AstLogicalFilter(AND, predicates);
+        return predicates.size() == 1
+                ? predicates.get(0)
+                : new AstLogicalFilter(AstLogicalFilterOperator.AND, predicates);
     }
 
     private AstFieldOperationFilter createEqualityFilter(ColumnValueBinding binding) {
@@ -442,7 +477,18 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
         parameterBinders.add(jdbcParameter.getParameterBinder());
-        astVisitorValueHolder.yield(VALUE, AstParameterMarker.INSTANCE);
+        yieldValueOrExpression(AstParameterMarker.INSTANCE, parameterNeedsLiteralWrapping(jdbcParameter));
+    }
+
+    // A parameter's bound value is unknown at translation time, so a string-typed parameter (which could
+    // bind a $-prefixed value) is wrapped in $literal in expression position; numeric/boolean/etc. are
+    // verbatim-safe. Unknown types are wrapped defensively.
+    private static boolean parameterNeedsLiteralWrapping(JdbcParameter jdbcParameter) {
+        var expressionType = jdbcParameter.getExpressionType();
+        if (expressionType == null || expressionType.getJdbcTypeCount() != 1) {
+            return true;
+        }
+        return expressionType.getSingleJdbcMapping().getJdbcType().isStringLike();
     }
 
     @Override
@@ -451,6 +497,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("Subquery not supported");
         }
         checkCteContainerSupportability(selectStatement);
+        projectionKeyMap = buildProjectionKeyMap(selectStatement.getDomainResultDescriptors());
         selectStatement.getQueryPart().accept(this);
     }
 
@@ -597,42 +644,69 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitRelationalPredicate(ComparisonPredicate comparisonPredicate) {
-        if (!isComparingFieldWithValue(comparisonPredicate)) {
-            throw new FeatureNotSupportedException(
-                    "Only the following comparisons are supported: field vs literal, field vs parameter");
+        // A comparison used as a value (e.g. `select x > 1`) yields a bare aggregation expression;
+        // otherwise it is a filter.
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            astVisitorValueHolder.yield(EXPRESSION, toComparisonExpression(comparisonPredicate));
+        } else {
+            astVisitorValueHolder.yield(FILTER, toFilter(comparisonPredicate));
         }
+    }
 
+    // A field-vs-value comparison uses the compact `{field: {$op: value}}` form;
+    // anything else wraps the comparison expression in `$expr`.
+    private AstFilter toFilter(ComparisonPredicate comparisonPredicate) {
+        return isComparingFieldWithValue(comparisonPredicate)
+                ? toFieldValueFilter(comparisonPredicate)
+                : new AstExprFilter(toComparisonExpression(comparisonPredicate));
+    }
+
+    private AstFieldOperationFilter toFieldValueFilter(ComparisonPredicate comparisonPredicate) {
         var lhs = comparisonPredicate.getLeftHandExpression();
         var rhs = comparisonPredicate.getRightHandExpression();
-
         var isFieldOnLeftHandSide = isFieldPathExpression(lhs);
         if (!isFieldOnLeftHandSide) {
             assertTrue(isFieldPathExpression(rhs));
         }
-
-        var fieldPath = acceptAndYield((isFieldOnLeftHandSide ? lhs : rhs), FIELD_PATH);
-        var comparisonValue = acceptAndYield((isFieldOnLeftHandSide ? rhs : lhs), VALUE);
-
+        var fieldPath = acceptAndYield(isFieldOnLeftHandSide ? lhs : rhs, FIELD_PATH);
+        var comparisonValue = acceptAndYield(isFieldOnLeftHandSide ? rhs : lhs, VALUE);
+        // The MQL operator always reads field-then-value, so invert when the field is on the right.
         var operator = isFieldOnLeftHandSide
                 ? comparisonPredicate.getOperator()
                 : comparisonPredicate.getOperator().invert();
-        var astComparisonFilterOperator = createAstComparisonFilterOperator(operator);
+        return new AstFieldOperationFilter(
+                fieldPath,
+                new AstComparisonFilterOperation(createAstComparisonFilterOperator(operator), comparisonValue));
+    }
 
-        var astFilterOperation = new AstComparisonFilterOperation(astComparisonFilterOperator, comparisonValue);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
-        astVisitorValueHolder.yield(FILTER, filter);
+    private AstBinaryOperatorExpression toComparisonExpression(ComparisonPredicate comparisonPredicate) {
+        var lhsExpr = acceptAndYieldExpression(comparisonPredicate.getLeftHandExpression());
+        var rhsExpr = acceptAndYieldExpression(comparisonPredicate.getRightHandExpression());
+        return new AstBinaryOperatorExpression(
+                toExprComparisonOperator(comparisonPredicate.getOperator()), lhsExpr, rhsExpr);
     }
 
     @Override
     public void visitNegatedPredicate(NegatedPredicate negatedPredicate) {
-        var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
-        astVisitorValueHolder.yield(FILTER, new AstLogicalFilter(NOR, List.of(filter)));
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var operand = acceptAndYieldExpression(negatedPredicate.getPredicate());
+            astVisitorValueHolder.yield(
+                    EXPRESSION, new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(operand)));
+        } else {
+            var filter = acceptAndYield(negatedPredicate.getPredicate(), FILTER);
+            astVisitorValueHolder.yield(FILTER, new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(filter)));
+        }
     }
 
     @Override
     public void visitGroupedPredicate(GroupedPredicate groupedPredicate) {
-        var filter = acceptAndYield(groupedPredicate.getSubPredicate(), FILTER);
-        astVisitorValueHolder.yield(FILTER, filter);
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var expression = acceptAndYieldExpression(groupedPredicate.getSubPredicate());
+            astVisitorValueHolder.yield(EXPRESSION, expression);
+        } else {
+            var filter = acceptAndYield(groupedPredicate.getSubPredicate(), FILTER);
+            astVisitorValueHolder.yield(FILTER, filter);
+        }
     }
 
     @Override
@@ -647,17 +721,20 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             if (sqlSelection.isVirtual()) {
                 continue;
             }
-            if (!(sqlSelection.getExpression() instanceof ColumnReference columnReference)) {
-                throw new FeatureNotSupportedException();
-            }
-            var field = acceptAndYield(columnReference, FIELD_PATH);
             AstProjectStageSpecification spec;
-            if (field.startsWith(JOIN_ALIAS_PREFIX)) {
-                spec = new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field);
-            } else if (field.contains(".")) {
-                spec = new AstProjectStageFieldPathSpecification(nestFieldProjectionKey(field), field);
+            if (sqlSelection.getExpression() instanceof ColumnReference columnReference) {
+                var field = acceptAndYield(columnReference, FIELD_PATH);
+                if (field.startsWith(JOIN_ALIAS_PREFIX)) {
+                    spec = new AstProjectStageFieldPathSpecification(joinFieldProjectionKey(field), field);
+                } else if (field.contains(".")) {
+                    spec = new AstProjectStageFieldPathSpecification(nestFieldProjectionKey(field), field);
+                } else {
+                    spec = new AstProjectStageIncludeSpecification(field);
+                }
             } else {
-                spec = new AstProjectStageIncludeSpecification(field);
+                var key = resolveProjectionKey(sqlSelection);
+                spec = new AstProjectStageExpressionSpecification(
+                        key, acceptAndYieldExpression(sqlSelection.getExpression()));
             }
             projectStageSpecifications.add(spec);
         }
@@ -676,7 +753,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         "TODO-HIBERNATE-177 https://jira.mongodb.org/browse/HIBERNATE-177");
             }
         }
-        astVisitorValueHolder.yield(FIELD_PATH, resolveFieldPath(columnReference));
+        yieldFieldPathOrExpression(resolveFieldPath(columnReference));
     }
 
     private String resolveFieldPath(ColumnReference columnReference) {
@@ -684,6 +761,76 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         return (qualifier != null && joinedTableQualifiers.contains(qualifier))
                 ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()
                 : columnReference.getColumnExpression();
+    }
+
+    // A literal or parameter is a document value in FIELD/VALUE position, but in aggregation-expression
+    // position a value and an expression do not always render the same (a $-prefixed string is a field
+    // path there, a document/array is an operator invocation). A value that could be misread is wrapped
+    // in $literal via AstLiteralExpression; one that cannot is used verbatim via AstValueExpression.
+    private void yieldValueOrExpression(AstValue value, boolean literalWrapped) {
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            astVisitorValueHolder.yield(
+                    EXPRESSION, literalWrapped ? new AstLiteralExpression(value) : new AstValueExpression(value));
+        } else {
+            astVisitorValueHolder.yield(VALUE, value);
+        }
+    }
+
+    // Whether a literal value would be misread in aggregation-expression position and so needs $literal:
+    // a string beginning with `$` (a field path), or a document/array (an operator invocation).
+    private static boolean needsLiteralWrapping(BsonValue value) {
+        return value.isDocument()
+                || value.isArray()
+                || (value.isString() && value.asString().getValue().startsWith("$"));
+    }
+
+    // A column reference is a bare field-path string in most positions, but inside an aggregation
+    // expression it must be wrapped as an AstFieldPathExpression.
+    private void yieldFieldPathOrExpression(String fieldPath) {
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            astVisitorValueHolder.yield(EXPRESSION, new AstFieldPathExpression(fieldPath));
+        } else {
+            astVisitorValueHolder.yield(FIELD_PATH, fieldPath);
+        }
+    }
+
+    // Maps each scalar projection's valuesArrayPosition to the $project key it should use: its AS alias
+    // when it has one, otherwise a generated "#c_<n>". The alias lives on the DomainResult and the
+    // position on the SqlSelection, so this bridges the two up front — resolveProjectionKey is then a
+    // plain lookup. collectValueIndexesToCache() sets one bit per column a result consumes; cardinality
+    // == 1 marks a scalar (an entity consumes several columns and is projected field-by-field instead,
+    // never through this key). The "#c_" prefix keeps a generated key clear of any mapped field name
+    // (# is rejected in those); a generated key that would clash with an explicit alias is skipped,
+    // since a backtick-quoted HQL alias can be anything (e.g. `select y + 1, x + 1 as `#c_1``).
+    private static Map<Integer, String> buildProjectionKeyMap(List<DomainResult<?>> domainResults) {
+        var aliases = new HashSet<String>();
+        for (DomainResult<?> domainResult : domainResults) {
+            var alias = domainResult.getResultVariable();
+            if (alias != null) {
+                aliases.add(alias);
+            }
+        }
+        var keyMap = new HashMap<Integer, String>();
+        var scalarCount = 0;
+        for (DomainResult<?> domainResult : domainResults) {
+            var bitSet = new BitSet();
+            domainResult.collectValueIndexesToCache(bitSet);
+            if (bitSet.cardinality() == 1) {
+                var alias = domainResult.getResultVariable();
+                String key = alias;
+                if (key == null) {
+                    do {
+                        key = "#c_" + ++scalarCount;
+                    } while (aliases.contains(key));
+                }
+                keyMap.put(bitSet.nextSetBit(0), key);
+            }
+        }
+        return keyMap;
+    }
+
+    private String resolveProjectionKey(SqlSelection sqlSelection) {
+        return assertNotNull(assertNotNull(projectionKeyMap).get(sqlSelection.getValuesArrayPosition()));
     }
 
     // Converts the internal "#qualifier.field" path to the "qualifier#field" projection key.
@@ -707,40 +854,60 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        var literalValue = queryLiteral.getLiteralValue();
-        astVisitorValueHolder.yield(VALUE, new AstLiteral(toBsonValue(literalValue)));
+        var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
+        yieldValueOrExpression(new AstLiteral(bsonValue), needsLiteralWrapping(bsonValue));
     }
 
     @Override
     public void visitJunction(Junction junction) {
-        var subFilters = new ArrayList<AstFilter>(junction.getPredicates().size());
-        for (var predicate : junction.getPredicates()) {
-            subFilters.add(acceptAndYield(predicate, FILTER));
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var operands = new ArrayList<AstExpression>(junction.getPredicates().size());
+            for (var predicate : junction.getPredicates()) {
+                operands.add(acceptAndYieldExpression(predicate));
+            }
+            var operator =
+                    switch (junction.getNature()) {
+                        case DISJUNCTION -> AstLogicalOperator.OR;
+                        case CONJUNCTION -> AstLogicalOperator.AND;
+                    };
+            astVisitorValueHolder.yield(EXPRESSION, new AstLogicalOperatorExpression(operator, operands));
+        } else {
+            var subFilters = new ArrayList<AstFilter>(junction.getPredicates().size());
+            for (var predicate : junction.getPredicates()) {
+                subFilters.add(acceptAndYield(predicate, FILTER));
+            }
+            var operator =
+                    switch (junction.getNature()) {
+                        case DISJUNCTION -> AstLogicalFilterOperator.OR;
+                        case CONJUNCTION -> AstLogicalFilterOperator.AND;
+                    };
+            astVisitorValueHolder.yield(FILTER, new AstLogicalFilter(operator, subFilters));
         }
-        var junctionFilter =
-                switch (junction.getNature()) {
-                    case DISJUNCTION -> new AstLogicalFilter(OR, subFilters);
-                    case CONJUNCTION -> new AstLogicalFilter(AND, subFilters);
-                };
-        astVisitorValueHolder.yield(FILTER, junctionFilter);
     }
 
     @Override
     public <N extends Number> void visitUnparsedNumericLiteral(UnparsedNumericLiteral<N> unparsedNumericLiteral) {
-        var literalValue = assertNotNull(unparsedNumericLiteral.getLiteralValue());
-        astVisitorValueHolder.yield(VALUE, new AstLiteral(toBsonValue(literalValue)));
+        var bsonValue = toBsonValue(assertNotNull(unparsedNumericLiteral.getLiteralValue()));
+        yieldValueOrExpression(new AstLiteral(bsonValue), needsLiteralWrapping(bsonValue));
     }
 
     @Override
     public void visitBooleanExpressionPredicate(BooleanExpressionPredicate booleanExpressionPredicate) {
-        if (!isFieldPathExpression(booleanExpressionPredicate.getExpression())) {
-            throw new FeatureNotSupportedException("Expression not of field path is not supported");
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var operand = acceptAndYieldExpression(booleanExpressionPredicate.getExpression());
+            var expected = new AstValueExpression(booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
+            var comparison = new AstBinaryOperatorExpression(AstComparisonExpressionOperator.EQ, operand, expected);
+            astVisitorValueHolder.yield(EXPRESSION, comparison);
+        } else {
+            if (!isFieldPathExpression(booleanExpressionPredicate.getExpression())) {
+                throw new FeatureNotSupportedException("Expression not of field path is not supported");
+            }
+            var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
+            var astFilterOperation =
+                    new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
+            var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
+            astVisitorValueHolder.yield(FILTER, filter);
         }
-        var fieldPath = acceptAndYield(booleanExpressionPredicate.getExpression(), FIELD_PATH);
-        var astFilterOperation =
-                new AstComparisonFilterOperation(EQ, booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-        var filter = new AstFieldOperationFilter(fieldPath, astFilterOperation);
-        astVisitorValueHolder.yield(FILTER, filter);
     }
 
     @Override
@@ -1002,17 +1169,58 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitBinaryArithmeticExpression(BinaryArithmeticExpression binaryArithmeticExpression) {
-        throw new FeatureNotSupportedException();
+        var left = acceptAndYieldExpression(binaryArithmeticExpression.getLeftHandOperand());
+        var right = acceptAndYieldExpression(binaryArithmeticExpression.getRightHandOperand());
+        astVisitorValueHolder.yield(
+                EXPRESSION,
+                switch (binaryArithmeticExpression.getOperator()) {
+                    case ADD -> new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.ADD, left, right);
+                    case SUBTRACT ->
+                        new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.SUBTRACT, left, right);
+                    case MULTIPLY ->
+                        new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.MULTIPLY, left, right);
+                    // DIVIDE (HQL `/`) and QUOT (CriteriaBuilder.quot) are the same operator, both `/`;
+                    // DIVIDE_PORTABLE is always integer division. MongoDB's $divide always yields a
+                    // double, but Hibernate infers an integer result type for integer operands and reads
+                    // the column back as that integer, so integer division is truncated to match:
+                    // $toLong for a 64-bit (BIGINT) result, $toInt for narrower integral types.
+                    case DIVIDE, QUOT, DIVIDE_PORTABLE ->
+                        divide(left, right, integerDivisionCast(binaryArithmeticExpression));
+                    case MODULO -> new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.MOD, left, right);
+                });
+    }
+
+    private static AstExpression divide(
+            AstExpression left, AstExpression right, @Nullable AstConversionExpressionOperator integerCast) {
+        var quotient = new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.DIVIDE, left, right);
+        return integerCast == null ? quotient : new AstUnaryOperatorExpression(integerCast, quotient);
+    }
+
+    // The truncation operator for integer division, or null when the result type is not integral (a
+    // plain $divide). $toLong for a BIGINT result, $toInt for narrower integral types.
+    private static @Nullable AstConversionExpressionOperator integerDivisionCast(
+            BinaryArithmeticExpression expression) {
+        var expressionType = expression.getExpressionType();
+        if (expressionType == null || expressionType.getJdbcTypeCount() != 1) {
+            return null;
+        }
+        var jdbcType = expressionType.getSingleJdbcMapping().getJdbcType();
+        if (!jdbcType.isInteger()) {
+            return null;
+        }
+        return jdbcType.getDdlTypeCode() == SqlTypes.BIGINT
+                ? AstConversionExpressionOperator.TO_LONG
+                : AstConversionExpressionOperator.TO_INT;
     }
 
     @Override
     public void visitCaseSearchedExpression(CaseSearchedExpression caseSearchedExpression) {
-        throw new FeatureNotSupportedException();
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
     }
 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
-        throw new FeatureNotSupportedException();
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
     }
 
     @Override
@@ -1040,6 +1248,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (!(selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression)) {
             throw new FeatureNotSupportedException("Only function expressions are supported");
         }
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            // a function call as an operand within an aggregation expression is not yet supported
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
+        }
         selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
     }
 
@@ -1065,7 +1277,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitUnaryOperationExpression(UnaryOperation unaryOperation) {
-        throw new FeatureNotSupportedException();
+        var operand = acceptAndYieldExpression(unaryOperation.getOperand());
+        astVisitorValueHolder.yield(
+                EXPRESSION,
+                switch (unaryOperation.getOperator()) {
+                    case UNARY_MINUS ->
+                        new AstBinaryOperatorExpression(
+                                AstArithmeticExpressionOperator.MULTIPLY,
+                                new AstValueExpression(new AstLiteral(new BsonInt32(-1))),
+                                operand);
+                    case UNARY_PLUS -> operand;
+                });
     }
 
     @Override
@@ -1075,29 +1297,73 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitBetweenPredicate(BetweenPredicate betweenPredicate) {
-        if (!isFieldPathExpression(betweenPredicate.getExpression())
-                || !isValueExpression(betweenPredicate.getLowerBound())
-                || !isValueExpression(betweenPredicate.getUpperBound())) {
-            throw new FeatureNotSupportedException(
-                    "Only the following predicates are supported: field [not] between literal|parameter and literal|parameter");
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            astVisitorValueHolder.yield(EXPRESSION, toBetweenExpression(betweenPredicate));
+        } else {
+            astVisitorValueHolder.yield(FILTER, toBetweenFilter(betweenPredicate));
         }
-        var fieldPath = acceptAndYield(betweenPredicate.getExpression(), FIELD_PATH);
-        var lowerBound = acceptAndYield(betweenPredicate.getLowerBound(), VALUE);
-        var upperBound = acceptAndYield(betweenPredicate.getUpperBound(), VALUE);
+    }
 
-        astVisitorValueHolder.yield(
-                FILTER,
-                new AstLogicalFilter(
-                        betweenPredicate.isNegated() ? OR : AND,
-                        List.of(
-                                new AstFieldOperationFilter(
-                                        fieldPath,
-                                        new AstComparisonFilterOperation(
-                                                betweenPredicate.isNegated() ? LT : GTE, lowerBound)),
-                                new AstFieldOperationFilter(
-                                        fieldPath,
-                                        new AstComparisonFilterOperation(
-                                                betweenPredicate.isNegated() ? GT : LTE, upperBound)))));
+    // BETWEEN is `operand >= lower AND operand <= upper` (negated: `< lower OR > upper`), joined at the
+    // filter level so each bound independently takes the compact `{field: {$op: value}}` form or `$expr`.
+    private AstFilter toBetweenFilter(BetweenPredicate betweenPredicate) {
+        var operand = betweenPredicate.getExpression();
+        return new AstLogicalFilter(
+                betweenPredicate.isNegated() ? AstLogicalFilterOperator.OR : AstLogicalFilterOperator.AND,
+                List.of(
+                        toBoundFilter(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.LESS_THAN
+                                        : ComparisonOperator.GREATER_THAN_OR_EQUAL,
+                                betweenPredicate.getLowerBound()),
+                        toBoundFilter(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.GREATER_THAN
+                                        : ComparisonOperator.LESS_THAN_OR_EQUAL,
+                                betweenPredicate.getUpperBound())));
+    }
+
+    private AstFilter toBoundFilter(Expression operand, ComparisonOperator operator, Expression bound) {
+        if (isFieldPathExpression(operand) && isValueExpression(bound)) {
+            var fieldPath = acceptAndYield(operand, FIELD_PATH);
+            var value = acceptAndYield(bound, VALUE);
+            return new AstFieldOperationFilter(
+                    fieldPath, new AstComparisonFilterOperation(createAstComparisonFilterOperator(operator), value));
+        } else {
+            var operandExpression = acceptAndYieldExpression(operand);
+            var boundExpression = acceptAndYieldExpression(bound);
+            return new AstExprFilter(new AstBinaryOperatorExpression(
+                    toExprComparisonOperator(operator), operandExpression, boundExpression));
+        }
+    }
+
+    private AstLogicalOperatorExpression toBetweenExpression(BetweenPredicate betweenPredicate) {
+        var operand = betweenPredicate.getExpression();
+        return new AstLogicalOperatorExpression(
+                betweenPredicate.isNegated() ? AstLogicalOperator.OR : AstLogicalOperator.AND,
+                List.of(
+                        toBoundExpression(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.LESS_THAN
+                                        : ComparisonOperator.GREATER_THAN_OR_EQUAL,
+                                betweenPredicate.getLowerBound()),
+                        toBoundExpression(
+                                operand,
+                                betweenPredicate.isNegated()
+                                        ? ComparisonOperator.GREATER_THAN
+                                        : ComparisonOperator.LESS_THAN_OR_EQUAL,
+                                betweenPredicate.getUpperBound())));
+    }
+
+    // Each bound is visited on its own (never a reused node): the operand appears in both comparisons,
+    // so a parameter in it must register a binder per occurrence to stay aligned with the rendered markers.
+    private AstBinaryOperatorExpression toBoundExpression(
+            Expression operand, ComparisonOperator operator, Expression bound) {
+        return new AstBinaryOperatorExpression(
+                toExprComparisonOperator(operator), acceptAndYieldExpression(operand), acceptAndYieldExpression(bound));
     }
 
     @Override
@@ -1117,19 +1383,34 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
-        var expression = inListPredicate.getTestExpression();
-        if (!isFieldPathExpression(expression)) {
-            throw new FeatureNotSupportedException(
-                    "Only the following list predicates are supported: field in [not] (...)");
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var value = acceptAndYieldExpression(inListPredicate.getTestExpression());
+            var options = new ArrayList<AstExpression>(
+                    inListPredicate.getListExpressions().size());
+            for (var item : inListPredicate.getListExpressions()) {
+                options.add(acceptAndYieldExpression(item));
+            }
+            AstExpression in = new AstInExpression(value, options);
+            astVisitorValueHolder.yield(
+                    EXPRESSION,
+                    inListPredicate.isNegated()
+                            ? new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(in))
+                            : in);
+        } else {
+            var expression = inListPredicate.getTestExpression();
+            if (!isFieldPathExpression(expression)) {
+                throw new FeatureNotSupportedException(
+                        "Only the following list predicates are supported: field in [not] (...)");
+            }
+            var fieldPath = acceptAndYield(expression, FIELD_PATH);
+            var operator = inListPredicate.isNegated() ? NIN : IN;
+            var operation = new AstListComparisonFilterOperation(
+                    operator,
+                    inListPredicate.getListExpressions().stream()
+                            .map(item -> acceptAndYield(item, VALUE))
+                            .toList());
+            astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
         }
-        var fieldPath = acceptAndYield(expression, FIELD_PATH);
-        var operator = inListPredicate.isNegated() ? NIN : IN;
-        var operation = new AstListComparisonFilterOperation(
-                operator,
-                inListPredicate.getListExpressions().stream()
-                        .map(item -> acceptAndYield(item, VALUE))
-                        .toList());
-        astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
     }
 
     @Override
@@ -1166,7 +1447,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         AstFilter filter =
                 new AstFieldOperationFilter(shape.arrayFieldName(), new AstElemMatchFilterOperation(bodyFilter));
         if (existsPredicate.isNegated()) {
-            filter = new AstLogicalFilter(NOR, List.of(filter));
+            filter = new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(filter));
         }
         return filter;
     }
@@ -1221,27 +1502,51 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             escape = extractLiteral(likePredicate.getEscapeCharacter(), Character.class, "escape character in LIKE");
         }
         var pattern = extractLiteral(likePredicate.getPattern(), String.class, "pattern in LIKE");
+        var regex = quoteMeta(pattern, escape);
+        var options = likePredicate.isCaseSensitive() ? "s" : "is";
 
-        var fieldPath = acceptAndYield(likePredicate.getMatchExpression(), FIELD_PATH);
-        final var filter = new AstFieldOperationFilter(
-                fieldPath,
-                new AstRegularExpressionFilterOperation(
-                        quoteMeta(pattern, escape), likePredicate.isCaseSensitive() ? "s" : "is"));
-        astVisitorValueHolder.yield(
-                FILTER, likePredicate.isNegated() ? new AstLogicalFilter(NOR, List.of(filter)) : filter);
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var regexMatch = new AstRegexMatchExpression(
+                    acceptAndYieldExpression(likePredicate.getMatchExpression()), regex, options);
+            astVisitorValueHolder.yield(
+                    EXPRESSION,
+                    likePredicate.isNegated()
+                            ? new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(regexMatch))
+                            : regexMatch);
+        } else {
+            var fieldPath = acceptAndYield(likePredicate.getMatchExpression(), FIELD_PATH);
+            var filter =
+                    new AstFieldOperationFilter(fieldPath, new AstRegularExpressionFilterOperation(regex, options));
+            astVisitorValueHolder.yield(
+                    FILTER,
+                    likePredicate.isNegated()
+                            ? new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(filter))
+                            : filter);
+        }
     }
 
     @Override
     public void visitNullnessPredicate(NullnessPredicate nullnessPredicate) {
         var expression = nullnessPredicate.getExpression();
-        if (!isFieldPathExpression(expression)) {
-            throw new FeatureNotSupportedException(
-                    "Only the following nullness predicates are supported: field is [not] null");
+        if (astVisitorValueHolder.expects(EXPRESSION)) {
+            var operand = acceptAndYieldExpression(expression);
+            var operator = nullnessPredicate.isNegated()
+                    ? AstComparisonExpressionOperator.NE
+                    : AstComparisonExpressionOperator.EQ;
+            astVisitorValueHolder.yield(
+                    EXPRESSION,
+                    new AstBinaryOperatorExpression(
+                            operator, operand, new AstValueExpression(new AstLiteral(BsonNull.VALUE))));
+        } else {
+            if (!isFieldPathExpression(expression)) {
+                throw new FeatureNotSupportedException(
+                        "Only the following nullness predicates are supported: field is [not] null");
+            }
+            var fieldPath = acceptAndYield(expression, FIELD_PATH);
+            var operator = nullnessPredicate.isNegated() ? NE : EQ;
+            var operation = new AstComparisonFilterOperation(operator, new AstLiteral(BsonNull.VALUE));
+            astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
         }
-        var fieldPath = acceptAndYield(expression, FIELD_PATH);
-        var operator = nullnessPredicate.isNegated() ? NE : EQ;
-        var operation = new AstComparisonFilterOperation(operator, new AstLiteral(BsonNull.VALUE));
-        astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
     }
 
     @Override
@@ -1360,6 +1665,18 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             case LESS_THAN_OR_EQUAL -> LTE;
             case GREATER_THAN -> GT;
             case GREATER_THAN_OR_EQUAL -> GTE;
+            default -> throw new FeatureNotSupportedException("Unsupported comparison operator: " + operator.name());
+        };
+    }
+
+    private static AstComparisonExpressionOperator toExprComparisonOperator(ComparisonOperator operator) {
+        return switch (operator) {
+            case EQUAL -> AstComparisonExpressionOperator.EQ;
+            case NOT_EQUAL -> AstComparisonExpressionOperator.NE;
+            case LESS_THAN -> AstComparisonExpressionOperator.LT;
+            case LESS_THAN_OR_EQUAL -> AstComparisonExpressionOperator.LTE;
+            case GREATER_THAN -> AstComparisonExpressionOperator.GT;
+            case GREATER_THAN_OR_EQUAL -> AstComparisonExpressionOperator.GTE;
             default -> throw new FeatureNotSupportedException("Unsupported comparison operator: " + operator.name());
         };
     }

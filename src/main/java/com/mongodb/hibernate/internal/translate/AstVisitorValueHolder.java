@@ -49,4 +49,11 @@ final class AstVisitorValueHolder {
         assertNull(this.value);
         this.value = value;
     }
+
+    // A node type that renders differently depending on the surrounding context (e.g. a column
+    // reference as a bare field path vs. inside an aggregation expression) inspects the currently
+    // expected descriptor to decide which form to yield.
+    public boolean expects(AstVisitorValueDescriptor<?> valueDescriptor) {
+        return valueDescriptor.equals(this.valueDescriptor);
+    }
 }
