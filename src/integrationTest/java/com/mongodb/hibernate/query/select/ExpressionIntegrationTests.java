@@ -17,8 +17,10 @@
 package com.mongodb.hibernate.query.select;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.DIALECT;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
@@ -28,6 +30,7 @@ import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
+import org.hibernate.JDBCException;
 import org.hibernate.cfg.QuerySettings;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -216,6 +219,37 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
+        void testStaticConstantOperand() {
+            assertSelectionQuery(
+                    "select x + com.mongodb.hibernate.query.select.HqlConstants.BONUS from Item",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {"$add": ["$x", {"$numberInt": "100"}]}
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(110, 104, 105),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        @Test
+        void testDivideByZeroFailsAtExecution() {
+            assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
+                                    "select x / 0 from Item", Integer.class)
+                            .getResultList()))
+                    .isInstanceOf(JDBCException.class)
+                    .hasRootCauseInstanceOf(MongoCommandException.class)
+                    .rootCause()
+                    .hasMessageContaining("can't $divide by zero");
+        }
+
+        @Test
         void testMixedColumnAndComputedProjection() {
             assertSelectionQuery(
                     "select x, x + 1 from Item",
@@ -350,6 +384,35 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       ]
                     }""",
                     List.of(new Item(1, 10, 3)),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // NOT over a computed comparison in WHERE: the comparison needs $expr, and NOT is a filter-level
+        // $nor (the query $not is field-scoped and cannot negate a whole $expr).
+        @Test
+        void testNotComputedComparisonInWhere() {
+            assertSelectionQuery(
+                    "from Item where not (x + 1 > 5)",
+                    Item.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$nor": [{"$expr": {"$gt": [{"$add": ["$x", {"$numberInt": "1"}]}, {"$numberInt": "5"}]}}]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "x": true,
+                            "y": true
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Item(2, 4, 7)),
                     Set.of(Item.COLLECTION_NAME));
         }
 
