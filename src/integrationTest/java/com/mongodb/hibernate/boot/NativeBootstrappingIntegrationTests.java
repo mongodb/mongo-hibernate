@@ -38,10 +38,14 @@ import org.hibernate.annotations.SourceType;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(MongoExtension.class)
+// Enables the mongod-global `failCommand` fail point; must run in the single-fork `integrationTestSerial` lane so it
+// does not contend with parallel forks over that one shared server-side switch.
+@Tag("serial")
 class NativeBootstrappingIntegrationTests extends AbstractQueryIntegrationTests
         implements MongoServiceRegistryProducer {
     @InjectMongoClient

@@ -38,6 +38,7 @@ import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,6 +48,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
+// Enables the mongod-global `failCommand` fail point; must run in the single-fork `integrationTestSerial` lane so it
+// does not contend with parallel forks over that one shared server-side switch.
+@Tag("serial")
 class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "items";
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";

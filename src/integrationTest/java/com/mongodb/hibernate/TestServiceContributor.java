@@ -17,6 +17,7 @@
 package com.mongodb.hibernate;
 
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
+import com.mongodb.hibernate.junit.MongoExtension;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceContributor;
 
@@ -28,8 +29,13 @@ public final class TestServiceContributor implements ServiceContributor {
     public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
         serviceRegistryBuilder.addService(
                 MongoConfigurationContributor.class,
-                configurator -> configurator.applyToMongoClientSettings(
-                        builder -> builder.addCommandListener(TestCommandListener.INSTANCE)));
+                // Point every test SessionFactory at the current fork's database so parallel Gradle test forks stay
+                // isolated. Registered here (rather than in MongoServiceRegistryProducer) so it also reaches tests that
+                // build their SessionFactory directly via `new Configuration()`, bypassing the testing framework.
+                configurator -> configurator
+                        .databaseName(MongoExtension.databaseName())
+                        .applyToMongoClientSettings(
+                                builder -> builder.addCommandListener(TestCommandListener.INSTANCE)));
         serviceRegistryBuilder.addService(TestCommandListener.class, TestCommandListener.INSTANCE);
     }
 }

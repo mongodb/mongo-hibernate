@@ -58,6 +58,25 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
 
     private static final State STATE = State.create();
 
+    /**
+     * The database used by the current test JVM. When the suite runs across parallel Gradle test forks, each fork gets
+     * its own database (suffixed with the Gradle worker id) so forks do not drop each other's data. The
+     * {@code SessionFactory} under test must be pointed at this same database; see
+     * {@link MongoServiceRegistryProducer}.
+     */
+    public static String databaseName() {
+        return STATE.mongoDatabase().getName();
+    }
+
+    /**
+     * Appends the Gradle test-worker id to {@code baseName} so parallel forks use isolated databases. Returns
+     * {@code baseName} unchanged when not running under Gradle (e.g. from an IDE), preserving single-process behavior.
+     */
+    private static String workerScopedDatabaseName(String baseName) {
+        var workerId = System.getProperty("org.gradle.test.worker");
+        return workerId == null ? baseName : baseName + "_" + workerId;
+    }
+
     /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}. */
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
@@ -100,8 +119,8 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
             var hibernateProperties = (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
             var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
             var mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
-            var state = new State(
-                    mongoClient, mongoClient.getDatabase(mongoConfig.databaseName()), mongoClient.getDatabase("admin"));
+            var databaseName = workerScopedDatabaseName(mongoConfig.databaseName());
+            var state = new State(mongoClient, mongoClient.getDatabase(databaseName), mongoClient.getDatabase("admin"));
             Runtime.getRuntime().addShutdownHook(new Thread(state::close));
             return state;
         }

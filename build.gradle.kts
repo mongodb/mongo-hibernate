@@ -113,6 +113,40 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Integration test parallelism
+//
+// This module's integration tests are isolated per fork (each fork gets its own database; see MongoExtension) and so
+// run in parallel. Tests tagged "serial" manipulate mongod-global state (the `failCommand` fail point, a single shared
+// server-side switch) and cannot tolerate concurrent forks, so they run in a dedicated single-fork task instead. This
+// configuration is deliberately not in the shared `mongo-hibernate-integration-test` convention plugin: the Spring Boot
+// modules reuse that plugin but their tests are not fork-isolated.
+
+tasks.named<Test>("integrationTest") {
+    // Fork count defaults to half the logical CPUs (portable across machines and CI). The fastest value is
+    // machine-specific and does not track core count in any simple way (empirically it can peak well below the
+    // CPU count and regress above it), so it is overridable per machine via `-PitForks=<n>` or an `itForks=<n>`
+    // line in `~/.gradle/gradle.properties`.
+    maxParallelForks =
+        (findProperty("itForks") as String?)?.toInt()
+            ?: (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    useJUnitPlatform { excludeTags("serial") }
+}
+
+val integrationTestSerial =
+    tasks.register<Test>("integrationTestSerial") {
+        val integrationTest = tasks.named<Test>("integrationTest").get()
+        group = integrationTest.group
+        testClassesDirs = integrationTest.testClassesDirs
+        classpath = integrationTest.classpath
+        maxParallelForks = 1
+        useJUnitPlatform { includeTags("serial") }
+        // Never overlap the parallel task: both share the one mongod, and the serial tests toggle a global fail point.
+        mustRunAfter(tasks.named("integrationTest"))
+    }
+
+tasks.check { dependsOn(integrationTestSerial) }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Build Config
 
 buildConfig {
