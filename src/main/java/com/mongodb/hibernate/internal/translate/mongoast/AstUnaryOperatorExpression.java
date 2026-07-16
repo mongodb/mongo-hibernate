@@ -21,6 +21,11 @@ import org.bson.BsonWriter;
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public record AstUnaryOperatorExpression(String operator, AstExpression operand) implements AstExpression {
+
+    public AstUnaryOperatorExpression(AstConversionExpressionOperator operator, AstExpression operand) {
+        this(operator.getOperatorName(), operand);
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

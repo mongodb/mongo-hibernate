@@ -35,4 +35,16 @@ class AstUnaryOperatorExpressionTests {
                 """,
                 toInt);
     }
+
+    @Test
+    void testRenderingFromConversionOperator() {
+        var divide = new AstBinaryOperatorExpression(
+                "$divide", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(2))));
+        var toLong = new AstUnaryOperatorExpression(AstConversionExpressionOperator.TO_LONG, divide);
+        assertExpressionRendering(
+                """
+                {"": {"$toLong": {"$divide": ["$x", {"$numberInt": "2"}]}}}\
+                """,
+                toLong);
+    }
 }

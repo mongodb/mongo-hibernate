@@ -54,7 +54,10 @@ import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstConversionExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
@@ -866,7 +869,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (astVisitorValueHolder.expects(EXPRESSION)) {
             var operand = acceptAndYieldExpression(booleanExpressionPredicate.getExpression());
             var expected = new AstValueExpression(booleanExpressionPredicate.isNegated() ? FALSE : TRUE);
-            var comparison = new AstBinaryOperatorExpression("$eq", operand, expected);
+            var comparison = new AstBinaryOperatorExpression(AstComparisonExpressionOperator.EQ, operand, expected);
             astVisitorValueHolder.yield(EXPRESSION, comparison);
         } else {
             if (!isFieldPathExpression(booleanExpressionPredicate.getExpression())) {
@@ -1144,9 +1147,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 EXPRESSION,
                 switch (binaryArithmeticExpression.getOperator()) {
-                    case ADD -> new AstBinaryOperatorExpression("$add", left, right);
-                    case SUBTRACT -> new AstBinaryOperatorExpression("$subtract", left, right);
-                    case MULTIPLY -> new AstBinaryOperatorExpression("$multiply", left, right);
+                    case ADD -> new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.ADD, left, right);
+                    case SUBTRACT ->
+                        new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.SUBTRACT, left, right);
+                    case MULTIPLY ->
+                        new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.MULTIPLY, left, right);
                     // DIVIDE (HQL `/`) and QUOT (CriteriaBuilder.quot) are the same operator, both `/`;
                     // DIVIDE_PORTABLE is always integer division. MongoDB's $divide always yields a
                     // double, but Hibernate infers an integer result type for integer operands and reads
@@ -1154,18 +1159,20 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     // $toLong for a 64-bit (BIGINT) result, $toInt for narrower integral types.
                     case DIVIDE, QUOT, DIVIDE_PORTABLE ->
                         divide(left, right, integerDivisionCast(binaryArithmeticExpression));
-                    case MODULO -> new AstBinaryOperatorExpression("$mod", left, right);
+                    case MODULO -> new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.MOD, left, right);
                 });
     }
 
-    private static AstExpression divide(AstExpression left, AstExpression right, @Nullable String integerCast) {
-        var quotient = new AstBinaryOperatorExpression("$divide", left, right);
+    private static AstExpression divide(
+            AstExpression left, AstExpression right, @Nullable AstConversionExpressionOperator integerCast) {
+        var quotient = new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.DIVIDE, left, right);
         return integerCast == null ? quotient : new AstUnaryOperatorExpression(integerCast, quotient);
     }
 
     // The truncation operator for integer division, or null when the result type is not integral (a
     // plain $divide). $toLong for a BIGINT result, $toInt for narrower integral types.
-    private static @Nullable String integerDivisionCast(BinaryArithmeticExpression expression) {
+    private static @Nullable AstConversionExpressionOperator integerDivisionCast(
+            BinaryArithmeticExpression expression) {
         var expressionType = expression.getExpressionType();
         if (expressionType == null || expressionType.getJdbcTypeCount() != 1) {
             return null;
@@ -1174,7 +1181,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (!jdbcType.isInteger()) {
             return null;
         }
-        return jdbcType.getDdlTypeCode() == SqlTypes.BIGINT ? "$toLong" : "$toInt";
+        return jdbcType.getDdlTypeCode() == SqlTypes.BIGINT
+                ? AstConversionExpressionOperator.TO_LONG
+                : AstConversionExpressionOperator.TO_INT;
     }
 
     @Override
@@ -1247,7 +1256,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 switch (unaryOperation.getOperator()) {
                     case UNARY_MINUS ->
                         new AstBinaryOperatorExpression(
-                                "$multiply", new AstValueExpression(new AstLiteral(new BsonInt32(-1))), operand);
+                                AstArithmeticExpressionOperator.MULTIPLY,
+                                new AstValueExpression(new AstLiteral(new BsonInt32(-1))),
+                                operand);
                     case UNARY_PLUS -> operand;
                 });
     }
@@ -1492,7 +1503,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var expression = nullnessPredicate.getExpression();
         if (astVisitorValueHolder.expects(EXPRESSION)) {
             var operand = acceptAndYieldExpression(expression);
-            var operator = nullnessPredicate.isNegated() ? "$ne" : "$eq";
+            var operator = nullnessPredicate.isNegated()
+                    ? AstComparisonExpressionOperator.NE
+                    : AstComparisonExpressionOperator.EQ;
             astVisitorValueHolder.yield(
                     EXPRESSION,
                     new AstBinaryOperatorExpression(
@@ -1629,14 +1642,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         };
     }
 
-    private static String toExprComparisonOperator(ComparisonOperator operator) {
+    private static AstComparisonExpressionOperator toExprComparisonOperator(ComparisonOperator operator) {
         return switch (operator) {
-            case EQUAL -> "$eq";
-            case NOT_EQUAL -> "$ne";
-            case LESS_THAN -> "$lt";
-            case LESS_THAN_OR_EQUAL -> "$lte";
-            case GREATER_THAN -> "$gt";
-            case GREATER_THAN_OR_EQUAL -> "$gte";
+            case EQUAL -> AstComparisonExpressionOperator.EQ;
+            case NOT_EQUAL -> AstComparisonExpressionOperator.NE;
+            case LESS_THAN -> AstComparisonExpressionOperator.LT;
+            case LESS_THAN_OR_EQUAL -> AstComparisonExpressionOperator.LTE;
+            case GREATER_THAN -> AstComparisonExpressionOperator.GT;
+            case GREATER_THAN_OR_EQUAL -> AstComparisonExpressionOperator.GTE;
             default -> throw new FeatureNotSupportedException("Unsupported comparison operator: " + operator.name());
         };
     }

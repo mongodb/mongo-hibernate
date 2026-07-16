@@ -22,6 +22,17 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstBinaryOperatorExpression(String operator, AstExpression left, AstExpression right)
         implements AstExpression {
+
+    public AstBinaryOperatorExpression(
+            AstComparisonExpressionOperator operator, AstExpression left, AstExpression right) {
+        this(operator.getOperatorName(), left, right);
+    }
+
+    public AstBinaryOperatorExpression(
+            AstArithmeticExpressionOperator operator, AstExpression left, AstExpression right) {
+        this(operator.getOperatorName(), left, right);
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();

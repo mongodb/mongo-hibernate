@@ -34,6 +34,30 @@ class AstBinaryOperatorExpressionTests {
     }
 
     @Test
+    void testRenderingFromComparisonOperator() {
+        var expr = new AstBinaryOperatorExpression(
+                AstComparisonExpressionOperator.GTE,
+                new AstFieldPathExpression("x"),
+                new AstValueExpression(new AstLiteral(new BsonInt32(1))));
+        assertExpressionRendering(
+                """
+                {"": {"$gte": ["$x", {"$numberInt": "1"}]}}\
+                """, expr);
+    }
+
+    @Test
+    void testRenderingFromArithmeticOperator() {
+        var expr = new AstBinaryOperatorExpression(
+                AstArithmeticExpressionOperator.SUBTRACT,
+                new AstFieldPathExpression("x"),
+                new AstValueExpression(new AstLiteral(new BsonInt32(1))));
+        assertExpressionRendering(
+                """
+                {"": {"$subtract": ["$x", {"$numberInt": "1"}]}}\
+                """, expr);
+    }
+
+    @Test
     void testRenderingNested() {
         // (x * y) + 1
         var inner = new AstBinaryOperatorExpression(
