@@ -21,6 +21,12 @@ MongoDB Extension for Hibernate ORM — a Hibernate dialect and JDBC adapter tha
 Integration tests require MongoDB replica set running at `localhost:27017` with `--enableTestCommands=1`. Override the connection string via `jakarta.persistence.jdbc.url` in `src/integrationTest/resources/hibernate.properties`. 
 The replica set has typically already been started by the developer and is available.
 
+### Integration test parallelism
+
+Integration tests run across parallel Gradle forks, each isolated to its own database (base name suffixed with the Gradle worker id; see `MongoExtension` and `TestServiceContributor`). Fork count defaults to half the logical CPUs; override per machine with `-PitForks=<n>` or an `itForks=<n>` line in `~/.gradle/gradle.properties` (the fastest value is machine-specific and does not track core count).
+
+Tests that manipulate mongod-global state — e.g. the `failCommand` fail point, a single shared server-side switch — cannot run under concurrent forks. **Tag any such test `@Tag("serial")`**; it then runs in a separate single-fork `integrationTestSerial` task. That task is a finalizer of `integrationTest`, so `./gradlew integrationTest` (and `check`/`build`) runs the full suite. The serial tests always run — even alongside a `--tests` filter, which narrows only the parallel task, not the serial finalizer.
+
 ## Architecture
 
 ### Layers

@@ -24,6 +24,7 @@ import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.hibernate.TestServiceContributor;
 import com.mongodb.hibernate.cfg.MongoConfigurator;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.util.Map;
@@ -61,8 +62,8 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
     /**
      * The database used by the current test JVM. When the suite runs across parallel Gradle test forks, each fork gets
      * its own database (suffixed with the Gradle worker id) so forks do not drop each other's data. The
-     * {@code SessionFactory} under test must be pointed at this same database; see
-     * {@link MongoServiceRegistryProducer}.
+     * {@code SessionFactory} under test must be pointed at this same database; {@link TestServiceContributor} does so
+     * for every test.
      */
     public static String databaseName() {
         return STATE.mongoDatabase().getName();
