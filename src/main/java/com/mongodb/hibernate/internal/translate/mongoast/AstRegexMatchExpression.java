@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,23 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import org.bson.BsonWriter;
 
-/**
- * Renders {@code { $expr: expression }} as a MongoDB aggregation expression predicate in a {@code $match} stage. Used
- * for comparisons that the compact query form cannot express, including non-equijoin {@code ON} conditions inside the
- * {@code $lookup} pipeline form.
- *
- * @hidden
- */
+/** @hidden */
 @SuppressWarnings("MissingSummary")
-public record AstExprFilter(AstExpression expression) implements AstFilter {
+public record AstRegexMatchExpression(AstExpression input, String regex, String options) implements AstExpression {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
-        writer.writeName("$expr");
-        expression.render(writer);
+        writer.writeName("$regexMatch");
+        writer.writeStartDocument();
+        writer.writeName("input");
+        input.render(writer);
+        writer.writeString("regex", regex);
+        writer.writeString("options", options);
+        writer.writeEndDocument();
         writer.writeEndDocument();
     }
 }

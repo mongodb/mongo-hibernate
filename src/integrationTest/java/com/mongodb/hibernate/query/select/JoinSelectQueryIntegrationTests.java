@@ -728,6 +728,53 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
+        void testNonIdColumnsOnBothSides() {
+            assertSelectionQuery(
+                    "SELECT o.id, li.id FROM Order o JOIN LineItem li ON o.total > li.quantity ORDER BY o.id, li.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Order",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "LineItem",
+                            "let": { "v0": "$total" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$gt": [ "$$v0", "$quantity" ] } } }
+                            ],
+                            "as": "#li1_0"
+                          }
+                        },
+                        { "$unwind": "$#li1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#li1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "li1_0#_id": "$#li1_0._id"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 1},
+                            new Object[] {1, 2},
+                            new Object[] {1, 3},
+                            new Object[] {2, 1},
+                            new Object[] {2, 2},
+                            new Object[] {2, 3},
+                            new Object[] {3, 1},
+                            new Object[] {3, 2},
+                            new Object[] {3, 3}),
+                    Set.of("Order", "LineItem"));
+        }
+
+        @Test
         void testLeftOuterNonEquijoin() {
             assertSelectionQuery(
                     "SELECT c.id, o.total FROM Customer c LEFT JOIN Order o ON c.id < o.id ORDER BY c.id, o.id",

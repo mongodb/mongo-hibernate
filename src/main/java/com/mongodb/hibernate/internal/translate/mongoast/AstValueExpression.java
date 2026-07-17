@@ -14,25 +14,22 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import org.bson.BsonWriter;
 
 /**
- * Renders {@code { $expr: expression }} as a MongoDB aggregation expression predicate in a {@code $match} stage. Used
- * for comparisons that the compact query form cannot express, including non-equijoin {@code ON} conditions inside the
- * {@code $lookup} pipeline form.
+ * An {@link AstValue} (a literal or parameter) used verbatim in aggregation-expression position. Use this only when the
+ * value cannot be misread there; a value that could be taken as a field path or an operator invocation (a string
+ * beginning with {@code $}, or a document/array) must instead go through {@link AstLiteralExpression} so it is wrapped
+ * in {@code $literal}.
  *
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstExprFilter(AstExpression expression) implements AstFilter {
+public record AstValueExpression(AstValue value) implements AstExpression {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeStartDocument();
-        writer.writeName("$expr");
-        expression.render(writer);
-        writer.writeEndDocument();
+        value.render(writer);
     }
 }

@@ -16,10 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator.LT;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprComparisonFilterOperator.LT;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathValue;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import java.util.List;
@@ -32,8 +34,8 @@ class AstLookupStageWithPipelineTests {
         var stage = new AstLookupStageWithPipeline(
                 "Order",
                 List.of(new AstElement("v0", new AstFieldPathValue("$_id"))),
-                List.of(new AstMatchStage(
-                        new AstExprFilter(LT, new AstFieldPathValue("$$v0"), new AstFieldPathValue("$total")))),
+                List.of(new AstMatchStage(new AstExprFilter(new AstBinaryOperatorExpression(
+                        LT, new AstFieldPathExpression("$v0"), new AstFieldPathExpression("total"))))),
                 "#o1_0");
 
         assertRendering(

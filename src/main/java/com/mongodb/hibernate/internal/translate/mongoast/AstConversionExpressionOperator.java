@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
 /**
- * The aggregation-expression comparison operators used inside {@code $expr}. Unlike the query-language operators in
- * {@link AstComparisonFilterOperator}, these take a two-element array of operand expressions.
+ * A single-operand type-conversion operator in aggregation-expression position, used to truncate a division quotient to
+ * an integral result type.
  *
- * @see AstExprFilter
+ * @see AstUnaryOperatorExpression
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public enum AstExprComparisonFilterOperator {
-    GT("$gt"),
-    GTE("$gte"),
-    LT("$lt"),
-    LTE("$lte"),
-    NE("$ne");
+public enum AstConversionExpressionOperator {
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/toInt/">{@code $toInt}</a>. */
+    TO_INT("$toInt"),
+    /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/toLong/">{@code $toLong}</a>. */
+    TO_LONG("$toLong");
 
-    AstExprComparisonFilterOperator(String operatorName) {
+    AstConversionExpressionOperator(String operatorName) {
         this.operatorName = operatorName;
     }
 

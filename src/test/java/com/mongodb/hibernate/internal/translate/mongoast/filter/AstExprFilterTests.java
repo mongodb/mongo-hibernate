@@ -17,19 +17,38 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
-import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprComparisonFilterOperator.GT;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
+import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
 class AstExprFilterTests {
 
     @Test
-    void testRendering() {
-        var filter = new AstExprFilter(GT, new AstFieldPathValue("$$v0"), new AstFieldPathValue("$total"));
-
-        assertRendering("""
-                {"$expr": {"$gt": ["$$v0", "$total"]}}\
+    void testRenderingComparison() {
+        // $expr: { $gt: ["$x", 5] }
+        var filter = new AstExprFilter(new AstBinaryOperatorExpression(
+                "$gt", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(5)))));
+        assertRendering(
+                """
+                {"$expr": {"$gt": ["$x", {"$numberInt": "5"}]}}\
                 """, filter);
+    }
+
+    @Test
+    void testRenderingArithmeticInExpr() {
+        // $expr: { $gt: [{ $add: ["$x", 1] }, 5] }
+        var add = new AstBinaryOperatorExpression(
+                "$add", new AstFieldPathExpression("x"), new AstValueExpression(new AstLiteral(new BsonInt32(1))));
+        var filter = new AstExprFilter(
+                new AstBinaryOperatorExpression("$gt", add, new AstValueExpression(new AstLiteral(new BsonInt32(5)))));
+        assertRendering(
+                """
+                {"$expr": {"$gt": [{"$add": ["$x", {"$numberInt": "1"}]}, {"$numberInt": "5"}]}}\
+                """,
+                filter);
     }
 }

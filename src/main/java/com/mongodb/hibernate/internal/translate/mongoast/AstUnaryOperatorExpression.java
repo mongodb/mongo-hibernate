@@ -14,25 +14,23 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import org.bson.BsonWriter;
 
-/**
- * Renders {@code { $expr: expression }} as a MongoDB aggregation expression predicate in a {@code $match} stage. Used
- * for comparisons that the compact query form cannot express, including non-equijoin {@code ON} conditions inside the
- * {@code $lookup} pipeline form.
- *
- * @hidden
- */
+/** @hidden */
 @SuppressWarnings("MissingSummary")
-public record AstExprFilter(AstExpression expression) implements AstFilter {
+public record AstUnaryOperatorExpression(String operator, AstExpression operand) implements AstExpression {
+
+    public AstUnaryOperatorExpression(AstConversionExpressionOperator operator, AstExpression operand) {
+        this(operator.getOperatorName(), operand);
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
-        writer.writeName("$expr");
-        expression.render(writer);
+        writer.writeName(operator);
+        operand.render(writer);
         writer.writeEndDocument();
     }
 }

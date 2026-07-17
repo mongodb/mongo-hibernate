@@ -27,6 +27,7 @@ import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.mongodb.MongoTimeoutException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
@@ -330,14 +332,16 @@ class MongoConnectionTests {
         }
 
         @Test
-        @DisplayName("SQLException is thrown when MongoConnection#getMetaData() failed while interacting with db")
-        void testSQLExceptionThrownWhenMetaDataFetchingFailed() {
+        @DisplayName("Driver runtime exception propagates as-is when getMetaData() fails interacting with db")
+        void testDriverRuntimeExceptionPropagatesWhenMetaDataFetchingFailed() {
             doReturn(mongoDatabase).when(mongoClient).getDatabase(eq("admin"));
-            doThrow(new RuntimeException())
-                    .when(mongoDatabase)
-                    .runCommand(any(ClientSession.class), argThat(arg -> "buildInfo"
-                            .equals(arg.toBsonDocument().getFirstKey())));
-            assertThrows(SQLException.class, () -> mongoConnection.getMetaData());
+            var failure = new MongoTimeoutException("connection timed out");
+            doThrow(failure).when(mongoDatabase).runCommand(any(ClientSession.class), argThat(arg -> "buildInfo"
+                    .equals(arg.toBsonDocument().getFirstKey())));
+
+            // The driver's exception must propagate as-is, not wrapped in a SQLException whose cause Hibernate drops.
+            var thrown = assertThrows(MongoTimeoutException.class, () -> mongoConnection.getMetaData());
+            assertSame(failure, thrown);
         }
     }
 
