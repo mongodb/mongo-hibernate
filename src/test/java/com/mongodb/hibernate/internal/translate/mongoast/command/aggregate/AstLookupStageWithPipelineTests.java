@@ -20,9 +20,8 @@ import static com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExp
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathValue;
+import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -33,9 +32,9 @@ class AstLookupStageWithPipelineTests {
     void testRendering() {
         var stage = new AstLookupStageWithPipeline(
                 "Order",
-                List.of(new AstElement("v0", new AstFieldPathValue("$_id"))),
+                List.of(new AstLetVariable("v0", new AstFieldPathExpression("_id"))),
                 List.of(new AstMatchStage(new AstExprFilter(new AstBinaryOperatorExpression(
-                        LT, new AstFieldPathExpression("$v0"), new AstFieldPathExpression("total"))))),
+                        LT, new AstVariableExpression("v0"), new AstFieldPathExpression("total"))))),
                 "#o1_0");
 
         assertRendering(

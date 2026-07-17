@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import java.util.List;
 import org.bson.BsonWriter;
 
@@ -29,7 +28,7 @@ import org.bson.BsonWriter;
  *
  * @hidden
  */
-public record AstLookupStageWithPipeline(String from, List<AstElement> let, List<AstStage> pipeline, String as)
+public record AstLookupStageWithPipeline(String from, List<AstLetVariable> let, List<AstStage> pipeline, String as)
         implements AstStage {
     @Override
     public void render(BsonWriter writer) {
@@ -42,7 +41,7 @@ public record AstLookupStageWithPipeline(String from, List<AstElement> let, List
                 writer.writeName("let");
                 writer.writeStartDocument();
                 {
-                    let.forEach(element -> element.render(writer));
+                    let.forEach(variable -> variable.render(writer));
                 }
                 writer.writeEndDocument();
                 writer.writeName("pipeline");

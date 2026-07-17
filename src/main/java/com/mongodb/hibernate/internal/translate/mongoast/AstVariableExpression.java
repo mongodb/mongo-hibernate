@@ -16,20 +16,18 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertValueRendering;
+import org.bson.BsonWriter;
 
-import org.junit.jupiter.api.Test;
-
-class AstFieldPathValueTests {
-    @Test
-    void testRenderingVariableReference() {
-        assertValueRendering("""
-                             {"": "$$v0"}""", new AstFieldPathValue("$$v0"));
-    }
-
-    @Test
-    void testRenderingFieldReference() {
-        assertValueRendering("""
-                             {"": "$total"}""", new AstFieldPathValue("$total"));
+/**
+ * A reference to a {@code let}-bound variable in aggregation-expression position, rendered as {@code $$name} (e.g. the
+ * {@code $$v0} in a {@code $lookup} sub-pipeline's {@code $expr}).
+ *
+ * @hidden
+ */
+@SuppressWarnings("MissingSummary")
+public record AstVariableExpression(String name) implements AstExpression {
+    @Override
+    public void render(BsonWriter writer) {
+        writer.writeString("$$" + name);
     }
 }

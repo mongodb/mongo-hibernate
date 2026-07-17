@@ -62,7 +62,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
@@ -75,10 +74,12 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStageWithPipeline;
@@ -1881,11 +1882,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var letVariable = "v0";
         var expr = new AstExprFilter(new AstBinaryOperatorExpression(
                 exprOperator,
-                new AstFieldPathExpression("$" + letVariable),
+                new AstVariableExpression(letVariable),
                 new AstFieldPathExpression(columns.joined().getColumnExpression())));
         return new AstLookupStageWithPipeline(
                 joinedCollection,
-                List.of(new AstElement(letVariable, new AstFieldPathValue("$" + resolveFieldPath(columns.outer())))),
+                List.of(new AstLetVariable(letVariable, new AstFieldPathExpression(resolveFieldPath(columns.outer())))),
                 List.of(new AstMatchStage(expr)),
                 joinAlias);
     }

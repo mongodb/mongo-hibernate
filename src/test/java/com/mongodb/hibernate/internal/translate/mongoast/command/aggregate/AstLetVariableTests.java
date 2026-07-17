@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import org.bson.BsonWriter;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 
-/** @hidden */
-@SuppressWarnings("MissingSummary")
-public record AstFieldPathValue(String path) implements AstValue {
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
+import org.junit.jupiter.api.Test;
 
-    @Override
-    public void render(BsonWriter writer) {
-        writer.writeString(path);
+class AstLetVariableTests {
+
+    @Test
+    void testRendering() {
+        assertElementRendering(
+                """
+                {"v0": "$_id"}\
+                """,
+                new AstLetVariable("v0", new AstFieldPathExpression("_id")));
     }
 }
