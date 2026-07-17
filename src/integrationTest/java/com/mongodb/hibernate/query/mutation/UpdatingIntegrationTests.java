@@ -347,27 +347,23 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     hql,
                     query -> {},
                     FeatureNotSupportedException.class,
-                    "Function expression [upper] as update assignment value for field path [title] is not supported");
+                    "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
         }
 
         @Test
-        void testPredicateExpressionAssignment() {
-            var hql = "update Book b set b.outOfStock = (b.publishYear > 2000) where b.id = 2";
+        void testCaseExpressionAssignment() {
+            var hql = "update Book b set b.publishYear = case when b.id = 1 then 100 else 200 end where b.id = 1";
             assertMutationQueryFailure(
                     hql,
                     query -> {},
                     FeatureNotSupportedException.class,
-                    "Predicate expression as update assignment value for field path [outOfStock] is not supported");
+                    "TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
         }
 
         @Test
-        void testPathExpressionAssignment() {
-            var hql = "update Book b set b.publishYear = b.isbn13 where b.id = 3";
-            assertMutationQueryFailure(
-                    hql,
-                    query -> {},
-                    FeatureNotSupportedException.class,
-                    "Path expression as update assignment value for field path [publishYear] is not supported");
+        void testScalarSubqueryAssignment() {
+            var hql = "update Book b set b.publishYear = (select max(b2.publishYear) from Book b2) where b.id = 1";
+            assertMutationQueryFailure(hql, query -> {}, FeatureNotSupportedException.class, "Subquery not supported");
         }
     }
 
@@ -414,6 +410,28 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                     }""")),
                     Set.of(COLLECTION_NAME));
         }
+
+        @Test
+        void testStructAggregateEmbeddableComputedAssignment() {
+            assertMutationQuery(
+                    "update ItemWithNestedValue set nested.a = nested.a + 1",
+                    1,
+                    """
+                    {
+                      "update": "items",
+                      "updates": [
+                        {
+                          "q": {},
+                          "u": [{"$set": {"nested.a": {"$add": ["$nested.a", 1]}}}],
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    itemsCollection,
+                    List.of(BsonDocument.parse("""
+                            {"_id": 1, "nested": {"a": 8}}""")),
+                    Set.of(COLLECTION_NAME));
+        }
     }
 
     @Nested
@@ -458,6 +476,191 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                       }
                                     }""")),
                     Set.of(COLLECTION_NAME));
+        }
+    }
+
+    @Nested
+    class ComputedExpressionAssignment implements MongoServiceRegistryProducer {
+
+        @Test
+        void testArithmeticAssignment() {
+            assertMutationQuery(
+                    "update Book b set b.publishYear = b.publishYear + 1 where b.id = 1",
+                    1,
+                    """
+                    {
+                      "update": "books",
+                      "updates": [
+                        {
+                          "q": {"_id": {"$eq": 1}},
+                          "u": [{"$set": {"publishYear": {"$add": ["$publishYear", 1]}}}],
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    booksCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 1, "title": "War & Peace", "outOfStock": true, "publishYear": 1870, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                    Set.of(Book.COLLECTION_NAME));
+        }
+
+        @Test
+        void testFieldReferenceAssignment() {
+            assertMutationQuery(
+                    "update Book b set b.publishYear = b.isbn13 where b.id = 3",
+                    1,
+                    """
+                    {
+                      "update": "books",
+                      "updates": [
+                        {
+                          "q": {"_id": {"$eq": 3}},
+                          "u": [{"$set": {"publishYear": "$isbn13"}}],
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    booksCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 1, "title": "War & Peace", "outOfStock": true, "publishYear": 1869, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": null, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                    Set.of(Book.COLLECTION_NAME));
+        }
+
+        @Test
+        void testComparisonAssignment() {
+            assertMutationQuery(
+                    "update Book b set b.outOfStock = (b.publishYear > 2000) where b.id = 5",
+                    1,
+                    """
+                    {
+                      "update": "books",
+                      "updates": [
+                        {
+                          "q": {"_id": {"$eq": 5}},
+                          "u": [{"$set": {"outOfStock": {"$gt": ["$publishYear", 2000]}}}],
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    booksCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 1, "title": "War & Peace", "outOfStock": true, "publishYear": 1869, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 5, "title": "War & Peace", "outOfStock": true, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                    Set.of(Book.COLLECTION_NAME));
+        }
+
+        @Test
+        void testPredicateFamilyAssignment() {
+            assertMutationQuery(
+                    "update Book b set b.outOfStock = (b.publishYear > 1800 and b.publishYear < 1900) where b.id = 2",
+                    1,
+                    """
+                    {
+                      "update": "books",
+                      "updates": [
+                        {
+                          "q": {"_id": {"$eq": 2}},
+                          "u": [{"$set": {"outOfStock": {"$and": [{"$gt": ["$publishYear", 1800]}, {"$lt": ["$publishYear", 1900]}]}}}],
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    booksCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 1, "title": "War & Peace", "outOfStock": true, "publishYear": 1869, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 2, "title": "Crime and Punishment", "outOfStock": true, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                    Set.of(Book.COLLECTION_NAME));
+        }
+
+        @Test
+        void testMixedValueAndComputedAssignment() {
+            assertMutationQuery(
+                    "update Book b set b.title = :t, b.outOfStock = false, b.publishYear = b.publishYear + 1 where b.id = 1",
+                    q -> q.setParameter("t", "New Title"),
+                    1,
+                    """
+                    {
+                      "update": "books",
+                      "updates": [
+                        {
+                          "q": {"_id": {"$eq": 1}},
+                          "u": [{"$set": {"title": {"$literal": "New Title"}, "outOfStock": false, "publishYear": {"$add": ["$publishYear", 1]}}}],
+                          "multi": true
+                        }
+                      ]
+                    }""",
+                    booksCollection,
+                    List.of(
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 1, "title": "New Title", "outOfStock": false, "publishYear": 1870, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                            BsonDocument.parse(
+                                    """
+                                    {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                    Set.of(Book.COLLECTION_NAME));
         }
     }
 

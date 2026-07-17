@@ -16,34 +16,27 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
+import java.util.List;
 import org.bson.BsonWriter;
 
 /**
- * See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>.
+ * A document-form update payload, rendered as {@code { "$set": { … } }}.
  *
  * @hidden
  */
-public record AstUpdateCommand(String collection, AstFilter filter, AstUpdate update) implements AstCommand {
+@SuppressWarnings("MissingSummary")
+public record AstDocumentUpdate(List<AstFieldUpdate> updates) implements AstUpdate {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeString("update", collection);
-            writer.writeName("updates");
-            writer.writeStartArray();
+            writer.writeName("$set");
+            writer.writeStartDocument();
             {
-                writer.writeStartDocument();
-                {
-                    writer.writeName("q");
-                    filter.render(writer);
-                    writer.writeName("u");
-                    update.render(writer);
-                    writer.writeBoolean("multi", true);
-                }
-                writer.writeEndDocument();
+                updates.forEach(update -> update.render(writer));
             }
-            writer.writeEndArray();
+            writer.writeEndDocument();
         }
         writer.writeEndDocument();
     }
