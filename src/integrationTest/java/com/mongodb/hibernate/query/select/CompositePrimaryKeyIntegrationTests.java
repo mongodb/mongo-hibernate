@@ -234,7 +234,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
                             "_id#publisherId": "$_id.publisherId",
-                            "title": true
+                            "title": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -276,7 +277,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
                             "_id#publisherId": "$_id.publisherId",
-                            "title": true
+                            "title": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -307,7 +309,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
                             "_id#publisherId": "$_id.publisherId",
-                            "title": true
+                            "title": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -355,7 +358,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
                             "_id#publisherId": "$_id.publisherId",
-                            "title": true
+                            "title": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -389,7 +393,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
                             "_id#publisherId": "$_id.publisherId",
-                            "title": true
+                            "title": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -417,7 +422,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
-                            "_id#publisherId": "$_id.publisherId"
+                            "_id#publisherId": "$_id.publisherId",
+                            "_id": 0
                           }
                         }
                       ]
@@ -444,7 +450,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                         },
                         {
                           "$project": {
-                            "_id#bookNo": "$_id.bookNo"
+                            "_id#bookNo": "$_id.bookNo",
+                            "_id": 0
                           }
                         }
                       ]
@@ -473,7 +480,8 @@ class CompositePrimaryKeyIntegrationTests extends AbstractQueryIntegrationTests 
                           "$project": {
                             "_id#bookNo": "$_id.bookNo",
                             "_id#publisherId": "$_id.publisherId",
-                            "title": true
+                            "title": true,
+                            "_id": 0
                           }
                         }
                       ]

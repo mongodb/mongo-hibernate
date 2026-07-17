@@ -376,7 +376,8 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                     { "$sort": { "_id": 1 } },
                     {
                       "$project": {
-                        "#c_1": { "$and": [ { "$eq": ["$a", 10] }, { "$eq": ["$b", 20] } ] }
+                        "#c_1": { "$and": [ { "$eq": ["$a", 10] }, { "$eq": ["$b", 20] } ] },
+                        "_id": 0
                       }
                     }
                   ]
@@ -397,7 +398,8 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                     { "$sort": { "_id": 1 } },
                     {
                       "$project": {
-                        "#c_1": { "$not": [ { "$and": [ { "$eq": ["$a", 10] }, { "$eq": ["$b", 20] } ] } ] }
+                        "#c_1": { "$not": [ { "$and": [ { "$eq": ["$a", 10] }, { "$eq": ["$b", 20] } ] } ] },
+                        "_id": 0
                       }
                     }
                   ]
@@ -423,7 +425,8 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                             { "$and": [ { "$eq": ["$a", 10] }, { "$eq": ["$b", 20] } ] },
                             { "$and": [ { "$eq": ["$a", 30] }, { "$eq": ["$b", 40] } ] }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -676,7 +679,8 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                               ]
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -731,7 +735,7 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                   "aggregate": "row_value",
                   "pipeline": [
                     { "$sort": { "_id": 1 } },
-                    { "$project": { "#c_1": { "$literal": false } } }
+                    { "$project": { "#c_1": { "$literal": false }, "_id": 0 } }
                   ]
                 }""",
                 List.of(false, false, false),
@@ -748,7 +752,7 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                   "aggregate": "row_value",
                   "pipeline": [
                     { "$sort": { "_id": 1 } },
-                    { "$project": { "#c_1": { "$literal": true } } }
+                    { "$project": { "#c_1": { "$literal": true }, "_id": 0 } }
                   ]
                 }""",
                 List.of(true, true, true),

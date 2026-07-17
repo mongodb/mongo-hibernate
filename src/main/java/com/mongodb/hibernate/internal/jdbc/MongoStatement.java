@@ -65,6 +65,7 @@ import java.util.Set;
 import org.bson.BSONException;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.BsonInvalidOperationException;
 import org.bson.BsonString;
 import org.bson.BsonValue;
@@ -119,8 +120,14 @@ class MongoStatement implements StatementAdapter {
                 throw createSyntaxErrorException("%s. $project stage is missing [%s]", command, null);
             }
             var projectStageIndex = pipeline.size() - 1;
-            var fieldNames = getFieldNamesFromProjectStage(
-                    pipeline.get(projectStageIndex).getDocument("$project"));
+            var projectStage = pipeline.get(projectStageIndex).getDocument("$project");
+            // MongoDB implicitly retains `_id` unless the projection specifies it. Suppress it explicitly so the
+            // pipeline output contains exactly the projected fields (no unused `_id` on the wire), and so field names
+            // match the projection for both generated and native queries.
+            if (!projectStage.containsKey(ID_FIELD_NAME)) {
+                projectStage.put(ID_FIELD_NAME, new BsonInt32(0));
+            }
+            var fieldNames = getFieldNamesFromProjectStage(projectStage);
             startTransactionIfNeeded();
             return resultSet = new MongoResultSet(
                     collection.aggregate(clientSession, pipeline).cursor(), fieldNames);
@@ -133,15 +140,10 @@ class MongoStatement implements StatementAdapter {
 
     @VisibleForTesting(otherwise = PRIVATE)
     static List<String> getFieldNamesFromProjectStage(BsonDocument projectStage) {
-        var fieldNames = projectStage.entrySet().stream()
+        return projectStage.entrySet().stream()
                 .filter(specification -> !isExcludeProjectSpecification(specification))
                 .map(Map.Entry::getKey)
                 .collect(toCollection(ArrayList::new));
-        if (!projectStage.containsKey(ID_FIELD_NAME)) {
-            // MongoDB includes this field unless it is explicitly excluded
-            fieldNames.add(ID_FIELD_NAME);
-        }
-        return fieldNames;
     }
 
     /**

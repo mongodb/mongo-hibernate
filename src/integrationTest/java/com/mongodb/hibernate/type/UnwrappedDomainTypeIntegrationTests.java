@@ -249,7 +249,7 @@ class UnwrappedDomainTypeIntegrationTests extends AbstractQueryIntegrationTests 
                           "aggregate": "items",
                           "pipeline": [
                             {"$match": {"_id": {"$eq": 1}}},
-                            {"$project": {"%s": true}}
+                            {"$project": {"%s": true, "_id": 0}}
                           ]
                         }""",
                         c.attribute()),

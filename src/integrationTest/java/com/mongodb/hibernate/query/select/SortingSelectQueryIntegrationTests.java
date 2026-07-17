@@ -213,7 +213,8 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "title": true,
-                        "publishYear": true
+                        "publishYear": true,
+                        "_id": 0
                       }
                     }
                   ]
@@ -246,7 +247,8 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "$project": {
                         "title": true,
-                        "publishYear": true
+                        "publishYear": true,
+                        "_id": 0
                       }
                     }
                   ]

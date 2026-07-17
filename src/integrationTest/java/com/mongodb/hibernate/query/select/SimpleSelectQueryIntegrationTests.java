@@ -721,7 +721,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "name": true,
-                            "age": true
+                            "age": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -750,7 +751,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "name": true,
-                            "age": true
+                            "age": true,
+                            "_id": 0
                           }
                         }
                       ]
@@ -789,7 +791,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                             "name": true,
                             "seven": {
                               "$literal": 7
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -1617,7 +1620,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "nested#a": "$nested.a"
+                            "nested#a": "$nested.a",
+                            "_id": 0
                           }
                         }
                       ],
@@ -1645,7 +1649,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         },
                         {
                           "$project": {
-                            "nested#a": "$nested.a"
+                            "nested#a": "$nested.a",
+                            "_id": 0
                           }
                         }
                       ],
@@ -1679,7 +1684,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "pair#a": "$pair.a",
-                            "pair#b": "$pair.b"
+                            "pair#b": "$pair.b",
+                            "_id": 0
                           }
                         }
                       ],
@@ -1752,7 +1758,8 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "outer#inner#a": "$outer.inner.a"
+                            "outer#inner#a": "$outer.inner.a",
+                            "_id": 0
                           }
                         }
                       ],

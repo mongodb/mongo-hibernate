@@ -66,7 +66,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$add": ["$x", {"$numberInt": "1"}]}
+                            "#c_1": {"$add": ["$x", {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -86,7 +87,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$subtract": ["$x", {"$numberInt": "1"}]}
+                            "#c_1": {"$subtract": ["$x", {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -106,7 +108,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$multiply": ["$x", {"$numberInt": "2"}]}
+                            "#c_1": {"$multiply": ["$x", {"$numberInt": "2"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -126,7 +129,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$divide": ["$x", 2.0]}
+                            "#c_1": {"$divide": ["$x", 2.0]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -148,7 +152,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$toInt": {"$divide": ["$x", "$y"]}}
+                            "#c_1": {"$toInt": {"$divide": ["$x", "$y"]}},
+                            "_id": 0
                           }
                         }
                       ]
@@ -168,7 +173,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$add": [{"$multiply": ["$x", "$y"]}, {"$numberInt": "1"}]}
+                            "#c_1": {"$add": [{"$multiply": ["$x", "$y"]}, {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -188,7 +194,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "total": {"$add": ["$x", {"$numberInt": "1"}]}
+                            "total": {"$add": ["$x", {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -209,7 +216,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$add": [{"$numberInt": "5"}, "$x"]}
+                            "#c_1": {"$add": [{"$numberInt": "5"}, "$x"]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -229,7 +237,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$add": ["$x", {"$numberInt": "100"}]}
+                            "#c_1": {"$add": ["$x", {"$numberInt": "100"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -261,7 +270,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "x": true,
-                            "#c_2": {"$add": ["$x", {"$numberInt": "1"}]}
+                            "#c_2": {"$add": ["$x", {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -454,7 +464,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$multiply": [{"$numberInt": "-1"}, "$x"]}
+                            "#c_1": {"$multiply": [{"$numberInt": "-1"}, "$x"]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -474,7 +485,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": "$x"
+                            "#c_1": "$x",
+                            "_id": 0
                           }
                         }
                       ]
@@ -495,7 +507,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "a": {"$add": ["$x", {"$numberInt": "1"}]},
-                            "b": {"$add": ["$y", {"$numberInt": "2"}]}
+                            "b": {"$add": ["$y", {"$numberInt": "2"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -519,7 +532,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "#c_2": {"$add": ["$y", {"$numberInt": "1"}]},
-                            "#c_1": {"$add": ["$x", {"$numberInt": "1"}]}
+                            "#c_1": {"$add": ["$x", {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -540,7 +554,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$project": {
                             "#c_1": {"$add": ["$x", {"$numberInt": "1"}]},
-                            "b": {"$add": ["$y", {"$numberInt": "2"}]}
+                            "b": {"$add": ["$y", {"$numberInt": "2"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -585,7 +600,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$gt": ["$x", {"$numberInt": "1"}]}
+                            "#c_1": {"$gt": ["$x", {"$numberInt": "1"}]},
+                            "_id": 0
                           }
                         }
                       ]
@@ -603,7 +619,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "aggregate": "items",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$ne": ["$x", {"$numberInt": "4"}]}}}
+                        {"$project": {"#c_1": {"$ne": ["$x", {"$numberInt": "4"}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -619,7 +635,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "aggregate": "items",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$lt": ["$x", {"$numberInt": "5"}]}}}
+                        {"$project": {"#c_1": {"$lt": ["$x", {"$numberInt": "5"}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, false),
@@ -635,7 +651,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "aggregate": "items",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$lte": ["$x", {"$numberInt": "5"}]}}}
+                        {"$project": {"#c_1": {"$lte": ["$x", {"$numberInt": "5"}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, true),
@@ -651,7 +667,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "aggregate": "items",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$gte": ["$x", {"$numberInt": "5"}]}}}
+                        {"$project": {"#c_1": {"$gte": ["$x", {"$numberInt": "5"}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -669,7 +685,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "aggregate": "items",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$eq": ["a", {"$literal": "$foo"}]}}}
+                        {"$project": {"#c_1": {"$eq": ["a", {"$literal": "$foo"}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, false, false),
@@ -688,7 +704,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     {
                       "aggregate": "items",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$eq": ["a", {"$literal": "$x"}]}}}
+                        {"$project": {"#c_1": {"$eq": ["a", {"$literal": "$x"}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, false, false),
@@ -714,7 +730,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 ],
                                 "default": {"$numberInt": "0"}
                               }
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -743,7 +760,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 ],
                                 "default": {"$numberInt": "0"}
                               }
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -771,7 +789,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 ],
                                 "default": null
                               }
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -800,7 +819,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 ],
                                 "default": "$x"
                               }
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -828,7 +848,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 ],
                                 "default": {"$numberInt": "0"}
                               }
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -859,7 +880,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 ],
                                 "default": {"$numberInt": "0"}
                               }
-                            }
+                            },
+                            "_id": 0
                           }
                         }
                       ]
@@ -943,7 +965,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$toInt": {"$divide": ["$x", "$y"]}}
+                            "#c_1": {"$toInt": {"$divide": ["$x", "$y"]}},
+                            "_id": 0
                           }
                         }
                       ]
@@ -1066,7 +1089,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 {
                                   "aggregate": "items",
                                   "pipeline": [
-                                    {"$project": {"#c_1": {"$toInt": {"$divide": ["$x", "$y"]}}}}
+                                    {"$project": {"#c_1": {"$toInt": {"$divide": ["$x", "$y"]}}, "_id": 0}}
                                   ]
                                 }"""));
                 assertThat(results).containsExactly(3, 0, 1);
@@ -1089,7 +1112,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                                 {
                                   "aggregate": "items",
                                   "pipeline": [
-                                    {"$project": {"#c_1": {"$mod": ["$x", "$y"]}}}
+                                    {"$project": {"#c_1": {"$mod": ["$x", "$y"]}, "_id": 0}}
                                   ]
                                 }"""));
                 assertThat(results).containsExactly(1, 4, 1);
@@ -1118,7 +1141,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                       "pipeline": [
                         {
                           "$project": {
-                            "#c_1": {"$toLong": {"$divide": ["$a", "$b"]}}
+                            "#c_1": {"$toLong": {"$divide": ["$a", "$b"]}},
+                            "_id": 0
                           }
                         }
                       ]

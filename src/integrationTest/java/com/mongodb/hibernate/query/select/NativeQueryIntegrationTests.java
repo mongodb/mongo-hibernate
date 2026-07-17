@@ -747,6 +747,39 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
     }
 
+    /**
+     * A {@code $project} that does not specify {@code _id} is normalized to exclude it, so the query returns exactly
+     * the projected fields instead of MongoDB's implicitly retained {@code _id}. A native query that binds to something
+     * needing the id column must therefore project {@code _id} explicitly.
+     */
+    @Nested
+    class OmittedId implements MongoServiceRegistryProducer {
+        @Test
+        void testScalar() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), project(include("string"))));
+                assertEq(
+                        item.string,
+                        session.createNativeQuery(mql, String.class).getSingleResult());
+                assertActualCommandsInOrder(BsonDocument.parse(
+                        """
+                        {"aggregate": "%s", "pipeline": [{"$match": {"%s": %d}}, {"$project": {"string": 1, "%s": 0}}]}"""
+                                .formatted(COLLECTION_NAME, ID_FIELD_NAME, item.id, ID_FIELD_NAME)));
+            });
+        }
+
+        @Test
+        void testEntity() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql = mql(COLLECTION_NAME, List.of(match(eq(item.id)), omitId(Item.projectAll())));
+                assertThatThrownBy(
+                                () -> session.createNativeQuery(mql, Item.class).getSingleResult())
+                        .hasRootCauseInstanceOf(SQLException.class)
+                        .hasMessageContaining("Unknown column label [%s]".formatted(ID_FIELD_NAME));
+            });
+        }
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         /**
@@ -807,6 +840,12 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     private static Bson excludeId(Bson projectStage) {
         return exclude(projectStage, singleton(ID_FIELD_NAME));
+    }
+
+    private static Bson omitId(Bson projectStage) {
+        var fields = projectStage.toBsonDocument().clone().getDocument("$project");
+        fields.remove(ID_FIELD_NAME);
+        return project(fields);
     }
 
     @Entity

@@ -120,7 +120,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             "format": { "$literal": "%2$s" },
                             "timezone": { "$literal": "%1$s" }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -148,7 +149,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             "format": "%%Y-%%m-%%d %%H:%%M:%%S",
                             "timezone": { "$literal": "%1$s" }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -211,7 +213,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$before"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -238,7 +241,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -265,7 +269,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -293,7 +298,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -320,7 +326,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -347,7 +354,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -385,7 +393,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               ]
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -439,7 +448,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             },
                             "vars": { "time": "$before" }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -475,7 +485,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -539,7 +550,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$after"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -566,7 +578,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -593,7 +606,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -624,7 +638,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               }
                             ]
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -686,7 +701,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$before"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -750,7 +766,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$newYears"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -814,7 +831,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$earlyJanuary"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -878,7 +896,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$startOfMay"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -905,7 +924,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -932,7 +952,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -959,7 +980,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -986,7 +1008,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1013,7 +1036,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1040,7 +1064,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1078,7 +1103,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               ]
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1105,7 +1131,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1132,7 +1159,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1185,7 +1213,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "time": "$newYears"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1213,7 +1242,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1240,7 +1270,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                               "$literal": "%1$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]

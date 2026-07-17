@@ -1956,7 +1956,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         { "$unwind": "$#sl1_0" },
                         {
                           "$project": {
-                            "sl1_0#stringsList": "$#sl1_0.stringsList"
+                            "sl1_0#stringsList": "$#sl1_0.stringsList",
+                            "_id": 0
                           }
                         }
                       ]

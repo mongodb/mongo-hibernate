@@ -61,7 +61,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                       "$project": {
                         "#c_1": {
                           "$strLenCP": "$s"
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -89,7 +90,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$toString": "$s"
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -117,7 +119,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$toString": 3
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -145,7 +148,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$toString": "!"
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -176,7 +180,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$literal": 1
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -222,7 +227,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$literal": 1
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -268,7 +274,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$literal": 1
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -314,7 +321,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$literal": 1
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -360,7 +368,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$literal": 1
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -391,7 +400,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$literal": 1
                             }
                           ]
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -412,7 +422,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                       "$project": {
                         "#c_1": {
                           "$toLower": "$s"
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -459,7 +470,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                               "repeatStr": "$s"
                                             }
                                           }
-                                        }
+                                        },
+                                        "_id": 0
                                       }
                                     }
                                   ]
@@ -595,7 +607,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                       "targetLen": 20
                                     }
                                   }
-                                }
+                                },
+                                "_id": 0
                               }
                             }
                           ]
@@ -729,7 +742,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 20
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -865,7 +879,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                               "targetLen": 20
                                             }
                                           }
-                                        }
+                                        },
+                                        "_id": 0
                                       }
                                     }
                                   ]
@@ -999,7 +1014,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 20
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1133,7 +1149,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 6
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1267,7 +1284,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 6
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1401,7 +1419,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 60
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1535,7 +1554,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 60
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1671,7 +1691,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 3
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1807,7 +1828,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 3
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -1943,7 +1965,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": -1
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2079,7 +2102,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": -1
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2213,7 +2237,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 6
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2347,7 +2372,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 6
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2481,7 +2507,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 3
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2615,7 +2642,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "targetLen": 3
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2679,7 +2707,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "str": "$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2759,7 +2788,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "str": "$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2823,7 +2853,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "str": "$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2903,7 +2934,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "str": "$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -2983,7 +3015,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "str": "$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3063,7 +3096,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "str": "$s"
                             }
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3087,7 +3121,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                             "chars": " ",
                             "input": "$s"
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3111,7 +3146,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                              "chars": " ",
                              "input": "$s"
                            }
-                         }
+                         },
+                         "_id": 0
                        }
                      }
                    ]
@@ -3135,7 +3171,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                             "chars": " ",
                             "input": "$s"
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3159,7 +3196,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                         "chars": " ",
                                         "input": "$s"
                                        }
-                                    }
+                                    },
+                                "_id": 0
                                 }
                         }
                     ]
@@ -3183,7 +3221,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                             "chars": "_",
                             "input": "$u"
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3207,7 +3246,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                             "chars": "_",
                             "input": "$u"
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3231,7 +3271,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                             "chars": "_",
                             "input": "$u"
                           }
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]
@@ -3252,7 +3293,8 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                       "$project": {
                         "#c_1": {
                           "$toUpper": "$s"
-                        }
+                        },
+                        "_id": 0
                       }
                     }
                   ]

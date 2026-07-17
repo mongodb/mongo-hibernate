@@ -128,7 +128,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     },
                     {
                       "$project": {
-                        "_id#primitiveInt": "$_id.primitiveInt"
+                        "_id#primitiveInt": "$_id.primitiveInt",
+                        "_id": 0
                       }
                     }
                   ]
@@ -150,7 +151,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                   "aggregate": "Item",
                   "pipeline": [
                     {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
+                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
                   ]
                 }
                 """,
@@ -181,7 +182,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                        },
                        {
                          "$project": {
-                           "_id#primitiveInt": "$_id.primitiveInt"
+                           "_id#primitiveInt": "$_id.primitiveInt",
+                           "_id": 0
                          }
                        }
                      ]
@@ -202,7 +204,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                   "pipeline": [
                     {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
                     {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
+                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
                   ]
                 }
                 """,
@@ -230,7 +232,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       {
                         "$project": {
                           "_id#primitiveInt": "$_id.primitiveInt",
-                          "_id#primitiveBoolean": "$_id.primitiveBoolean"
+                          "_id#primitiveBoolean": "$_id.primitiveBoolean",
+                          "_id": 0
                         }
                       }
                     ]
@@ -301,7 +304,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         },
                         {
                           "$project": {
-                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt"
+                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt",
+                            "_id": 0
                           }
                         }
                       ]
@@ -345,7 +349,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         },
                         {
                           "$project": {
-                            "_id#_id": "$_id._id"
+                            "_id#_id": "$_id._id",
+                            "_id": 0
                           }
                         }
                       ]
@@ -394,7 +399,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         },
                         {
                           "$project": {
-                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt"
+                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt",
+                            "_id": 0
                           }
                         }
                       ]
@@ -443,7 +449,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         },
                         {
                           "$project": {
-                            "_id#_id": "$_id._id"
+                            "_id#_id": "$_id._id",
+                            "_id": 0
                           }
                         }
                       ]
@@ -498,7 +505,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#_id": "$_id._id",
-                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt"
+                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt",
+                            "_id": 0
                           }
                         }
                       ]
@@ -545,7 +553,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#_id": "$_id._id",
-                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt"
+                            "_id##ib1_0#primitiveInt": "$_id.#ib1_0#primitiveInt",
+                            "_id": 0
                           }
                         }
                       ]
@@ -638,7 +647,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -656,7 +665,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$add": ["$_id.primitiveInt", 1]}}}
+                        {"$project": {"#c_1": {"$add": ["$_id.primitiveInt", 1]}, "_id": 0}}
                       ]
                     }
                     """,
@@ -674,7 +683,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": {"$multiply": ["$_id.k0", 2]}}}
+                        {"$project": {"#c_1": {"$multiply": ["$_id.k0", 2]}, "_id": 0}}
                       ]
                     }
                     """,
@@ -695,7 +704,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                           "primitiveInt": "$primitiveInt",
                           "k1": {"$add": ["$primitiveInt", 1]}
                         }}},
-                        {"$project": {"#c_1": "$_id.k1"}}
+                        {"$project": {"#c_1": "$_id.k1", "_id": 0}}
                       ]
                     }
                     """,
@@ -713,7 +722,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$multiply": [-1, "$primitiveInt"]}}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -734,7 +743,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                           "primitiveInt": "$primitiveInt",
                           "k1": {"$add": ["$primitiveInt", 1]}
                         }}},
-                        {"$project": {"#c_1": "$_id.k1", "_id#primitiveInt": "$_id.primitiveInt"}}
+                        {"$project": {"#c_1": "$_id.k1", "_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
                       ]
                     }
                     """,
@@ -758,7 +767,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 10]}}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -780,7 +789,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
                         {"$match": {"_id.k0": {"$gt": 2}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -803,7 +812,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                           {"_id.k0": {"$gt": 2}},
                           {"_id.k0": {"$lt": 5}}
                         ]}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -827,7 +836,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {"$project": {"#c_1": {"$switch": {
                           "branches": [{"case": {"$gt": ["$_id.primitiveInt", 2]}, "then": 1}],
                           "default": 0
-                        }}}}
+                        }}, "_id": 0}}
                       ]
                     }
                     """,
@@ -856,7 +865,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             {"$lt": ["$_id.primitiveInt", 4]}
                           ]}, "then": 1}],
                           "default": 0
-                        }}}}
+                        }}, "_id": 0}}
                       ]
                     }
                     """,
@@ -877,7 +886,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -898,7 +907,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": {"$add": ["$_id.k0", 1]}}}
+                        {"$project": {"#c_1": {"$add": ["$_id.k0", 1]}, "_id": 0}}
                       ]
                     }
                     """,
@@ -918,7 +927,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$toUpper": {"$toLower": "$string"}}}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -939,7 +948,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$toLower": "$string"}}}},
-                        {"$project": {"#c_1": {"$toUpper": "$_id.k0"}}}
+                        {"$project": {"#c_1": {"$toUpper": "$_id.k0"}, "_id": 0}}
                       ]
                     }
                     """,
@@ -960,7 +969,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": "$_id.k0", "#c_2": {"$add": ["$_id.k0", 1]}}}
+                        {"$project": {"#c_1": "$_id.k0", "#c_2": {"$add": ["$_id.k0", 1]}, "_id": 0}}
                       ]
                     }
                     """,
@@ -985,7 +994,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "pipeline": [
                         {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
                         {"$match": {"_id.k0": {"$gt": 0}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -1010,7 +1019,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {"$project": {"#c_1": {"$switch": {
                           "branches": [{"case": {"$gt": ["$_id.k0", 0]}, "then": 1}],
                           "default": 0
-                        }}}}
+                        }}, "_id": 0}}
                       ]
                     }
                     """,
@@ -1035,7 +1044,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                           {"$toString": "$string"},
                           {"$toString": "$string"}
                         ]}}}}},
-                        {"$project": {"#c_1": "$_id.k0"}}
+                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
                       ]
                     }
                     """,
@@ -1060,7 +1069,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                           "primitiveInt": "$primitiveInt",
                           "k1": {"$toUpper": "$string"}
                         }}},
-                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "#c_2": "$_id.k1"}}
+                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "#c_2": "$_id.k1", "_id": 0}}
                       ]
                     }
                     """,
@@ -1102,7 +1111,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                          },
                          {
                            "$project": {
-                             "_id#primitiveInt": "$_id.primitiveInt"
+                             "_id#primitiveInt": "$_id.primitiveInt",
+                             "_id": 0
                            }
                          }
                        ]
@@ -1124,7 +1134,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
                     {"$match": {"_id.itemStruct#primitiveInt": {"$gt": 1}}},
                     {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
+                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
                   ]
                 }
                 """,
@@ -1144,7 +1154,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {"$match": {"primitiveInt": {"$gt": 1}}},
                     {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
                     {"$sort": {"_id.primitiveInt": 1}},
-                    {"$project": {"_id#primitiveInt": "$_id.primitiveInt"}}
+                    {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
                   ]
                 }
                 """,
@@ -1164,7 +1174,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {"$match": {"itemStruct.primitiveInt": {"$gt": 1}}},
                     {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
                     {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
+                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
                   ]
                 }
                 """,
@@ -1183,7 +1193,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                   "pipeline": [
                     {"$group": {"_id": {"_id": "$_id"}}},
                     {"$sort": {"_id._id": 1}},
-                    {"$project": {"_id#_id": "$_id._id"}}
+                    {"$project": {"_id#_id": "$_id._id", "_id": 0}}
                   ]
                 }
                 """,

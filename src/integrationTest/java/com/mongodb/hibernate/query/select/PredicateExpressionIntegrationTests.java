@@ -55,7 +55,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$lt": ["$y", {"$numberInt": "5"}]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$lt": ["$y", {"$numberInt": "5"}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -71,7 +71,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$or": [{"$gt": ["$x", {"$numberInt": "8"}]}, {"$lt": ["$y", {"$numberInt": "5"}]}]}}}
+                        {"$project": {"#c_1": {"$or": [{"$gt": ["$x", {"$numberInt": "8"}]}, {"$lt": ["$y", {"$numberInt": "5"}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -87,7 +87,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$not": [{"$lt": ["$y", {"$numberInt": "5"}]}]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$not": [{"$lt": ["$y", {"$numberInt": "5"}]}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, false),
@@ -103,7 +103,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$eq": ["$flag", true]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$eq": ["$flag", true]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -121,7 +121,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$eq": ["$flag", false]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$eq": ["$flag", false]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, false),
@@ -137,7 +137,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$in": ["$x", [{"$numberInt": "4"}, {"$numberInt": "5"}]]}}}
+                        {"$project": {"#c_1": {"$in": ["$x", [{"$numberInt": "4"}, {"$numberInt": "5"}]]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, true),
@@ -153,7 +153,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$in": ["$name", ["alpha", "beta"]]}}}
+                        {"$project": {"#c_1": {"$in": ["$name", ["alpha", "beta"]]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, true, false),
@@ -169,7 +169,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$not": [{"$in": ["$x", [{"$numberInt": "4"}, {"$numberInt": "5"}]]}]}}}
+                        {"$project": {"#c_1": {"$not": [{"$in": ["$x", [{"$numberInt": "4"}, {"$numberInt": "5"}]]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, false),
@@ -185,7 +185,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$in": ["$name", [{"$literal": "$x"}, "alpha"]]}}}
+                        {"$project": {"#c_1": {"$in": ["$name", [{"$literal": "$x"}, "alpha"]]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, false),
@@ -201,7 +201,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$regexMatch": {"input": "$name", "regex": "^a.*$", "options": "s"}}}}
+                        {"$project": {"#c_1": {"$regexMatch": {"input": "$name", "regex": "^a.*$", "options": "s"}}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, false),
@@ -217,7 +217,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$not": [{"$regexMatch": {"input": "$name", "regex": "^a.*$", "options": "s"}}]}}}
+                        {"$project": {"#c_1": {"$not": [{"$regexMatch": {"input": "$name", "regex": "^a.*$", "options": "s"}}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, true),
@@ -233,7 +233,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$eq": ["$nn", null]}}}
+                        {"$project": {"#c_1": {"$eq": ["$nn", null]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, false),
@@ -249,7 +249,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$ne": ["$nn", null]}}}
+                        {"$project": {"#c_1": {"$ne": ["$nn", null]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -265,7 +265,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$eq": [{"$add": ["$x", "$nn"]}, null]}}}
+                        {"$project": {"#c_1": {"$eq": [{"$add": ["$x", "$nn"]}, null]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, false),
@@ -281,7 +281,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$in": ["$name", ["alpha", "beta"]]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gt": ["$x", {"$numberInt": "1"}]}, {"$in": ["$name", ["alpha", "beta"]]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, true, false),
@@ -297,7 +297,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gte": ["$x", {"$numberInt": "4"}]}, {"$lte": ["$x", {"$numberInt": "6"}]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gte": ["$x", {"$numberInt": "4"}]}, {"$lte": ["$x", {"$numberInt": "6"}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, true),
@@ -313,7 +313,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$or": [{"$lt": ["$x", {"$numberInt": "4"}]}, {"$gt": ["$x", {"$numberInt": "6"}]}]}}}
+                        {"$project": {"#c_1": {"$or": [{"$lt": ["$x", {"$numberInt": "4"}]}, {"$gt": ["$x", {"$numberInt": "6"}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, false),
@@ -332,7 +332,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gte": [{"$add": ["$x", {"$numberInt": "5"}]}, {"$numberInt": "10"}]}, {"$lte": [{"$add": ["$x", {"$numberInt": "5"}]}, {"$numberInt": "16"}]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gte": [{"$add": ["$x", {"$numberInt": "5"}]}, {"$numberInt": "10"}]}, {"$lte": [{"$add": ["$x", {"$numberInt": "5"}]}, {"$numberInt": "16"}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(true, false, true),
@@ -350,7 +350,7 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "aggregate": "widgets",
                       "pipeline": [
-                        {"$project": {"#c_1": {"$and": [{"$gte": [{"$add": ["$x", "$y"]}, {"$numberInt": "8"}]}, {"$lte": [{"$add": ["$x", "$y"]}, {"$numberInt": "12"}]}]}}}
+                        {"$project": {"#c_1": {"$and": [{"$gte": [{"$add": ["$x", "$y"]}, {"$numberInt": "8"}]}, {"$lte": [{"$add": ["$x", "$y"]}, {"$numberInt": "12"}]}]}, "_id": 0}}
                       ]
                     }""",
                     List.of(false, true, true),
