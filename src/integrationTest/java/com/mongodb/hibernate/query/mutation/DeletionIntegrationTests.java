@@ -55,7 +55,6 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Test
@@ -236,7 +235,6 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(0)));
                 session.persist(new ItemWithNestedValue(2, new StructAggregateEmbeddableIntegrationTests.Single(2)));
             });
-            getTestCommandListener().clear();
         }
 
         @Test

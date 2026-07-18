@@ -44,7 +44,6 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                 session.persist(new Widget(2, 4, 7, false, "beta", null));
                 session.persist(new Widget(3, 5, 4, true, "gamma", 8));
             });
-            getTestCommandListener().clear();
         }
 
         @Test

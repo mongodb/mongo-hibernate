@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static com.mongodb.hibernate.internal.jdbc.MongoStatementIntegrationTests.doWorkWithSpecifiedAutoCommit;
 import static com.mongodb.hibernate.internal.jdbc.MongoStatementIntegrationTests.insertTestData;
 import static java.sql.Statement.SUCCESS_NO_INFO;
@@ -78,7 +79,13 @@ class MongoPreparedStatementIntegrationTests {
 
     @BeforeAll
     static void beforeAll() {
-        sessionFactory = new Configuration().buildSessionFactory();
+        var configuration = new Configuration();
+        configuration
+                .getProperties()
+                .put(
+                        MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
+                        MongoExtension.configurationContributorForClass(MongoPreparedStatementIntegrationTests.class));
+        sessionFactory = configuration.buildSessionFactory();
     }
 
     @BeforeEach

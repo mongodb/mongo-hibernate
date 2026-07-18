@@ -66,7 +66,6 @@ public class InheritanceIntegrationTests extends AbstractQueryIntegrationTests {
             session.persist(SINGLE_STR_A);
             session.persist(SINGLE_STR_B);
         });
-        getTestCommandListener().clear();
     }
 
     @Test

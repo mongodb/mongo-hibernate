@@ -52,7 +52,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new Item(2, 4, 7));
                 session.persist(new Item(3, 5, 4));
             });
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -717,7 +716,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new Item(2, 4, 7));
                 session.persist(new Item(3, 5, 4));
             });
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -803,7 +801,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new Item(2, 4, 7));
                 session.persist(new Item(3, 5, 4));
             });
-            getTestCommandListener().clear();
         }
 
         // quot on integer operands is integer division: Hibernate infers an integer result type, so
@@ -861,7 +858,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
         @BeforeEach
         void setUp() {
             getSessionFactoryScope().inTransaction(session -> session.persist(new LongItem(1, 10L, 3L)));
-            getTestCommandListener().clear();
         }
 
         // A long/long division has a BIGINT result type, so it truncates with $toLong (not $toInt),

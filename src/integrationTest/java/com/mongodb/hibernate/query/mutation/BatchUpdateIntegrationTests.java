@@ -33,7 +33,6 @@ import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = BatchUpdateIntegrationTests.Item.class)
@@ -45,11 +44,6 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests implemen
 
     @InjectMongoCollection(COLLECTION_NAME)
     private static MongoCollection<BsonDocument> collection;
-
-    @BeforeEach
-    void beforeEach() {
-        getTestCommandListener().clear();
-    }
 
     @Test
     void testBatchInsert() {
@@ -180,7 +174,7 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests implemen
             session.persist(new Item(i, String.valueOf(i)));
         }
         session.flush();
-        getTestCommandListener().clear();
+        clearCommands();
     }
 
     @Entity

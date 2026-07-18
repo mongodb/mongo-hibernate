@@ -16,8 +16,10 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import com.mongodb.hibernate.junit.MongoExtension;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -25,7 +27,9 @@ import org.junit.jupiter.api.AutoClose;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(MongoExtension.class)
 class SessionIntegrationTests {
 
     @AutoClose
@@ -36,7 +40,13 @@ class SessionIntegrationTests {
 
     @BeforeAll
     static void beforeAll() {
-        sessionFactory = new Configuration().buildSessionFactory();
+        var configuration = new Configuration();
+        configuration
+                .getProperties()
+                .put(
+                        MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
+                        MongoExtension.configurationContributorForClass(SessionIntegrationTests.class));
+        sessionFactory = configuration.buildSessionFactory();
     }
 
     @BeforeEach

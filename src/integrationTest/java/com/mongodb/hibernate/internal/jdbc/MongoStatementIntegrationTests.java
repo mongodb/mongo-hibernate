@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.jdbc;
 
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,7 +66,13 @@ class MongoStatementIntegrationTests {
 
     @BeforeAll
     static void beforeAll() {
-        sessionFactory = new Configuration().buildSessionFactory();
+        var configuration = new Configuration();
+        configuration
+                .getProperties()
+                .put(
+                        MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
+                        MongoExtension.configurationContributorForClass(MongoStatementIntegrationTests.class));
+        sessionFactory = configuration.buildSessionFactory();
     }
 
     @BeforeEach
