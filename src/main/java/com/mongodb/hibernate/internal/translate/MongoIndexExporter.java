@@ -72,6 +72,13 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
 
     @Override
     public final String[] getSqlDropStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
-        throw new IllegalStateException("Dropping indices was deemed impossible: HIBERNATE-66");
+        final var collectionName = tableForExportable(exportable).getName();
+        final var indexName = indexNameForExportable(exportable)
+                .orElseGet(() -> generateIndexName(
+                        new BsonDocument(keysForExportable(exportable).toList())));
+        final var command = new BsonDocument(List.of(
+                new BsonElement("dropIndexes", new BsonString(collectionName)),
+                new BsonElement("index", new BsonString(indexName))));
+        return new String[] {command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)};
     }
 }

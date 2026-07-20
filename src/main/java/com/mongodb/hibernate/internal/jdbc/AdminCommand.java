@@ -28,7 +28,7 @@ import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
 
-abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand {
+abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, AdminCommand.DropIndexesCommand {
     private static <T> Decoder<List<T>> listOf(Decoder<T> inner) {
         return (reader, decoderContext) -> {
             var results = new ArrayList<T>();
@@ -56,7 +56,6 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand {
             throws SQLFeatureNotSupportedException {
         reader.readStartDocument();
         final var name = reader.readName();
-        @SuppressWarnings("SwitchStatementWithTooFewBranches")
         final var result =
                 switch (name) {
                     case "createIndexes" -> {
@@ -65,6 +64,10 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand {
                         final var indexes =
                                 listOf(AdminCommand::decodeIndexModel).decode(reader, decoderContext);
                         yield new CreateIndexesCommand(collectionName, indexes);
+                    }
+                    case "dropIndexes" -> {
+                        final var collectionName = reader.readString();
+                        yield new DropIndexesCommand(collectionName, reader.readString("index"));
                     }
                     default ->
                         throw new SQLFeatureNotSupportedException(
@@ -88,6 +91,22 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand {
         @Override
         boolean execute(MongoDatabase database) {
             return database.getCollection(collectionName).createIndexes(indexes).size() == indexes.size();
+        }
+    }
+
+    static final class DropIndexesCommand extends AdminCommand {
+        private final String collectionName;
+        private final String index;
+
+        DropIndexesCommand(String collectionName, String index) {
+            this.collectionName = collectionName;
+            this.index = index;
+        }
+
+        @Override
+        boolean execute(MongoDatabase database) {
+            database.getCollection(collectionName).dropIndex(index);
+            return true;
         }
     }
 }
