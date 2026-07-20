@@ -106,10 +106,10 @@ public final class MongoExtension
         currentDatabase(context).drop();
     }
 
-    /** Drops the class's database, thus dropping all {@linkplain InjectMongoCollection collections}. */
+    /** Empties every {@linkplain InjectMongoCollection collection} in the class's database before each test. */
     @Override
     public void beforeEach(ExtensionContext context) {
-        currentDatabase(context).drop();
+        clearDatabase(context);
     }
 
     /**
@@ -171,6 +171,15 @@ public final class MongoExtension
 
     private static MongoDatabase currentDatabase(ExtensionContext context) {
         return STATE.mongoClient().getDatabase(databaseNameFor(context));
+    }
+
+    // Clear data by emptying each collection rather than dropDatabase(): dropDatabase is a ~125ms catalog operation,
+    // while deleteMany is ordinary CRUD (~sub-ms). Collections/indexes persist (harmless; tests re-seed).
+    private static void clearDatabase(ExtensionContext context) {
+        var database = currentDatabase(context);
+        for (var collectionName : database.listCollectionNames()) {
+            database.getCollection(collectionName).deleteMany(new BsonDocument());
+        }
     }
 
     private record State(
