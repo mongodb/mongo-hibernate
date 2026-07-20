@@ -493,9 +493,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$lt": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -531,9 +531,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$lt": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -569,9 +569,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$gte": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$gte": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -613,9 +613,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$gt": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$gt": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -651,9 +651,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lte": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$lte": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -695,9 +695,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$ne": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$ne": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -739,9 +739,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "LineItem",
-                            "let": { "v0": "$total" },
+                            "let": { "v0_o1_0_total": "$total" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$gt": [ "$$v0", "$quantity" ] } } }
+                              { "$match": { "$expr": { "$gt": [ "$$v0_o1_0_total", "$quantity" ] } } }
                             ],
                             "as": "#li1_0"
                           }
@@ -786,9 +786,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$lt": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -836,9 +836,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "Order",
-                            "let": { "v0": "$_id" },
+                            "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$lt": [ "$$v0_c1_0__id", "$_id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -847,9 +847,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         {
                           "$lookup": {
                             "from": "LineItem",
-                            "let": { "v0": "$#o1_0._id" },
+                            "let": { "v1_o1_0__id": "$#o1_0._id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lt": [ "$$v0", "$_id" ] } } }
+                              { "$match": { "$expr": { "$lt": [ "$$v1_o1_0__id", "$_id" ] } } }
                             ],
                             "as": "#li1_0"
                           }

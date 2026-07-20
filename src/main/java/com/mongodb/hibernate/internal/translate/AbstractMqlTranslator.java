@@ -272,6 +272,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
 
+    // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
+    private int letVariableCounter;
+
     private @Nullable QueryOptionsLimit queryOptionsLimit;
 
     private @Nullable Map<Integer, String> projectionKeyMap;
@@ -1879,7 +1882,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         // on the left so the operand order stays outer-then-joined.
         var exprOperator = toJoinExprComparisonOperator(columns.joinedOnLeft() ? operator.invert() : operator);
 
-        var letVariable = "v0";
+        var letVariable = nextLetVariableName(columns.outer());
         var expr = new AstExprFilter(new AstBinaryOperatorExpression(
                 exprOperator,
                 new AstVariableExpression(letVariable),
@@ -1889,6 +1892,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 List.of(new AstLetVariable(letVariable, new AstFieldPathExpression(resolveFieldPath(columns.outer())))),
                 List.of(new AstMatchStage(expr)),
                 joinAlias);
+    }
+
+    /**
+     * Generates a unique {@code let} variable name for a {@code $lookup} sub-pipeline. The leading {@code v<n>} counter
+     * guarantees uniqueness within a query — needed once a single {@code $lookup} binds multiple outer columns (see
+     * HIBERNATE-164) — while the sanitized {@code <qualifier>_<column>} suffix is human-readable context that makes it
+     * clear which outer column each variable binds when reading query logs.
+     */
+    private String nextLetVariableName(ColumnReference outer) {
+        var qualifier = outer.getQualifier();
+        var suffix = ((qualifier != null ? qualifier + "_" : "") + outer.getColumnExpression())
+                .replaceAll("[^a-zA-Z0-9_]", "_");
+        return "v" + letVariableCounter++ + "_" + suffix;
     }
 
     private JoinColumns extractJoinColumns(ComparisonPredicate cp, String joinedAlias) {
