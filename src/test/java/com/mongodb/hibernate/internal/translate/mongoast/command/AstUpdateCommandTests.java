@@ -18,12 +18,18 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import java.util.List;
+import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
@@ -42,11 +48,32 @@ class AstUpdateCommandTests {
                 new AstComparisonFilterOperation(
                         AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt64(12345L))));
 
-        var updateCommand = new AstUpdateCommand(collection, filter, List.of(astFieldUpdate1, astFieldUpdate2));
+        var updateCommand = new AstUpdateCommand(
+                collection, filter, new AstDocumentUpdate(List.of(astFieldUpdate1, astFieldUpdate2)));
 
         var expectedJson =
                 """
                 {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$numberLong": "12345"}}}, "u": {"$set": {"title": "War and Peace", "author": "Leo Tolstoy"}}, "multi": true}]}\
+                """;
+        assertRendering(expectedJson, updateCommand);
+    }
+
+    @Test
+    void testRenderingPipelineUpdate() {
+        var filter = new AstFieldOperationFilter(
+                "_id",
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1))));
+        var computed = new AstComputedFieldUpdate(
+                "publishYear",
+                new AstBinaryOperatorExpression(
+                        AstArithmeticExpressionOperator.ADD,
+                        new AstFieldPathExpression("publishYear"),
+                        new AstValueExpression(new AstLiteral(new BsonInt32(1)))));
+        var updateCommand = new AstUpdateCommand("books", filter, new AstPipelineUpdate(List.of(computed)));
+
+        var expectedJson =
+                """
+                {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$numberInt": "1"}}}, "u": [{"$set": {"publishYear": {"$add": ["$publishYear", {"$numberInt": "1"}]}}}], "multi": true}]}\
                 """;
         assertRendering(expectedJson, updateCommand);
     }

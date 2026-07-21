@@ -62,6 +62,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import org.bson.BSONException;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInvalidOperationException;
 import org.bson.BsonString;
@@ -573,13 +574,20 @@ class MongoStatement implements StatementAdapter {
                 // We force exception here because the field is mandatory.
                 updateStatement.getDocument("u");
             }
-            if (!(updateModification instanceof BsonDocument updateDocument)) {
-                throw new SQLFeatureNotSupportedException("Only document type is supported as value for field: [u]");
+            if (updateModification instanceof BsonDocument updateDocument) {
+                return isMulti
+                        ? new UpdateManyModel<>(filter, updateDocument)
+                        : new UpdateOneModel<>(filter, updateDocument);
+            } else if (updateModification instanceof BsonArray updatePipelineArray) {
+                var updatePipeline =
+                        updatePipelineArray.stream().map(BsonValue::asDocument).toList();
+                return isMulti
+                        ? new UpdateManyModel<>(filter, updatePipeline)
+                        : new UpdateOneModel<>(filter, updatePipeline);
+            } else {
+                throw new SQLFeatureNotSupportedException(
+                        "Only document or pipeline type is supported as value for field: [u]");
             }
-            if (isMulti) {
-                return new UpdateManyModel<>(filter, updateDocument);
-            }
-            return new UpdateOneModel<>(filter, updateDocument);
         }
 
         private static WriteModel<BsonDocument> createDeleteModel(

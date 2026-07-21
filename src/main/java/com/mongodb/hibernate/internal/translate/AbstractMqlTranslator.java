@@ -57,6 +57,7 @@ import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstConversionExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -76,7 +77,10 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstDocumentUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
@@ -141,7 +145,6 @@ import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
-import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
@@ -172,7 +175,6 @@ import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.ExtractUnit;
 import org.hibernate.sql.ast.tree.expression.Format;
-import org.hibernate.sql.ast.tree.expression.FunctionExpression;
 import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.expression.Literal;
@@ -993,26 +995,38 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         checkMutationStatementSupportability(updateStatement);
         var collection = addToAffectedTableNames(updateStatement.getTargetTable());
         var filter = createAstFilter(updateStatement);
-
         var assignments = updateStatement.getAssignments();
-        var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
-        for (var assignment : assignments) {
-            var fieldReferences = assignment.getAssignable().getColumnReferences();
-            assertTrue(fieldReferences.size() == 1);
-
-            var fieldPath = acceptAndYield(fieldReferences.get(0), FIELD_PATH);
-            var assignedValue = assignment.getAssignedValue();
-            if (!isValueExpression(assignedValue)) {
-                throw new FeatureNotSupportedException(
-                        getUnsupportedUpdateValueAssignmentMessage(fieldPath, assignedValue));
-            }
-            var fieldValue = acceptAndYield(assignedValue, VALUE);
-            fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
-        }
+        var allValues = assignments.stream().allMatch(assignment -> isValueExpression(assignment.getAssignedValue()));
+        AstUpdate update = allValues ? buildDocumentUpdate(assignments) : buildPipelineUpdate(assignments);
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstUpdateCommand(collection, filter, fieldUpdates), parameterBinders, affectedTableNames));
+                        new AstUpdateCommand(collection, filter, update), parameterBinders, affectedTableNames));
+    }
+
+    private AstDocumentUpdate buildDocumentUpdate(List<Assignment> assignments) {
+        var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
+        for (var assignment : assignments) {
+            var fieldPath = resolveAssignmentFieldPath(assignment);
+            var fieldValue = acceptAndYield(assignment.getAssignedValue(), VALUE);
+            fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
+        }
+        return new AstDocumentUpdate(fieldUpdates);
+    }
+
+    private AstPipelineUpdate buildPipelineUpdate(List<Assignment> assignments) {
+        var fieldUpdates = new ArrayList<AstComputedFieldUpdate>(assignments.size());
+        for (var assignment : assignments) {
+            var fieldValue = acceptAndYieldExpression(assignment.getAssignedValue());
+            fieldUpdates.add(new AstComputedFieldUpdate(resolveAssignmentFieldPath(assignment), fieldValue));
+        }
+        return new AstPipelineUpdate(fieldUpdates);
+    }
+
+    private String resolveAssignmentFieldPath(Assignment assignment) {
+        var fieldReferences = assignment.getAssignable().getColumnReferences();
+        assertTrue(fieldReferences.size() == 1);
+        return acceptAndYield(fieldReferences.get(0), FIELD_PATH);
     }
 
     private String addToAffectedTableNames(NamedTableReference tableRef) {
@@ -1034,7 +1048,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
-        return new AstUpdateCommand(tableName, keyFilter, updates);
+        return new AstUpdateCommand(tableName, keyFilter, new AstDocumentUpdate(updates));
     }
 
     @Override
@@ -2005,21 +2019,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         @Override
         public void appendSql(String fragment) {
             throw new FeatureNotSupportedException();
-        }
-    }
-
-    private static String getUnsupportedUpdateValueAssignmentMessage(final String fieldPath, Expression assignedValue) {
-        if (assignedValue instanceof FunctionExpression ex) {
-            return "Function expression [%s] as update assignment value for field path [%s] is not supported"
-                    .formatted(ex.getFunctionName(), fieldPath);
-        } else if (assignedValue instanceof Predicate) {
-            return "Predicate expression as update assignment value for field path [%s] is not supported"
-                    .formatted(fieldPath);
-        } else if (assignedValue instanceof SqmPathInterpretation) {
-            return "Path expression as update assignment value for field path [%s] is not supported"
-                    .formatted(fieldPath);
-        } else {
-            return "Update assignment value for field path [%s] is not supported".formatted(fieldPath);
         }
     }
 }
