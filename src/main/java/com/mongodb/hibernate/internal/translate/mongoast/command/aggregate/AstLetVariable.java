@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import org.bson.BsonWriter;
 
 /**
- * Renders {@code { $expr: expression }} as a MongoDB aggregation expression predicate in a {@code $match} stage. Used
- * for comparisons that the compact query form cannot express, including non-equijoin {@code ON} conditions inside the
- * {@code $lookup} pipeline form.
+ * A single {@code name → expression} binding in the {@code let} of a {@code $lookup} pipeline stage. Unlike an
+ * {@link com.mongodb.hibernate.internal.translate.mongoast.AstElement} (a {@code name → value} pair for literal
+ * documents), a {@code let} variable binds an aggregation {@link AstExpression} evaluated against the outer document.
  *
+ * @see AstLookupStageWithPipeline
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstExprFilter(AstExpression expression) implements AstFilter {
+public record AstLetVariable(String name, AstExpression expression) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
-        writer.writeStartDocument();
-        writer.writeName("$expr");
+        writer.writeName(name);
         expression.render(writer);
-        writer.writeEndDocument();
     }
 }
