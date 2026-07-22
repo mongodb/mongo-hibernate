@@ -67,6 +67,8 @@ import org.bson.BsonDocument;
 import org.bson.BsonInvalidOperationException;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.codecs.DecoderContext;
+import org.bson.json.JsonReader;
 import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
@@ -246,7 +248,14 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
+        var command = AdminCommand.decode(
+                new JsonReader(mql), DecoderContext.builder().build());
+        try {
+            command.execute(mongoDatabase);
+            return false;
+        } catch (RuntimeException exception) {
+            throw handleExecuteQueryOrUpdateException(exception);
+        }
     }
 
     @Override
