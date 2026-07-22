@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @DomainModel(annotatedClasses = Book.class)
@@ -32,11 +31,6 @@ class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
     private static MongoCollection<BsonDocument> mongoCollection;
-
-    @BeforeEach
-    void beforeEach() {
-        getTestCommandListener().clear();
-    }
 
     @Test
     void testInsertPartialSingleDocument() {

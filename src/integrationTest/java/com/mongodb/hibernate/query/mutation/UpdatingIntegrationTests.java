@@ -65,7 +65,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Test
@@ -375,7 +374,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
             getSessionFactoryScope()
                     .inTransaction(session -> session.persist(
                             new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(7))));
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -440,7 +438,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
         @BeforeEach
         void seed() {
             getSessionFactoryScope().inTransaction(session -> session.persist(new ItemWithPair(1, new Pair(10, 20))));
-            getTestCommandListener().clear();
         }
 
         @Test

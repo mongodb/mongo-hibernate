@@ -47,8 +47,6 @@ class BooleanExpressionWhereClauseIntegrationTests extends AbstractQueryIntegrat
             session.persist(bookOutOfStock);
             session.persist(bookInStock);
         });
-
-        getTestCommandListener().clear();
     }
 
     @ParameterizedTest

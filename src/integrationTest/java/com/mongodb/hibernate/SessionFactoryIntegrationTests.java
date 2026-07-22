@@ -16,17 +16,21 @@
 
 package com.mongodb.hibernate;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.mongodb.hibernate.junit.MongoExtension;
 import java.util.Map;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.spi.ServiceException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(MongoExtension.class)
 class SessionFactoryIntegrationTests {
 
     @Test
@@ -63,6 +67,9 @@ class SessionFactoryIntegrationTests {
         return new MetadataSources()
                 .buildMetadata(new StandardServiceRegistryBuilder()
                         .applySettings(settings)
+                        .applySetting(
+                                MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
+                                MongoExtension.configurationContributorForClass(SessionFactoryIntegrationTests.class))
                         .build())
                 .buildSessionFactory();
     }

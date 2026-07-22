@@ -46,7 +46,6 @@ class ExistsSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 new Cart(3, 0, "shipped", new LineItem[] {new LineItem("GADGET-2", 3, true)}),
                 new Cart(4, 3, "pending", new LineItem[] {}));
         getSessionFactoryScope().inTransaction(session -> carts.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Test

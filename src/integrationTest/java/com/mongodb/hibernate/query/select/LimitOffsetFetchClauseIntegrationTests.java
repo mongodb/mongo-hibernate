@@ -76,7 +76,6 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> TESTING_BOOKS.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     private static List<Book> getBooksByIds(int... ids) {
@@ -533,7 +532,6 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
                     .getSessionFactory()
                     .getJdbcServices()
                     .getDialect();
-            getTestCommandListener().clear();
         }
 
         @ParameterizedTest
@@ -610,7 +608,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
             if (maxResults != null) {
                 query.setMaxResults(maxResults);
             }
-            getTestCommandListener().clear();
+            clearCommands();
             query.getResultList();
             if (expectedMql != null) {
                 var expectedCommand = BsonDocument.parse(expectedMql);

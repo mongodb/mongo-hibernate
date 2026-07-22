@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.junit;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
+
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
@@ -45,6 +47,11 @@ public interface MongoServiceRegistryProducer extends ServiceRegistryProducer {
         // Note that StandardServiceRegistryBuilder#getSettings is an internal API
         ssrb.getSettings().remove(AvailableSettings.CONNECTION_PROVIDER);
         ssrb.applySetting(AvailableSettings.CONNECTION_PROVIDER_DISABLES_AUTOCOMMIT, false);
+        // Point this class's SessionFactory at its own database (derived from the test class, not per-thread state, so
+        // it is robust to however/whenever Hibernate builds the registry under parallel execution). The contributor
+        // also installs the shared TestCommandListener on the Mongo client.
+        ssrb.applySetting(
+                MONGO_CONFIGURATION_CONTRIBUTOR_KEY, MongoExtension.configurationContributorForClass(getClass()));
         return ssrb.build();
     }
 }
