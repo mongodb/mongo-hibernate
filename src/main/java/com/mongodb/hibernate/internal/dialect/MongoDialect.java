@@ -43,6 +43,7 @@ import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -150,6 +151,16 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     @Override
     public @Nullable String toQuotedIdentifier(@Nullable String name) {
         return name;
+    }
+
+    /**
+     * Report {@code SCHEMA} so Hibernate renders a schema-qualified table as {@code schema.name}, which the extension
+     * treats as the collection name. Catalog is deliberately not reported; it is rejected at boot instead (see
+     * {@code MongoAdditionalMappingContributor}).
+     */
+    @Override
+    public NameQualifierSupport getNameQualifierSupport() {
+        return NameQualifierSupport.SCHEMA;
     }
 
     @Override
