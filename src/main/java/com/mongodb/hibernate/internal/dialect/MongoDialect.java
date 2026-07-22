@@ -348,9 +348,16 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
 
             @Override
             protected Stream<BsonElement> keysForExportable(Index exportable) {
-                return exportable.getSelectables().stream()
-                        .filter(selectable -> !selectable.isFormula())
-                        .map(selectable -> new BsonElement(selectable.getText(), new BsonInt32(1)));
+                return exportable.getSelectables().stream().map(selectable -> {
+                    if (selectable.isFormula()) {
+                        throw new FeatureNotSupportedException(
+                                "Index %s on %s uses a formula column, which is not supported"
+                                        .formatted(
+                                                exportable.getName(),
+                                                exportable.getTable().getName()));
+                    }
+                    return new BsonElement(selectable.getText(), new BsonInt32(1));
+                });
             }
 
             @Override

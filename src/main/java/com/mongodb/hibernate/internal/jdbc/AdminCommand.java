@@ -77,7 +77,7 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, Ad
         return result;
     }
 
-    abstract boolean execute(MongoDatabase database);
+    abstract void execute(MongoDatabase database);
 
     static final class CreateIndexesCommand extends AdminCommand {
         private final String collectionName;
@@ -89,8 +89,8 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, Ad
         }
 
         @Override
-        boolean execute(MongoDatabase database) {
-            return database.getCollection(collectionName).createIndexes(indexes).size() == indexes.size();
+        void execute(MongoDatabase database) {
+            database.getCollection(collectionName).createIndexes(indexes);
         }
     }
 
@@ -104,9 +104,8 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, Ad
         }
 
         @Override
-        boolean execute(MongoDatabase database) {
+        void execute(MongoDatabase database) {
             database.getCollection(collectionName).dropIndex(index);
-            return true;
         }
     }
 }

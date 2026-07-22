@@ -30,6 +30,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.util.Map;
 import org.bson.BsonDocument;
+import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ public class IndexIntegrationTests {
                         "hibernate.hbm2ddl.auto",
                         "update",
                         "jakarta.persistence.schema-generation.database.action",
-                        "drop-and-create",
+                        "create",
                         "hibernate.hbm2ddl.halt_on_error",
                         "true"))
                 .build();
@@ -82,13 +83,34 @@ public class IndexIntegrationTests {
                         "hibernate.hbm2ddl.auto",
                         "update",
                         "jakarta.persistence.schema-generation.database.action",
-                        "drop-and-create",
+                        "create",
                         "hibernate.hbm2ddl.halt_on_error",
                         "true"))
                 .build();
         assertThrows(FeatureNotSupportedException.class, () -> {
             try (final var sessionFactory = new MetadataSources()
                     .addAnnotatedClass(InvalidOptions.class)
+                    .buildMetadata(registry)
+                    .buildSessionFactory()) {
+                sessionFactory.openSession().close();
+            }
+        });
+    }
+
+    @Test
+    void testForbiddenFormula() {
+        final var registry = new StandardServiceRegistryBuilder()
+                .applySettings(Map.of(
+                        "hibernate.hbm2ddl.auto",
+                        "update",
+                        "jakarta.persistence.schema-generation.database.action",
+                        "create",
+                        "hibernate.hbm2ddl.halt_on_error",
+                        "true"))
+                .build();
+        assertThrows(FeatureNotSupportedException.class, () -> {
+            try (final var sessionFactory = new MetadataSources()
+                    .addAnnotatedClass(InvalidFormula.class)
                     .buildMetadata(registry)
                     .buildSessionFactory()) {
                 sessionFactory.openSession().close();
@@ -130,6 +152,18 @@ public class IndexIntegrationTests {
         @Id
         int id;
 
+        int publishYear;
+    }
+
+    @Entity(name = "InvalidFormula")
+    @Table(
+            name = "invalid_formula",
+            indexes = {@Index(name = "idx_invalid_options", columnList = "publishYear")})
+    static class InvalidFormula {
+        @Id
+        int id;
+
+        @Formula(value = "3*x")
         int publishYear;
     }
 }

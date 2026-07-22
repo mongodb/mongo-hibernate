@@ -16,8 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.internal.operation.IndexHelper.generateIndexName;
-
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
 import java.util.List;
@@ -27,7 +25,9 @@ import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
+import org.bson.BsonNumber;
 import org.bson.BsonString;
+import org.bson.BsonValue;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.relational.Exportable;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -35,10 +35,33 @@ import org.hibernate.mapping.Table;
 import org.hibernate.tool.schema.spi.Exporter;
 
 public abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
+
     private final boolean unique;
 
     protected MongoIndexExporter(boolean unique) {
         this.unique = unique;
+    }
+
+    /**
+     * Convenience method to generate an index name from the set of fields it is over.
+     *
+     * @return a string representation of this index's fields
+     */
+    public static String generateIndexName(final BsonDocument index) {
+        StringBuilder indexName = new StringBuilder();
+        for (final String keyNames : index.keySet()) {
+            if (!indexName.isEmpty()) {
+                indexName.append('_');
+            }
+            indexName.append(keyNames).append('_');
+            BsonValue ascOrDescValue = index.get(keyNames);
+            if (ascOrDescValue instanceof BsonNumber number) {
+                indexName.append(number.intValue());
+            } else if (ascOrDescValue instanceof BsonString str) {
+                indexName.append(str.getValue().replace(' ', '_'));
+            }
+        }
+        return indexName.toString();
     }
 
     protected abstract Table tableForExportable(T exportable);
@@ -65,6 +88,8 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
                                 new BsonElement("key", keys),
                                 new BsonElement("name", new BsonString(indexName)),
                                 new BsonElement("unique", BsonBoolean.valueOf(unique)))))))));
+        // This intentionally looks like a Mongo command, but it is parsed by AdminCommand and is not sent directly to
+        // the server
         return new String[] {command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)};
     }
 
@@ -79,6 +104,8 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
         final var command = new BsonDocument(List.of(
                 new BsonElement("dropIndexes", new BsonString(collectionName)),
                 new BsonElement("index", new BsonString(indexName))));
+        // This intentionally looks like a Mongo command, but it is parsed by AdminCommand and is not sent directly to
+        // the server
         return new String[] {command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)};
     }
 }

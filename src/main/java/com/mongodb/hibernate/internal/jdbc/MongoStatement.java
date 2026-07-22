@@ -250,7 +250,8 @@ class MongoStatement implements StatementAdapter {
         var command = AdminCommand.decode(
                 new JsonReader(mql), DecoderContext.builder().build());
         try {
-            return command.execute(mongoDatabase);
+            command.execute(mongoDatabase);
+            return false;
         } catch (RuntimeException exception) {
             throw handleExecuteQueryOrUpdateException(exception);
         }
