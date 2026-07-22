@@ -17,14 +17,27 @@
 package com.mongodb.hibernate.internal.dialect;
 
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.orDefault;
+import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.orMissing;
+import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.required;
+import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.allModifications;
+import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.offsetToEnd;
+import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.swap;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition;
+import com.mongodb.hibernate.internal.dialect.function.MongoExpressionNamedFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoExpressionUnaryFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoExpressionVariadicFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoTrimFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
+import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
@@ -35,6 +48,8 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.function.Function;
+import org.bson.BsonInt32;
 import org.hibernate.JDBCException;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
@@ -49,6 +64,7 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.query.sqm.produce.function.FunctionParameterType;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.spi.SqlAppender;
@@ -57,6 +73,7 @@ import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
 import org.hibernate.type.SqlTypes;
+import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
@@ -274,12 +291,111 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         var functionRegistry = functionContributions.getFunctionRegistry();
         var typeConfiguration = functionContributions.getTypeConfiguration();
         functionRegistry.register("array", new MongoArrayConstructorFunction(false));
-        functionRegistry.register("array_list", new MongoArrayConstructorFunction(true));
         functionRegistry.register("array_contains", new MongoArrayContainsFunction(false, typeConfiguration));
         functionRegistry.register("array_contains_nullable", new MongoArrayContainsFunction(true, typeConfiguration));
         functionRegistry.register("array_includes", new MongoArrayIncludesFunction(false, typeConfiguration));
         functionRegistry.register("array_includes_nullable", new MongoArrayIncludesFunction(true, typeConfiguration));
+        functionRegistry.register("array_list", new MongoArrayConstructorFunction(true));
+        functionRegistry.register(
+                "character_length",
+                new MongoExpressionUnaryFunction(
+                        "character_length",
+                        "$strLenCP",
+                        typeConfiguration,
+                        StandardBasicTypes.INTEGER,
+                        FunctionParameterType.STRING));
+        functionRegistry.register(
+                "concat",
+                new MongoExpressionVariadicFunction(
+                        "concat",
+                        "$concat",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        Function.identity(),
+                        FunctionParameterType.ANY,
+                        input -> new AstUnaryOperatorExpression("$toString", input)));
+        functionRegistry.register(
+                "locate",
+                new MongoExpressionPositionalFunction(
+                        "locate",
+                        "$indexOfCP",
+                        typeConfiguration,
+                        StandardBasicTypes.INTEGER,
+                        FunctionParameterDefinition::addOne,
+                        allModifications(swap(0, 1), offsetToEnd(2, 3)),
+                        required(FunctionParameterType.STRING),
+                        required(FunctionParameterType.STRING),
+                        orMissing(FunctionParameterType.INTEGER).map(FunctionParameterDefinition::subtractOne),
+                        orMissing(FunctionParameterType.INTEGER)));
+        functionRegistry.register(
+                "lower",
+                new MongoExpressionUnaryFunction(
+                        "lower",
+                        "$toLower",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        FunctionParameterType.STRING));
+        functionRegistry.register(
+                "ltrim",
+                new MongoExpressionNamedFunction(
+                        "ltrim",
+                        "$ltrim",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        required("input", FunctionParameterType.STRING),
+                        orMissing("chars", FunctionParameterType.STRING)));
+        functionRegistry.register(
+                "replace_all",
+                new MongoExpressionNamedFunction(
+                        "replace_all",
+                        "$replaceAll",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        required("input", FunctionParameterType.STRING),
+                        required("find", FunctionParameterType.STRING),
+                        required("replacement", FunctionParameterType.STRING)));
+        functionRegistry.register(
+                "replace_one",
+                new MongoExpressionNamedFunction(
+                        "replace_one",
+                        "$replaceOne",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        required("input", FunctionParameterType.STRING),
+                        required("find", FunctionParameterType.STRING),
+                        required("replacement", FunctionParameterType.STRING)));
+        functionRegistry.register(
+                "rtrim",
+                new MongoExpressionNamedFunction(
+                        "rtrim",
+                        "$rtrim",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        required("input", FunctionParameterType.STRING),
+                        orMissing("chars", FunctionParameterType.STRING)));
+        functionRegistry.register(
+                "substring",
+                new MongoExpressionPositionalFunction(
+                        "substring",
+                        "$substrCP",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        required(FunctionParameterType.STRING),
+                        required(FunctionParameterType.INTEGER).map(FunctionParameterDefinition::subtractOne),
+                        orDefault(new BsonInt32(Integer.MAX_VALUE))));
+        functionRegistry.register("trim", new MongoTrimFunction(typeConfiguration));
         functionRegistry.register("unnest", new MongoUnnestFunction());
+        functionRegistry.register(
+                "upper",
+                new MongoExpressionUnaryFunction(
+                        "upper",
+                        "$toUpper",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        FunctionParameterType.STRING));
+        functionRegistry.registerAlternateKey("char_length", "character_length");
+        functionRegistry.registerAlternateKey("length", "character_length");
+        functionRegistry.registerAlternateKey("replace", "replace_all");
     }
 
     /** @mongoCme The {@link MutationOperation} returned from this method does not have to be thread-safe. */

@@ -160,6 +160,90 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Test
+    void testFunctionExpressionAssignment() {
+        var hql = "update Book b set b.title = upper(b.title) where b.id = 1";
+        assertMutationQuery(
+                hql,
+                query -> {},
+                1,
+                """
+                {
+                    "update": "books",
+                    "updates": [
+                        {
+                            "q": {"_id": {"$eq": {"$numberInt": "1"}}},
+                            "u": [{"$set": {"title": {"$toUpper": "$title"}}}],
+                            "multi": true
+                        }
+                    ]
+                }
+                """,
+                booksCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "WAR & PEACE",
+                                  "outOfStock": true,
+                                  "publishYear": 1869,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Crime and Punishment",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Anna Karenina",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "The Brothers Karamazov",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "War & Peace",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Test
     void testUpdateWithZeroMutationCount() {
         assertMutationQuery(
                 "update Book set outOfStock = false where publishYear < :year",
@@ -339,15 +423,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
-        @Test
-        void testFunctionExpressionAssignment() {
-            var hql = "update Book b set b.title = upper(b.title) where b.id = 1";
-            assertMutationQueryFailure(
-                    hql,
-                    query -> {},
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
-        }
 
         @Test
         void testCaseExpressionAssignment() {

@@ -52,6 +52,7 @@ import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.function.ExpressionFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
@@ -1265,14 +1266,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        if (!(selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression)) {
+        if (selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression<?> sqlAstExpression) {
+            if (astVisitorValueHolder.expects(EXPRESSION)
+                    && !(sqlAstExpression.getFunctionRenderer() instanceof ExpressionFunction)) {
+                // a function call as an operand within an aggregation expression is not yet supported
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
+            }
+            selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
+        } else {
             throw new FeatureNotSupportedException("Only function expressions are supported");
         }
-        if (astVisitorValueHolder.expects(EXPRESSION)) {
-            // a function call as an operand within an aggregation expression is not yet supported
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
-        }
-        selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
     }
 
     @Override
