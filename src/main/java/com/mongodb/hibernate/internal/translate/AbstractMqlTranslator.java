@@ -1878,7 +1878,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;
 
         // A lone equijoin keeps the compact localField/foreignField form; anything else uses the pipeline form.
-        if (predicate instanceof ComparisonPredicate cp && cp.getOperator() == ComparisonOperator.EQUAL) {
+        // Parentheses do not change semantics, so unwrap any grouping first: "ON (a = b)" is still a simple equijoin.
+        if (unwrapGrouped(predicate) instanceof ComparisonPredicate cp
+                && cp.getOperator() == ComparisonOperator.EQUAL) {
             var columns = extractJoinColumns(cp, joinedAlias);
             return new AstLookupStage(
                     joinedCollection,
@@ -1891,6 +1893,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var expr = buildJoinFilterExpression(predicate, joinedAlias, letVariables);
         return new AstLookupStageWithPipeline(
                 joinedCollection, letVariables, List.of(new AstMatchStage(new AstExprFilter(expr))), joinAlias);
+    }
+
+    /** Strips any {@link GroupedPredicate} (parenthesis) wrappers, returning the innermost predicate. */
+    private static @Nullable Predicate unwrapGrouped(@Nullable Predicate predicate) {
+        while (predicate instanceof GroupedPredicate groupedPredicate) {
+            predicate = groupedPredicate.getSubPredicate();
+        }
+        return predicate;
     }
 
     /**

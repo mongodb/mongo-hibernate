@@ -138,9 +138,10 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     void beforeEach() {
         var customers =
                 List.of(new Customer(1, "Alice", 10), new Customer(2, "Bob", 20), new Customer(3, "Charlie", 30));
-        // Order 3 belongs to customer 2 (customerId=2) but carries a non-matching region (99), so a
-        // compound ON of "c.id = o.customerId AND c.region = o.region" selects only orders 1 and 2 —
-        // proving the second conjunct actually filters (HIBERNATE-164).
+        // region is a second plain column for the compound-ON tests (HIBERNATE-164). Orders 1 and 2 share their
+        // like-id customer's region, but order 3's region (99) matches no customer's region — so a compound join
+        // such as "c.id = o.id AND c.region = o.region" keeps orders 1 and 2 and drops order 3, proving the
+        // second (region) conjunct actually filters.
         var orders = List.of(
                 new Order(1, customers.get(0), 100, 10),
                 new Order(2, customers.get(1), 200, 20),
@@ -905,7 +906,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
         @Test
         void testCompositeKeyEquijoin() {
-            // Order '3' shares customer 2's id but has a non-matching region (99), so it is filtered out.
+            // Order 3 (id 3) matches customer 3 on id, but its region (99) differs from customer 3's (30), so the
+            // region conjunct filters it out — leaving only orders 1 and 2.
             assertSelectionQuery(
                     "SELECT c.id, o.total FROM Customer c JOIN Order o"
                             + " ON c.id = o.id AND c.region = o.region ORDER BY c.id, o.id",
@@ -953,7 +955,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testAndWithLowerThanOperator() {
+        void testAndWithLessThanOperator() {
             // AND of an equality and an ordering comparison: $eq + $lt under one $and.
             assertSelectionQuery(
                     "SELECT c.id, o.total FROM Customer c JOIN Order o"
@@ -1366,6 +1368,45 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                       ]
                     }""",
                     List.of(new Object[] {1, 100}, new Object[] {2, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testParenthesizedEquijoinUsesSimpleForm() {
+            // A parenthesized lone equijoin is a GroupedPredicate wrapping a single EQUAL comparison. Parentheses
+            // are semantically irrelevant, so it must still use the compact localField/foreignField $lookup form
+            // rather than the heavier let/$expr pipeline form.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON (c.id = o.id) ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "localField": "_id",
+                            "foreignField": "_id",
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
                     Set.of("Customer", "Order"));
         }
 
