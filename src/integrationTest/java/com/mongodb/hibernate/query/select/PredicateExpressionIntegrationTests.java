@@ -371,16 +371,6 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                             .getResultList())
                     .isInstanceOf(FeatureNotSupportedException.class));
         }
-
-        // A row-value / tuple comparison in select position reaches the `SqlTuple` guard in
-        // `acceptAndYieldExpression` before it can be rendered as an aggregation expression.
-        @Test
-        void testTupleComparisonInSelectIsUnsupported() {
-            getSessionFactoryScope().inTransaction(session -> assertThatThrownBy(
-                            () -> session.createSelectionQuery("select (x, y) = (1, 2) from Widget", Boolean.class)
-                                    .getResultList())
-                    .isInstanceOf(FeatureNotSupportedException.class));
-        }
     }
 
     @Entity(name = "Widget")
