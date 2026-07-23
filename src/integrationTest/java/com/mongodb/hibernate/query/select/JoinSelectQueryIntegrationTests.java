@@ -64,14 +64,23 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
         String name;
 
+        // Plain column used by the compound-ON tests (HIBERNATE-164) to form a second equality
+        // conjunct; no composite-key mapping is required to exercise the translation.
+        int region;
+
         @OneToMany(mappedBy = "customer", fetch = FetchType.LAZY)
         List<Order> orders = new ArrayList<>();
 
         Customer() {}
 
         Customer(int id, String name) {
+            this(id, name, 0);
+        }
+
+        Customer(int id, String name, int region) {
             this.id = id;
             this.name = name;
+            this.region = region;
         }
     }
 
@@ -86,15 +95,22 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
         int total;
 
+        int region;
+
         @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
         List<LineItem> lineItems = new ArrayList<>();
 
         Order() {}
 
         Order(int id, Customer customer, int total) {
+            this(id, customer, total, 0);
+        }
+
+        Order(int id, Customer customer, int total, int region) {
             this.id = id;
             this.customer = customer;
             this.total = total;
+            this.region = region;
         }
     }
 
@@ -120,11 +136,15 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @BeforeEach
     void beforeEach() {
-        var customers = List.of(new Customer(1, "Alice"), new Customer(2, "Bob"), new Customer(3, "Charlie"));
+        var customers =
+                List.of(new Customer(1, "Alice", 10), new Customer(2, "Bob", 20), new Customer(3, "Charlie", 30));
+        // Order 3 belongs to customer 2 (customerId=2) but carries a non-matching region (99), so a
+        // compound ON of "c.id = o.customerId AND c.region = o.region" selects only orders 1 and 2 —
+        // proving the second conjunct actually filters (HIBERNATE-164).
         var orders = List.of(
-                new Order(1, customers.get(0), 100),
-                new Order(2, customers.get(1), 200),
-                new Order(3, customers.get(1), 300));
+                new Order(1, customers.get(0), 100, 10),
+                new Order(2, customers.get(1), 200, 20),
+                new Order(3, customers.get(1), 300, 99));
         var lineItems = List.of(
                 new LineItem(1, orders.get(0), 5),
                 new LineItem(2, orders.get(0), 10),
@@ -306,6 +326,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                         "_id": true,
                         "c1_0#_id": "$#c1_0._id",
                         "c1_0#name": "$#c1_0.name",
+                        "c1_0#region": "$#c1_0.region",
+                        "region": true,
                         "total": true
                       }
                     }
@@ -345,8 +367,10 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                       "$project": {
                         "_id": true,
                         "name": true,
+                        "region": true,
                         "o1_0#customerId": "$#o1_0.customerId",
                         "o1_0#_id": "$#o1_0._id",
+                        "o1_0#region": "$#o1_0.region",
                         "o1_0#total": "$#o1_0.total"
                       }
                     }
@@ -877,6 +901,575 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Nested
+    class CompoundOnCondition implements MongoServiceRegistryProducer {
+
+        @Test
+        void testCompositeKeyEquijoin() {
+            // Order '3' shares customer 2's id but has a non-matching region (99), so it is filtered out.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region = o.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$eq": [ "$$v1_c1_0_region", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testAndWithLowerThanOperator() {
+            // AND of an equality and an ordering comparison: $eq + $lt under one $and.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region < o.total ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$lt": [ "$$v1_c1_0_region", "$total" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testOrTwoEqualities() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id OR c.region = o.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$or": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$eq": [ "$$v1_c1_0_region", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testAndWithOrBiggerThan() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region = o.region OR c.id > o.id ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": {
+                              "v0_c1_0__id": "$_id",
+                              "v1_c1_0_region": "$region",
+                              "v2_c1_0__id": "$_id"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$or": [
+                                      {
+                                        "$and": [
+                                          { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                          { "$eq": [ "$$v1_c1_0_region", "$region" ] }
+                                        ]
+                                      },
+                                      { "$gt": [ "$$v2_c1_0__id", "$_id" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 100},
+                            new Object[] {2, 100},
+                            new Object[] {2, 200},
+                            new Object[] {3, 100},
+                            new Object[] {3, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testAndWithEqualAndLargerThan() {
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND o.total > c.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$lt": [ "$$v1_c1_0_region", "$total" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testThreeWayConjunction() {
+            // Three conjuncts → three let variables (v0/v1/v2), the second and third both binding c.region.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region = o.region AND c.region < o.total ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": {
+                              "v0_c1_0__id": "$_id",
+                              "v1_c1_0_region": "$region",
+                              "v2_c1_0_region": "$region"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$eq": [ "$$v1_c1_0_region", "$region" ] },
+                                      { "$lt": [ "$$v2_c1_0_region", "$total" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testLeftOuterCompound() {
+            // LEFT join keeps the preserveNullAndEmptyArrays $unwind; customer 3 has no compound match (its
+            // region differs from order 3's) so it survives with null joined columns.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c LEFT JOIN Order o"
+                            + " ON c.id = o.id AND c.region = o.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$eq": [ "$$v1_c1_0_region", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        {
+                          "$unwind": {
+                            "path": "$#o1_0",
+                            "preserveNullAndEmptyArrays": true
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    results -> assertIterableEq(
+                            List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, null}), results),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testNotEqualConjunct() {
+            // A <> conjunct maps to $ne alongside the $eq.
+            // but NOT (a = b) is not supported yet
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region <> o.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$ne": [ "$$v1_c1_0_region", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.<Object[]>of(new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testGroupedConjuncts() {
+            // Parenthesized conjuncts arrive as GroupedPredicate wrappers; each is unwrapped to its inner
+            // comparison, yielding the same $and as the unparenthesized form.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON (c.id = o.id) AND (c.region = o.region) ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$eq": [ "$$v1_c1_0_region", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testUnparenthesizedNotComparison() {
+            // An unparenthesized NOT over a single comparison is lowered by Hibernate to a NOT_EQUAL
+            // comparison (no NegatedPredicate reaches the translator), so it is supported and maps to $ne.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND NOT c.region = o.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$ne": [ "$$v1_c1_0_region", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        {
+                          "$sort": {
+                            "_id": { "$numberInt": "1" },
+                            "#o1_0._id": { "$numberInt": "1" }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "o1_0#total": "$#o1_0.total"
+                          }
+                        }
+                      ]
+                    }""",
+                    List.<Object[]>of(new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testConjunctWithBetweenThrows() {
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND o.total BETWEEN c.id AND c.region",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+        }
+
+        @Test
+        void testNegatedComparisonOnConditionThrows() {
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON NOT (c.id = o.id)",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-212 https://jira.mongodb.org/browse/HIBERNATE-212");
+        }
+
+        @Test
+        void testNegatedJunctionOnConditionThrows() {
+            // NOT over a parenthesized junction reaches the translator as a
+            // NegatedPredicate(GroupedPredicate(Junction)).
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON NOT (c.id = o.id AND c.region = o.region)",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-212 https://jira.mongodb.org/browse/HIBERNATE-212");
+        }
+
+        @Test
+        void testConjunctWithArithmeticThrows() {
+            // A conjunct with a non-column (arithmetic) operand fails the column-reference guard.
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND c.region = o.total + 1",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
+        }
+
+        @Test
+        void testConjunctSameTableThrows() {
+            // A conjunct whose two sides reference the same table cannot be a join condition.
+            assertSelectQueryFailure(
+                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND c.id = c.region",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
+        }
+    }
+
+    @Nested
     @DomainModel(annotatedClasses = {ManyToManyJoin.ItemA.class, ManyToManyJoin.ItemB.class})
     class ManyToManyJoin extends AbstractQueryIntegrationTests {
 
@@ -1194,12 +1787,14 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testCompoundOnConditionThrows() {
+        void testConjunctWithLiteralThrows() {
+            // Compound AND-ed ON conditions are supported (HIBERNATE-164), but a conjunct comparing a column to
+            // a literal (c.id < 100) is not a join condition — it fails the column-reference guard.
             assertSelectQueryFailure(
                     "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND c.id < 100",
                     Object[].class,
                     FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
+                    "TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
         }
 
         @Test
@@ -1455,6 +2050,8 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class FilterJoinTableJoin extends AbstractQueryIntegrationTests {
             @Test
             void testFilterJoinTableThrows() {
+                // The @FilterJoinTable turns the association's ON into a junction whose extra conjunct is a
+                // non-comparison FilterPredicate; the per-conjunct guard routes it to HIBERNATE-200.
                 assertThat(assertThrows(FeatureNotSupportedException.class, () -> getSessionFactoryScope()
                                 .inTransaction(session -> {
                                     session.enableFilter("activeOnly");
@@ -1462,7 +2059,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                                     "FROM ItemWithFilterJoin i JOIN i.items is", Object[].class)
                                             .getResultList();
                                 })))
-                        .hasMessage("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
+                        .hasMessage("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
             }
 
             @FilterDef(name = "activeOnly", defaultCondition = "1 = 1")

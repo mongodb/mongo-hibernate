@@ -1868,23 +1868,18 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     /**
-     * Builds the {@code $lookup} stage for a join {@code ON} condition. An {@code EQUAL} comparison maps to the simple
-     * {@code localField}/{@code foreignField} form; the ordering and inequality operators ({@code <}, {@code <=},
-     * {@code >}, {@code >=}, {@code !=}) require the pipeline form, which binds the outer column into a {@code let}
-     * variable and compares it against the joined column with {@code $expr}.
+     * Builds the {@code $lookup} stage for a join {@code ON} condition. A single {@code EQUAL} comparison maps to the
+     * simple {@code localField}/{@code foreignField} form. Every other supported shape — a single non-equality
+     * comparison ({@code <}, {@code <=}, {@code >}, {@code >=}, {@code !=}) or a compound {@code AND}/{@code OR}
+     * junction of comparisons — requires the pipeline form, which binds each referenced outer column into a {@code let}
+     * variable and evaluates a single {@code $expr} against the joined collection.
      */
     private AstStage buildJoinLookupStage(@Nullable Predicate predicate, String joinedCollection, String joinedAlias) {
-        if (predicate instanceof Junction) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
-        }
-        if (!(predicate instanceof ComparisonPredicate cp)) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
-        }
-        var operator = cp.getOperator();
-        var columns = extractJoinColumns(cp, joinedAlias);
         var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;
 
-        if (operator == ComparisonOperator.EQUAL) {
+        // A lone equijoin keeps the compact localField/foreignField form; anything else uses the pipeline form.
+        if (predicate instanceof ComparisonPredicate cp && cp.getOperator() == ComparisonOperator.EQUAL) {
+            var columns = extractJoinColumns(cp, joinedAlias);
             return new AstLookupStage(
                     joinedCollection,
                     resolveFieldPath(columns.outer()),
@@ -1892,20 +1887,54 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     joinAlias);
         }
 
-        // The $expr array is always [<outer>, <joined>]; invert the operator when Hibernate placed the joined column
-        // on the left so the operand order stays outer-then-joined.
-        var exprOperator = toJoinExprComparisonOperator(columns.joinedOnLeft() ? operator.invert() : operator);
-
-        var letVariable = nextLetVariableName(columns.outer());
-        var expr = new AstExprFilter(new AstBinaryOperatorExpression(
-                exprOperator,
-                new AstVariableExpression(letVariable),
-                new AstFieldPathExpression(columns.joined().getColumnExpression())));
+        var letVariables = new ArrayList<AstLetVariable>();
+        var expr = buildJoinFilterExpression(predicate, joinedAlias, letVariables);
         return new AstLookupStageWithPipeline(
-                joinedCollection,
-                List.of(new AstLetVariable(letVariable, new AstFieldPathExpression(resolveFieldPath(columns.outer())))),
-                List.of(new AstMatchStage(expr)),
-                joinAlias);
+                joinedCollection, letVariables, List.of(new AstMatchStage(new AstExprFilter(expr))), joinAlias);
+    }
+
+    /**
+     * Recursively translates a join {@code ON} predicate into an aggregation-expression tree for the {@code $lookup}
+     * pipeline form. Each comparison leaf binds its outer column into a fresh {@code let} variable (appended to
+     * {@code letVariables}) and compares it against the joined column with {@code $expr}; {@code AND}/{@code OR}
+     * junctions map to {@code $and}/{@code $or} over their translated operands. Parenthesized groups are unwrapped.
+     */
+    private AstExpression buildJoinFilterExpression(
+            @Nullable Predicate predicate, String joinedAlias, List<AstLetVariable> letVariables) {
+        if (predicate instanceof ComparisonPredicate cp) {
+            var columns = extractJoinColumns(cp, joinedAlias);
+            // The $expr array is always [<outer>, <joined>]; invert the operator when Hibernate placed the joined
+            // column on the left so the operand order stays outer-then-joined.
+            var exprOperator = toJoinExprComparisonOperator(
+                    columns.joinedOnLeft() ? cp.getOperator().invert() : cp.getOperator());
+            var letVariable = nextLetVariableName(columns.outer());
+            letVariables.add(
+                    new AstLetVariable(letVariable, new AstFieldPathExpression(resolveFieldPath(columns.outer()))));
+            return new AstBinaryOperatorExpression(
+                    exprOperator,
+                    new AstVariableExpression(letVariable),
+                    new AstFieldPathExpression(columns.joined().getColumnExpression()));
+        }
+        if (predicate instanceof Junction junction) {
+            var operator =
+                    switch (junction.getNature()) {
+                        case CONJUNCTION -> AstLogicalOperator.AND;
+                        case DISJUNCTION -> AstLogicalOperator.OR;
+                    };
+            var operands = new ArrayList<AstExpression>(junction.getPredicates().size());
+            for (var subPredicate : junction.getPredicates()) {
+                operands.add(buildJoinFilterExpression(subPredicate, joinedAlias, letVariables));
+            }
+            return new AstLogicalOperatorExpression(operator, operands);
+        }
+        if (predicate instanceof GroupedPredicate groupedPredicate) {
+            // Parentheses carry no semantics for the $expr tree; unwrap and translate the inner predicate.
+            return buildJoinFilterExpression(groupedPredicate.getSubPredicate(), joinedAlias, letVariables);
+        }
+        if (predicate instanceof NegatedPredicate) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-212 https://jira.mongodb.org/browse/HIBERNATE-212");
+        }
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
     }
 
     /**
@@ -1940,12 +1969,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     /**
-     * Maps the non-equality comparison operators supported for non-equijoin {@code ON} conditions to their
-     * aggregation-expression counterparts. {@code EQUAL} never reaches here — it is routed to the simple
-     * {@code $lookup} form by the caller — and {@code DISTINCT_FROM}/{@code NOT_DISTINCT_FROM} are not yet supported.
+     * Maps the comparison operators supported in join {@code ON} conditions to their aggregation-expression
+     * counterparts. A lone {@code EQUAL} is routed to the simple {@code $lookup} form by the caller and never reaches
+     * here, but an {@code EQUAL} nested inside a compound junction (e.g. a composite-key equijoin) does — hence the
+     * {@code EQUAL} arm. {@code DISTINCT_FROM}/{@code NOT_DISTINCT_FROM} are not yet supported.
      */
     private static AstComparisonExpressionOperator toJoinExprComparisonOperator(ComparisonOperator operator) {
         return switch (operator) {
+            case EQUAL -> AstComparisonExpressionOperator.EQ;
             case NOT_EQUAL -> AstComparisonExpressionOperator.NE;
             case LESS_THAN -> AstComparisonExpressionOperator.LT;
             case LESS_THAN_OR_EQUAL -> AstComparisonExpressionOperator.LTE;
