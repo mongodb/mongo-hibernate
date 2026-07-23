@@ -100,7 +100,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var loadedVersionedItem = session.find(versionedItem.getClass(), 1);
-            clearCommands();
+            commandListener.clear();
             loadedVersionedItem.setString("str_updated");
             session.flush();
             assertActualCommandsInOrder(BsonDocument.parse(
@@ -145,14 +145,14 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
                     });
 
                     sessionA.beginTransaction();
-                    clearCommands();
+                    commandListener.clear();
                     itemA.setString("str_updated_a");
                     sessionA.flush();
                     sessionA.getTransaction().commit();
                 }))
                 .isInstanceOfAny(OptimisticLockException.class);
 
-        assertThat(getCommands().get(0))
+        assertThat(commandListener.getCommands().get(0))
                 .asInstanceOf(InstanceOfAssertFactories.MAP)
                 .containsAllEntriesOf(BsonDocument.parse(
                         """
@@ -185,7 +185,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var item = session.find(ItemWithInstant.class, 1);
-            clearCommands();
+            commandListener.clear();
             item.string = "str_updated";
             session.flush();
             var newVersionMillis = item.version.toEpochMilli();
@@ -222,7 +222,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var item = session.find(ItemWithVmTimestamp.class, 1);
-            clearCommands();
+            commandListener.clear();
             item.string = "str_updated";
             session.flush();
             var newVersionMillis = item.version.toEpochMilli();
@@ -262,7 +262,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var item = session.find(versionedItem.getClass(), 1);
-            clearCommands();
+            commandListener.clear();
             session.remove(item);
             session.flush();
             assertActualCommandsInOrder(BsonDocument.parse(
@@ -366,7 +366,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var item = session.find(ItemAllVersionless.class, 1);
-            clearCommands();
+            commandListener.clear();
             item.primitiveInt = 2;
             session.flush();
             assertActualCommandsInOrder(
@@ -432,7 +432,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var item = session.find(ItemDirtyVersionless.class, 1);
-            clearCommands();
+            commandListener.clear();
             item.primitiveInt = 2;
             session.flush();
             assertActualCommandsInOrder(
@@ -497,7 +497,7 @@ class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests im
 
         getSessionFactoryScope().inTransaction(session -> {
             var item = session.find(ItemWithExcluded.class, 1);
-            clearCommands();
+            commandListener.clear();
             item.primitiveLong = 42;
             session.flush();
             assertActualCommandsInOrder(

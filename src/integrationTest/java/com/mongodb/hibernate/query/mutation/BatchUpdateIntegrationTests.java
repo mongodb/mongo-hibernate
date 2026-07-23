@@ -174,7 +174,7 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests implemen
             session.persist(new Item(i, String.valueOf(i)));
         }
         session.flush();
-        clearCommands();
+        commandListener.clear();
     }
 
     @Entity

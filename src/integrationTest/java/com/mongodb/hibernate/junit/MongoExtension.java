@@ -24,13 +24,9 @@ import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.event.CommandListener;
-import com.mongodb.event.CommandStartedEvent;
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,20 +65,7 @@ public final class MongoExtension
                                 databaseName, ignored -> new TestCommandListener())));
     }
 
-    /** Gets the MongoDB commands initiated by the currently-executing test in this test class. */
-    public static List<BsonDocument> getCommands(Class<?> testClass) {
-        return STATE.commandListenerByDatabase.get(databaseNameFor(testClass)).getCommands();
-    }
-
-    /**
-     * Clear the MongoDB commands initiated so far by this test class. Required only in special cases when the test
-     * initiates one or more commands that it does not want to assert on.
-     */
-    public static void clearCommands(Class<?> testClass) {
-        STATE.commandListenerByDatabase.get(databaseNameFor(testClass)).clear();
-    }
-
-    /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}. */
+    /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}, {@linkplain InjectTestCommandListener command listener}. */
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
         var fieldMustBeStaticMsgFormat = "The field [%s] must be static";
@@ -98,6 +81,12 @@ public final class MongoExtension
             var mongoCollection = currentDatabase(context).getCollection(collectionName, BsonDocument.class);
             field.setAccessible(true);
             field.set(null, mongoCollection);
+        }
+        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectTestCommandListener.class)) {
+            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+            field.setAccessible(true);
+            var databaseName = databaseNameFor(context);
+            field.set(null, STATE.commandListenerByDatabase.computeIfAbsent(databaseName, ignored -> new TestCommandListener()));
         }
     }
 
@@ -209,21 +198,4 @@ public final class MongoExtension
         }
     }
 
-    private static final class TestCommandListener implements CommandListener {
-
-        private final List<BsonDocument> commands = new ArrayList<>();
-
-        @Override
-        public void commandStarted(CommandStartedEvent event) {
-            commands.add(event.getCommand().clone());
-        }
-
-        private List<BsonDocument> getCommands() {
-            return List.copyOf(commands);
-        }
-
-        private void clear() {
-            commands.clear();
-        }
-    }
 }
