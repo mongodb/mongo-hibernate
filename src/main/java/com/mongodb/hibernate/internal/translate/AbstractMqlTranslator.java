@@ -1452,9 +1452,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
-            var testTuple = getSqlTuple(inListPredicate.getTestExpression());
-            if (testTuple != null) {
-                astVisitorValueHolder.yield(EXPRESSION, toTupleInListExpression(inListPredicate, testTuple));
+            if (getSqlTuple(inListPredicate.getTestExpression()) != null) {
+                astVisitorValueHolder.yield(EXPRESSION, toTupleInListExpression(inListPredicate));
             } else {
                 var value = acceptAndYieldExpression(inListPredicate.getTestExpression());
                 var options = new ArrayList<AstExpression>(
@@ -1471,9 +1470,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             }
         } else {
             var expression = inListPredicate.getTestExpression();
-            var testTuple = getSqlTuple(expression);
-            if (testTuple != null) {
-                astVisitorValueHolder.yield(FILTER, createTupleInListFilter(inListPredicate, testTuple));
+            if (getSqlTuple(expression) != null) {
+                astVisitorValueHolder.yield(FILTER, createTupleInListFilter(inListPredicate));
             } else if (isFieldPathExpression(expression)) {
                 var fieldPath = acceptAndYield(expression, FIELD_PATH);
                 var operator = inListPredicate.isNegated() ? NIN : IN;
@@ -1494,8 +1492,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // list collapses to the bare AND; a negated list is wrapped in $not. Shared by visitInListPredicate's
     // expression branch and by createTupleInListFilter's $expr fallback, and called directly (never via a second
     // visit of the predicate) so any parameter it contains is bound exactly once.
-    private AstExpression toTupleInListExpression(InListPredicate inListPredicate, SqlTuple testTuple) {
-        var keyExpressions = testTuple.getExpressions();
+    private AstExpression toTupleInListExpression(InListPredicate inListPredicate) {
+        var keyExpressions = getSqlTuple(inListPredicate.getTestExpression()).getExpressions();
         var rowExpressions = new ArrayList<AstExpression>(
                 inListPredicate.getListExpressions().size());
         for (var rowExpression : inListPredicate.getListExpressions()) {
@@ -1521,15 +1519,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // A row-value IN-list `(k1, k2) IN ((v1a, v2a), (v1b, v2b))` becomes an OR of per-row per-component AND
     // equality, pairing test components with each row's values positionally. A single-row list collapses to
     // the AND; a negated list is wrapped in NOR.
-    private AstFilter createTupleInListFilter(InListPredicate inListPredicate, SqlTuple testTuple) {
+    private AstFilter createTupleInListFilter(InListPredicate inListPredicate) {
         // Compact form when the test is all field paths and every row is all values; otherwise $expr.
-        return isCompactTupleInList(inListPredicate, testTuple)
-                ? toCompactTupleInListFilter(inListPredicate, testTuple)
-                : new AstExprFilter(toTupleInListExpression(inListPredicate, testTuple));
+        return isCompactTupleInList(inListPredicate)
+                ? toCompactTupleInListFilter(inListPredicate)
+                : new AstExprFilter(toTupleInListExpression(inListPredicate));
     }
 
-    private static boolean isCompactTupleInList(InListPredicate inListPredicate, SqlTuple testTuple) {
-        if (!testTuple.getExpressions().stream().allMatch(AbstractMqlTranslator::isFieldPathExpression)) {
+    private static boolean isCompactTupleInList(InListPredicate inListPredicate) {
+        if (!getSqlTuple(inListPredicate.getTestExpression()).getExpressions().stream()
+                .allMatch(AbstractMqlTranslator::isFieldPathExpression)) {
             return false;
         }
         for (var rowExpression : inListPredicate.getListExpressions()) {
@@ -1541,8 +1540,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         return true;
     }
 
-    private AstFilter toCompactTupleInListFilter(InListPredicate inListPredicate, SqlTuple testTuple) {
-        var keyExpressions = testTuple.getExpressions();
+    private AstFilter toCompactTupleInListFilter(InListPredicate inListPredicate) {
+        var keyExpressions = getSqlTuple(inListPredicate.getTestExpression()).getExpressions();
         var rowFilters =
                 new ArrayList<AstFilter>(inListPredicate.getListExpressions().size());
         for (var rowExpression : inListPredicate.getListExpressions()) {
