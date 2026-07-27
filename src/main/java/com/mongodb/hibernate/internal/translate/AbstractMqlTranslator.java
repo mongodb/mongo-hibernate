@@ -50,6 +50,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCo
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
+import static org.hibernate.sql.ast.tree.expression.SqlTupleContainer.getSqlTuple;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
@@ -186,7 +187,6 @@ import org.hibernate.sql.ast.tree.expression.QueryLiteral;
 import org.hibernate.sql.ast.tree.expression.SelfRenderingExpression;
 import org.hibernate.sql.ast.tree.expression.SqlSelectionExpression;
 import org.hibernate.sql.ast.tree.expression.SqlTuple;
-import org.hibernate.sql.ast.tree.expression.SqlTupleContainer;
 import org.hibernate.sql.ast.tree.expression.Star;
 import org.hibernate.sql.ast.tree.expression.Summarization;
 import org.hibernate.sql.ast.tree.expression.TrimSpecification;
@@ -671,7 +671,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstFilter toFieldValueFilter(ComparisonPredicate comparisonPredicate) {
-        if (SqlTupleContainer.getSqlTuple(comparisonPredicate.getLeftHandExpression()) != null) {
+        if (getSqlTuple(comparisonPredicate.getLeftHandExpression()) != null) {
             return toRowValueFieldFilter(comparisonPredicate);
         } else {
             var lhs = comparisonPredicate.getLeftHandExpression();
@@ -695,9 +695,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Compact form of a row-value = / <> comparison: AND of per-component {field: {$eq: value}} (field side
     // detected per component), wrapped in $nor for <>. Only reached when isFieldValueComparison is true.
     private AstFilter toRowValueFieldFilter(ComparisonPredicate comparisonPredicate) {
-        var lhsComponents = assertNotNull(SqlTupleContainer.getSqlTuple(comparisonPredicate.getLeftHandExpression()))
+        var lhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getLeftHandExpression()))
                 .getExpressions();
-        var rhsComponents = assertNotNull(SqlTupleContainer.getSqlTuple(comparisonPredicate.getRightHandExpression()))
+        var rhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()))
                 .getExpressions();
         var componentFilters = new ArrayList<AstFilter>(lhsComponents.size());
         for (var i = 0; i < lhsComponents.size(); i++) {
@@ -715,14 +715,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstExpression toComparisonExpression(ComparisonPredicate comparisonPredicate) {
-        var lhsTuple = SqlTupleContainer.getSqlTuple(comparisonPredicate.getLeftHandExpression());
+        var lhsTuple = getSqlTuple(comparisonPredicate.getLeftHandExpression());
         if (lhsTuple != null) {
             var operator = comparisonPredicate.getOperator();
             if (operator != ComparisonOperator.EQUAL && operator != ComparisonOperator.NOT_EQUAL) {
                 throw new FeatureNotSupportedException(
                         "TODO-HIBERNATE-211 https://jira.mongodb.org/browse/HIBERNATE-211");
             }
-            var rhsTuple = assertNotNull(SqlTupleContainer.getSqlTuple(comparisonPredicate.getRightHandExpression()));
+            var rhsTuple = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()));
             var lhsComponents = lhsTuple.getExpressions();
             var rhsComponents = rhsTuple.getExpressions();
             assertTrue(lhsComponents.size() == rhsComponents.size());
@@ -994,7 +994,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     case DESCENDING -> DESC;
                 };
         var sortExpression = sortSpecification.getSortExpression();
-        var sqlTuple = SqlTupleContainer.getSqlTuple(sortExpression);
+        var sqlTuple = getSqlTuple(sortExpression);
         if (sqlTuple == null) {
             var astSortField = createAstSortField(sortExpression, astSortOrder);
             astVisitorValueHolder.yield(SORT_FIELDS, List.of(astSortField));
@@ -1020,7 +1020,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitTuple(SqlTuple sqlTuple) {
         var expressions = new ArrayList<Expression>(sqlTuple.getExpressions().size());
         for (var expression : sqlTuple.getExpressions()) {
-            if (SqlTupleContainer.getSqlTuple(expression) != null) {
+            if (getSqlTuple(expression) != null) {
                 expressions.addAll(acceptAndYield(expression, TUPLE));
             } else {
                 expressions.add(expression);
@@ -1455,7 +1455,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
-            var testTuple = SqlTupleContainer.getSqlTuple(inListPredicate.getTestExpression());
+            var testTuple = getSqlTuple(inListPredicate.getTestExpression());
             if (testTuple != null) {
                 astVisitorValueHolder.yield(EXPRESSION, toTupleInListExpression(inListPredicate, testTuple));
             } else {
@@ -1474,7 +1474,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             }
         } else {
             var expression = inListPredicate.getTestExpression();
-            var testTuple = SqlTupleContainer.getSqlTuple(expression);
+            var testTuple = getSqlTuple(expression);
             if (testTuple != null) {
                 astVisitorValueHolder.yield(FILTER, createTupleInListFilter(inListPredicate, testTuple));
             } else if (isFieldPathExpression(expression)) {
@@ -1502,8 +1502,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var rowExpressions = new ArrayList<AstExpression>(
                 inListPredicate.getListExpressions().size());
         for (var rowExpression : inListPredicate.getListExpressions()) {
-            var rowValues =
-                    assertNotNull(SqlTupleContainer.getSqlTuple(rowExpression)).getExpressions();
+            var rowValues = assertNotNull(getSqlTuple(rowExpression)).getExpressions();
             assertTrue(keyExpressions.size() == rowValues.size());
             var componentEqualities = new ArrayList<AstExpression>(keyExpressions.size());
             for (var i = 0; i < keyExpressions.size(); i++) {
@@ -1537,8 +1536,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             return false;
         }
         for (var rowExpression : inListPredicate.getListExpressions()) {
-            var rowValues =
-                    assertNotNull(SqlTupleContainer.getSqlTuple(rowExpression)).getExpressions();
+            var rowValues = assertNotNull(getSqlTuple(rowExpression)).getExpressions();
             if (!rowValues.stream().allMatch(AbstractMqlTranslator::isValueExpression)) {
                 return false;
             }
@@ -1551,8 +1549,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var rowFilters =
                 new ArrayList<AstFilter>(inListPredicate.getListExpressions().size());
         for (var rowExpression : inListPredicate.getListExpressions()) {
-            var rowValues =
-                    assertNotNull(SqlTupleContainer.getSqlTuple(rowExpression)).getExpressions();
+            var rowValues = assertNotNull(getSqlTuple(rowExpression)).getExpressions();
             assertTrue(keyExpressions.size() == rowValues.size());
             var componentFilters = new ArrayList<AstFilter>(keyExpressions.size());
             for (var i = 0; i < keyExpressions.size(); i++) {
@@ -1850,23 +1847,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 || expression instanceof SqmParameterInterpretation;
     }
 
-    private static boolean isComparingFieldWithValue(ComparisonPredicate comparisonPredicate) {
-        return isFieldValuePair(
-                comparisonPredicate.getLeftHandExpression(), comparisonPredicate.getRightHandExpression());
-    }
-
     // Whether the comparison can render as a compact field filter: a scalar field-vs-value, or a row-value
     // = / <> whose components are all field-vs-value pairs. Everything else goes to $expr.
     private static boolean isFieldValueComparison(ComparisonPredicate comparisonPredicate) {
-        var lhsTuple = SqlTupleContainer.getSqlTuple(comparisonPredicate.getLeftHandExpression());
-        if (lhsTuple == null) {
-            return isComparingFieldWithValue(comparisonPredicate);
+        if (getSqlTuple(comparisonPredicate.getLeftHandExpression()) == null) {
+            return isFieldValuePair(
+                    comparisonPredicate.getLeftHandExpression(), comparisonPredicate.getRightHandExpression());
         } else {
             var operator = comparisonPredicate.getOperator();
             if (operator != ComparisonOperator.EQUAL && operator != ComparisonOperator.NOT_EQUAL) {
                 return false;
             }
-            var rhsTuple = SqlTupleContainer.getSqlTuple(comparisonPredicate.getRightHandExpression());
+            var lhsTuple = getSqlTuple(comparisonPredicate.getLeftHandExpression());
+            var rhsTuple = getSqlTuple(comparisonPredicate.getRightHandExpression());
             if (rhsTuple == null) {
                 return false;
             }
