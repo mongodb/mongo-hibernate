@@ -44,7 +44,6 @@ class RegularExpressionIntegrationTests extends AbstractQueryIntegrationTests {
     void beforeEach() {
         getSessionFactoryScope()
                 .inTransaction(session -> Stream.of(ITEM1, ITEM2, ITEM3).forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @ParameterizedTest
