@@ -70,7 +70,7 @@ import org.mockito.stubbing.Answer;
 public abstract class AbstractQueryIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
 
     @InjectTestCommandListener
-    protected static TestCommandListener commandListener;
+    protected TestCommandListener commandListener;
 
     private SessionFactoryScope sessionFactoryScope;
 

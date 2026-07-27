@@ -40,10 +40,10 @@ import org.junit.jupiter.api.Test;
 class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> booksCollection;
+    private MongoCollection<BsonDocument> booksCollection;
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> itemsCollection;
+    private MongoCollection<BsonDocument> itemsCollection;
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),

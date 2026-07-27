@@ -32,6 +32,7 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
+import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Test;
 
@@ -43,11 +44,13 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests implemen
     private static final int ENTITIES_TO_PERSIST_COUNT = 5;
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> collection;
+    private MongoCollection<BsonDocument> collection;
 
     @Test
     void testBatchInsert() {
-        getSessionFactoryScope().inTransaction(session -> {
+        SessionFactoryScope sessionFactoryScope = getSessionFactoryScope();
+        System.err.println(sessionFactoryScope.hashCode());
+        sessionFactoryScope.inTransaction(session -> {
             for (int i = 1; i <= ENTITIES_TO_PERSIST_COUNT; i++) {
                 session.persist(new Item(i, String.valueOf(i)));
             }
@@ -89,6 +92,8 @@ class BatchUpdateIntegrationTests extends AbstractQueryIntegrationTests implemen
 
     @Test
     void testBatchUpdate() {
+        SessionFactoryScope sessionFactoryScope = getSessionFactoryScope();
+        System.err.println(sessionFactoryScope.hashCode());
         getSessionFactoryScope().inTransaction(session -> {
             insertTestData(session);
             for (int i = 1; i <= ENTITIES_TO_PERSIST_COUNT; i++) {

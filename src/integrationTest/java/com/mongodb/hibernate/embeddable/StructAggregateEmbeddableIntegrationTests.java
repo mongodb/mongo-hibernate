@@ -69,7 +69,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class StructAggregateEmbeddableIntegrationTests
         implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -533,7 +533,7 @@ public class StructAggregateEmbeddableIntegrationTests
         assertEq(expectedItem, loadedItem);
     }
 
-    private static void assertCollectionContainsExactly(String documentAsJsonObject) {
+    private void assertCollectionContainsExactly(String documentAsJsonObject) {
         assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
 

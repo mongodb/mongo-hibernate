@@ -50,7 +50,7 @@ class MongoIdFieldNameIntegrationTests implements MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "movies";
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private MongoCollection<BsonDocument> mongoCollection;
 
     @Test
     void testEntityWithoutIdColumnAnnotation(SessionFactoryScope scope) {
@@ -82,7 +82,7 @@ class MongoIdFieldNameIntegrationTests implements MongoServiceRegistryProducer {
         assertCollectionContainsExactly(BsonDocument.parse("{_id: 1}"));
     }
 
-    private static void assertCollectionContainsExactly(BsonDocument expectedDoc) {
+    private void assertCollectionContainsExactly(BsonDocument expectedDoc) {
         assertThat(mongoCollection.find()).containsExactly(expectedDoc);
     }
 

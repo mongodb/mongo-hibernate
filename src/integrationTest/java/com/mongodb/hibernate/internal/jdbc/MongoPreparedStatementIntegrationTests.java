@@ -69,7 +69,7 @@ class MongoPreparedStatementIntegrationTests {
     private static SessionFactory sessionFactory;
 
     @InjectMongoCollection("books")
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private MongoCollection<BsonDocument> mongoCollection;
 
     @AutoClose
     private Session session;

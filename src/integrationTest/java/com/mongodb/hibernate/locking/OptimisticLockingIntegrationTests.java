@@ -70,16 +70,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 class OptimisticLockingIntegrationTests extends AbstractQueryIntegrationTests implements MongoServiceRegistryProducer {
 
     @InjectMongoCollection("ItemWithInstant")
-    private static MongoCollection<BsonDocument> itemWithInstantCollection;
+    private MongoCollection<BsonDocument> itemWithInstantCollection;
 
     @InjectMongoCollection("ItemWithVmTimestamp")
-    private static MongoCollection<BsonDocument> itemWithVmTimestampCollection;
+    private MongoCollection<BsonDocument> itemWithVmTimestampCollection;
 
     @InjectMongoCollection("ItemWithExcluded")
-    private static MongoCollection<BsonDocument> itemWithExcludedCollection;
+    private MongoCollection<BsonDocument> itemWithExcludedCollection;
 
     @InjectMongoCollection("ItemWithPrimitiveLong")
-    private static MongoCollection<BsonDocument> itemWithPrimitiveLongCollection;
+    private MongoCollection<BsonDocument> itemWithPrimitiveLongCollection;
 
     static Stream<Arguments> testUpdateNumericVersion() {
         return Stream.of(

@@ -33,11 +33,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
+import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
 /**
  * Test classes run concurrently (JUnit parallel execution, classes-concurrent / methods-same-thread), so each top-level
@@ -46,7 +46,7 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
  * test and after all tests of the class.
  */
 public final class MongoExtension
-        implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback, InvocationInterceptor {
+        implements TestInstancePostProcessor, BeforeEachCallback, AfterAllCallback, InvocationInterceptor {
 
     private static final State STATE = State.create();
 
@@ -67,26 +67,30 @@ public final class MongoExtension
 
     /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}, {@linkplain InjectTestCommandListener command listener}. */
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
-        var fieldMustBeStaticMsgFormat = "The field [%s] must be static";
-        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoClient.class)) {
-            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+    public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
+        var fieldMustNotBeStaticMsgFormat = "The field [%s] must not be static — use an instance field to avoid races under parallel execution";
+        var databaseName = databaseNameFor(testInstance.getClass());
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectMongoClient.class)) {
             field.setAccessible(true);
-            field.set(null, STATE.mongoClient());
+            // MongoClient is shared across all classes — safe as static or instance
+            if (isStatic(field)) {
+                field.set(null, STATE.mongoClient());
+            } else {
+                field.set(testInstance, STATE.mongoClient());
+            }
         }
-        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class)) {
-            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectMongoCollection.class)) {
+            assertTrue(format(fieldMustNotBeStaticMsgFormat, field), !isStatic(field));
             var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
             var collectionName = annotation.value();
-            var mongoCollection = currentDatabase(context).getCollection(collectionName, BsonDocument.class);
+            var mongoCollection = STATE.mongoClient().getDatabase(databaseName).getCollection(collectionName, BsonDocument.class);
             field.setAccessible(true);
-            field.set(null, mongoCollection);
+            field.set(testInstance, mongoCollection);
         }
-        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectTestCommandListener.class)) {
-            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectTestCommandListener.class)) {
+            assertTrue(format(fieldMustNotBeStaticMsgFormat, field), !isStatic(field));
             field.setAccessible(true);
-            var databaseName = databaseNameFor(context);
-            field.set(null, STATE.commandListenerByDatabase.computeIfAbsent(databaseName, ignored -> new TestCommandListener()));
+            field.set(testInstance, STATE.commandListenerByDatabase.computeIfAbsent(databaseName, ignored -> new TestCommandListener()));
         }
     }
 

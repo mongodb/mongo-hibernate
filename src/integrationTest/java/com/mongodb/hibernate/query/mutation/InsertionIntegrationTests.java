@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
 class InsertionIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private MongoCollection<BsonDocument> mongoCollection;
 
     @Test
     void testInsertPartialSingleDocument() {

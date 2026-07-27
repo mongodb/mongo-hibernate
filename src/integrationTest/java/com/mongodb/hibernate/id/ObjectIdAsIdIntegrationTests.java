@@ -52,7 +52,7 @@ class ObjectIdAsIdIntegrationTests implements SessionFactoryScopeAware, MongoSer
     private static final String COLLECTION_NAME = "items";
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private MongoCollection<BsonDocument> mongoCollection;
 
     private SessionFactoryScope sessionFactoryScope;
 
