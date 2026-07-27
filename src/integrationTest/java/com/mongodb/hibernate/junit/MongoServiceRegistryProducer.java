@@ -49,7 +49,7 @@ public interface MongoServiceRegistryProducer extends ServiceRegistryProducer {
         ssrb.applySetting(AvailableSettings.CONNECTION_PROVIDER_DISABLES_AUTOCOMMIT, false);
         // Point this class's SessionFactory at its own database (derived from the test class, not per-thread state, so
         // it is robust to however/whenever Hibernate builds the registry under parallel execution). The contributor
-        // also installs the shared TestCommandListener on the Mongo client.
+        // also installs the command listener for this class's database (observed by tests via CommandHistory).
         ssrb.applySetting(
                 MONGO_CONFIGURATION_CONTRIBUTOR_KEY, MongoExtension.configurationContributorForClass(getClass()));
         return ssrb.build();

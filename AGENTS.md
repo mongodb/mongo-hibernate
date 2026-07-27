@@ -23,7 +23,7 @@ The replica set has typically already been started by the developer and is avail
 
 ### Integration test parallelism
 
-Integration tests run concurrently within a single JVM via JUnit parallel execution (configured in `src/integrationTest/resources/junit-platform.properties`: test classes run concurrently, methods within a class stay on one thread). Each top-level test class is isolated to its own database, derived deterministically from the test class — see `MongoExtension.configurationContributorForClass`, applied by `MongoServiceRegistryProducer` and by the few tests that bootstrap Hibernate directly. There is no per-thread state; captured commands are likewise partitioned by database name in `TestCommandListener`.
+Integration tests run concurrently within a single JVM via JUnit parallel execution (configured in `src/integrationTest/resources/junit-platform.properties`: test classes run concurrently, methods within a class stay on one thread). Each top-level test class is isolated to its own database, assigned once per class and memoized — see `MongoExtension.configurationContributorForClass`, applied by `MongoServiceRegistryProducer` and by the few tests that bootstrap Hibernate directly. There is no per-thread state; captured commands are likewise partitioned by database name in `MongoExtension`.
 
 Tests that manipulate mongod-global state — e.g. the `failCommand` fail point, a single shared server-side switch — must not run concurrently with anything; annotate them `@Isolated`. There is a single `integrationTest` task running one JVM, so `--tests` works normally; the JUnit thread count is fixed in `junit-platform.properties` (the fastest value is machine-specific and does not track core count).
 

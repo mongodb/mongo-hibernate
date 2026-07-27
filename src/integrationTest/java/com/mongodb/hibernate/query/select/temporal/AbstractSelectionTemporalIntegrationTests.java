@@ -18,12 +18,9 @@ package com.mongodb.hibernate.query.select.temporal;
 
 import static java.lang.String.format;
 
-import com.mongodb.client.MongoCollection;
-import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import java.util.List;
 import java.util.Set;
-import org.bson.BsonDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -36,9 +33,6 @@ abstract class AbstractSelectionTemporalIntegrationTests<I, T> extends AbstractQ
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> getSeedData().forEach(session::persist));
     }
-
-    @InjectMongoCollection(value = COLLECTION_NAME)
-    private MongoCollection<BsonDocument> mongoCollection;
 
     abstract List<I> getSeedData();
 

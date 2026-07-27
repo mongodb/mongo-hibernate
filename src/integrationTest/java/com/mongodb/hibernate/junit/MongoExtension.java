@@ -45,12 +45,11 @@ import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
 /**
  * Isolates concurrently running test classes from one another. Test classes run in parallel (JUnit parallel execution,
- * classes-concurrent / methods-same-thread), so each top-level test class gets its own database, derived
- * deterministically from the class; nested classes share their top-level class's database. Whatever
- * {@code SessionFactory} a class uses — built by the testing framework ({@code @SessionFactory}, meta-annotated
- * {@code @TestInstance(PER_CLASS)}) or directly in {@code @BeforeAll} — is pointed at that database via
- * {@link #configurationContributorForClass}. Between tests the class's collections are emptied; after all the class's
- * tests finish the database is dropped.
+ * classes-concurrent / methods-same-thread), so each top-level test class gets its own database, assigned once per
+ * class and memoized; nested classes share their top-level class's database. Whatever {@code SessionFactory} a class
+ * uses — built by the testing framework ({@code @SessionFactory}, meta-annotated {@code @TestInstance(PER_CLASS)}) or
+ * directly in {@code @BeforeAll} — is pointed at that database via {@link #configurationContributorForClass}. Between
+ * tests the class's collections are emptied; after all the class's tests finish the database is dropped.
  */
 public final class MongoExtension
         implements TestInstancePostProcessor, BeforeEachCallback, AfterAllCallback, InvocationInterceptor {
