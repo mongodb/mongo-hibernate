@@ -40,10 +40,13 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
 /**
- * Test classes run concurrently (JUnit parallel execution, classes-concurrent / methods-same-thread), so each top-level
- * test class gets its own database; nested classes share their top-level class's database. ({@code SessionFactory}
- * instances are not shared — the testing framework builds one per test method.) The database is dropped before each
- * test and after all tests of the class.
+ * Isolates concurrently running test classes from one another. Test classes run in parallel (JUnit parallel execution,
+ * classes-concurrent / methods-same-thread), so each top-level test class gets its own database, derived
+ * deterministically from the class; nested classes share their top-level class's database. Whatever
+ * {@code SessionFactory} a class uses — built by the testing framework ({@code @SessionFactory}, meta-annotated
+ * {@code @TestInstance(PER_CLASS)}) or directly in {@code @BeforeAll} — is pointed at that database via
+ * {@link #configurationContributorForClass}. Between tests the class's collections are emptied; after all the class's
+ * tests finish the database is dropped.
  */
 public final class MongoExtension
         implements TestInstancePostProcessor, BeforeEachCallback, AfterAllCallback, InvocationInterceptor {
@@ -65,10 +68,14 @@ public final class MongoExtension
                                 databaseName, ignored -> new TestCommandListener())));
     }
 
-    /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}, {@linkplain InjectTestCommandListener command listener}. */
+    /**
+     * Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections},
+     * {@linkplain InjectCommandHistory command history}.
+     */
     @Override
     public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
-        var fieldMustNotBeStaticMsgFormat = "The field [%s] must not be static — use an instance field to avoid races under parallel execution";
+        var fieldMustNotBeStaticMsgFormat =
+                "The field [%s] must not be static — use an instance field to avoid races under parallel execution";
         var databaseName = databaseNameFor(testInstance.getClass());
         for (var field : findAnnotatedFields(testInstance.getClass(), InjectMongoClient.class)) {
             field.setAccessible(true);
@@ -83,14 +90,18 @@ public final class MongoExtension
             assertTrue(format(fieldMustNotBeStaticMsgFormat, field), !isStatic(field));
             var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
             var collectionName = annotation.value();
-            var mongoCollection = STATE.mongoClient().getDatabase(databaseName).getCollection(collectionName, BsonDocument.class);
+            var mongoCollection =
+                    STATE.mongoClient().getDatabase(databaseName).getCollection(collectionName, BsonDocument.class);
             field.setAccessible(true);
             field.set(testInstance, mongoCollection);
         }
-        for (var field : findAnnotatedFields(testInstance.getClass(), InjectTestCommandListener.class)) {
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectCommandHistory.class)) {
             assertTrue(format(fieldMustNotBeStaticMsgFormat, field), !isStatic(field));
             field.setAccessible(true);
-            field.set(testInstance, STATE.commandListenerByDatabase.computeIfAbsent(databaseName, ignored -> new TestCommandListener()));
+            field.set(
+                    testInstance,
+                    STATE.commandListenerByDatabase.computeIfAbsent(
+                            databaseName, ignored -> new TestCommandListener()));
         }
     }
 
@@ -110,7 +121,7 @@ public final class MongoExtension
      * a test that does not clear explicitly still sees only its own commands. {@code @Test} methods route through
      * {@link #interceptTestMethod} and {@code @ParameterizedTest}/{@code @RepeatedTest} through
      * {@link #interceptTestTemplateMethod}, so both are overridden. Tests needing a finer boundary (mid-method) still
-     * call {@link #clearCommands} explicitly.
+     * call {@link CommandHistory#clear()} explicitly.
      */
     @Override
     public void interceptTestMethod(
@@ -201,5 +212,4 @@ public final class MongoExtension
             mongoClient.close();
         }
     }
-
 }

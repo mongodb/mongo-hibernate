@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonDocument;
 
-public final class TestCommandListener implements CommandListener {
+public final class TestCommandListener implements CommandListener, CommandHistory {
 
     private final List<BsonDocument> commands = new ArrayList<>();
 
@@ -33,10 +33,12 @@ public final class TestCommandListener implements CommandListener {
         commands.add(event.getCommand().clone());
     }
 
+    @Override
     public List<BsonDocument> getCommands() {
         return List.copyOf(commands);
     }
 
+    @Override
     public void clear() {
         commands.clear();
     }

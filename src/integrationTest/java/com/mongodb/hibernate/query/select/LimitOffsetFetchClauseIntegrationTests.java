@@ -608,7 +608,7 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
             if (maxResults != null) {
                 query.setMaxResults(maxResults);
             }
-            commandListener.clear();
+            commandHistory.clear();
             query.getResultList();
             if (expectedMql != null) {
                 var expectedCommand = BsonDocument.parse(expectedMql);

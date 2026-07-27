@@ -16,15 +16,19 @@
 
 package com.mongodb.hibernate.junit;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.List;
+import org.bson.BsonDocument;
 
 /**
- * Injects the {@link TestCommandListener} for the test class's database into a static field.
- * The field must be {@code static} and of type {@link TestCommandListener}.
+ * The commands a test's {@code SessionFactory} has sent to MongoDB, in order. This is the test-facing view of
+ * {@link TestCommandListener}: tests read the recorded commands and reset the record, without seeing the driver
+ * {@link com.mongodb.event.CommandListener} machinery that populates it. Injected with {@link InjectCommandHistory}.
  */
-@Target(ElementType.FIELD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface InjectTestCommandListener {}
+public interface CommandHistory {
+
+    /** The commands recorded so far, in the order they were sent. */
+    List<BsonDocument> getCommands();
+
+    /** Discards all recorded commands. */
+    void clear();
+}

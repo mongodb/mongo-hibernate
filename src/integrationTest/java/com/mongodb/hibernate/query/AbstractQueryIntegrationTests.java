@@ -26,10 +26,10 @@ import static org.mockito.Mockito.spy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
-import com.mongodb.hibernate.junit.InjectTestCommandListener;
+import com.mongodb.hibernate.junit.CommandHistory;
+import com.mongodb.hibernate.junit.InjectCommandHistory;
 import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
-import com.mongodb.hibernate.junit.TestCommandListener;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -69,8 +69,8 @@ import org.mockito.stubbing.Answer;
 @ExtendWith(MongoExtension.class)
 public abstract class AbstractQueryIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
 
-    @InjectTestCommandListener
-    protected TestCommandListener commandListener;
+    @InjectCommandHistory
+    protected CommandHistory commandHistory;
 
     private SessionFactoryScope sessionFactoryScope;
 
@@ -184,7 +184,7 @@ public abstract class AbstractQueryIntegrationTests implements SessionFactorySco
     }
 
     protected void assertActualCommandsInOrder(BsonDocument... expectedCommands) {
-        var capturedCommands = commandListener.getCommands();
+        var capturedCommands = commandHistory.getCommands();
         assertThat(capturedCommands).hasSize(expectedCommands.length);
         for (int i = 0; i < expectedCommands.length; i++) {
             BsonDocument actual = capturedCommands.get(i);
