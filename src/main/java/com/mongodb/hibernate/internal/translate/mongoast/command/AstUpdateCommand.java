@@ -16,9 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import java.util.Collection;
 import org.bson.BsonWriter;
 
 /**
@@ -26,9 +24,7 @@ import org.bson.BsonWriter;
  *
  * @hidden
  */
-@SuppressWarnings("InvalidParam")
-public record AstUpdateCommand(String collection, AstFilter filter, Collection<? extends AstFieldUpdate> updates)
-        implements AstCommand {
+public record AstUpdateCommand(String collection, AstFilter filter, AstUpdate update) implements AstCommand {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
@@ -42,16 +38,7 @@ public record AstUpdateCommand(String collection, AstFilter filter, Collection<?
                     writer.writeName("q");
                     filter.render(writer);
                     writer.writeName("u");
-                    writer.writeStartDocument();
-                    {
-                        writer.writeName("$set");
-                        writer.writeStartDocument();
-                        {
-                            updates.forEach(update -> update.render(writer));
-                        }
-                        writer.writeEndDocument();
-                    }
-                    writer.writeEndDocument();
+                    update.render(writer);
                     writer.writeBoolean("multi", true);
                 }
                 writer.writeEndDocument();

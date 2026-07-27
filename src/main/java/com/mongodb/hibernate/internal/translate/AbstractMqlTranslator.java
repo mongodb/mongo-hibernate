@@ -57,6 +57,7 @@ import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstConversionExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -74,12 +75,18 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstDocumentUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStageWithPipeline;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageExpressionSpecification;
@@ -138,7 +145,6 @@ import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
-import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
@@ -169,7 +175,6 @@ import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.ExtractUnit;
 import org.hibernate.sql.ast.tree.expression.Format;
-import org.hibernate.sql.ast.tree.expression.FunctionExpression;
 import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.expression.Literal;
@@ -268,6 +273,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private final Set<String> affectedTableNames = new HashSet<>();
 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
+
+    // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
+    private int letVariableCounter;
 
     private @Nullable QueryOptionsLimit queryOptionsLimit;
 
@@ -987,26 +995,38 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         checkMutationStatementSupportability(updateStatement);
         var collection = addToAffectedTableNames(updateStatement.getTargetTable());
         var filter = createAstFilter(updateStatement);
-
         var assignments = updateStatement.getAssignments();
-        var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
-        for (var assignment : assignments) {
-            var fieldReferences = assignment.getAssignable().getColumnReferences();
-            assertTrue(fieldReferences.size() == 1);
-
-            var fieldPath = acceptAndYield(fieldReferences.get(0), FIELD_PATH);
-            var assignedValue = assignment.getAssignedValue();
-            if (!isValueExpression(assignedValue)) {
-                throw new FeatureNotSupportedException(
-                        getUnsupportedUpdateValueAssignmentMessage(fieldPath, assignedValue));
-            }
-            var fieldValue = acceptAndYield(assignedValue, VALUE);
-            fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
-        }
+        var allValues = assignments.stream().allMatch(assignment -> isValueExpression(assignment.getAssignedValue()));
+        AstUpdate update = allValues ? buildDocumentUpdate(assignments) : buildPipelineUpdate(assignments);
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstUpdateCommand(collection, filter, fieldUpdates), parameterBinders, affectedTableNames));
+                        new AstUpdateCommand(collection, filter, update), parameterBinders, affectedTableNames));
+    }
+
+    private AstDocumentUpdate buildDocumentUpdate(List<Assignment> assignments) {
+        var fieldUpdates = new ArrayList<AstFieldUpdate>(assignments.size());
+        for (var assignment : assignments) {
+            var fieldPath = resolveAssignmentFieldPath(assignment);
+            var fieldValue = acceptAndYield(assignment.getAssignedValue(), VALUE);
+            fieldUpdates.add(new AstFieldUpdate(fieldPath, fieldValue));
+        }
+        return new AstDocumentUpdate(fieldUpdates);
+    }
+
+    private AstPipelineUpdate buildPipelineUpdate(List<Assignment> assignments) {
+        var fieldUpdates = new ArrayList<AstComputedFieldUpdate>(assignments.size());
+        for (var assignment : assignments) {
+            var fieldValue = acceptAndYieldExpression(assignment.getAssignedValue());
+            fieldUpdates.add(new AstComputedFieldUpdate(resolveAssignmentFieldPath(assignment), fieldValue));
+        }
+        return new AstPipelineUpdate(fieldUpdates);
+    }
+
+    private String resolveAssignmentFieldPath(Assignment assignment) {
+        var fieldReferences = assignment.getAssignable().getColumnReferences();
+        assertTrue(fieldReferences.size() == 1);
+        return acceptAndYield(fieldReferences.get(0), FIELD_PATH);
     }
 
     private String addToAffectedTableNames(NamedTableReference tableRef) {
@@ -1028,7 +1048,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
-        return new AstUpdateCommand(tableName, keyFilter, updates);
+        return new AstUpdateCommand(tableName, keyFilter, new AstDocumentUpdate(updates));
     }
 
     @Override
@@ -1774,7 +1794,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 type.getSimpleName(), context));
     }
 
-    private record EquijoinFields(String localField, String foreignField) {}
+    private record JoinColumns(ColumnReference outer, ColumnReference joined, boolean joinedOnLeft) {}
 
     private List<AstStage> buildJoinStages(TableGroup tableGroup) {
         var stages = new ArrayList<AstStage>();
@@ -1836,25 +1856,72 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
             affectedTableNames.add(joinedCollection);
 
-            var fields = extractEquijoinFields(tgj.getPredicate(), joinedAlias);
+            var lookupStage = buildJoinLookupStage(tgj.getPredicate(), joinedCollection, joinedAlias);
 
             joinedTableQualifiers.add(joinedAlias);
 
-            stages.add(new AstLookupStage(
-                    joinedCollection, fields.localField(), fields.foreignField(), JOIN_ALIAS_PREFIX + joinedAlias));
+            stages.add(lookupStage);
             stages.add(new AstUnwindStage(JOIN_ALIAS_PREFIX + joinedAlias, preserve));
             stages.addAll(buildJoinStages(joinedGroup));
         }
         return stages;
     }
 
-    private EquijoinFields extractEquijoinFields(@Nullable Predicate predicate, String joinedAlias) {
+    /**
+     * Builds the {@code $lookup} stage for a join {@code ON} condition. An {@code EQUAL} comparison maps to the simple
+     * {@code localField}/{@code foreignField} form; the ordering and inequality operators ({@code <}, {@code <=},
+     * {@code >}, {@code >=}, {@code !=}) require the pipeline form, which binds the outer column into a {@code let}
+     * variable and compares it against the joined column with {@code $expr}.
+     */
+    private AstStage buildJoinLookupStage(@Nullable Predicate predicate, String joinedCollection, String joinedAlias) {
         if (predicate instanceof Junction) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
         }
-        if (!(predicate instanceof ComparisonPredicate cp) || cp.getOperator() != ComparisonOperator.EQUAL) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-165 https://jira.mongodb.org/browse/HIBERNATE-165");
+        if (!(predicate instanceof ComparisonPredicate cp)) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
         }
+        var operator = cp.getOperator();
+        var columns = extractJoinColumns(cp, joinedAlias);
+        var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;
+
+        if (operator == ComparisonOperator.EQUAL) {
+            return new AstLookupStage(
+                    joinedCollection,
+                    resolveFieldPath(columns.outer()),
+                    columns.joined().getColumnExpression(),
+                    joinAlias);
+        }
+
+        // The $expr array is always [<outer>, <joined>]; invert the operator when Hibernate placed the joined column
+        // on the left so the operand order stays outer-then-joined.
+        var exprOperator = toJoinExprComparisonOperator(columns.joinedOnLeft() ? operator.invert() : operator);
+
+        var letVariable = nextLetVariableName(columns.outer());
+        var expr = new AstExprFilter(new AstBinaryOperatorExpression(
+                exprOperator,
+                new AstVariableExpression(letVariable),
+                new AstFieldPathExpression(columns.joined().getColumnExpression())));
+        return new AstLookupStageWithPipeline(
+                joinedCollection,
+                List.of(new AstLetVariable(letVariable, new AstFieldPathExpression(resolveFieldPath(columns.outer())))),
+                List.of(new AstMatchStage(expr)),
+                joinAlias);
+    }
+
+    /**
+     * Generates a unique {@code let} variable name for a {@code $lookup} sub-pipeline. The leading {@code v<n>} counter
+     * guarantees uniqueness within a query — needed once a single {@code $lookup} binds multiple outer columns (see
+     * HIBERNATE-164) — while the sanitized {@code <qualifier>_<column>} suffix is human-readable context that makes it
+     * clear which outer column each variable binds when reading query logs.
+     */
+    private String nextLetVariableName(ColumnReference outer) {
+        var qualifier = outer.getQualifier();
+        var suffix = ((qualifier != null ? qualifier + "_" : "") + outer.getColumnExpression())
+                .replaceAll("[^a-zA-Z0-9_]", "_");
+        return "v" + letVariableCounter++ + "_" + suffix;
+    }
+
+    private JoinColumns extractJoinColumns(ComparisonPredicate cp, String joinedAlias) {
         var lhsCr = extractColumnReference(cp.getLeftHandExpression());
         var rhsCr = extractColumnReference(cp.getRightHandExpression());
         if (lhsCr == null || rhsCr == null) {
@@ -1869,9 +1936,25 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (lhsIsJoined == rhsIsJoined) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
         }
-        var outerCr = lhsIsJoined ? rhsCr : lhsCr;
-        var innerCr = lhsIsJoined ? lhsCr : rhsCr;
-        return new EquijoinFields(resolveFieldPath(outerCr), innerCr.getColumnExpression());
+        return lhsIsJoined ? new JoinColumns(rhsCr, lhsCr, true) : new JoinColumns(lhsCr, rhsCr, false);
+    }
+
+    /**
+     * Maps the non-equality comparison operators supported for non-equijoin {@code ON} conditions to their
+     * aggregation-expression counterparts. {@code EQUAL} never reaches here — it is routed to the simple
+     * {@code $lookup} form by the caller — and {@code DISTINCT_FROM}/{@code NOT_DISTINCT_FROM} are not yet supported.
+     */
+    private static AstComparisonExpressionOperator toJoinExprComparisonOperator(ComparisonOperator operator) {
+        return switch (operator) {
+            case NOT_EQUAL -> AstComparisonExpressionOperator.NE;
+            case LESS_THAN -> AstComparisonExpressionOperator.LT;
+            case LESS_THAN_OR_EQUAL -> AstComparisonExpressionOperator.LTE;
+            case GREATER_THAN -> AstComparisonExpressionOperator.GT;
+            case GREATER_THAN_OR_EQUAL -> AstComparisonExpressionOperator.GTE;
+            default ->
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+        };
     }
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
@@ -1936,21 +2019,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         @Override
         public void appendSql(String fragment) {
             throw new FeatureNotSupportedException();
-        }
-    }
-
-    private static String getUnsupportedUpdateValueAssignmentMessage(final String fieldPath, Expression assignedValue) {
-        if (assignedValue instanceof FunctionExpression ex) {
-            return "Function expression [%s] as update assignment value for field path [%s] is not supported"
-                    .formatted(ex.getFunctionName(), fieldPath);
-        } else if (assignedValue instanceof Predicate) {
-            return "Predicate expression as update assignment value for field path [%s] is not supported"
-                    .formatted(fieldPath);
-        } else if (assignedValue instanceof SqmPathInterpretation) {
-            return "Path expression as update assignment value for field path [%s] is not supported"
-                    .formatted(fieldPath);
-        } else {
-            return "Update assignment value for field path [%s] is not supported".formatted(fieldPath);
         }
     }
 }

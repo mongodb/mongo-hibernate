@@ -423,7 +423,7 @@ class MongoPreparedStatementTests {
                     of("arrayFilters: []", "Unsupported field in [update] statement: [arrayFilters]"),
                     of("sort: {}", "Unsupported field in [update] statement: [sort]"),
                     of("upsert: true", "Unsupported field in [update] statement: [upsert]"),
-                    of("u: []", "Only document type is supported as value for field: [u]"),
+                    of("u: 1", "Only document or pipeline type is supported as value for field: [u]"),
                     of("c: {}", "Unsupported field in [update] statement: [c]"));
         }
 

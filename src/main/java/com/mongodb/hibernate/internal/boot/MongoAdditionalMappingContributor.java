@@ -38,6 +38,7 @@ import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -66,6 +67,8 @@ import org.hibernate.boot.spi.AdditionalMappingContributions;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
@@ -145,6 +148,71 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             forbidColumnFragmentAnnotations(persistentClass);
             setIdentifierColumnName(persistentClass);
         });
+        forbidCatalog(metadata, buildingContext);
+        forbidCollidingCollectionNames(metadata);
+    }
+
+    /**
+     * A MongoDB database is the analog of a SQL catalog, and catalog {@code ->} database is not yet supported.
+     * Reporting {@link org.hibernate.engine.jdbc.env.spi.NameQualifierSupport#SCHEMA} makes Hibernate silently drop a
+     * catalog qualifier, so reject it here instead: the per-table {@code @Table(catalog)} (and
+     * secondary/join/collection tables) surfaces on a namespace, while the global {@code hibernate.default_catalog} is
+     * applied only at SQL-render time (not a namespace at this stage), so it is read from configuration. Both are
+     * checked.
+     */
+    private static void forbidCatalog(InFlightMetadataCollector metadata, MetadataBuildingContext buildingContext) {
+        var defaultCatalog = buildingContext
+                .getBootstrapContext()
+                .getServiceRegistry()
+                .requireService(ConfigurationService.class)
+                .getSettings()
+                .get(AvailableSettings.DEFAULT_CATALOG);
+        if (defaultCatalog != null && !defaultCatalog.toString().isBlank()) {
+            throw catalogNotSupported(defaultCatalog.toString());
+        }
+        for (var namespace : metadata.getDatabase().getNamespaces()) {
+            var catalog = namespace.getName().catalog();
+            if (catalog != null) {
+                throw catalogNotSupported(catalog.getText());
+            }
+        }
+    }
+
+    private static FeatureNotSupportedException catalogNotSupported(String catalog) {
+        return new FeatureNotSupportedException(format(
+                "Catalog is not supported: [%s]. A MongoDB database is the analog of a SQL catalog; use a separate"
+                        + " SessionFactory per database.",
+                catalog));
+    }
+
+    /**
+     * A schema folds into the collection name ({@code schema.name}), so two distinct table qualifiers can resolve to
+     * the same collection — e.g. {@code @Table(schema = "a", name = "b")} and {@code @Table(name = "a.b")} both resolve
+     * to {@code a.b}. Hibernate treats these as different tables and would not catch the clash, yet they would silently
+     * co-mingle in one collection. Distinct qualifiers that resolve to the same name are rejected. Hibernate-sanctioned
+     * table sharing (and a {@code SINGLE_TABLE} hierarchy's subclasses) share one {@link org.hibernate.mapping.Table}
+     * instance, so they appear once and are not flagged.
+     */
+    private static void forbidCollidingCollectionNames(InFlightMetadataCollector metadata) {
+        // Hibernate registers one Table per distinct qualified name, and table sharing (including a SINGLE_TABLE
+        // hierarchy's subclasses) reuses that one Table. So a resolved collection name seen twice always comes from
+        // two distinct qualifiers that folding collapsed together — a genuine collision.
+        var resolvedNames = new HashSet<String>();
+        for (var namespace : metadata.getDatabase().getNamespaces()) {
+            var schema = namespace.getName().schema();
+            var schemaText = schema == null ? null : schema.getText();
+            for (var table : namespace.getTables()) {
+                var name = table.getName();
+                var resolved = schemaText == null ? name : schemaText + "." + name;
+                if (!resolvedNames.add(resolved)) {
+                    throw new FeatureNotSupportedException(format(
+                            "Two entities resolve to the same collection [%s] via distinct table qualifiers (schema"
+                                    + " folding makes e.g. @Table(schema = \"a\", name = \"b\") collide with"
+                                    + " @Table(name = \"a.b\")). Rename one so they resolve to different collections.",
+                            resolved));
+                }
+            }
+        }
     }
 
     private static void checkPropertyTypes(PersistentClass persistentClass) {
