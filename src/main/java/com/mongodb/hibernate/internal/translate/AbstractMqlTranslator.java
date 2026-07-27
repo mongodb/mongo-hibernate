@@ -1489,9 +1489,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     // Row-value IN in aggregation-expression position: OR of per-row (AND of per-component $eq); a single-row
-    // list collapses to the bare AND; a negated list is wrapped in $not. Shared by visitInListPredicate's
-    // expression branch and by createTupleInListFilter's $expr fallback, and called directly (never via a second
-    // visit of the predicate) so any parameter it contains is bound exactly once.
+    // list collapses to the bare AND; a negated list is wrapped in $not.
     private AstExpression toTupleInListExpression(InListPredicate inListPredicate) {
         var keyExpressions = getSqlTuple(inListPredicate.getTestExpression()).getExpressions();
         var rowExpressions = new ArrayList<AstExpression>(
@@ -1516,9 +1514,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 : disjunction;
     }
 
-    // A row-value IN-list `(k1, k2) IN ((v1a, v2a), (v1b, v2b))` becomes an OR of per-row per-component AND
-    // equality, pairing test components with each row's values positionally. A single-row list collapses to
-    // the AND; a negated list is wrapped in NOR.
     private AstFilter createTupleInListFilter(InListPredicate inListPredicate) {
         // Compact form when the test is all field paths and every row is all values; otherwise $expr.
         return isCompactTupleInList(inListPredicate)
