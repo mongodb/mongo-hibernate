@@ -113,7 +113,11 @@ public final class MongoExtension
 
     @Override
     public void afterAll(ExtensionContext context) {
-        currentDatabase(context).drop();
+        // Nested classes share the top-level class's database, so only the top-level class drops it; a nested drop
+        // would redundantly drop the shared database.
+        if (context.getRequiredTestClass().getEnclosingClass() == null) {
+            currentDatabase(context).drop();
+        }
     }
 
     /** Empties every {@linkplain InjectMongoCollection collection} in the class's database before each test. */
