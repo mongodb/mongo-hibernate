@@ -20,9 +20,10 @@ import java.util.List;
 import org.bson.BsonDocument;
 
 /**
- * The commands a test's {@code SessionFactory} has sent to MongoDB, in order. This is the test-facing view of
- * {@link TestCommandListener}: tests read the recorded commands and reset the record, without seeing the driver
- * {@link com.mongodb.event.CommandListener} machinery that populates it. Injected with {@link InjectCommandHistory}.
+ * The commands a test's {@code SessionFactory} has sent to MongoDB, in order. This is the test-facing view of the
+ * command listener {@link MongoExtension} installs on the Mongo client: tests read the recorded commands and reset the
+ * record, without seeing the driver {@link com.mongodb.event.CommandListener} machinery that populates it. Injected
+ * with {@link InjectCommandHistory}.
  */
 public interface CommandHistory {
 

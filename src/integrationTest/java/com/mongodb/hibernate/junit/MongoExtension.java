@@ -24,9 +24,13 @@ import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.event.CommandListener;
+import com.mongodb.event.CommandStartedEvent;
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -210,6 +214,26 @@ public final class MongoExtension
 
         private void close() {
             mongoClient.close();
+        }
+    }
+
+    private static final class TestCommandListener implements CommandListener, CommandHistory {
+
+        private final List<BsonDocument> commands = new ArrayList<>();
+
+        @Override
+        public void commandStarted(CommandStartedEvent event) {
+            commands.add(event.getCommand().clone());
+        }
+
+        @Override
+        public List<BsonDocument> getCommands() {
+            return List.copyOf(commands);
+        }
+
+        @Override
+        public void clear() {
+            commands.clear();
         }
     }
 }
