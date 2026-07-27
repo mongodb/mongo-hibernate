@@ -558,7 +558,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                             "from": "Order",
                             "let": { "v0_c1_0__id": "$_id" },
                             "pipeline": [
-                              { "$match": { "$expr": { "$lt": [ "$$v0_c1_0__id", "$_id" ] } } }
+                              { "$match": { "$expr": { "$gt": [ "$_id", "$$v0_c1_0__id" ] } } }
                             ],
                             "as": "#o1_0"
                           }
@@ -1133,7 +1133,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                   "$expr": {
                                     "$and": [
                                       { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
-                                      { "$lt": [ "$$v1_c1_0_region", "$total" ] }
+                                      { "$gt": [ "$total", "$$v1_c1_0_region" ] }
                                     ]
                                   }
                                 }
@@ -1461,52 +1461,348 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testConjunctWithBetweenThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND o.total BETWEEN c.id AND c.region",
+        void testLiteralOperandConjunct() {
+            // A column-vs-literal conjunct (o.total > 100) now translates; it filters the joined side, dropping
+            // order 1 (total 100).
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND o.total > 100 ORDER BY c.id, o.id",
                     Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$gt": [ "$total", { "$numberInt": "100" } ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
         }
 
         @Test
-        void testNegatedComparisonOnConditionThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON NOT (c.id = o.id)",
+        void testIsNotNullConjunct() {
+            // An IS NOT NULL conjunct delegates to visitNullnessPredicate ($ne null); every seeded total is
+            // non-null, so the diagonal join keeps all three rows.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND o.total IS NOT NULL ORDER BY c.id, o.id",
                     Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-212 https://jira.mongodb.org/browse/HIBERNATE-212");
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$ne": [ "$total", null ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
         }
 
         @Test
-        void testNegatedJunctionOnConditionThrows() {
-            // NOT over a parenthesized junction reaches the translator as a
-            // NegatedPredicate(GroupedPredicate(Junction)).
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON NOT (c.id = o.id AND c.region = o.region)",
+        void testBothJoinedConjunct() {
+            // A conjunct whose two sides are both joined columns (o.total > o.region) now translates: both resolve
+            // to bare sub-pipeline field paths. Every seeded order has total > region, so the diagonal join keeps all.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND o.total > o.region ORDER BY c.id, o.id",
                     Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-212 https://jira.mongodb.org/browse/HIBERNATE-212");
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$gt": [ "$total", "$region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
         }
 
         @Test
-        void testConjunctWithArithmeticThrows() {
-            // A conjunct with a non-column (arithmetic) operand fails the column-reference guard.
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND c.region = o.total + 1",
+        void testBetweenConjunct() {
+            // Delegation reuses visitBetweenPredicate (a $gte/$lte pair); the BETWEEN operand c.region binds a let
+            // variable for each bound. c.region falls within [o.id, o.total] for every diagonal-joined row.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region BETWEEN o.id AND o.total ORDER BY c.id, o.id",
                     Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": {
+                              "v0_c1_0__id": "$_id",
+                              "v1_c1_0_region": "$region",
+                              "v2_c1_0_region": "$region"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      {
+                                        "$and": [
+                                          { "$gte": [ "$$v1_c1_0_region", "$_id" ] },
+                                          { "$lte": [ "$$v2_c1_0_region", "$total" ] }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
         }
 
         @Test
-        void testConjunctSameTableThrows() {
-            // A conjunct whose two sides reference the same table cannot be a join condition.
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND c.id = c.region",
+        void testNegatedComparison() {
+            // NOT (c.id = o.id) delegates to visitNegatedPredicate, wrapping the comparison in $not — so each
+            // customer matches every order except its like-id one.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o ON NOT (c.id = o.id) ORDER BY c.id, o.id",
                     Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id" },
+                            "pipeline": [
+                              { "$match": { "$expr": { "$not": [ { "$eq": [ "$$v0_c1_0__id", "$_id" ] } ] } } }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 200},
+                            new Object[] {1, 300},
+                            new Object[] {2, 100},
+                            new Object[] {2, 300},
+                            new Object[] {3, 100},
+                            new Object[] {3, 200}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testNegatedJunction() {
+            // NOT over a parenthesized junction wraps the whole $and in $not; only the rows where BOTH conjuncts
+            // hold (customers 1 and 2 on their like-id order) are excluded.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON NOT (c.id = o.id AND c.region = o.region) ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$not": [
+                                      {
+                                        "$and": [
+                                          { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                          { "$eq": [ "$$v1_c1_0_region", "$region" ] }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(
+                            new Object[] {1, 200},
+                            new Object[] {1, 300},
+                            new Object[] {2, 100},
+                            new Object[] {2, 300},
+                            new Object[] {3, 100},
+                            new Object[] {3, 200},
+                            new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testArithmeticOperandConjunct() {
+            // An arithmetic operand delegates to visitBinaryArithmeticExpression; c.region * 10 equals o.total for
+            // every seeded row, so the diagonal join keeps all three.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND o.total = c.region * 10 ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": { "v0_c1_0__id": "$_id", "v1_c1_0_region": "$region" },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      {
+                                        "$eq": [
+                                          "$total",
+                                          { "$multiply": [ "$$v1_c1_0_region", { "$numberInt": "10" } ] }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
+        }
+
+        @Test
+        void testSameTableConjunct() {
+            // A conjunct whose two sides are both outer columns (c.region = c.region) now translates: each side
+            // binds its own let variable, so it becomes $eq:[$$v, $$v] rather than being rejected.
+            assertSelectionQuery(
+                    "SELECT c.id, o.total FROM Customer c JOIN Order o"
+                            + " ON c.id = o.id AND c.region = c.region ORDER BY c.id, o.id",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Customer",
+                      "pipeline": [
+                        {
+                          "$lookup": {
+                            "from": "Order",
+                            "let": {
+                              "v0_c1_0__id": "$_id",
+                              "v1_c1_0_region": "$region",
+                              "v2_c1_0_region": "$region"
+                            },
+                            "pipeline": [
+                              {
+                                "$match": {
+                                  "$expr": {
+                                    "$and": [
+                                      { "$eq": [ "$$v0_c1_0__id", "$_id" ] },
+                                      { "$eq": [ "$$v1_c1_0_region", "$$v2_c1_0_region" ] }
+                                    ]
+                                  }
+                                }
+                              }
+                            ],
+                            "as": "#o1_0"
+                          }
+                        },
+                        { "$unwind": "$#o1_0" },
+                        { "$sort": { "_id": { "$numberInt": "1" }, "#o1_0._id": { "$numberInt": "1" } } },
+                        { "$project": { "_id": true, "o1_0#total": "$#o1_0.total" } }
+                      ]
+                    }""",
+                    List.of(new Object[] {1, 100}, new Object[] {2, 200}, new Object[] {3, 300}),
+                    Set.of("Customer", "Order"));
         }
     }
 
@@ -1801,50 +2097,14 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testBetweenOnConditionThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id BETWEEN o.id AND o.total",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
-        }
-
-        @Test
-        void testIsNullOnConditionThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON o.total IS NULL",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
-        }
-
-        @Test
         void testIsDistinctFromOnConditionThrows() {
+            // DISTINCT_FROM has no aggregation-expression counterpart in the shared operator map, so it throws
+            // the same way it would in a WHERE clause.
             assertSelectQueryFailure(
                     "SELECT c.id FROM Customer c JOIN Order o ON c.id IS DISTINCT FROM o.id",
                     Object[].class,
                     FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
-        }
-
-        @Test
-        void testConjunctWithLiteralThrows() {
-            // Compound AND-ed ON conditions are supported (HIBERNATE-164), but a conjunct comparing a column to
-            // a literal (c.id < 100) is not a join condition — it fails the column-reference guard.
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.id AND c.id < 100",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
-        }
-
-        @Test
-        void testNonColumnOnExpressionThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = o.total + 1",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
+                    "Unsupported comparison operator: DISTINCT_FROM");
         }
 
         @Test
@@ -1885,24 +2145,6 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                     Object[].class,
                     FeatureNotSupportedException.class,
                     "TODO-HIBERNATE-168 https://jira.mongodb.org/browse/HIBERNATE-168");
-        }
-
-        @Test
-        void testOnConditionWithBothSidesFromOuterTableThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON c.id = c.id",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
-        }
-
-        @Test
-        void testOnConditionWithBothSidesFromJoinedTableThrows() {
-            assertSelectQueryFailure(
-                    "SELECT c.id FROM Customer c JOIN Order o ON o.id = o.total",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
         }
 
         @Nested
@@ -2059,12 +2301,13 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class JoinFormulaJoin extends AbstractQueryIntegrationTests {
             @Test
             void testJoinFormulaThrows() {
+                // A @JoinFormula column is rejected wherever it is referenced (visitColumnReference), the same as
+                // a formula column in any other clause.
                 assertThat(assertThrows(RuntimeException.class, () -> getSessionFactoryScope()
                                 .getSessionFactory()))
                         .rootCause()
                         .isInstanceOf(FeatureNotSupportedException.class)
-                        .hasMessage(
-                                "TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
+                        .hasMessage("Formula is not supported");
             }
         }
 
@@ -2091,16 +2334,15 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         class FilterJoinTableJoin extends AbstractQueryIntegrationTests {
             @Test
             void testFilterJoinTableThrows() {
-                // The @FilterJoinTable turns the association's ON into a junction whose extra conjunct is a
-                // non-comparison FilterPredicate; the per-conjunct guard routes it to HIBERNATE-200.
-                assertThat(assertThrows(FeatureNotSupportedException.class, () -> getSessionFactoryScope()
-                                .inTransaction(session -> {
-                                    session.enableFilter("activeOnly");
-                                    session.createSelectionQuery(
-                                                    "FROM ItemWithFilterJoin i JOIN i.items is", Object[].class)
-                                            .getResultList();
-                                })))
-                        .hasMessage("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
+                // The @FilterJoinTable turns the association's ON into a junction with a FilterPredicate conjunct;
+                // delegating the ON to the shared visitor reaches visitFilterPredicate, the same unsupported path a
+                // WHERE-clause @Filter hits.
+                assertThrows(FeatureNotSupportedException.class, () -> getSessionFactoryScope()
+                        .inTransaction(session -> {
+                            session.enableFilter("activeOnly");
+                            session.createSelectionQuery("FROM ItemWithFilterJoin i JOIN i.items is", Object[].class)
+                                    .getResultList();
+                        }));
             }
 
             @FilterDef(name = "activeOnly", defaultCondition = "1 = 1")
