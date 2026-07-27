@@ -661,9 +661,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    // A comparison of field(s) against value(s) renders as a compact {field: {$op: value}} filter; anything
-    // else — field-to-field, or a tuple with an unsupported (ordering) operator — renders via $expr
-    // (toComparisonExpression, which throws TODO-HIBERNATE-211 for a tuple ordering operator).
     private AstFilter toFilter(ComparisonPredicate comparisonPredicate) {
         return isFieldValueComparison(comparisonPredicate)
                 ? toFieldValueFilter(comparisonPredicate)
