@@ -25,8 +25,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 
 import com.mongodb.client.MongoCollection;
-import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.dialect.TestMongoDialect;
+import com.mongodb.hibernate.junit.CommandHistory;
+import com.mongodb.hibernate.junit.InjectCommandHistory;
 import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import java.util.List;
@@ -51,8 +52,6 @@ import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.model.ast.TableMutation;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
-import org.hibernate.testing.orm.junit.ServiceRegistryScope;
-import org.hibernate.testing.orm.junit.ServiceRegistryScopeAware;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
@@ -68,29 +67,20 @@ import org.mockito.stubbing.Answer;
                         value =
                                 "com.mongodb.hibernate.query.AbstractQueryIntegrationTests$TranslateResultAwareDialect"))
 @ExtendWith(MongoExtension.class)
-public abstract class AbstractQueryIntegrationTests
-        implements SessionFactoryScopeAware, ServiceRegistryScopeAware, MongoServiceRegistryProducer {
+public abstract class AbstractQueryIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
+
+    @InjectCommandHistory
+    protected CommandHistory commandHistory;
 
     private SessionFactoryScope sessionFactoryScope;
-
-    private TestCommandListener testCommandListener;
 
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
     }
 
-    @Override
-    public void injectServiceRegistryScope(ServiceRegistryScope serviceRegistryScope) {
-        this.testCommandListener = serviceRegistryScope.getRegistry().requireService(TestCommandListener.class);
-    }
-
     protected SessionFactoryScope getSessionFactoryScope() {
         return sessionFactoryScope;
-    }
-
-    protected TestCommandListener getTestCommandListener() {
-        return testCommandListener;
     }
 
     protected <T> void assertSelectionQuery(
@@ -194,7 +184,7 @@ public abstract class AbstractQueryIntegrationTests
     }
 
     protected void assertActualCommandsInOrder(BsonDocument... expectedCommands) {
-        var capturedCommands = testCommandListener.getStartedCommands();
+        var capturedCommands = commandHistory.getCommands();
         assertThat(capturedCommands).hasSize(expectedCommands.length);
         for (int i = 0; i < expectedCommands.length; i++) {
             BsonDocument actual = capturedCommands.get(i);

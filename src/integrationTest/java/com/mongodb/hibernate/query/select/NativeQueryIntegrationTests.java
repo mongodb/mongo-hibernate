@@ -246,7 +246,6 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
             session.persist(itemWithArrayAndCollectionValuesOfStructAggregateEmbeddablesHavingArraysAndCollections);
         });
         // Discard the insert commands from seeding so tests can assert only their own query command.
-        getTestCommandListener().clear();
     }
 
     /**

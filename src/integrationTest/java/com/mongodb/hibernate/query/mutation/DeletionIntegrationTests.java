@@ -40,10 +40,10 @@ import org.junit.jupiter.api.Test;
 class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> booksCollection;
+    private MongoCollection<BsonDocument> booksCollection;
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> itemsCollection;
+    private MongoCollection<BsonDocument> itemsCollection;
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War and Peace", 1869, true),
@@ -55,7 +55,6 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Test
@@ -236,7 +235,6 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(0)));
                 session.persist(new ItemWithNestedValue(2, new StructAggregateEmbeddableIntegrationTests.Single(2)));
             });
-            getTestCommandListener().clear();
         }
 
         @Test

@@ -155,7 +155,6 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
             orders.forEach(session::persist);
             lineItems.forEach(session::persist);
         });
-        getTestCommandListener().clear();
     }
 
     @Test
@@ -1819,7 +1818,6 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 TESTING_ITEMS_B.forEach(session::persist);
                 TESTING_ITEMS_A.forEach(session::persist);
             });
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -1907,7 +1905,6 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         void beforeEach() {
             testingItems = List.of(new ItemWithElementCollection(1, List.of("java", "mongodb")));
             getSessionFactoryScope().inTransaction(session -> testingItems.forEach(session::persist));
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -1999,7 +1996,6 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 TESTING_ITEMS.stream().map(itemA -> itemA.itemB).forEach(session::persist);
                 TESTING_ITEMS.forEach(session::persist);
             });
-            getTestCommandListener().clear();
         }
 
         @Test
