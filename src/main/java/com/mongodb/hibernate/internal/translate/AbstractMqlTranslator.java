@@ -1523,7 +1523,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     // A row-value IN-list `(k1, k2) IN ((v1a, v2a), (v1b, v2b))` becomes an OR of per-row per-component AND
-    // equality (order-independent). A single-row list collapses to the AND; a negated list is wrapped in NOR.
+    // equality, pairing test components with each row's values positionally. A single-row list collapses to
+    // the AND; a negated list is wrapped in NOR.
     private AstFilter createTupleInListFilter(InListPredicate inListPredicate, SqlTuple testTuple) {
         // Compact form when the test is all field paths and every row is all values; otherwise $expr.
         return isCompactTupleInList(inListPredicate, testTuple)
