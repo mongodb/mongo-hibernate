@@ -17,7 +17,6 @@
 package com.mongodb.hibernate.junit;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertTrue;
 import static org.junit.platform.commons.support.AnnotationSupport.findAnnotatedFields;
 import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 
@@ -90,7 +89,9 @@ public final class MongoExtension
             }
         }
         for (var field : findAnnotatedFields(testInstance.getClass(), InjectMongoCollection.class)) {
-            assertTrue(format(fieldMustNotBeStaticMsgFormat, field), !isStatic(field));
+            if (isStatic(field)) {
+                throw new IllegalStateException(format(fieldMustNotBeStaticMsgFormat, field));
+            }
             var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
             var collectionName = annotation.value();
             var mongoCollection =
@@ -99,7 +100,9 @@ public final class MongoExtension
             field.set(testInstance, mongoCollection);
         }
         for (var field : findAnnotatedFields(testInstance.getClass(), InjectCommandHistory.class)) {
-            assertTrue(format(fieldMustNotBeStaticMsgFormat, field), !isStatic(field));
+            if (isStatic(field)) {
+                throw new IllegalStateException(format(fieldMustNotBeStaticMsgFormat, field));
+            }
             field.setAccessible(true);
             field.set(
                     testInstance,
