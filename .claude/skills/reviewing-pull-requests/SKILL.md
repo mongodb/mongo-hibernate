@@ -196,6 +196,11 @@ semantics decisions worth settling pre-merge), then **Code quality**. For each f
 and line, the evidence label, and --- for blockers --- the concrete input that fails. Close with what
 gates merge versus what can be a follow-up.
 
+For a blocker, characterize the failure far enough to name the mechanism --- which invariant broke,
+which branch emitted the wrong form --- and reach for `superpowers:systematic-debugging` when the cause
+is not obvious from the probe output. Then stop at the diagnosis: the fix belongs to the author, and a
+review that arrives with a patch instead of a mechanism is harder to act on, not easier.
+
 ## Rationalizations
 
 | Thought | Reality |
