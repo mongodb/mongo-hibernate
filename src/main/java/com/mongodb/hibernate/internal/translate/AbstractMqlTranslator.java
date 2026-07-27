@@ -689,36 +689,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    // Compact form of a row-value = / <> comparison: AND of per-component {field: {$eq: value}} (field side
-    // detected per component), wrapped in $nor for <>. Only reached when isFieldValueComparison is true.
-    private AstFilter toRowValueFieldFilter(ComparisonPredicate comparisonPredicate) {
-        var lhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getLeftHandExpression()))
-                .getExpressions();
-        var rhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()))
-                .getExpressions();
-        var componentFilters = new ArrayList<AstFilter>(lhsComponents.size());
-        for (var i = 0; i < lhsComponents.size(); i++) {
-            var left = lhsComponents.get(i);
-            var right = rhsComponents.get(i);
-            var fieldOnLeft = isFieldPathExpression(left);
-            componentFilters.add(new AstFieldOperationFilter(
-                    acceptAndYield(fieldOnLeft ? left : right, FIELD_PATH),
-                    new AstComparisonFilterOperation(EQ, acceptAndYield(fieldOnLeft ? right : left, VALUE))));
-        }
-        var conjunction = new AstLogicalFilter(AstLogicalFilterOperator.AND, componentFilters);
-        return comparisonPredicate.getOperator() == ComparisonOperator.EQUAL
-                ? conjunction
-                : new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(conjunction));
-    }
-
     private AstExpression toComparisonExpression(ComparisonPredicate comparisonPredicate) {
-        var lhsTuple = getSqlTuple(comparisonPredicate.getLeftHandExpression());
-        if (lhsTuple != null) {
+        if (getSqlTuple(comparisonPredicate.getLeftHandExpression()) != null) {
             var operator = comparisonPredicate.getOperator();
             if (operator != ComparisonOperator.EQUAL && operator != ComparisonOperator.NOT_EQUAL) {
                 throw new FeatureNotSupportedException(
                         "TODO-HIBERNATE-211 https://jira.mongodb.org/browse/HIBERNATE-211");
             }
+            var lhsTuple = getSqlTuple(comparisonPredicate.getLeftHandExpression());
             var rhsTuple = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()));
             var lhsComponents = lhsTuple.getExpressions();
             var rhsComponents = rhsTuple.getExpressions();
@@ -740,6 +718,28 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             return new AstBinaryOperatorExpression(
                     toExprComparisonOperator(comparisonPredicate.getOperator()), lhsExpr, rhsExpr);
         }
+    }
+
+    // Compact form of a row-value = / <> comparison: AND of per-component {field: {$eq: value}} (field side
+    // detected per component), wrapped in $nor for <>. Only reached when isFieldValueComparison is true.
+    private AstFilter toRowValueFieldFilter(ComparisonPredicate comparisonPredicate) {
+        var lhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getLeftHandExpression()))
+                .getExpressions();
+        var rhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()))
+                .getExpressions();
+        var componentFilters = new ArrayList<AstFilter>(lhsComponents.size());
+        for (var i = 0; i < lhsComponents.size(); i++) {
+            var left = lhsComponents.get(i);
+            var right = rhsComponents.get(i);
+            var fieldOnLeft = isFieldPathExpression(left);
+            componentFilters.add(new AstFieldOperationFilter(
+                    acceptAndYield(fieldOnLeft ? left : right, FIELD_PATH),
+                    new AstComparisonFilterOperation(EQ, acceptAndYield(fieldOnLeft ? right : left, VALUE))));
+        }
+        var conjunction = new AstLogicalFilter(AstLogicalFilterOperator.AND, componentFilters);
+        return comparisonPredicate.getOperator() == ComparisonOperator.EQUAL
+                ? conjunction
+                : new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(conjunction));
     }
 
     @Override
