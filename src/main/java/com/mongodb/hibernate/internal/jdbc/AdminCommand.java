@@ -16,59 +16,56 @@
 
 package com.mongodb.hibernate.internal.jdbc;
 
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.IndexModel;
 import com.mongodb.client.model.IndexOptions;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import org.bson.BsonDocument;
 import org.bson.BsonReader;
 import org.bson.BsonType;
-import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
 
-abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, AdminCommand.DropIndexesCommand {
-    private static <T> Decoder<List<T>> listOf(Decoder<T> inner) {
+public abstract sealed class AdminCommand
+        permits AdminCommand.CreateIndexesCommand, AdminCommand.CreateCollection, AdminCommand.DropCollection {
+    private static <T, R> Decoder<List<R>> listOf(Decoder<T> inner, Function<T, R> mapper) {
         return (reader, decoderContext) -> {
-            var results = new ArrayList<T>();
+            var results = new ArrayList<R>();
             reader.readStartArray();
             while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-                results.add(inner.decode(reader, decoderContext));
+                results.add(mapper.apply(inner.decode(reader, decoderContext)));
             }
             reader.readEndArray();
             return results;
         };
     }
 
-    static IndexModel decodeIndexModel(BsonReader reader, DecoderContext decoderContext) {
-        reader.readStartDocument();
-        reader.readName("key");
-        var key = new BsonDocumentCodec().decode(reader, decoderContext);
-        var name = reader.readString("name");
-        var unique = reader.readBoolean("unique");
-        final var result = new IndexModel(key, new IndexOptions().name(name).unique(unique));
-        reader.readEndDocument();
-        return result;
+    private static final Decoder<List<IndexModel>> INDEX_LIST =
+            listOf(MongoClientSettings.getDefaultCodecRegistry().get(Index.class), Index::intoIndexModel);
+
+    public record Index(String name, BsonDocument key, boolean unique) {
+        IndexModel intoIndexModel() {
+            return new IndexModel(key, new IndexOptions().name(name).unique(unique));
+        }
     }
 
     public static AdminCommand decode(BsonReader reader, DecoderContext decoderContext)
             throws SQLFeatureNotSupportedException {
         reader.readStartDocument();
-        final var name = reader.readName();
+        var name = reader.readName();
         final var result =
                 switch (name) {
+                    case "create" -> new CreateCollection(reader.readString());
                     case "createIndexes" -> {
-                        final var collectionName = reader.readString();
+                        var collectionName = reader.readString();
                         reader.readName("indexes");
-                        final var indexes =
-                                listOf(AdminCommand::decodeIndexModel).decode(reader, decoderContext);
-                        yield new CreateIndexesCommand(collectionName, indexes);
+                        yield new CreateIndexesCommand(collectionName, INDEX_LIST.decode(reader, decoderContext));
                     }
-                    case "dropIndexes" -> {
-                        final var collectionName = reader.readString();
-                        yield new DropIndexesCommand(collectionName, reader.readString("index"));
-                    }
+                    case "drop" -> new DropCollection(reader.readString());
                     default ->
                         throw new SQLFeatureNotSupportedException(
                                 "Cannot decode command %s: unknown command".formatted(name));
@@ -78,6 +75,34 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, Ad
     }
 
     abstract void execute(MongoDatabase database);
+
+    static final class CreateCollection extends AdminCommand {
+
+        private final String collectionName;
+
+        CreateCollection(String collectionName) {
+            this.collectionName = collectionName;
+        }
+
+        @Override
+        void execute(MongoDatabase database) {
+            database.createCollection(collectionName);
+        }
+    }
+
+    static final class DropCollection extends AdminCommand {
+
+        private final String collectionName;
+
+        DropCollection(String collectionName) {
+            this.collectionName = collectionName;
+        }
+
+        @Override
+        void execute(MongoDatabase database) {
+            database.getCollection(collectionName).drop();
+        }
+    }
 
     static final class CreateIndexesCommand extends AdminCommand {
         private final String collectionName;
@@ -91,21 +116,6 @@ abstract sealed class AdminCommand permits AdminCommand.CreateIndexesCommand, Ad
         @Override
         void execute(MongoDatabase database) {
             database.getCollection(collectionName).createIndexes(indexes);
-        }
-    }
-
-    static final class DropIndexesCommand extends AdminCommand {
-        private final String collectionName;
-        private final String index;
-
-        DropIndexesCommand(String collectionName, String index) {
-            this.collectionName = collectionName;
-            this.index = index;
-        }
-
-        @Override
-        void execute(MongoDatabase database) {
-            database.getCollection(collectionName).dropIndex(index);
         }
     }
 }

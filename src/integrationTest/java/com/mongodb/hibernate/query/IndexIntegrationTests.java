@@ -17,105 +17,116 @@
 package com.mongodb.hibernate.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.junit.InjectMongoCollection;
+import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Consumer;
 import org.bson.BsonDocument;
+import org.hibernate.Session;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(MongoExtension.class)
 public class IndexIntegrationTests {
+    @InjectMongoCollection("books")
+    private static MongoCollection<BsonDocument> booksCollection;
+
+    private static List<BsonDocument> inRegistry(Class<?> itemClass, Consumer<Session> body) {
+        try (var registry = new StandardServiceRegistryBuilder()
+                .applySettings(Map.of(
+                        "jakarta.persistence.schema-generation.database.action",
+                        "create-drop",
+                        "hibernate.hbm2ddl.halt_on_error",
+                        "true"))
+                .build()) {
+            var testCommandListener = registry.requireService(TestCommandListener.class);
+            try (var sessionFactory = new MetadataSources()
+                            .addAnnotatedClass(itemClass)
+                            .buildMetadata(registry)
+                            .buildSessionFactory();
+                    var session = sessionFactory.openSession()) {
+                body.accept(session);
+            }
+            return testCommandListener.getStartedCommands();
+        }
+    }
 
     @Test
     void testIndexCreated() {
-        final var registry = new StandardServiceRegistryBuilder()
-                .applySettings(Map.of(
-                        "hibernate.hbm2ddl.auto",
-                        "update",
-                        "jakarta.persistence.schema-generation.database.action",
-                        "create",
-                        "hibernate.hbm2ddl.halt_on_error",
-                        "true"))
-                .build();
-        final var testCommandListener = registry.requireService(TestCommandListener.class);
-        try (final var sessionFactory = new MetadataSources()
-                .addAnnotatedClass(Book.class)
-                .buildMetadata(registry)
-                .buildSessionFactory()) {
-            sessionFactory.openSession().close();
-        }
-        final var commands = testCommandListener.getStartedCommands().stream()
+        var commands = inRegistry(Book.class, session -> {
+            var indexNames = new TreeSet<String>();
+            booksCollection.listIndexes().forEach(index -> indexNames.add(index.getString("name")));
+            assertEquals(
+                    Set.of(
+                            "IDXbeyw7jm8ev66e1mbr0hggy13e",
+                            "_id_",
+                            "idx_on_multi_cols",
+                            "idx_on_single_col",
+                            "uniq_idx_on_single_col"),
+                    indexNames);
+        });
+
+        var createCommands = commands.stream()
+                .filter(command -> command.containsKey("create"))
+                .toList();
+        var indexCommands = commands.stream()
                 .filter(command -> command.containsKey("createIndexes"))
                 .toList();
-        assertEquals(4, commands.size());
-        assertThat(commands).allSatisfy(command -> assertThat(
+        var dropCommands =
+                commands.stream().filter(command -> command.containsKey("drop")).toList();
+        assertFalse(createCommands.isEmpty());
+        assertEquals(4, indexCommands.size());
+        assertFalse(dropCommands.isEmpty());
+
+        assertThat(createCommands)
+                .allSatisfy(command ->
+                        assertThat(command.getString("create").getValue()).isEqualTo("books"));
+        assertThat(indexCommands).allSatisfy(command -> assertThat(
                         command.getString("createIndexes").getValue())
                 .isEqualTo("books"));
-        assertThat(commands)
+        assertThat(dropCommands)
+                .allSatisfy(command ->
+                        assertThat(command.getString("drop").getValue()).isEqualTo("books"));
+        assertThat(indexCommands)
                 .extracting(command -> command.getArray("indexes"))
                 .allSatisfy(indexes -> assertThat(indexes).hasSize(1));
         // Note that the driver drops unique=false properties
-        assertThat(commands)
+        assertThat(indexCommands)
                 .flatExtracting(command -> command.getArray("indexes"))
                 .contains(
                         BsonDocument.parse("{ name: \"idx_on_single_col\", key: {publishYear: 1}}"),
                         BsonDocument.parse("{ name: \"idx_on_multi_cols\", key: {publisher: 1, author: 1}}"),
-                        BsonDocument.parse("{ name: \"uniq_idx_on_single_col\", key: {isbn: 1}, unique: true}"),
+                        BsonDocument.parse("{ name: \"uniq_idx_on_single_col\", key: {isbn: -1}, unique: true}"),
                         BsonDocument.parse(
-                                "{ name: \"uniq_idx_on_multi_cols\", key: {publisher: 1, title: 1}, unique: true}"));
+                                "{ name: \"IDXbeyw7jm8ev66e1mbr0hggy13e\", key: {publisher: 1, title: 1}, unique: true}"));
     }
 
     @Test
-    void testForbiddenOptions() {
-        final var registry = new StandardServiceRegistryBuilder()
-                .applySettings(Map.of(
-                        "hibernate.hbm2ddl.auto",
-                        "update",
-                        "jakarta.persistence.schema-generation.database.action",
-                        "create",
-                        "hibernate.hbm2ddl.halt_on_error",
-                        "true"))
-                .build();
-        assertThrows(FeatureNotSupportedException.class, () -> {
-            try (final var sessionFactory = new MetadataSources()
-                    .addAnnotatedClass(InvalidOptions.class)
-                    .buildMetadata(registry)
-                    .buildSessionFactory()) {
-                sessionFactory.openSession().close();
-            }
-        });
-    }
-
-    @Test
-    void testForbiddenFormula() {
-        final var registry = new StandardServiceRegistryBuilder()
-                .applySettings(Map.of(
-                        "hibernate.hbm2ddl.auto",
-                        "update",
-                        "jakarta.persistence.schema-generation.database.action",
-                        "create",
-                        "hibernate.hbm2ddl.halt_on_error",
-                        "true"))
-                .build();
-        assertThrows(FeatureNotSupportedException.class, () -> {
-            try (final var sessionFactory = new MetadataSources()
-                    .addAnnotatedClass(InvalidFormula.class)
-                    .buildMetadata(registry)
-                    .buildSessionFactory()) {
-                sessionFactory.openSession().close();
-            }
-        });
+    void testGarbageDirection() {
+        assertThatThrownBy(() -> inRegistry(InvalidDirection.class, session -> {}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid index entry format: publishYear sideways");
     }
 
     @Entity(name = "Book")
@@ -124,12 +135,12 @@ public class IndexIntegrationTests {
             uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uniq_idx_on_single_col",
-                        columnNames = {"isbn"}),
+                        columnNames = {"isbn desc"}),
             },
             indexes = {
-                @Index(name = "idx_on_single_col", columnList = "publishYear"),
+                @Index(name = "idx_on_single_col", columnList = "publishYear asc"),
                 @Index(name = "idx_on_multi_cols", columnList = "publisher,author"),
-                @Index(name = "uniq_idx_on_multi_cols", columnList = "publisher,title", unique = true)
+                @Index(columnList = "publisher,title", unique = true)
             })
     static class Book {
         @Id
@@ -141,6 +152,17 @@ public class IndexIntegrationTests {
         String author;
         String title;
         String publisher;
+        int publishYear;
+    }
+
+    @Entity(name = "InvalidDirection")
+    @Table(
+            name = "invalid_direction",
+            indexes = {@Index(name = "idx_invalid_options", columnList = "publishYear sideways")})
+    static class InvalidDirection {
+        @Id
+        int id;
+
         int publishYear;
     }
 
@@ -165,5 +187,22 @@ public class IndexIntegrationTests {
 
         @Formula(value = "3*x")
         int publishYear;
+    }
+
+    @Nested
+    class Unsupported implements MongoServiceRegistryProducer {
+        @Test
+        void testForbiddenOptions() {
+            assertThatThrownBy(() -> inRegistry(InvalidOptions.class, session -> {}))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage("Index idx_invalid_options on invalid_options has options, which is not supported");
+        }
+
+        @Test
+        void testForbiddenFormula() {
+            assertThatThrownBy(() -> inRegistry(InvalidFormula.class, session -> {}))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessage("Formula is not supported");
+        }
     }
 }

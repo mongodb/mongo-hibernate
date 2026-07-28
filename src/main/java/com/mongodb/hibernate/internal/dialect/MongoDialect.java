@@ -20,11 +20,11 @@ import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.MongoConstants;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayIncludesFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
-import com.mongodb.hibernate.internal.translate.MongoIndexExporter;
 import com.mongodb.hibernate.internal.translate.MongoTranslatorFactory;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
@@ -38,13 +38,12 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.bson.BsonElement;
-import org.bson.BsonInt32;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.hibernate.JDBCException;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
-import org.hibernate.boot.model.relational.Exportable;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
@@ -55,7 +54,7 @@ import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
-import org.hibernate.internal.util.collections.ArrayHelper;
+import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Index;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
@@ -81,21 +80,6 @@ import org.jspecify.annotations.Nullable;
 @SuppressWarnings("MissingSummary")
 public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     private static final DatabaseVersion MINIMUM_DBMS_VERSION = DatabaseVersion.make(7);
-
-    private static final class NoOpExporter<T extends Exportable> implements Exporter<T> {
-
-        @Override
-        public String[] getSqlCreateStrings(
-                final T exportable, final Metadata metadata, final SqlStringGenerationContext context) {
-            return ArrayHelper.EMPTY_STRING_ARRAY;
-        }
-
-        @Override
-        public String[] getSqlDropStrings(
-                final T exportable, final Metadata metadata, final SqlStringGenerationContext context) {
-            return ArrayHelper.EMPTY_STRING_ARRAY;
-        }
-    }
 
     public MongoDialect(DialectResolutionInfo info) {
         super(info);
@@ -330,7 +314,32 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
 
     @Override
     public Exporter<Table> getTableExporter() {
-        return new NoOpExporter<>();
+        return new Exporter<>() {
+            private String nameForTable(Table table) {
+                if (table.getSchema() != null && !table.getSchema().isBlank()) {
+                    return table.getSchema() + "." + table.getName();
+                } else {
+                    return table.getName();
+                }
+            }
+
+            @Override
+            public String[] getSqlCreateStrings(
+                    Table exportable, Metadata metadata, SqlStringGenerationContext context) {
+                return new String[] {
+                    new BsonDocument("create", new BsonString(nameForTable(exportable)))
+                            .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)
+                };
+            }
+
+            @Override
+            public String[] getSqlDropStrings(Table exportable, Metadata metadata, SqlStringGenerationContext context) {
+                return new String[] {
+                    new BsonDocument("drop", new BsonString(nameForTable(exportable)))
+                            .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)
+                };
+            }
+        };
     }
 
     @Override
@@ -347,7 +356,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             }
 
             @Override
-            protected Stream<BsonElement> keysForExportable(Index exportable) {
+            protected Stream<String> indexEntriesForExportable(Index exportable) {
                 return exportable.getSelectables().stream().map(selectable -> {
                     if (selectable.isFormula()) {
                         throw new FeatureNotSupportedException(
@@ -356,7 +365,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                                                 exportable.getName(),
                                                 exportable.getTable().getName()));
                     }
-                    return new BsonElement(selectable.getText(), new BsonInt32(1));
+                    return selectable.getText();
                 });
             }
 
@@ -381,9 +390,8 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             }
 
             @Override
-            protected Stream<BsonElement> keysForExportable(UniqueKey exportable) {
-                return exportable.getColumns().stream()
-                        .map(column -> new BsonElement(column.getName(), new BsonInt32(1)));
+            protected Stream<String> indexEntriesForExportable(UniqueKey exportable) {
+                return exportable.getColumns().stream().map(Column::getName);
             }
 
             @Override

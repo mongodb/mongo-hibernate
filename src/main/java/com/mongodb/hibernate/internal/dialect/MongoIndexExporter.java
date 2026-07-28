@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate;
+package com.mongodb.hibernate.internal.dialect;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
+import org.bson.BsonInt32;
 import org.bson.BsonNumber;
 import org.bson.BsonString;
 import org.bson.BsonValue;
@@ -36,6 +39,8 @@ import org.hibernate.tool.schema.spi.Exporter;
 
 public abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
 
+    private static final Pattern COLUMN_DESCRIPTOR =
+            Pattern.compile("^([^ ]+)(?: +(asc|desc) *)?", Pattern.CASE_INSENSITIVE);
     private final boolean unique;
 
     protected MongoIndexExporter(boolean unique) {
@@ -47,9 +52,9 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
      *
      * @return a string representation of this index's fields
      */
-    public static String generateIndexName(final BsonDocument index) {
+    public static String generateIndexName(BsonDocument index) {
         StringBuilder indexName = new StringBuilder();
-        for (final String keyNames : index.keySet()) {
+        for (String keyNames : index.keySet()) {
             if (!indexName.isEmpty()) {
                 indexName.append('_');
             }
@@ -68,19 +73,33 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
 
     protected abstract Optional<String> indexNameForExportable(T exportable);
 
-    protected abstract Stream<BsonElement> keysForExportable(T exportable);
+    protected abstract Stream<String> indexEntriesForExportable(T exportable);
+
+    private BsonDocument generateKeys(T exportable) {
+        var keys = new BsonDocument();
+        indexEntriesForExportable(exportable).forEach(indexEntry -> {
+            var match = COLUMN_DESCRIPTOR.matcher(indexEntry);
+            if (!match.matches()) {
+                throw new IllegalArgumentException("Invalid index entry format: " + indexEntry);
+            }
+            keys.put(
+                    match.group(1),
+                    new BsonInt32(
+                            Objects.requireNonNullElse(match.group(2), "asc").equalsIgnoreCase("asc") ? 1 : -1));
+        });
+        return keys;
+    }
 
     @Override
     public final String[] getSqlCreateStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
-        final var collectionName = tableForExportable(exportable).getName();
-        final var keys = new BsonDocument();
-        keysForExportable(exportable).forEach(e -> keys.put(e.getName(), e.getValue()));
-        final var indexName = indexNameForExportable(exportable).orElseGet(() -> generateIndexName(keys));
+        var collectionName = tableForExportable(exportable).getName();
+        var keys = generateKeys(exportable);
+        var indexName = indexNameForExportable(exportable).orElseGet(() -> generateIndexName(keys));
         if (!optionsForExportable(exportable).isBlank()) {
             throw new FeatureNotSupportedException(
                     "Index %s on %s has options, which is not supported".formatted(indexName, collectionName));
         }
-        final var command = new BsonDocument(List.of(
+        var command = new BsonDocument(List.of(
                 new BsonElement("createIndexes", new BsonString(collectionName)),
                 new BsonElement(
                         "indexes",
@@ -97,15 +116,7 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
 
     @Override
     public final String[] getSqlDropStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
-        final var collectionName = tableForExportable(exportable).getName();
-        final var indexName = indexNameForExportable(exportable)
-                .orElseGet(() -> generateIndexName(
-                        new BsonDocument(keysForExportable(exportable).toList())));
-        final var command = new BsonDocument(List.of(
-                new BsonElement("dropIndexes", new BsonString(collectionName)),
-                new BsonElement("index", new BsonString(indexName))));
-        // This intentionally looks like a Mongo command, but it is parsed by AdminCommand and is not sent directly to
-        // the server
-        return new String[] {command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)};
+        throw new IllegalStateException(
+                "HIBERNATE-66: Dropping indices was deemed something that Hibernate never called");
     }
 }
