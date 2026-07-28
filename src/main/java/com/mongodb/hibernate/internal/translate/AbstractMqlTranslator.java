@@ -1909,15 +1909,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     joinAlias);
         }
 
-        var letVariables = new ArrayList<AstLetVariable>();
         if (joinLookupContext != null) {
             throw fail("Nested join ON conditions are not supported");
         }
-        joinLookupContext = new JoinLookupContext(joinedAlias, letVariables);
+        joinLookupContext = new JoinLookupContext(joinedAlias);
         try {
             var expr = acceptAndYieldExpression(assertNotNull(predicate));
             return new AstLookupStageWithPipeline(
-                    joinedCollection, letVariables, List.of(new AstMatchStage(new AstExprFilter(expr))), joinAlias);
+                    joinedCollection,
+                    joinLookupContext.letVariables(),
+                    List.of(new AstMatchStage(new AstExprFilter(expr))),
+                    joinAlias);
         } finally {
             joinLookupContext = null;
         }
@@ -1928,6 +1930,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * bindings while a join {@code ON} condition is translated; see {@link #visitColumnReference}.
      */
     private record JoinLookupContext(String joinedAlias, List<AstLetVariable> letVariables) {
+        JoinLookupContext(String joinedAlias) {
+            this(joinedAlias, new ArrayList<>());
+        }
+
         /**
          * Determines whether the given column belongs to the joined collection.
          *
