@@ -57,34 +57,34 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(MongoExtension.class)
 class IdentifierIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     @InjectMongoCollection(WithSpaceAndDotAndMixedCase.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionWithSpaceAndDotAndMixedCase;
+    private MongoCollection<BsonDocument> mongoCollectionWithSpaceAndDotAndMixedCase;
 
     @InjectMongoCollection(StartingAndEndingWithBackticks.ACTUAL_COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithBackticks;
+    private MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithBackticks;
 
     @InjectMongoCollection(StartingWithBacktick.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingWithBacktick;
+    private MongoCollection<BsonDocument> mongoCollectionStartingWithBacktick;
 
     @InjectMongoCollection(EndingWithBacktick.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionEndingWithBacktick;
+    private MongoCollection<BsonDocument> mongoCollectionEndingWithBacktick;
 
     @InjectMongoCollection(StartingAndEndingWithDoubleQuotes.ACTUAL_COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithDoubleQuotes;
+    private MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithDoubleQuotes;
 
     @InjectMongoCollection(StartingWithDoubleQuote.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingWithDoubleQuote;
+    private MongoCollection<BsonDocument> mongoCollectionStartingWithDoubleQuote;
 
     @InjectMongoCollection(EndingWithDoubleQuote.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionEndingWithDoubleQuote;
+    private MongoCollection<BsonDocument> mongoCollectionEndingWithDoubleQuote;
 
     @InjectMongoCollection(StartingAndEndingWithSquareBrackets.ACTUAL_COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithSquareBrackets;
+    private MongoCollection<BsonDocument> mongoCollectionStartingAndEndingWithSquareBrackets;
 
     @InjectMongoCollection(StartingWithLeftSquareBracket.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionStartingWithLeftSquareBracket;
+    private MongoCollection<BsonDocument> mongoCollectionStartingWithLeftSquareBracket;
 
     @InjectMongoCollection(EndingWithRightSquareBracket.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollectionEndingWithRightSquareBracket;
+    private MongoCollection<BsonDocument> mongoCollectionEndingWithRightSquareBracket;
 
     private SessionFactoryScope sessionFactoryScope;
 

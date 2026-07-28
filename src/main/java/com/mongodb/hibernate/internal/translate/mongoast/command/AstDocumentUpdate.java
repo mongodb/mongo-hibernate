@@ -14,25 +14,30 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.filter;
+package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
+import java.util.List;
 import org.bson.BsonWriter;
 
 /**
- * Renders {@code { $expr: expression }} as a MongoDB aggregation expression predicate in a {@code $match} stage. Used
- * for comparisons that the compact query form cannot express, including non-equijoin {@code ON} conditions inside the
- * {@code $lookup} pipeline form.
+ * A document-form update payload, rendered as {@code { "$set": { … } }}.
  *
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstExprFilter(AstExpression expression) implements AstFilter {
+public record AstDocumentUpdate(List<AstFieldUpdate> updates) implements AstUpdate {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
-        writer.writeName("$expr");
-        expression.render(writer);
+        {
+            writer.writeName("$set");
+            writer.writeStartDocument();
+            {
+                updates.forEach(update -> update.render(writer));
+            }
+            writer.writeEndDocument();
+        }
         writer.writeEndDocument();
     }
 }

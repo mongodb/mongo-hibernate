@@ -37,15 +37,33 @@ import org.hibernate.annotations.GeneratedColumn;
 import org.hibernate.annotations.SourceType;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Isolated;
 
 @ExtendWith(MongoExtension.class)
+// Enables the mongod-global `failCommand` fail point (a single shared server-side switch), so it must not run
+// concurrently with any other test.
+@Isolated
 class NativeBootstrappingIntegrationTests extends AbstractQueryIntegrationTests
         implements MongoServiceRegistryProducer {
     @InjectMongoClient
     private static MongoClient mongoClient;
+
+    // This class is @Isolated because it toggles the mongod-global failCommand fail point; disable it after each test
+    // so nothing leaks past this class.
+    @AfterEach
+    void disableFailPoint() {
+        mongoClient
+                .getDatabase("admin")
+                .runCommand(
+                        BsonDocument.parse(
+                                """
+                                { "configureFailPoint": "failCommand", "mode": "off" }
+                                """));
+    }
 
     @Test
     void testCouldNotInstantiateDialectExceptionMessage() {

@@ -75,7 +75,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @BeforeEach
         void beforeEach() {
             getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
-            getTestCommandListener().clear();
         }
 
         private static List<Contact> getTestingContacts(int... ids) {
@@ -790,7 +789,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @BeforeEach
         void beforeEach() {
             getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -1001,7 +999,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @BeforeEach
         void beforeEach() {
             getSessionFactoryScope().inTransaction(session -> testingContacts.forEach(session::persist));
-            getTestCommandListener().clear();
         }
 
         private static List<Contact> getTestingContacts(final Predicate<Contact> filter) {
@@ -1201,8 +1198,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
             testingBook.discount = 0.25;
             testingBook.price = new BigDecimal("123.50");
             getSessionFactoryScope().inTransaction(session -> session.persist(testingBook));
-
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -1538,7 +1533,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(0)));
                 session.persist(new ItemWithNestedValue(2, new StructAggregateEmbeddableIntegrationTests.Single(2)));
             });
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -1630,7 +1624,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new ItemWithPair(1, new Pair(10, 20)));
                 session.persist(new ItemWithPair(2, new Pair(30, 40)));
             });
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -1674,7 +1667,6 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new ItemWithDeeplyNestedValue(1, new OuterStruct(new InnerStruct(1))));
                 session.persist(new ItemWithDeeplyNestedValue(2, new OuterStruct(new InnerStruct(5))));
             });
-            getTestCommandListener().clear();
         }
 
         @Test
