@@ -1898,7 +1898,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private AstStage buildJoinLookupStage(@Nullable Predicate predicate, String joinedCollection, String joinedAlias) {
         var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;
 
-        // Parentheses are semantically inert, so unwrap them before testing for the compact-form fast path.
+        // unwrapGrouped call lets a parenthesized equijoin ON (a = b) use the compact form instead of pipeline.
         var simpleEquijoin = trySimpleEquijoinColumns(unwrapGrouped(predicate), joinedAlias);
         if (simpleEquijoin.isPresent()) {
             var columns = simpleEquijoin.get();
@@ -1910,14 +1910,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
 
         var letVariables = new ArrayList<AstLetVariable>();
-        var previousContext = joinLookupContext;
+        if (joinLookupContext != null) {
+            throw fail("Nested join ON conditions are not supported");
+        }
         joinLookupContext = new JoinLookupContext(joinedAlias, letVariables);
         try {
             var expr = acceptAndYieldExpression(assertNotNull(predicate));
             return new AstLookupStageWithPipeline(
                     joinedCollection, letVariables, List.of(new AstMatchStage(new AstExprFilter(expr))), joinAlias);
         } finally {
-            joinLookupContext = previousContext;
+            joinLookupContext = null;
         }
     }
 
