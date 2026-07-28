@@ -1887,11 +1887,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * Builds the {@code $lookup} stage for a join {@code ON} condition.
      *
      * <p>A lone one-outer-one-joined equijoin uses the compact, index-friendly {@code localField}/{@code foreignField}
-     * form. Every other shape uses the pipeline form and is translated by delegating to the shared EXPRESSION-mode
-     * predicate visitors — the same ones that translate a {@code WHERE} predicate — so a given HQL predicate produces
-     * the same {@code $expr} whether it appears in {@code WHERE} or {@code ON}. The {@link #joinLookupContext} makes
-     * {@link #visitColumnReference} bind outer columns into {@code let} variables and treat joined columns as
-     * sub-pipeline field paths.
+     * form. Every other shape uses the pipeline form: the {@code ON} predicate is always rendered as an {@code $expr},
+     * built by delegating to the shared EXPRESSION-mode predicate visitors — the same expression logic and operator
+     * mapping the {@code WHERE} translator uses whenever it needs an aggregation expression. (Unlike a {@code WHERE}
+     * clause, which also has a compact {@code {field: {$op: value}}} {@code $match} form for field-vs-value
+     * comparisons, an {@code ON} condition inside the sub-pipeline always uses {@code $expr}.) The
+     * {@link #joinLookupContext} makes {@link #visitColumnReference} bind outer columns into {@code let} variables and
+     * treat joined columns as sub-pipeline field paths.
      */
     private AstStage buildJoinLookupStage(@Nullable Predicate predicate, String joinedCollection, String joinedAlias) {
         var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;

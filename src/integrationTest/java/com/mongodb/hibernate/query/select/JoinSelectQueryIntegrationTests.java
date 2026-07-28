@@ -1273,7 +1273,6 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         @Test
         void testNotEqualConjunct() {
             // A <> conjunct maps to $ne alongside the $eq.
-            // but NOT (a = b) is not supported yet
             assertSelectionQuery(
                     "SELECT c.id, o.total FROM Customer c JOIN Order o"
                             + " ON c.id = o.id AND c.region <> o.region ORDER BY c.id, o.id",
