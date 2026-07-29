@@ -1913,16 +1913,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw fail("Nested join ON conditions are not supported");
         }
         joinLookupContext = new JoinLookupContext(joinedAlias);
-        try {
-            var expr = acceptAndYieldExpression(assertNotNull(predicate));
-            return new AstLookupStageWithPipeline(
-                    joinedCollection,
-                    joinLookupContext.letVariables(),
-                    List.of(new AstMatchStage(new AstExprFilter(expr))),
-                    joinAlias);
-        } finally {
-            joinLookupContext = null;
-        }
+        var expr = acceptAndYieldExpression(assertNotNull(predicate));
+        var lookupStage = new AstLookupStageWithPipeline(
+                joinedCollection,
+                joinLookupContext.letVariables(),
+                List.of(new AstMatchStage(new AstExprFilter(expr))),
+                joinAlias);
+        joinLookupContext = null;
+        return lookupStage;
     }
 
     /**
