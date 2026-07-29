@@ -16,14 +16,16 @@
 
 package com.mongodb.hibernate.query;
 
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import com.mongodb.client.MongoCollection;
-import com.mongodb.hibernate.TestCommandListener;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.junit.CommandHistory;
+import com.mongodb.hibernate.junit.InjectCommandHistory;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
@@ -50,17 +52,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(MongoExtension.class)
 public class IndexIntegrationTests {
     @InjectMongoCollection("books")
-    private static MongoCollection<BsonDocument> booksCollection;
+    private MongoCollection<BsonDocument> booksCollection;
 
-    private static List<BsonDocument> inRegistry(Class<?> itemClass, Consumer<Session> body) {
+    @InjectCommandHistory
+    protected CommandHistory commandHistory;
+
+    private List<BsonDocument> inRegistry(Class<?> itemClass, Consumer<Session> body) {
         try (var registry = new StandardServiceRegistryBuilder()
                 .applySettings(Map.of(
+                        MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
+                        MongoExtension.configurationContributorForClass(this.getClass()),
                         "jakarta.persistence.schema-generation.database.action",
                         "create-drop",
                         "hibernate.hbm2ddl.halt_on_error",
                         "true"))
                 .build()) {
-            var testCommandListener = registry.requireService(TestCommandListener.class);
             try (var sessionFactory = new MetadataSources()
                             .addAnnotatedClass(itemClass)
                             .buildMetadata(registry)
@@ -68,7 +74,7 @@ public class IndexIntegrationTests {
                     var session = sessionFactory.openSession()) {
                 body.accept(session);
             }
-            return testCommandListener.getStartedCommands();
+            return commandHistory.getCommands();
         }
     }
 
