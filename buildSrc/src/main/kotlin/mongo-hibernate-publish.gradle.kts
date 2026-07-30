@@ -19,6 +19,16 @@ plugins {
     id("signing")
 }
 
+// Maven Central rejects a release missing either jar, so the requirement lives with publishing rather than
+// with any one of the Java conventions a published module might or might not apply. Both are empty for a
+// module without source code, as they are for Spring Boot's own starters.
+pluginManager.withPlugin("java") {
+    extensions.configure<JavaPluginExtension> {
+        withJavadocJar()
+        withSourcesJar()
+    }
+}
+
 val localBuildRepo: Provider<Directory> = project.layout.buildDirectory.dir("repo")
 
 tasks.named<Delete>("clean") { delete.add(localBuildRepo) }

@@ -15,6 +15,7 @@
  */
 
 import java.time.Duration
+import java.util.concurrent.Callable
 import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
@@ -212,14 +213,21 @@ val gitVersion: String by lazy {
         .getOrElse("UNKNOWN")
 }
 
+// A plain `tasks.named(name)` below would resolve to the root project's task alone, leaving the
+// publications of the subprojects unpublished. The Callable defers looking at the projects until the task
+// graph is built, by which point the subprojects have been evaluated and their plugins are visible.
+fun publishingTaskInEveryProject(name: String) = Callable {
+    allprojects.filter { it.pluginManager.hasPlugin("mongo-hibernate-publish") }.map { it.tasks.named(name) }
+}
+
 // Publish snapshots
 tasks.register("publishSnapshots") {
     group = "publishing"
     description = "Publishes snapshots to Sonatype"
 
     if (version.toString().endsWith("-SNAPSHOT")) {
-        dependsOn(tasks.named("publishAllPublicationsToLocalBuildRepository"))
-        dependsOn(tasks.named("publishToSonatype"))
+        dependsOn(publishingTaskInEveryProject("publishAllPublicationsToLocalBuildRepository"))
+        dependsOn(publishingTaskInEveryProject("publishToSonatype"))
     }
 }
 
@@ -248,8 +256,8 @@ tasks.register("publishArchives") {
         }
     }
     if (gitVersionMatch) {
-        dependsOn(tasks.named("publishAllPublicationsToLocalBuildRepository"))
-        dependsOn(tasks.named("publishToSonatype"))
+        dependsOn(publishingTaskInEveryProject("publishAllPublicationsToLocalBuildRepository"))
+        dependsOn(publishingTaskInEveryProject("publishToSonatype"))
     }
 }
 
