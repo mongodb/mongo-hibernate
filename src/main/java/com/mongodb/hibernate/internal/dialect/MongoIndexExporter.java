@@ -19,19 +19,17 @@ package com.mongodb.hibernate.internal.dialect;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.MongoConstants;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.bson.BsonArray;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonInt32;
-import org.bson.BsonNumber;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.hibernate.AnnotationException;
 import org.hibernate.boot.Metadata;
+import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Exportable;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.mapping.Table;
@@ -39,66 +37,13 @@ import org.hibernate.tool.schema.spi.Exporter;
 
 public abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
 
-    private static final Pattern COLUMN_DESCRIPTOR =
-            Pattern.compile("^([^ ]+)(?: +(asc|desc) *)?", Pattern.CASE_INSENSITIVE);
     private final boolean unique;
 
     protected MongoIndexExporter(boolean unique) {
         this.unique = unique;
     }
 
-    /**
-     * Convenience method to generate an index name from the set of fields it is over.
-     *
-     * @return a string representation of this index's fields
-     */
-    public static String generateIndexName(BsonDocument index) {
-        StringBuilder indexName = new StringBuilder();
-        for (String keyNames : index.keySet()) {
-            if (!indexName.isEmpty()) {
-                indexName.append('_');
-            }
-            indexName.append(keyNames).append('_');
-            BsonValue ascOrDescValue = index.get(keyNames);
-            if (ascOrDescValue instanceof BsonNumber number) {
-                indexName.append(number.intValue());
-            } else if (ascOrDescValue instanceof BsonString str) {
-                indexName.append(str.getValue().replace(' ', '_'));
-            }
-        }
-        return indexName.toString();
-    }
-
-    protected abstract Table tableForExportable(T exportable);
-
-    protected abstract Optional<String> indexNameForExportable(T exportable);
-
-    protected abstract Stream<String> indexEntriesForExportable(T exportable);
-
-    private BsonDocument generateKeys(T exportable) {
-        var keys = new BsonDocument();
-        indexEntriesForExportable(exportable).forEach(indexEntry -> {
-            var match = COLUMN_DESCRIPTOR.matcher(indexEntry);
-            if (!match.matches()) {
-                throw new IllegalArgumentException("Invalid index entry format: " + indexEntry);
-            }
-            keys.put(
-                    match.group(1),
-                    new BsonInt32(
-                            Objects.requireNonNullElse(match.group(2), "asc").equalsIgnoreCase("asc") ? 1 : -1));
-        });
-        return keys;
-    }
-
-    @Override
-    public final String[] getSqlCreateStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
-        var collectionName = tableForExportable(exportable).getName();
-        var keys = generateKeys(exportable);
-        var indexName = indexNameForExportable(exportable).orElseGet(() -> generateIndexName(keys));
-        if (!optionsForExportable(exportable).isBlank()) {
-            throw new FeatureNotSupportedException(
-                    "Index %s on %s has options, which is not supported".formatted(indexName, collectionName));
-        }
+    static String createIndex(String collectionName, BsonValue keys, String indexName, boolean unique) {
         var command = new BsonDocument(List.of(
                 new BsonElement("createIndexes", new BsonString(collectionName)),
                 new BsonElement(
@@ -109,7 +54,36 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
                                 new BsonElement("unique", BsonBoolean.valueOf(unique)))))))));
         // This intentionally looks like a Mongo command, but it is parsed by AdminCommand and is not sent directly to
         // the server
-        return new String[] {command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)};
+        return command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS);
+    }
+
+    static String nameForTable(Table table) {
+        if (table.getSchema() == null || table.getSchema().isBlank()) {
+            return table.getName();
+        } else {
+            return table.getSchema() + "." + table.getName();
+        }
+    }
+
+    protected abstract String indexNameForExportable(T exportable);
+
+    protected abstract Stream<IndexEntry> indexEntriesForExportable(T exportable);
+
+    protected abstract Table tableForExportable(T exportable);
+
+    @Override
+    public final String[] getSqlCreateStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
+        var table = tableForExportable(exportable);
+        var collectionName = nameForTable(table);
+        var keys = new BsonDocument();
+        indexEntriesForExportable(exportable).forEach(e -> e.insert(keys, table));
+        var indexName = indexNameForExportable(exportable);
+        if (!optionsForExportable(exportable).isBlank()) {
+            throw new FeatureNotSupportedException(
+                    "Index %s on %s has options, which is not supported".formatted(indexName, collectionName));
+        }
+
+        return new String[] {createIndex(collectionName, keys, indexName, unique)};
     }
 
     protected abstract String optionsForExportable(T exportable);
@@ -118,5 +92,22 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
     public final String[] getSqlDropStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
         throw new IllegalStateException(
                 "HIBERNATE-66: Dropping indices was deemed something that Hibernate never called");
+    }
+
+    protected record IndexEntry(String name, String direction) {
+        void insert(BsonDocument document, Table table) {
+            if (table.getColumn(new Identifier(name, false)) == null) {
+                throw new AnnotationException("Table '%s' has no column named '%s'".formatted(table.getName(), name));
+            }
+            int directionValue;
+            if (direction.isBlank() || direction.equals("asc")) {
+                directionValue = 1;
+            } else if (direction.equals("desc")) {
+                directionValue = -1;
+            } else {
+                throw new AnnotationException("Unknown order %s for column %s".formatted(direction, name));
+            }
+            document.put(name, new BsonInt32(directionValue));
+        }
     }
 }

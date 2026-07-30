@@ -36,9 +36,9 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.hibernate.JDBCException;
 import org.hibernate.boot.Metadata;
@@ -326,27 +326,27 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     @Override
     public Exporter<Table> getTableExporter() {
         return new Exporter<>() {
-            private String nameForTable(Table table) {
-                if (table.getSchema() != null && !table.getSchema().isBlank()) {
-                    return table.getSchema() + "." + table.getName();
-                } else {
-                    return table.getName();
-                }
-            }
-
             @Override
             public String[] getSqlCreateStrings(
                     Table exportable, Metadata metadata, SqlStringGenerationContext context) {
-                return new String[] {
-                    new BsonDocument("create", new BsonString(nameForTable(exportable)))
-                            .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)
-                };
+                var collectionName = MongoIndexExporter.nameForTable(exportable);
+                return Stream.concat(
+                                Stream.of(new BsonDocument("create", new BsonString(collectionName))
+                                        .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)),
+                                exportable.getColumns().stream()
+                                        .filter(Column::isUnique)
+                                        .map(column -> MongoIndexExporter.createIndex(
+                                                collectionName,
+                                                new BsonDocument(column.getName(), new BsonInt32(1)),
+                                                column.getUniqueKeyName(),
+                                                true)))
+                        .toArray(String[]::new);
             }
 
             @Override
             public String[] getSqlDropStrings(Table exportable, Metadata metadata, SqlStringGenerationContext context) {
                 return new String[] {
-                    new BsonDocument("drop", new BsonString(nameForTable(exportable)))
+                    new BsonDocument("drop", new BsonString(MongoIndexExporter.nameForTable(exportable)))
                             .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)
                 };
             }
@@ -356,18 +356,19 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     @Override
     public Exporter<Index> getIndexExporter() {
         return new MongoIndexExporter<>(false) {
+
             @Override
             protected Table tableForExportable(Index exportable) {
                 return exportable.getTable();
             }
 
             @Override
-            protected Optional<String> indexNameForExportable(Index exportable) {
-                return Optional.ofNullable(exportable.getName());
+            protected String indexNameForExportable(Index exportable) {
+                return exportable.getName();
             }
 
             @Override
-            protected Stream<String> indexEntriesForExportable(Index exportable) {
+            protected Stream<IndexEntry> indexEntriesForExportable(Index exportable) {
                 return exportable.getSelectables().stream().map(selectable -> {
                     if (selectable.isFormula()) {
                         throw new FeatureNotSupportedException(
@@ -376,7 +377,9 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                                                 exportable.getName(),
                                                 exportable.getTable().getName()));
                     }
-                    return selectable.getText();
+                    return new IndexEntry(
+                            selectable.getText(),
+                            exportable.getSelectableOrderMap().getOrDefault(selectable, ""));
                 });
             }
 
@@ -396,13 +399,15 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             }
 
             @Override
-            protected Optional<String> indexNameForExportable(UniqueKey exportable) {
-                return Optional.ofNullable(exportable.getName());
+            protected String indexNameForExportable(UniqueKey exportable) {
+                return exportable.getName();
             }
 
             @Override
-            protected Stream<String> indexEntriesForExportable(UniqueKey exportable) {
-                return exportable.getColumns().stream().map(Column::getName);
+            protected Stream<IndexEntry> indexEntriesForExportable(UniqueKey exportable) {
+                return exportable.getColumns().stream()
+                        .map(column -> new IndexEntry(
+                                column.getName(), exportable.getColumnOrderMap().getOrDefault(column, "")));
             }
 
             @Override
