@@ -30,8 +30,10 @@ import org.bson.BsonType;
 import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
 
-public abstract sealed class AdminCommand
-        permits AdminCommand.CreateIndexesCommand, AdminCommand.CreateCollection, AdminCommand.DropCollection {
+abstract sealed class AdminCommand
+        permits AdminCommand.CreateIndexesCommand,
+                AdminCommand.CreateCollectionCommand,
+                AdminCommand.DropCollectionCommand {
     private static <T, R> Decoder<List<R>> listOf(Decoder<T> inner, Function<T, R> mapper) {
         return (reader, decoderContext) -> {
             var results = new ArrayList<R>();
@@ -53,19 +55,19 @@ public abstract sealed class AdminCommand
         }
     }
 
-    public static AdminCommand decode(BsonReader reader, DecoderContext decoderContext)
+    public static AdminCommand toAdminCommand(BsonReader reader, DecoderContext decoderContext)
             throws SQLFeatureNotSupportedException {
         reader.readStartDocument();
         var name = reader.readName();
         final var result =
                 switch (name) {
-                    case "create" -> new CreateCollection(reader.readString());
+                    case "create" -> new CreateCollectionCommand(reader.readString());
                     case "createIndexes" -> {
                         var collectionName = reader.readString();
                         reader.readName("indexes");
                         yield new CreateIndexesCommand(collectionName, INDEX_LIST.decode(reader, decoderContext));
                     }
-                    case "drop" -> new DropCollection(reader.readString());
+                    case "drop" -> new DropCollectionCommand(reader.readString());
                     default ->
                         throw new SQLFeatureNotSupportedException(
                                 "Cannot decode command %s: unknown command".formatted(name));
@@ -76,11 +78,11 @@ public abstract sealed class AdminCommand
 
     abstract void execute(MongoDatabase database);
 
-    static final class CreateCollection extends AdminCommand {
+    static final class CreateCollectionCommand extends AdminCommand {
 
         private final String collectionName;
 
-        CreateCollection(String collectionName) {
+        CreateCollectionCommand(String collectionName) {
             this.collectionName = collectionName;
         }
 
@@ -90,11 +92,11 @@ public abstract sealed class AdminCommand
         }
     }
 
-    static final class DropCollection extends AdminCommand {
+    static final class DropCollectionCommand extends AdminCommand {
 
         private final String collectionName;
 
-        DropCollection(String collectionName) {
+        DropCollectionCommand(String collectionName) {
             this.collectionName = collectionName;
         }
 

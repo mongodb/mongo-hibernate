@@ -26,7 +26,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
-import org.bson.BsonValue;
 import org.hibernate.AnnotationException;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.naming.Identifier;
@@ -35,7 +34,7 @@ import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.mapping.Table;
 import org.hibernate.tool.schema.spi.Exporter;
 
-public abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
+abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
 
     private final boolean unique;
 
@@ -43,7 +42,7 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
         this.unique = unique;
     }
 
-    static String createIndex(String collectionName, BsonValue keys, String indexName, boolean unique) {
+    private static String createIndex(String collectionName, BsonDocument keys, String indexName, boolean unique) {
         var command = new BsonDocument(List.of(
                 new BsonElement("createIndexes", new BsonString(collectionName)),
                 new BsonElement(
@@ -57,14 +56,6 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
         return command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS);
     }
 
-    static String nameForTable(Table table) {
-        if (table.getSchema() == null || table.getSchema().isBlank()) {
-            return table.getName();
-        } else {
-            return table.getSchema() + "." + table.getName();
-        }
-    }
-
     protected abstract String indexNameForExportable(T exportable);
 
     protected abstract Stream<IndexEntry> indexEntriesForExportable(T exportable);
@@ -74,7 +65,7 @@ public abstract class MongoIndexExporter<T extends Exportable> implements Export
     @Override
     public final String[] getSqlCreateStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
         var table = tableForExportable(exportable);
-        var collectionName = nameForTable(table);
+        var collectionName = context.format(table.getQualifiedTableName());
         var keys = new BsonDocument();
         indexEntriesForExportable(exportable).forEach(e -> e.insert(keys, table));
         var indexName = indexNameForExportable(exportable);

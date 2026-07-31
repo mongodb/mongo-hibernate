@@ -38,7 +38,6 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.hibernate.JDBCException;
 import org.hibernate.boot.Metadata;
@@ -55,7 +54,6 @@ import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
-import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Index;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
@@ -329,24 +327,16 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             @Override
             public String[] getSqlCreateStrings(
                     Table exportable, Metadata metadata, SqlStringGenerationContext context) {
-                var collectionName = MongoIndexExporter.nameForTable(exportable);
-                return Stream.concat(
-                                Stream.of(new BsonDocument("create", new BsonString(collectionName))
-                                        .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)),
-                                exportable.getColumns().stream()
-                                        .filter(Column::isUnique)
-                                        .map(column -> MongoIndexExporter.createIndex(
-                                                collectionName,
-                                                new BsonDocument(column.getName(), new BsonInt32(1)),
-                                                column.getUniqueKeyName(),
-                                                true)))
-                        .toArray(String[]::new);
+                return new String[] {
+                    new BsonDocument("create", new BsonString(context.format(exportable.getQualifiedTableName())))
+                            .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)
+                };
             }
 
             @Override
             public String[] getSqlDropStrings(Table exportable, Metadata metadata, SqlStringGenerationContext context) {
                 return new String[] {
-                    new BsonDocument("drop", new BsonString(MongoIndexExporter.nameForTable(exportable)))
+                    new BsonDocument("drop", new BsonString(context.format(exportable.getQualifiedTableName())))
                             .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS)
                 };
             }

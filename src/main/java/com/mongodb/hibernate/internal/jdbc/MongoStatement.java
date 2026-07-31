@@ -248,7 +248,7 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        var command = AdminCommand.decode(
+        var command = AdminCommand.toAdminCommand(
                 new JsonReader(mql), DecoderContext.builder().build());
         try {
             command.execute(mongoDatabase);
