@@ -353,7 +353,7 @@ class MongoStatement implements StatementAdapter {
     private static int getUpdateCount(CommandDescription commandDescription, BulkWriteResult bulkWriteResult) {
         return switch (commandDescription) {
             case INSERT -> bulkWriteResult.getInsertedCount();
-            case UPDATE -> bulkWriteResult.getModifiedCount();
+            case UPDATE -> bulkWriteResult.getMatchedCount();
             case DELETE -> bulkWriteResult.getDeletedCount();
             default -> throw fail();
         };

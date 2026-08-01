@@ -337,6 +337,52 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                 Set.of(Book.COLLECTION_NAME));
     }
 
+    @Test
+    void testUpdateMutationCountIsMatchedCount() {
+        assertMutationQuery(
+                "update Book set outOfStock = false where id = 1 or id = 2",
+                2,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {
+                         "$or": [
+                           {"_id": {"$eq": 1}},
+                           {"_id": {"$eq": 2}}
+                         ]
+                       },
+                       "u": {
+                         "$set": {
+                           "outOfStock": false
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                booksCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {"_id": 1, "title": "War & Peace", "outOfStock": false, "publishYear": 1869, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         @Test

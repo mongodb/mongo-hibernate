@@ -168,6 +168,15 @@ class MongoStatementTests {
         }
 
         @Test
+        void testExecuteUpdateReturnsMatchedCount() throws SQLException {
+            doReturn(BulkWriteResult.acknowledged(0, 2, 0, 1, emptyList(), emptyList()))
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
+
+            assertEquals(2, mongoStatement.executeUpdate(EXAMPLE_UPDATE_MQL));
+        }
+
+        @Test
         void testExecute() throws SQLException {
             assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.execute(EXAMPLE_UPDATE_MQL));
             assertTrue(lastOpenResultSet.isClosed());
