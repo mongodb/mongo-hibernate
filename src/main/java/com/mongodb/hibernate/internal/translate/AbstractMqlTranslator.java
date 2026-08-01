@@ -34,6 +34,7 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.UPSERT_MODEL_MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.FALSE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.TRUE;
@@ -83,6 +84,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
@@ -1065,7 +1067,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstUpdateCommand(collection, filter, update), parameterBinders, affectedTableNames));
+                        new AstUpdateCommand(collection, List.of(new AstUpdateStatement(filter, update, false, true))),
+                        parameterBinders,
+                        affectedTableNames));
     }
 
     private AstDocumentUpdate buildDocumentUpdate(List<Assignment> assignments) {
@@ -1104,15 +1108,22 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         return restriction == null ? AstEmptyFilter.INSTANCE : acceptAndYield(restriction, FILTER);
     }
 
-    private AstUpdateCommand createAstUpdateCommand(
-            final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
+    private List<AstFieldUpdate> createFieldUpdates(List<ColumnValueBinding> valueBindings) {
         var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
         for (var valueBinding : valueBindings) {
             var fieldName = acceptAndYield(valueBinding.getColumnReference(), FIELD_PATH);
             var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
             updates.add(new AstFieldUpdate(fieldName, fieldValue));
         }
-        return new AstUpdateCommand(tableName, keyFilter, new AstDocumentUpdate(updates));
+        return updates;
+    }
+
+    private AstUpdateCommand createAstUpdateCommand(
+            final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
+        return new AstUpdateCommand(
+                tableName,
+                List.of(new AstUpdateStatement(
+                        keyFilter, new AstDocumentUpdate(createFieldUpdates(valueBindings)), false, true)));
     }
 
     @Override
@@ -1757,11 +1768,34 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (optionalTableUpdate.getMutatingTable().getTableMapping().isOptional()) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
         }
-        var mutationResult = createMutationResult(
-                optionalTableUpdate.getValueBindings(),
-                optionalTableUpdate.getMutatingTable().getTableName(),
-                createKeyFilter(optionalTableUpdate));
-        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, mutationResult);
+        if (astVisitorValueHolder.expects(UPSERT_MODEL_MUTATION_RESULT)) {
+            var setBindings = new ArrayList<ColumnValueBinding>();
+            var setOnInsertBindings = new ArrayList<ColumnValueBinding>();
+            for (var valueBinding : optionalTableUpdate.getValueBindings()) {
+                // MongoDialect returns a rejecting operation for non-insertable bindings and the
+                // merge coordinator filters out bindings with neither flag, so insertable holds here.
+                assertTrue(valueBinding.isAttributeInsertable());
+                if (valueBinding.isAttributeUpdatable()) {
+                    setBindings.add(valueBinding);
+                } else {
+                    setOnInsertBindings.add(valueBinding);
+                }
+            }
+            var keyFilter = createKeyFilter(optionalTableUpdate);
+            var update =
+                    new AstDocumentUpdate(createFieldUpdates(setBindings), createFieldUpdates(setOnInsertBindings));
+            var command = new AstUpdateCommand(
+                    optionalTableUpdate.getMutatingTable().getTableName(),
+                    List.of(new AstUpdateStatement(keyFilter, update, true, false)));
+            astVisitorValueHolder.yield(
+                    UPSERT_MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(command, parameterBinders));
+        } else {
+            var mutationResult = createMutationResult(
+                    optionalTableUpdate.getValueBindings(),
+                    optionalTableUpdate.getMutatingTable().getTableName(),
+                    createKeyFilter(optionalTableUpdate));
+            astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, mutationResult);
+        }
     }
 
     @Override

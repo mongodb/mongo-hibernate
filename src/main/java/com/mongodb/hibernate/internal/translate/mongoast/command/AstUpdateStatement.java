@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,29 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-
-import java.util.List;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import org.bson.BsonWriter;
 
 /**
- * See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>.
+ * See the <a href="https://www.mongodb.com/docs/manual/reference/command/update/#update-statements">update
+ * statements</a> of the {@code update} command.
  *
  * @hidden
  */
-@SuppressWarnings("InvalidParam")
-public record AstUpdateCommand(String collection, List<AstUpdateStatement> updates) implements AstCommand {
-
-    public AstUpdateCommand {
-        assertFalse(updates.isEmpty());
-    }
-
+public record AstUpdateStatement(AstFilter filter, AstUpdate update, boolean upsert, boolean multi) implements AstNode {
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
         {
-            writer.writeString("update", collection);
-            writer.writeName("updates");
-            writer.writeStartArray();
-            {
-                updates.forEach(statement -> statement.render(writer));
+            writer.writeName("q");
+            filter.render(writer);
+            writer.writeName("u");
+            update.render(writer);
+            if (upsert) {
+                writer.writeBoolean("upsert", true);
             }
-            writer.writeEndArray();
+            writer.writeBoolean("multi", multi);
         }
         writer.writeEndDocument();
     }
