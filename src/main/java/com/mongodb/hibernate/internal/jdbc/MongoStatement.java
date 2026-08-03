@@ -357,8 +357,9 @@ class MongoStatement implements StatementAdapter {
             // The Postgres driver (and others) returns matched count for updates (rather than modified count).
             // Hibernate relies on this behavior for StatelessSession#upsert, which expects executeUpdate to
             // return 1 even if the row was matched but not modified and throws a StaleStateException otherwise.
-            //  An upsert counts as a match as well.
-            case UPDATE -> bulkWriteResult.getMatchedCount() + bulkWriteResult.getUpserts().size();
+            // An upsert counts as a match as well.
+            case UPDATE ->
+                bulkWriteResult.getMatchedCount() + bulkWriteResult.getUpserts().size();
             case DELETE -> bulkWriteResult.getDeletedCount();
             default -> throw fail();
         };

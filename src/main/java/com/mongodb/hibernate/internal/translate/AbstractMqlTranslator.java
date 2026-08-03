@@ -134,9 +134,12 @@ import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
+import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
 import org.hibernate.persister.entity.SingleTableEntityPersister;
@@ -237,7 +240,9 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
 import org.hibernate.sql.model.ast.ColumnValueBinding;
+import org.hibernate.sql.model.ast.ColumnValueParameter;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
+import org.hibernate.sql.model.ast.MutatingTableReference;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
 import org.hibernate.sql.model.internal.TableDeleteStandard;
@@ -1111,11 +1116,75 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private List<AstFieldUpdate> createFieldUpdates(List<ColumnValueBinding> valueBindings) {
         var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
         for (var valueBinding : valueBindings) {
-            var fieldName = acceptAndYield(valueBinding.getColumnReference(), FIELD_PATH);
-            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
-            updates.add(new AstFieldUpdate(fieldName, fieldValue));
+            updates.add(createFieldUpdate(valueBinding));
         }
         return updates;
+    }
+
+    private AstFieldUpdate createFieldUpdate(ColumnValueBinding valueBinding) {
+        var fieldName = acceptAndYield(valueBinding.getColumnReference(), FIELD_PATH);
+        var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
+        return new AstFieldUpdate(fieldName, fieldValue);
+    }
+
+    /**
+     * The merge coordinator decomposes a {@code @Struct} embeddable into one binding per leaf field, but
+     * {@code UpdateCoordinatorStandard} binds a single value for the aggregate as a whole. Emitting the leaves would
+     * therefore leave the aggregate's bound value without a matching parameter, so each aggregate's leaves collapse
+     * into one field update, named after the aggregate column and backed by a parameter carrying the aggregate's own
+     * mapping. The leaves' value expressions must not be visited: every visit appends a parameter binder and emits a
+     * placeholder, and the JDBC layer pairs the two by position.
+     *
+     * <p>This exists only to work around <a href="https://hibernate.atlassian.net/browse/HHH-20754">HHH-20754</a>.
+     * {@code MergeCoordinatorStandard} overrides {@code forEachUpdatable} to call {@code forEachSelectable}, which
+     * descends into the leaves, while {@code EmbeddableMappingTypeImpl.forEachUpdatable} short-circuits on
+     * {@code shouldMutateAggregateMapping()} and emits the aggregate. That is why the standard update path needs none
+     * of this. Once the merge path emits the aggregate, {@link #findAggregate} stops matching and this collapsing
+     * becomes dead rather than wrong, so it can be deleted along with {@link #aggregateMappings} and
+     * {@link #findAggregate}, restoring plain per-binding rendering.
+     */
+    private List<AstFieldUpdate> createUpsertFieldUpdates(
+            List<ColumnValueBinding> valueBindings,
+            List<SelectableMapping> aggregates,
+            MutatingTableReference mutatingTable) {
+        var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
+        var collapsedAggregates = new HashSet<String>();
+        for (var valueBinding : valueBindings) {
+            var aggregate = findAggregate(aggregates, valueBinding);
+            if (aggregate == null) {
+                updates.add(createFieldUpdate(valueBinding));
+            } else if (collapsedAggregates.add(aggregate.getSelectionExpression())) {
+                parameterBinders.add(
+                        new ColumnValueParameter(new ColumnReference(mutatingTable, aggregate), ParameterUsage.SET));
+                updates.add(new AstFieldUpdate(aggregate.getSelectionExpression(), AstParameterMarker.INSTANCE));
+            }
+        }
+        return updates;
+    }
+
+    private static List<SelectableMapping> aggregateMappings(OptionalTableUpdate optionalTableUpdate) {
+        var aggregates = new ArrayList<SelectableMapping>();
+        optionalTableUpdate.getMutationTarget().getTargetPart().forEachAttributeMapping(attributeMapping -> {
+            if (attributeMapping instanceof EmbeddedAttributeMapping embeddedAttributeMapping) {
+                var aggregate =
+                        embeddedAttributeMapping.getEmbeddableTypeDescriptor().getAggregateMapping();
+                if (aggregate != null) {
+                    aggregates.add(aggregate);
+                }
+            }
+        });
+        return aggregates;
+    }
+
+    private static @Nullable SelectableMapping findAggregate(
+            List<SelectableMapping> aggregates, ColumnValueBinding valueBinding) {
+        var columnExpression = valueBinding.getColumnReference().getColumnExpression();
+        for (var aggregate : aggregates) {
+            if (columnExpression.startsWith(aggregate.getSelectionExpression() + ".")) {
+                return aggregate;
+            }
+        }
+        return null;
     }
 
     private AstUpdateCommand createAstUpdateCommand(
@@ -1769,21 +1838,28 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
         }
         if (astVisitorValueHolder.expects(UPSERT_MODEL_MUTATION_RESULT)) {
+            var aggregates = aggregateMappings(optionalTableUpdate);
             var setBindings = new ArrayList<ColumnValueBinding>();
             var setOnInsertBindings = new ArrayList<ColumnValueBinding>();
             for (var valueBinding : optionalTableUpdate.getValueBindings()) {
                 // MongoDialect returns a rejecting operation for non-insertable bindings and the
                 // merge coordinator filters out bindings with neither flag, so insertable holds here.
                 assertTrue(valueBinding.isAttributeInsertable());
-                if (valueBinding.isAttributeUpdatable()) {
+                var aggregate = findAggregate(aggregates, valueBinding);
+                // An aggregate's leaves may individually claim to be non-updatable, but the coordinator binds
+                // the aggregate as a whole, so the aggregate column's own flag is what governs.
+                var updatable = aggregate != null ? aggregate.isUpdateable() : valueBinding.isAttributeUpdatable();
+                if (updatable) {
                     setBindings.add(valueBinding);
                 } else {
                     setOnInsertBindings.add(valueBinding);
                 }
             }
             var keyFilter = createKeyFilter(optionalTableUpdate);
-            var update =
-                    new AstDocumentUpdate(createFieldUpdates(setBindings), createFieldUpdates(setOnInsertBindings));
+            var mutatingTable = optionalTableUpdate.getMutatingTable();
+            var update = new AstDocumentUpdate(
+                    createUpsertFieldUpdates(setBindings, aggregates, mutatingTable),
+                    createUpsertFieldUpdates(setOnInsertBindings, aggregates, mutatingTable));
             var command = new AstUpdateCommand(
                     optionalTableUpdate.getMutatingTable().getTableName(),
                     List.of(new AstUpdateStatement(keyFilter, update, true, false)));
