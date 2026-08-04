@@ -23,57 +23,56 @@ import com.mongodb.client.model.IndexOptions;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import org.bson.BsonDocument;
-import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.codecs.Decoder;
 import org.bson.codecs.DecoderContext;
+import org.bson.json.JsonReader;
 
 abstract sealed class AdminCommand
         permits AdminCommand.CreateIndexesCommand,
                 AdminCommand.CreateCollectionCommand,
                 AdminCommand.DropCollectionCommand {
-    private static <T, R> Decoder<List<R>> listOf(Decoder<T> inner, Function<T, R> mapper) {
-        return (reader, decoderContext) -> {
-            var results = new ArrayList<R>();
-            reader.readStartArray();
-            while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-                results.add(mapper.apply(inner.decode(reader, decoderContext)));
-            }
-            reader.readEndArray();
-            return results;
-        };
-    }
 
-    private static final Decoder<List<IndexModel>> INDEX_LIST =
-            listOf(MongoClientSettings.getDefaultCodecRegistry().get(Index.class), Index::intoIndexModel);
+    private static final Decoder<Index> INDEX_DECODER =
+            MongoClientSettings.getDefaultCodecRegistry().get(Index.class);
 
     public record Index(String name, BsonDocument key, boolean unique) {
-        IndexModel intoIndexModel() {
+        IndexModel toIndexModel() {
             return new IndexModel(key, new IndexOptions().name(name).unique(unique));
         }
     }
 
-    public static AdminCommand toAdminCommand(BsonReader reader, DecoderContext decoderContext)
-            throws SQLFeatureNotSupportedException {
-        reader.readStartDocument();
-        var name = reader.readName();
-        final var result =
-                switch (name) {
-                    case "create" -> new CreateCollectionCommand(reader.readString());
-                    case "createIndexes" -> {
-                        var collectionName = reader.readString();
-                        reader.readName("indexes");
-                        yield new CreateIndexesCommand(collectionName, INDEX_LIST.decode(reader, decoderContext));
-                    }
-                    case "drop" -> new DropCollectionCommand(reader.readString());
-                    default ->
-                        throw new SQLFeatureNotSupportedException(
-                                "Cannot decode command %s: unknown command".formatted(name));
-                };
-        reader.readEndDocument();
-        return result;
+    static AdminCommand toAdminCommand(String command) throws SQLFeatureNotSupportedException {
+
+        try (var reader = new JsonReader(command)) {
+            var decoderContext = DecoderContext.builder().build();
+            reader.readStartDocument();
+            var name = reader.readName();
+            final var result =
+                    switch (name) {
+                        case "create" -> new CreateCollectionCommand(reader.readString());
+                        case "createIndexes" -> {
+                            var collectionName = reader.readString();
+                            reader.readName("indexes");
+                            var indexes = new ArrayList<IndexModel>();
+                            reader.readStartArray();
+                            while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
+                                indexes.add(INDEX_DECODER
+                                        .decode(reader, decoderContext)
+                                        .toIndexModel());
+                            }
+                            reader.readEndArray();
+                            yield new CreateIndexesCommand(collectionName, indexes);
+                        }
+                        case "drop" -> new DropCollectionCommand(reader.readString());
+                        default ->
+                            throw new SQLFeatureNotSupportedException(
+                                    "Cannot decode command %s: unknown command".formatted(name));
+                    };
+            reader.readEndDocument();
+            return result;
+        }
     }
 
     abstract void execute(MongoDatabase database);

@@ -26,6 +26,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonElement;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
+import org.bson.BsonValue;
 import org.hibernate.AnnotationException;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.naming.Identifier;
@@ -38,11 +39,12 @@ abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
 
     private final boolean unique;
 
-    protected MongoIndexExporter(boolean unique) {
+    MongoIndexExporter(boolean unique) {
         this.unique = unique;
     }
 
-    private static String createIndex(String collectionName, BsonDocument keys, String indexName, boolean unique) {
+    private static String createIndexesCommand(
+            String collectionName, BsonDocument keys, String indexName, boolean unique) {
         var command = new BsonDocument(List.of(
                 new BsonElement("createIndexes", new BsonString(collectionName)),
                 new BsonElement(
@@ -56,28 +58,47 @@ abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
         return command.toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS);
     }
 
-    protected abstract String indexNameForExportable(T exportable);
+    private static BsonValue directionFromString(String name, String direction) {
+        int directionValue;
+        if (direction.isBlank() || direction.equals("asc")) {
+            directionValue = 1;
+        } else if (direction.equals("desc")) {
+            directionValue = -1;
+        } else {
+            throw new AnnotationException("Unknown order %s for column %s".formatted(direction, name));
+        }
+        return new BsonInt32(directionValue);
+    }
 
-    protected abstract Stream<IndexEntry> indexEntriesForExportable(T exportable);
+    abstract String indexNameForExportable(T exportable);
 
-    protected abstract Table tableForExportable(T exportable);
+    abstract Stream<IndexEntry> indexEntriesForExportable(T exportable);
+
+    abstract Table tableForExportable(T exportable);
 
     @Override
     public final String[] getSqlCreateStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
         var table = tableForExportable(exportable);
         var collectionName = context.format(table.getQualifiedTableName());
         var keys = new BsonDocument();
-        indexEntriesForExportable(exportable).forEach(e -> e.insert(keys, table));
+        indexEntriesForExportable(exportable).forEach(e -> {
+            if (table.getColumn(new Identifier(e.name(), false)) == null) {
+                throw new AnnotationException(
+                        "Table '%s' has no column named '%s'".formatted(table.getName(), e.name()));
+            }
+
+            keys.put(e.name(), directionFromString(e.name(), e.direction()));
+        });
         var indexName = indexNameForExportable(exportable);
         if (!optionsForExportable(exportable).isBlank()) {
             throw new FeatureNotSupportedException(
                     "Index %s on %s has options, which is not supported".formatted(indexName, collectionName));
         }
 
-        return new String[] {createIndex(collectionName, keys, indexName, unique)};
+        return new String[] {createIndexesCommand(collectionName, keys, indexName, unique)};
     }
 
-    protected abstract String optionsForExportable(T exportable);
+    abstract String optionsForExportable(T exportable);
 
     @Override
     public final String[] getSqlDropStrings(T exportable, Metadata metadata, SqlStringGenerationContext context) {
@@ -85,20 +106,5 @@ abstract class MongoIndexExporter<T extends Exportable> implements Exporter<T> {
                 "HIBERNATE-66: Dropping indices was deemed something that Hibernate never called");
     }
 
-    protected record IndexEntry(String name, String direction) {
-        void insert(BsonDocument document, Table table) {
-            if (table.getColumn(new Identifier(name, false)) == null) {
-                throw new AnnotationException("Table '%s' has no column named '%s'".formatted(table.getName(), name));
-            }
-            int directionValue;
-            if (direction.isBlank() || direction.equals("asc")) {
-                directionValue = 1;
-            } else if (direction.equals("desc")) {
-                directionValue = -1;
-            } else {
-                throw new AnnotationException("Unknown order %s for column %s".formatted(direction, name));
-            }
-            document.put(name, new BsonInt32(directionValue));
-        }
-    }
+    record IndexEntry(String name, String direction) {}
 }

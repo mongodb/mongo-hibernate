@@ -67,8 +67,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonInvalidOperationException;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-import org.bson.codecs.DecoderContext;
-import org.bson.json.JsonReader;
 import org.jspecify.annotations.Nullable;
 
 class MongoStatement implements StatementAdapter {
@@ -248,8 +246,7 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        var command = AdminCommand.toAdminCommand(
-                new JsonReader(mql), DecoderContext.builder().build());
+        var command = AdminCommand.toAdminCommand(mql);
         try {
             command.execute(mongoDatabase);
             return false;
