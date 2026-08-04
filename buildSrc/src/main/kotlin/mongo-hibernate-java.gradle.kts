@@ -21,11 +21,7 @@ plugins {
     id("spotless-java-extension")
 }
 
-java {
-    toolchain { languageVersion = JavaLanguageVersion.of(17) } // Remember to update javadoc links
-    withJavadocJar()
-    withSourcesJar()
-}
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } } // Remember to update javadoc links
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
