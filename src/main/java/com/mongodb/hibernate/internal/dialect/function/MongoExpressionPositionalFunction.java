@@ -75,8 +75,7 @@ public final class MongoExpressionPositionalFunction extends AbstractSqmSelfRend
      * @param returnType the type that this function will return
      * @param modifier modifies the argument list before generating MQL; this happens after all argument pre-processing
      *     is complete
-     * @param outputMapper allows wrapping the generated output with additional operations; this is intended to provide
-     *     a mechanism that
+     * @param outputMapper allows wrapping the generated output with additional operations
      * @param parameters a list of parameters accepted by the function; this can include required or optional arguments,
      *     but the required arguments must be first, the ones with default parameters second, and ones that can be
      *     missing last

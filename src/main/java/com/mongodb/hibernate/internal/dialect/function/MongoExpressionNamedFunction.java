@@ -69,8 +69,7 @@ public final class MongoExpressionNamedFunction extends AbstractSqmSelfRendering
      * @param mongoOperator the operator in Mongo, including the leading <code>$</code>
      * @param typeConfiguration the type information of the Hibernate context
      * @param returnType the type that this function will return
-     * @param outputMapper allows wrapping the generated output with additional operations; this is intended to provide
-     *     a mechanism that
+     * @param outputMapper allows wrapping the generated output with additional operations
      * @param parameters a list of parameters accepted by the function; this can include required or optional arguments,
      *     but the required arguments must be first
      * @see FunctionParameterDefinition#addOne(AstExpression)

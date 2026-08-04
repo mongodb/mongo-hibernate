@@ -67,8 +67,7 @@ public final class MongoExpressionUnaryFunction extends AbstractSqmSelfRendering
      * @param mongoOperator the operator in Mongo, including the leading <code>$</code>
      * @param typeConfiguration the type information of the Hibernate context
      * @param returnType the type that this function will return
-     * @param outputMapper allows wrapping the generated output with additional operations; this is intended to provide
-     *     a mechanism that
+     * @param outputMapper allows wrapping the generated output with additional operations
      * @param parameterType the type of the single argument to this function
      * @see FunctionParameterDefinition#addOne(AstExpression)
      * @see FunctionParameterDefinition#subtractOne(AstExpression)
