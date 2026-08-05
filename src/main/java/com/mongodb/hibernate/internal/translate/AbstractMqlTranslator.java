@@ -1507,6 +1507,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Row-value IN in aggregation-expression position: OR of per-row (AND of per-component $eq); a single-row
     // list collapses to the bare AND; a negated list is wrapped in $not.
     private AstExpression toTupleInListExpression(InListPredicate inListPredicate) {
+        if (inListPredicate.getListExpressions().isEmpty()) {
+            return new AstLiteralExpression(inListPredicate.isNegated() ? TRUE : FALSE);
+        }
         var keyExpressions = getSqlTuple(inListPredicate.getTestExpression()).getExpressions();
         var rowExpressions = new ArrayList<AstExpression>(
                 inListPredicate.getListExpressions().size());
@@ -1531,6 +1534,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstFilter createTupleInListFilter(InListPredicate inListPredicate) {
+        if (inListPredicate.getListExpressions().isEmpty()) {
+            return new AstExprFilter(new AstValueExpression(inListPredicate.isNegated() ? TRUE : FALSE));
+        }
         // Compact form when the test is all field paths and every row is all values; otherwise $expr.
         return isCompactTupleInList(inListPredicate)
                 ? toCompactTupleInListFilter(inListPredicate)

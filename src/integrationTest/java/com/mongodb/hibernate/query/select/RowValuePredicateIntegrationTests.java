@@ -686,6 +686,76 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     @Test
+    void testInEmpty() {
+        assertSelectionQuery(
+                "from Widget w where (w.a, w.b) in () order by w.id",
+                Widget.class,
+                """
+                {
+                  "aggregate": "row_value",
+                  "pipeline": [
+                    { "$match": { "$expr": false } },
+                    { "$sort": { "_id": 1 } },
+                    { "$project": { "_id": true, "a": true, "b": true } }
+                  ]
+                }""",
+                List.of(),
+                Set.of(Widget.COLLECTION_NAME));
+    }
+
+    @Test
+    void testNotInEmpty() {
+        assertSelectionQuery(
+                "from Widget w where (w.a, w.b) not in () order by w.id",
+                Widget.class,
+                """
+                {
+                  "aggregate": "row_value",
+                  "pipeline": [
+                    { "$match": { "$expr": true } },
+                    { "$sort": { "_id": 1 } },
+                    { "$project": { "_id": true, "a": true, "b": true } }
+                  ]
+                }""",
+                List.of(new Widget(1, 10, 20), new Widget(2, 10, 99), new Widget(3, 30, 40)),
+                Set.of(Widget.COLLECTION_NAME));
+    }
+
+    @Test
+    void testSelectInEmpty() {
+        assertSelectionQuery(
+                "select (w.a, w.b) in () from Widget w order by w.id",
+                Boolean.class,
+                """
+                {
+                  "aggregate": "row_value",
+                  "pipeline": [
+                    { "$sort": { "_id": 1 } },
+                    { "$project": { "#c_1": { "$literal": false } } }
+                  ]
+                }""",
+                List.of(false, false, false),
+                Set.of(Widget.COLLECTION_NAME));
+    }
+
+    @Test
+    void testSelectNotInEmpty() {
+        assertSelectionQuery(
+                "select (w.a, w.b) not in () from Widget w order by w.id",
+                Boolean.class,
+                """
+                {
+                  "aggregate": "row_value",
+                  "pipeline": [
+                    { "$sort": { "_id": 1 } },
+                    { "$project": { "#c_1": { "$literal": true } } }
+                  ]
+                }""",
+                List.of(true, true, true),
+                Set.of(Widget.COLLECTION_NAME));
+    }
+
+    @Test
     void testNeReturnsRowsWithNullComponent() {
         assertSelectionQuery(
                 "from NullableWidget w where (w.a, w.b) <> (:a, :b) order by w.id",
