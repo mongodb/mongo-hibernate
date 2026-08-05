@@ -47,7 +47,6 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
             session.persist(new NullableWidget(3, 10L, null)); // b is null
             session.persist(new NullableWidget(4, 30L, 40L));
         });
-        getTestCommandListener().clear();
     }
 
     @Test

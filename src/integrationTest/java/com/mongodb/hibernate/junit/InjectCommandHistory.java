@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-import org.gradle.api.tasks.testing.logging.TestLogEvent
+package com.mongodb.hibernate.junit;
 
-plugins {
-    id("java-library")
-    id("spotless-java-extension")
-}
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-java { toolchain { languageVersion = JavaLanguageVersion.of(17) } } // Remember to update javadoc links
-
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
-    testLogging { events(TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED) }
-}
-
-tasks.check { dependsOn(tasks.spotlessApply) }
+/**
+ * Injects the test class's {@link CommandHistory}. The field must be an instance field (not {@code static}) of type
+ * {@link CommandHistory}, so that each concurrently running test class binds to its own database's command record.
+ */
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface InjectCommandHistory {}

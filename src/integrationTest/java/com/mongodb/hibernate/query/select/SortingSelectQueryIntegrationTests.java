@@ -55,7 +55,6 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     private static List<Book> getBooksByIds(int... ids) {
@@ -324,7 +323,6 @@ class SortingSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                 session.persist(new SimpleSelectQueryIntegrationTests.ItemWithNestedValue(
                         2, new StructAggregateEmbeddableIntegrationTests.Single(3)));
             });
-            getTestCommandListener().clear();
         }
 
         @Test

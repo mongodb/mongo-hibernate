@@ -9,7 +9,7 @@ set -o errexit  # Exit the script with error if any of the commands fail
 ############################################
 source java-config.sh
 
-RELEASE=${RELEASE:false}
+RELEASE=${RELEASE:-false}
 
 export ORG_GRADLE_PROJECT_nexusUsername=${NEXUS_USERNAME}
 export ORG_GRADLE_PROJECT_nexusPassword=${NEXUS_PASSWORD}
@@ -17,12 +17,12 @@ export ORG_GRADLE_PROJECT_signingKey="${SIGNING_KEY}"
 export ORG_GRADLE_PROJECT_signingPassword=${SIGNING_PASSWORD}
 
 if [ "$RELEASE" == "true" ]; then
-  TASK="publishArchives closeAndReleaseSonatypeStagingRepository"
+  TASKS=(publishArchives closeAndReleaseSonatypeStagingRepository)
 else
-  TASK="publishSnapshots"
+  TASKS=(publishSnapshots)
 fi
 
-SYSTEM_PROPERTIES="-Dorg.gradle.internal.publish.checksums.insecure=true"
+SYSTEM_PROPERTIES=(-Dorg.gradle.internal.publish.checksums.insecure=true)
 
 ./gradlew -version
-./gradlew ${SYSTEM_PROPERTIES} --stacktrace --info "${TASK}"
+./gradlew "${SYSTEM_PROPERTIES[@]}" --stacktrace --info "${TASKS[@]}"

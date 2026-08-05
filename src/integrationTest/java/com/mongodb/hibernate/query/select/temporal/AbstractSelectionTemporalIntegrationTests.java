@@ -32,7 +32,6 @@ abstract class AbstractSelectionTemporalIntegrationTests<I, T> extends AbstractQ
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> getSeedData().forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     abstract List<I> getSeedData();
