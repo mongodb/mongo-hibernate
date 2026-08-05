@@ -9,6 +9,23 @@ This guidance covers domain-specific investigation steps and conventions for add
 
 ---
 
+## Before designing
+
+Read `ARCHITECTURE.md`. It defines the contracts this work has to satisfy --- visitor dispatch and the
+descriptor protocol, the two filter languages, clause-position parity, pipeline stage order, the
+failure contract --- and the phases below assume them rather than restating them.
+
+Then design in this order, because each step constrains the next:
+
+1. **The aggregation expression.** `$project` accepts nothing else, and `$expr` wraps it in `$match`.
+2. **Both clause positions**, `SELECT` and `WHERE`.
+3. **Only then**, whether a find-syntax form is worth adding for the field-versus-value case.
+
+`.claude/skills/reviewing-pull-requests/SKILL.md` is the review counterpart; reading it tells you what
+evidence your PR will be asked for.
+
+---
+
 ## Phase 1: Investigate Before Brainstorming
 
 Do this before brainstorming.
@@ -36,9 +53,14 @@ Extract source from the Hibernate sources JAR at `~/.gradle/caches/.../hibernate
 
 ### 1c. Enumerate all shapes
 
-Build a complete table: every combination of the construct that's syntactically valid in HQL. Mark each ✅ (translatable) or ❌ (throw). For ❌ shapes, identify which ticket will track implementation.
+Build a complete table: every combination of the construct that's syntactically valid in HQL. Mark each ✅ (translatable) or ❌ (throw). Split the ❌ shapes: those we intend to support later need a tracking ticket, while those MQL cannot express are permanent and need none — just a throw whose message says why.
 
-**File Jira tickets for every ❌ shape before writing any code.** Use real ticket numbers in throw messages from day one — no literal `HIBERNATE-NNN` placeholders where `NNN` hasn't been replaced with an actual number. File the Jira tickets first, then reference them in the code. The codebase convention uses a `TODO-` prefix on these strings to signal the feature is not yet implemented; follow that convention for new throws (e.g. `"TODO-HIBERNATE-161 https://jira.mongodb.org/browse/HIBERNATE-161"`). File against project HIBERNATE at https://jira.mongodb.org/browse/HIBERNATE using the `jira` CLI.
+**Clause position is one of the combinations.** Enumerate the construct in `SELECT` and in `WHERE`
+separately --- and, where it applies, in `ORDER BY`, mutation `SET`, and as a predicate operand
+(`like`, `in`, `is null`). Each is a distinct row needing its own ✅/❌, because each is a distinct
+translator branch. A shape table that only covers projections will pass review as incomplete.
+
+**File Jira tickets before writing any code, for every ❌ shape you intend to support later.** Use real ticket numbers in throw messages from day one — no literal `HIBERNATE-NNN` placeholders where `NNN` hasn't been replaced with an actual number. A shape that is permanently out of reach gets a bare message instead, naming the MQL limitation; do not invent a ticket to satisfy the convention. File the Jira tickets first, then reference them in the code. The codebase convention uses a `TODO-` prefix on these strings to signal the feature is not yet implemented; follow that convention for new throws, pairing the ticket key with its browse URL (`"TODO-HIBERNATE-NNN https://jira.mongodb.org/browse/HIBERNATE-NNN"`). File against project HIBERNATE at https://jira.mongodb.org/browse/HIBERNATE using the `jira` CLI.
 
 ---
 
@@ -70,7 +92,7 @@ The plan must follow this task order:
 
 - Positive tests: `assertSelectionQuery(hql, resultType, expectedMql, expectedResults, expectedAffectedCollections)` — always assert the full MQL pipeline string, the full result set, and the full set of affected collections
 - When the `$project` fields are unknown upfront (e.g. JOIN FETCH): use `assertActualCommandsInOrder` with `/* FILL IN after first test run */`; upgrade to full `assertSelectionQuery` once the actual MQL is known
-- Negative tests: `assertSelectQueryFailure(hql, resultType, FeatureNotSupportedException.class, "TODO-HIBERNATE-161 ...")` — use the real ticket number, following the `TODO-HIBERNATE-NNN` codebase convention
+- Negative tests: `assertSelectQueryFailure(hql, resultType, FeatureNotSupportedException.class, "TODO-HIBERNATE-NNN ...")` — substitute the real ticket number, following the `TODO-HIBERNATE-NNN` codebase convention
 - Positive tests live in a descriptively named `@Nested` class with `@BeforeEach` seed data; negative tests live at the outer class level for one-off cases or in `@Nested class Unsupported` when there are several.
 - Every non-trivial code path (loop iterations, recursive calls, each instanceof branch) must be covered by a positive or negative test
 

@@ -1,0 +1,171 @@
+/*
+ * Copyright 2026-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// THROWAWAY REVIEW PROBE for query / translation work --- delete before finishing. Never commit.
+// Copy to src/integrationTest/java/com/mongodb/hibernate/query/ZzProbeTests.java
+// Run:  ./gradlew :integrationTest --tests ZzProbeTests      (leading colon is required)
+// Read: grep -oh 'PROBE|.*' build/test-results/integrationTest/TEST-*ZzProbeTests.xml | sed 's/&quot;/"/g'
+//
+// This is deliberately self-contained: it registers its OWN CommandListener through the public
+// MongoConfigurationContributor SPI and builds its own registry and SessionFactory, rather than
+// borrowing the integration-test framework's listener, whose shape and lifetime change over time.
+//
+// Run ONE probe class at a time. The suite runs test classes concurrently, and System.out from two
+// concurrent classes is interleaved and misattributed between XML report files.
+//
+// If every probe reports "(none of 0 captured)", the listener was never installed --- fix that before
+// trusting any result. The usual cause is a competing MongoConfigurationContributor: Hibernate's
+// ServiceRegistry holds ONE instance per service interface and the last registration wins, and
+// auto-discovered ServiceContributors are applied inside build(), i.e. AFTER the explicit addService
+// below. So a contributor on the test classpath silently replaces this one, and only its listener is
+// installed. Suppressing that contributor for the probe run is the fix; restore it afterwards.
+
+package com.mongodb.hibernate.query;
+
+import com.mongodb.event.CommandListener;
+import com.mongodb.event.CommandStartedEvent;
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.bson.BsonDocument;
+import org.hibernate.SessionFactory;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.junit.jupiter.api.Test;
+
+class ZzProbeTests {
+
+    /** Handshake and session chatter that drowns out the commands under review. */
+    private static final List<String> NOISE = List.of("buildInfo", "hello", "ping", "endSessions");
+
+    /** The probe's own listener. Owned here so the probe survives test-framework churn. */
+    static final class ProbeCommandListener implements CommandListener {
+        private final List<BsonDocument> commands = Collections.synchronizedList(new ArrayList<>());
+
+        @Override
+        public void commandStarted(CommandStartedEvent event) {
+            commands.add(event.getCommand().clone());
+        }
+
+        List<BsonDocument> started() {
+            return List.copyOf(commands);
+        }
+
+        void clear() {
+            commands.clear();
+        }
+    }
+
+    @Test
+    void probes() {
+        var listener = new ProbeCommandListener();
+        var registry = new StandardServiceRegistryBuilder()
+                .applySettings(Map.of("hibernate.hbm2ddl.auto", "none"))
+                .addService(
+                        MongoConfigurationContributor.class,
+                        (MongoConfigurationContributor) configurator ->
+                                configurator.applyToMongoClientSettings(b -> b.addCommandListener(listener)))
+                .build();
+        try (var sessionFactory = new MetadataSources()
+                .addAnnotatedClass(Thing.class)
+                .buildMetadata(registry)
+                .buildSessionFactory()) {
+            // Probe collections outlive the JVM and are shared across branches and worktrees, so
+            // clear before seeding or the next run dies on a duplicate _id.
+            sessionFactory.inTransaction(
+                    session -> session.createMutationQuery("delete from Thing").executeUpdate());
+            sessionFactory.inTransaction(session -> session.persist(new Thing(1, " Hello ", 7, null)));
+
+            // Every construct gets probed in BOTH clause positions --- see the SELECT/WHERE parity
+            // section of SKILL.md. The emitted form matters, not just success:
+            //   field-vs-value  -> compact find syntax  {"n": {"$eq": 7}}
+            //   computed operand -> {"$expr": ...} inside $match
+            probe(sessionFactory, listener, "select-projection", "select upper(t.s) from Thing t");
+            probe(sessionFactory, listener, "where-find-syntax", "select t.id from Thing t where t.n = 7");
+            probe(sessionFactory, listener, "where-expr", "select t.id from Thing t where length(t.s) = 7");
+            probe(sessionFactory, listener, "predicate-operand", "select t.id from Thing t where upper(t.s) like 'HEL%'");
+            probe(sessionFactory, listener, "order-by", "select t.id from Thing t order by length(t.s)");
+            probe(sessionFactory, listener, "nested", "select upper(lower(t.s)) from Thing t");
+            probe(sessionFactory, listener, "null-valued", "select upper(t.nullable) from Thing t");
+        }
+    }
+
+    /**
+     * Runs one HQL string and prints the outcome plus the real pipeline.
+     *
+     * <p>Catches {@link Throwable}, not {@link Exception}: an internal invariant violation surfaces
+     * as {@code AssertionError}, which is an {@code Error}. Catching only {@code Exception} hides
+     * exactly the defect class this harness exists to find.
+     */
+    private static void probe(
+            SessionFactory sessionFactory, ProbeCommandListener listener, String label, String hql) {
+        listener.clear();
+        try {
+            sessionFactory.inTransaction(session -> {
+                var rows = session.createSelectionQuery(hql, Object[].class).getResultList();
+                System.out.println("PROBE|" + label + "|OK|rows=" + rows.size() + "|" + summarize(listener));
+            });
+        } catch (Throwable t) {
+            var root = t;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            System.out.println(
+                    "PROBE|" + label + "|THREW|" + root.getClass().getSimpleName() + ": " + root.getMessage() + "|");
+        }
+    }
+
+    private static String summarize(ProbeCommandListener listener) {
+        var all = listener.started();
+        var interesting = all.stream()
+                .filter(command -> !NOISE.contains(command.getFirstKey()))
+                .map(command -> command.containsKey("pipeline")
+                        ? command.getArray("pipeline").toString()
+                        : command.toJson())
+                .toList();
+        // Always report the raw capture count. "(none of 0 captured)" means the listener was never
+        // installed --- a broken harness, not a quiet query. "(none of 7 captured)" means it worked
+        // and the command genuinely was uninteresting.
+        return interesting.isEmpty()
+                ? "(none of " + all.size() + " captured)"
+                : String.join(" ;; ", interesting);
+    }
+
+    @Entity(name = "Thing")
+    @Table(name = "probe_things")
+    static class Thing {
+        @Id
+        int id;
+
+        String s;
+        int n;
+        String nullable;
+
+        Thing() {}
+
+        Thing(int id, String s, int n, String nullable) {
+            this.id = id;
+            this.s = s;
+            this.n = n;
+            this.nullable = nullable;
+        }
+    }
+}
