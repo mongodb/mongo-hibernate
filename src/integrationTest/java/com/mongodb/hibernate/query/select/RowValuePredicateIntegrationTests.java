@@ -29,7 +29,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DomainModel(annotatedClasses = RowValuePredicateIntegrationTests.Widget.class)
+@DomainModel(
+        annotatedClasses = {
+            RowValuePredicateIntegrationTests.Widget.class,
+            RowValuePredicateIntegrationTests.NullableWidget.class
+        })
 class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
 
     @BeforeEach
@@ -38,6 +42,10 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
             session.persist(new Widget(1, 10, 20));
             session.persist(new Widget(2, 10, 99));
             session.persist(new Widget(3, 30, 40));
+            session.persist(new NullableWidget(1, 10L, 20L));
+            session.persist(new NullableWidget(2, null, 20L)); // a is null
+            session.persist(new NullableWidget(3, 10L, null)); // b is null
+            session.persist(new NullableWidget(4, 30L, 40L));
         });
         getTestCommandListener().clear();
     }
@@ -678,6 +686,47 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
                 Set.of(Widget.COLLECTION_NAME));
     }
 
+    @Test
+    void testNeReturnsRowsWithNullComponent() {
+        assertSelectionQuery(
+                "from NullableWidget w where (w.a, w.b) <> (:a, :b) order by w.id",
+                NullableWidget.class,
+                q -> q.setParameter("a", 10L).setParameter("b", 20L),
+                """
+                {
+                  "aggregate": "row_value_nullable",
+                  "pipeline": [
+                    {
+                      "$match": {
+                        "$nor": [
+                          {
+                            "$and": [
+                              { "a": { "$eq": { "$numberLong": "10" } } },
+                              { "b": { "$eq": { "$numberLong": "20" } } }
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    { "$sort": { "_id": 1 } },
+                    {
+                      "$project": {
+                        "_id": true,
+                        "a": true,
+                        "b": true
+                      }
+                    }
+                  ]
+                }""",
+                // SQL three-valued logic would return UNKNOWN for rows 2 and 3 (null component) and exclude them;
+                // MQL's $nor-of-$and returns them.
+                List.of(
+                        new NullableWidget(2, null, 20L),
+                        new NullableWidget(3, 10L, null),
+                        new NullableWidget(4, 30L, 40L)),
+                Set.of(NullableWidget.COLLECTION_NAME));
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         @Test
@@ -715,6 +764,27 @@ class RowValuePredicateIntegrationTests extends AbstractQueryIntegrationTests {
         Widget() {}
 
         Widget(long id, long a, long b) {
+            this.id = id;
+            this.a = a;
+            this.b = b;
+        }
+    }
+
+    @Entity(name = "NullableWidget")
+    @Table(name = NullableWidget.COLLECTION_NAME)
+    static class NullableWidget {
+        static final String COLLECTION_NAME = "row_value_nullable";
+
+        @Id
+        long id;
+
+        Long a;
+
+        Long b;
+
+        NullableWidget() {}
+
+        NullableWidget(long id, Long a, Long b) {
             this.id = id;
             this.a = a;
             this.b = b;
