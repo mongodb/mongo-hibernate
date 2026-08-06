@@ -1315,14 +1315,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
         assertCaseExpressionPosition();
-        // Simple CASE: the fixture is compared for equality against each `when` value, so each branch's
-        // `case` is a {$eq: [fixture, value]} expression. The fixture renders once per branch, so it must
-        // be visited once per branch too — visiting once and reusing the result would emit a single
-        // parameter binder for a fixture that renders N times, misaligning positional binding.
+        var fixture = acceptAndYieldExpression(caseSimpleExpression.getFixture());
         var branches = new ArrayList<AstSwitchCase>(
                 caseSimpleExpression.getWhenFragments().size());
         for (var whenFragment : caseSimpleExpression.getWhenFragments()) {
-            var fixture = acceptAndYieldExpression(caseSimpleExpression.getFixture());
             var checkValue = acceptAndYieldExpression(whenFragment.getCheckValue());
             var caseExpression =
                     new AstBinaryOperatorExpression(AstComparisonExpressionOperator.EQ, fixture, checkValue);
@@ -1465,7 +1461,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstLogicalOperatorExpression toBetweenExpression(BetweenPredicate betweenPredicate) {
-        var operand = betweenPredicate.getExpression();
+        var operand = acceptAndYieldExpression(betweenPredicate.getExpression());
         return new AstLogicalOperatorExpression(
                 betweenPredicate.isNegated() ? AstLogicalOperator.OR : AstLogicalOperator.AND,
                 List.of(
@@ -1484,9 +1480,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstBinaryOperatorExpression toBoundExpression(
-            Expression operand, ComparisonOperator operator, Expression bound) {
+            AstExpression operand, ComparisonOperator operator, Expression bound) {
         return new AstBinaryOperatorExpression(
-                toExprComparisonOperator(operator), acceptAndYieldExpression(operand), acceptAndYieldExpression(bound));
+                toExprComparisonOperator(operator), operand, acceptAndYieldExpression(bound));
     }
 
     @Override

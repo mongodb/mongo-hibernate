@@ -837,8 +837,8 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     Set.of(Item.COLLECTION_NAME));
         }
 
-        // Simple CASE whose fixture is a parameter, with several branches: the fixture renders once per
-        // branch, so it must bind one parameter per rendered marker (regression for misaligned binding).
+        // Simple CASE whose fixture is a parameter: the fixture is translated once and rendered once per
+        // branch, so one binder is collected per branch and every branch sees the bound value.
         @Test
         void testSimpleCaseWithParameterFixtureAndMultipleBranches() {
             assertSelectionQuery(
