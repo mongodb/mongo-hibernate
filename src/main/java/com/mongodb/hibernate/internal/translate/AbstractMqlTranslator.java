@@ -73,6 +73,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpre
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchCase;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
@@ -1299,12 +1301,58 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitCaseSearchedExpression(CaseSearchedExpression caseSearchedExpression) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
+        // A CASE only produces an aggregation expression ($switch); a position wanting a field path or a
+        // value (e.g. a LIKE match expression, or a sort key) cannot take it, so refuse cleanly rather
+        // than tripping the value holder's descriptor assertion.
+        assertCaseExpressionPosition();
+        // Searched CASE: each `when` predicate is a boolean aggregation expression (the branch's `case`),
+        // its result the branch's `then`.
+        var branches = new ArrayList<AstSwitchCase>(
+                caseSearchedExpression.getWhenFragments().size());
+        for (var whenFragment : caseSearchedExpression.getWhenFragments()) {
+            var caseExpression = acceptAndYield(whenFragment.getPredicate(), EXPRESSION);
+            var thenExpression = acceptAndYieldExpression(whenFragment.getResult());
+            branches.add(new AstSwitchCase(caseExpression, thenExpression));
+        }
+        astVisitorValueHolder.yield(
+                EXPRESSION,
+                new AstSwitchExpression(branches, resolveCaseDefault(caseSearchedExpression.getOtherwise())));
     }
 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
+        assertCaseExpressionPosition();
+        // Simple CASE: the fixture is compared for equality against each `when` value, so each branch's
+        // `case` is a {$eq: [fixture, value]} expression. The fixture renders once per branch, so it must
+        // be visited once per branch too — visiting once and reusing the result would emit a single
+        // parameter binder for a fixture that renders N times, misaligning positional binding.
+        var branches = new ArrayList<AstSwitchCase>(
+                caseSimpleExpression.getWhenFragments().size());
+        for (var whenFragment : caseSimpleExpression.getWhenFragments()) {
+            var fixture = acceptAndYieldExpression(caseSimpleExpression.getFixture());
+            var checkValue = acceptAndYieldExpression(whenFragment.getCheckValue());
+            var caseExpression =
+                    new AstBinaryOperatorExpression(AstComparisonExpressionOperator.EQ, fixture, checkValue);
+            var thenExpression = acceptAndYieldExpression(whenFragment.getResult());
+            branches.add(new AstSwitchCase(caseExpression, thenExpression));
+        }
+        astVisitorValueHolder.yield(
+                EXPRESSION, new AstSwitchExpression(branches, resolveCaseDefault(caseSimpleExpression.getOtherwise())));
+    }
+
+    private void assertCaseExpressionPosition() {
+        if (!astVisitorValueHolder.expects(EXPRESSION)) {
+            throw new FeatureNotSupportedException(
+                    "CASE expression is only supported in aggregation-expression position");
+        }
+    }
+
+    // The CASE `default` (its ELSE). A missing ELSE returns SQL NULL, so it maps to a null literal — which
+    // also keeps $switch from erroring at runtime when no branch matches and no default is present.
+    private AstExpression resolveCaseDefault(@Nullable Expression otherwise) {
+        return otherwise == null
+                ? new AstValueExpression(new AstLiteral(BsonNull.VALUE))
+                : acceptAndYieldExpression(otherwise);
     }
 
     @Override

@@ -27,6 +27,7 @@ import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.bson.BsonDocument;
@@ -693,6 +694,219 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     List.of(false, false, false),
                     Set.of(Item.COLLECTION_NAME));
         }
+
+        // Searched CASE with a single WHEN and an ELSE: one $switch branch, the ELSE as the default.
+        @Test
+        void testSearchedCaseInSelect() {
+            assertSelectionQuery(
+                    "select case when x > 5 then 1 else 0 end from Item",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$gt": ["$x", {"$numberInt": "5"}]}, "then": {"$numberInt": "1"}}
+                                ],
+                                "default": {"$numberInt": "0"}
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(1, 0, 0),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // Searched CASE with several WHENs: one $switch branch per WHEN, evaluated in order.
+        @Test
+        void testSearchedCaseMultipleBranchesInSelect() {
+            assertSelectionQuery(
+                    "select case when x > 5 then 1 when x > 4 then 2 else 0 end from Item",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$gt": ["$x", {"$numberInt": "5"}]}, "then": {"$numberInt": "1"}},
+                                  {"case": {"$gt": ["$x", {"$numberInt": "4"}]}, "then": {"$numberInt": "2"}}
+                                ],
+                                "default": {"$numberInt": "0"}
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(1, 0, 2),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // A CASE with no ELSE returns SQL NULL, which maps to a null $switch default.
+        @Test
+        void testSearchedCaseWithoutElseInSelect() {
+            assertSelectionQuery(
+                    "select case when x > 5 then 1 end from Item",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$gt": ["$x", {"$numberInt": "5"}]}, "then": {"$numberInt": "1"}}
+                                ],
+                                "default": null
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    Arrays.asList(1, null, null),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // A CASE branch's result may itself be a complex operator expression (here x * 1000), which is
+        // translated recursively into the $switch branch's `then`.
+        @Test
+        void testSearchedCaseWithComplexResultExpressionInSelect() {
+            assertSelectionQuery(
+                    "select case when y > 5 then x * 1000 else x end from Item",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$gt": ["$y", {"$numberInt": "5"}]}, "then": {"$multiply": ["$x", {"$numberInt": "1000"}]}}
+                                ],
+                                "default": "$x"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(10, 4000, 5),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // Simple CASE: the fixture ($x) is compared for equality against each WHEN value.
+        @Test
+        void testSimpleCaseInSelect() {
+            assertSelectionQuery(
+                    "select case x when 5 then 1 else 0 end from Item",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$eq": ["$x", {"$numberInt": "5"}]}, "then": {"$numberInt": "1"}}
+                                ],
+                                "default": {"$numberInt": "0"}
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(0, 0, 1),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // Simple CASE whose fixture is a parameter, with several branches: the fixture renders once per
+        // branch, so it must bind one parameter per rendered marker (regression for misaligned binding).
+        @Test
+        void testSimpleCaseWithParameterFixtureAndMultipleBranches() {
+            assertSelectionQuery(
+                    "select case :p when 7 then 1 when 8 then 2 else 0 end from Item",
+                    Integer.class,
+                    q -> q.setParameter("p", 7),
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$eq": [{"$numberInt": "7"}, {"$numberInt": "7"}]}, "then": {"$numberInt": "1"}},
+                                  {"case": {"$eq": [{"$numberInt": "7"}, {"$numberInt": "8"}]}, "then": {"$numberInt": "2"}}
+                                ],
+                                "default": {"$numberInt": "0"}
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(1, 1, 1),
+                    Set.of(Item.COLLECTION_NAME));
+        }
+
+        // A CASE in WHERE is an operand of a comparison, so the $switch is wrapped in $expr.
+        @Test
+        void testSearchedCaseInWhere() {
+            assertSelectionQuery(
+                    "from Item where (case when x > 5 then 1 else 0 end) = 1",
+                    Item.class,
+                    """
+                    {
+                      "aggregate": "items",
+                      "pipeline": [
+                        {
+                          "$match": {
+                            "$expr": {
+                              "$eq": [
+                                {
+                                  "$switch": {
+                                    "branches": [
+                                      {"case": {"$gt": ["$x", {"$numberInt": "5"}]}, "then": {"$numberInt": "1"}}
+                                    ],
+                                    "default": {"$numberInt": "0"}
+                                  }
+                                },
+                                {"$numberInt": "1"}
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id": true,
+                            "x": true,
+                            "y": true
+                          }
+                        }
+                      ]
+                    }""",
+                    List.of(new Item(1, 10, 3)),
+                    Set.of(Item.COLLECTION_NAME));
+        }
     }
 
     // This case needs PORTABLE_INTEGER_DIVISION=true, which the shared registry does not set, so it
@@ -743,24 +957,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
     class Unsupported implements MongoServiceRegistryProducer {
 
         @Test
-        void testSearchedCaseExpressionInSelect() {
-            assertSelectQueryFailure(
-                    "select case when x > 5 then 1 else 0 end from Item",
-                    Integer.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-83");
-        }
-
-        @Test
-        void testSimpleCaseExpressionInSelect() {
-            assertSelectQueryFailure(
-                    "select case x when 5 then 1 else 0 end from Item",
-                    Integer.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-83");
-        }
-
-        @Test
         void testFunctionCallAsArithmeticOperandIsUnsupported() {
             assertSelectQueryFailure(
                     "select abs(x) + 1 from Item",
@@ -777,13 +973,62 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     "select x % 3 from Item", Integer.class, FeatureNotSupportedException.class, "TODO-HIBERNATE-196");
         }
 
+        // A CASE only yields an aggregation expression, so a position wanting a field path (the LIKE match
+        // expression in filter position) refuses it cleanly instead of tripping an internal assertion.
         @Test
-        void testCaseExpressionInWhereComparison() {
+        void testCaseAsLikeMatchExpression() {
             assertSelectQueryFailure(
-                    "from Item where case when x > 5 then 1 else 0 end > 3",
+                    "from Item where (case when y > 5 then 'a' else 'b' end) like '%a%'",
                     Item.class,
                     FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-83");
+                    "CASE expression is only supported in aggregation-expression position");
+        }
+
+        @Test
+        void testCaseInOrderByIsUnsupported() {
+            assertSelectQueryFailure(
+                    "from Item order by case when y > 5 then 1 else 0 end",
+                    Item.class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-79");
+        }
+
+        @Test
+        void testCaseInGroupByIsUnsupported() {
+            assertSelectQueryFailure(
+                    "select count(id) from Item group by case when y > 5 then 1 else 0 end",
+                    Long.class,
+                    FeatureNotSupportedException.class,
+                    "GroupBy is not supported");
+        }
+
+        @Test
+        void testCaseAsInListTestExpressionIsUnsupported() {
+            assertSelectQueryFailure(
+                    "from Item where (case when y > 5 then 1 else 0 end) in (1, 2)",
+                    Item.class,
+                    FeatureNotSupportedException.class,
+                    "Only the following list predicates are supported");
+        }
+
+        @Test
+        void testCaseAsNullnessTestExpressionIsUnsupported() {
+            assertSelectQueryFailure(
+                    "from Item where (case when y > 5 then 1 else 0 end) is null",
+                    Item.class,
+                    FeatureNotSupportedException.class,
+                    "Only the following nullness predicates are supported");
+        }
+
+        // A boolean-valued CASE used directly as a WHERE predicate is legal HQL that MQL could express via
+        // $expr, but the boolean-expression filter path only handles field paths today.
+        @Test
+        void testBooleanCaseAsPredicateIsUnsupported() {
+            assertSelectQueryFailure(
+                    "from Item where case when y > 5 then true else false end",
+                    Item.class,
+                    FeatureNotSupportedException.class,
+                    "Expression not of field path is not supported");
         }
     }
 
