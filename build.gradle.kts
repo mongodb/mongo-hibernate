@@ -108,7 +108,7 @@ tasks.withType<JavaCompile>().configureEach {
                 option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
                 error("NullAway")
             }
-        else -> options.errorprone.isEnabled = false
+        else -> options.errorprone.enabled = false
     }
 }
 
@@ -217,8 +217,9 @@ val gitVersion: String by lazy {
 // graph is built, by which point the subprojects have been evaluated and their plugins are visible.
 fun publishingTaskInEveryProject(name: String) = provider {
     val publishing = allprojects.filter { it.pluginManager.hasPlugin("mongo-hibernate-publish") }
-    val withPublications =
-        allprojects.filter { it.extensions.findByType<PublishingExtension>()?.publications?.isNotEmpty() == true }
+    val withPublications = allprojects.filter {
+        it.extensions.findByType<PublishingExtension>()?.publications?.isNotEmpty() == true
+    }
     require((withPublications - publishing.toSet()).isEmpty()) {
         "Projects declare publications but don't apply mongo-hibernate-publish: ${withPublications - publishing.toSet()}"
     }
