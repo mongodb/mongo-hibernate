@@ -49,7 +49,9 @@ class AstUpdateCommandTests {
                         AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt64(12345L))));
 
         var updateCommand = new AstUpdateCommand(
-                collection, filter, new AstDocumentUpdate(List.of(astFieldUpdate1, astFieldUpdate2)));
+                collection,
+                List.of(new AstUpdateStatement(
+                        filter, new AstDocumentUpdate(List.of(astFieldUpdate1, astFieldUpdate2)), false, true)));
 
         var expectedJson =
                 """
@@ -69,11 +71,45 @@ class AstUpdateCommandTests {
                         AstArithmeticExpressionOperator.ADD,
                         new AstFieldPathExpression("publishYear"),
                         new AstValueExpression(new AstLiteral(new BsonInt32(1)))));
-        var updateCommand = new AstUpdateCommand("books", filter, new AstPipelineUpdate(List.of(computed)));
+        var updateCommand = new AstUpdateCommand(
+                "books",
+                List.of(new AstUpdateStatement(filter, new AstPipelineUpdate(List.of(computed)), false, true)));
 
         var expectedJson =
                 """
                 {"update": "books", "updates": [{"q": {"_id": {"$eq": {"$numberInt": "1"}}}, "u": [{"$set": {"publishYear": {"$add": ["$publishYear", {"$numberInt": "1"}]}}}], "multi": true}]}\
+                """;
+        assertRendering(expectedJson, updateCommand);
+    }
+
+    @Test
+    void testRenderingUpsert() {
+        var filter = new AstFieldOperationFilter(
+                "_id",
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1))));
+        var update = new AstDocumentUpdate(List.of(new AstFieldUpdate("v", new AstLiteral(new BsonInt32(10)))));
+        var updateCommand = new AstUpdateCommand("items", List.of(new AstUpdateStatement(filter, update, true, false)));
+
+        var expectedJson =
+                """
+                {"update": "items", "updates": [{"q": {"_id": {"$eq": {"$numberInt": "1"}}}, "u": {"$set": {"v": {"$numberInt": "10"}}}, "upsert": true, "multi": false}]}\
+                """;
+        assertRendering(expectedJson, updateCommand);
+    }
+
+    @Test
+    void testRenderingSetOnInsert() {
+        var filter = new AstFieldOperationFilter(
+                "_id",
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1))));
+        var update = new AstDocumentUpdate(
+                List.of(new AstFieldUpdate("label", new AstLiteral(new BsonString("a")))),
+                List.of(new AstFieldUpdate("createdBy", new AstLiteral(new BsonString("jeff")))));
+        var updateCommand = new AstUpdateCommand("items", List.of(new AstUpdateStatement(filter, update, true, false)));
+
+        var expectedJson =
+                """
+                {"update": "items", "updates": [{"q": {"_id": {"$eq": {"$numberInt": "1"}}}, "u": {"$set": {"label": "a"}, "$setOnInsert": {"createdBy": "jeff"}}, "upsert": true, "multi": false}]}\
                 """;
         assertRendering(expectedJson, updateCommand);
     }

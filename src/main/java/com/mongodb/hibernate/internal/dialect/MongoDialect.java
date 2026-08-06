@@ -45,6 +45,7 @@ import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
+import org.hibernate.engine.jdbc.mutation.internal.MutationQueryOptions;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
@@ -282,20 +283,73 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         functionRegistry.register("unnest", new MongoUnnestFunction());
     }
 
-    /** @mongoCme The {@link MutationOperation} returned from this method does not have to be thread-safe. */
+    /**
+     * @mongoCme The {@link MutationOperation} returned from this method is created once per entity at SessionFactory
+     *     build time and shared across sessions, so it must be thread-safe.
+     */
     @Override
     public MutationOperation createOptionalTableUpdateOperation(
             EntityMutationTarget mutationTarget,
             OptionalTableUpdate optionalTableUpdate,
             SessionFactoryImplementor factory) {
+        // This runs at SessionFactory build time for every entity, so nothing here may throw:
+        // rejections are deferred to performMutation, which runs only when upsert is called.
+        // In particular, an optional (e.g. @SecondaryTable) mutating table would otherwise make
+        // visitOptionalTableUpdate throw eagerly during this same boot-time call.
+        if (optionalTableUpdate.getMutatingTable().getTableMapping().isOptional()) {
+            return rejectingUpsertOperation(
+                    mutationTarget,
+                    optionalTableUpdate,
+                    factory,
+                    "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
+        }
+        if (optionalTableUpdate.getValueBindings().isEmpty()) {
+            // TableMergeBuilder always builds an OptionalTableUpdate, so an entity whose only persistent
+            // attribute is its identifier reaches this boot-time translation with nothing to write.
+            return rejectingUpsertOperation(
+                    mutationTarget,
+                    optionalTableUpdate,
+                    factory,
+                    format(
+                            "%s does not support upserting an entity whose only persistent attribute is its identifier",
+                            MONGO_DBMS_NAME));
+        }
+        if (optionalTableUpdate.getNumberOfOptimisticLockBindings() > 0) {
+            return rejectingUpsertOperation(
+                    mutationTarget,
+                    optionalTableUpdate,
+                    factory,
+                    "TODO-HIBERNATE-216 https://jira.mongodb.org/browse/HIBERNATE-216");
+        }
+        for (var valueBinding : optionalTableUpdate.getValueBindings()) {
+            if (!valueBinding.isAttributeInsertable()) {
+                return rejectingUpsertOperation(
+                        mutationTarget,
+                        optionalTableUpdate,
+                        factory,
+                        format(
+                                "%s does not support upserting a column that is updatable but not insertable: [%s]",
+                                MONGO_DBMS_NAME,
+                                valueBinding.getColumnReference().getColumnExpression()));
+            }
+        }
+        return MongoTranslatorFactory.INSTANCE
+                .buildUpsertModelMutationTranslator(optionalTableUpdate, factory)
+                .translate(null, MutationQueryOptions.INSTANCE);
+    }
+
+    private static OptionalTableUpdateOperation rejectingUpsertOperation(
+            EntityMutationTarget mutationTarget,
+            OptionalTableUpdate optionalTableUpdate,
+            SessionFactoryImplementor factory,
+            String message) {
         return new OptionalTableUpdateOperation(mutationTarget, optionalTableUpdate, factory) {
             @Override
             public void performMutation(
                     JdbcValueBindings jdbcValueBindings,
                     ValuesAnalysis valuesAnalysis,
                     SharedSessionContractImplementor session) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-94 https://jira.mongodb.org/browse/HIBERNATE-94");
+                throw new FeatureNotSupportedException(message);
             }
         };
     }
