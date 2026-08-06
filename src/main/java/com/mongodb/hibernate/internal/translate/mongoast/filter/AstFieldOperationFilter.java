@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/glossary/#std-term-query-predicate">query predicate</a>,
@@ -27,11 +29,11 @@ import org.bson.BsonWriter;
  */
 public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName(fieldPath);
-            filterOperation.render(writer);
+            filterOperation.render(writer, binderConsumer);
         }
         writer.writeEndDocument();
     }

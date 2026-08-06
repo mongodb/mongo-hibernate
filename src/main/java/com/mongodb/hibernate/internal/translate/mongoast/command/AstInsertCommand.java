@@ -20,7 +20,9 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import java.util.Collection;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/command/insert/">{@code insert}</a>.
@@ -34,14 +36,14 @@ public record AstInsertCommand(String collection, Collection<? extends AstDocume
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeString("insert", collection);
             writer.writeName("documents");
             writer.writeStartArray();
             {
-                documents.forEach(document -> document.render(writer));
+                documents.forEach(document -> document.render(writer, binderConsumer));
             }
             writer.writeEndArray();
         }

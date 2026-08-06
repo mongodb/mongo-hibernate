@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * A reference to a {@code let}-bound variable in aggregation-expression position, rendered as {@code $$name} (e.g. the
@@ -27,7 +29,7 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstVariableExpression(String name) implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeString("$$" + name);
     }
 }

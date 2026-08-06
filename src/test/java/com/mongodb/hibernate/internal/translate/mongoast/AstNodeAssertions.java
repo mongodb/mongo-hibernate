@@ -54,7 +54,7 @@ public final class AstNodeAssertions {
             if (nodeKind == AstNodeKind.VALUE) {
                 jsonWriter.writeName(ancillaryFieldName);
             }
-            node.render(jsonWriter);
+            node.render(jsonWriter, parameterBinder -> {});
             if (nodeKind != AstNodeKind.DOCUMENT) {
                 jsonWriter.writeEndDocument();
             }

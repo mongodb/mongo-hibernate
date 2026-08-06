@@ -16,18 +16,20 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public record AstRegexMatchExpression(AstExpression input, String regex, String options) implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$regexMatch");
         writer.writeStartDocument();
         writer.writeName("input");
-        input.render(writer);
+        input.render(writer, binderConsumer);
         writer.writeString("regex", regex);
         writer.writeString("options", options);
         writer.writeEndDocument();

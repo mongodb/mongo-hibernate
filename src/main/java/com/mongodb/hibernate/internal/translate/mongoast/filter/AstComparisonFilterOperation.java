@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/#comparison">Query and Projection
@@ -28,11 +30,11 @@ import org.bson.BsonWriter;
 public record AstComparisonFilterOperation(AstComparisonFilterOperator operator, AstValue value)
         implements AstFilterOperation {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName(operator.getOperatorName());
-            value.render(writer);
+            value.render(writer, binderConsumer);
         }
         writer.writeEndDocument();
     }

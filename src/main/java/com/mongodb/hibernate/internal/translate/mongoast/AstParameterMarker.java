@@ -16,21 +16,20 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public final class AstParameterMarker implements AstValue {
-
-    public static final AstParameterMarker INSTANCE = new AstParameterMarker();
-
-    private AstParameterMarker() {}
+public record AstParameterMarker(JdbcParameterBinder binder) implements AstValue {
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeUndefined();
+        binderConsumer.accept(binder);
     }
 }

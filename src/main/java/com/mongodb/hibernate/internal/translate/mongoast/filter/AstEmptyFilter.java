@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * Matches all documents.
@@ -31,7 +33,7 @@ public final class AstEmptyFilter implements AstFilter {
     private AstEmptyFilter() {}
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeEndDocument();
     }
