@@ -63,6 +63,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldReferenceValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
@@ -83,6 +84,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpda
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
@@ -121,6 +123,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -273,6 +276,44 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private final Set<String> affectedTableNames = new HashSet<>();
 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
+
+    private final GroupByContext groupByContext = new GroupByContext();
+
+    /**
+     * Per-query state for GROUP BY translation. Populated by {@link #createGroupStage} and consulted by
+     * {@link #resolveFieldPath} to rewrite grouped column references to {@code $_id.<subKey>}.
+     */
+    // TODO When sub-queries are supported, this context must use stack offer and pop.
+    static final class GroupByContext {
+        enum Phase {
+            INACTIVE,
+            POPULATING,
+            AFTER_GROUP
+        }
+
+        private Phase phase = Phase.INACTIVE;
+        private final Map<Expression, String> exprMappings = new LinkedHashMap<>();
+
+        void beginPopulating() {
+            phase = Phase.POPULATING;
+        }
+
+        void finishPopulating() {
+            phase = Phase.AFTER_GROUP;
+        }
+
+        boolean isAfterGroup() {
+            return phase == Phase.AFTER_GROUP;
+        }
+
+        void put(Expression key, String subKey) {
+            exprMappings.put(key, subKey);
+        }
+
+        @Nullable String get(Expression key) {
+            return exprMappings.get(key);
+        }
+    }
 
     // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
     private int letVariableCounter;
@@ -511,10 +552,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitQuerySpec(QuerySpec querySpec) {
-        if (!querySpec.getGroupByClauseExpressions().isEmpty()) {
-            throw new FeatureNotSupportedException("GroupBy is not supported");
-        }
-
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
 
         var stages = new ArrayList<AstStage>();
@@ -522,7 +559,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var root = querySpec.getFromClause().getRoots().get(0);
         stages.addAll(buildJoinStages(root));
 
-        createMatchStage(querySpec).ifPresent(stages::add);
+        createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
+        createGroupStage(querySpec).ifPresent(stages::add);
+        createMatchStage(querySpec.getHavingClauseRestrictions()).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
 
         var skipLimitStagesAndJdbcParams =
@@ -541,8 +580,29 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         skipLimitStagesAndJdbcParams.limit()));
     }
 
-    private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
-        var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
+    private Optional<AstGroupStage> createGroupStage(final QuerySpec querySpec) {
+        if (querySpec.getGroupByClauseExpressions().isEmpty()) {
+            return Optional.empty();
+        }
+        groupByContext.beginPopulating();
+        List<AstElement> elements = new ArrayList<>();
+        for (Expression groupByClauseExpression : querySpec.getGroupByClauseExpressions()) {
+            if (groupByClauseExpression.getColumnReference() != null) {
+                var columnReference = groupByClauseExpression.getColumnReference();
+                var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
+                var groupKey = fieldPath.replace('.', '#');
+                groupByContext.put(columnReference, groupKey);
+                elements.add(
+                        new AstElement(groupKey, new AstFieldReferenceValue(new AstFieldPathExpression(fieldPath))));
+            } else {
+                throw new FeatureNotSupportedException("Only column references are supported in group by");
+            }
+        }
+        groupByContext.finishPopulating();
+        return Optional.of(new AstGroupStage(new AstDocument(elements)));
+    }
+
+    private Optional<AstMatchStage> createMatchStage(Predicate whereClauseRestrictions) {
         if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
             var filter = acceptAndYield(whereClauseRestrictions, FILTER);
             return Optional.of(new AstMatchStage(filter));
@@ -720,7 +780,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitSelectClause(SelectClause selectClause) {
         if (selectClause.isDistinct()) {
-            throw new FeatureNotSupportedException();
+            throw new FeatureNotSupportedException("SELECT DISTINCT is not supported");
         }
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());
@@ -766,6 +826,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private String resolveFieldPath(ColumnReference columnReference) {
         var qualifier = columnReference.getQualifier();
+        if (groupByContext.isAfterGroup()) {
+            String groupKey = groupByContext.get(columnReference);
+            if (groupKey != null) {
+                return "_id." + groupKey;
+            }
+            throw new FeatureNotSupportedException("Columns that are not part of group by are not supported");
+        }
         return (qualifier != null && joinedTableQualifiers.contains(qualifier))
                 ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()
                 : columnReference.getColumnExpression();
