@@ -47,6 +47,10 @@ Extract source from the Hibernate sources JAR at `~/.gradle/caches/.../hibernate
 
 **Known gotchas** — patterns that are easy to miss when translating Hibernate's SQL AST:
 
+- **Parameter markers are matched by position.** If the construct reorders, duplicates or drops
+  argument nodes, do it to the `SqlAstNode`s before translating them, never to the translated
+  `AstExpression`s, and never collect named arguments into a sorted map. See "Parameter binding is
+  positional" in `ARCHITECTURE.md`.
 - **`isVirtual()` table groups** — virtual table groups are embeddable wrappers that don't render to a JOIN themselves; the SQL translator descends into their sub-joins without emitting a JOIN clause. Do the same: skip emitting a stage but recurse into sub-joins.
 
 **For any new unsupported shape:** confirm it is reachable from HQL (not just handcrafted SQL AST) so negative tests can be written through HQL. Check `SemanticQueryBuilder` and the HQL grammar in `HqlParser.java` to verify the syntax.
@@ -94,6 +98,8 @@ The plan must follow this task order:
 - When the `$project` fields are unknown upfront (e.g. JOIN FETCH): use `assertActualCommandsInOrder` with `/* FILL IN after first test run */`; upgrade to full `assertSelectionQuery` once the actual MQL is known
 - Negative tests: `assertSelectQueryFailure(hql, resultType, FeatureNotSupportedException.class, "TODO-HIBERNATE-NNN ...")` — substitute the real ticket number, following the `TODO-HIBERNATE-NNN` codebase convention
 - Positive tests live in a descriptively named `@Nested` class with `@BeforeEach` seed data; negative tests live at the outer class level for one-off cases or in `@Nested class Unsupported` when there are several.
+- Any construct taking more than one argument needs a case binding two or more parameters, not just
+  literals. Argument-order defects are invisible to a test whose arguments are all literals or field paths
 - Every non-trivial code path (loop iterations, recursive calls, each instanceof branch) must be covered by a positive or negative test
 
 ---

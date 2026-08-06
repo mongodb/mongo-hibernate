@@ -124,6 +124,7 @@ which `$match` form is correct for which operand shape. What a reviewer adds is 
 | Composition | `f(g(x))`, `f(x) = f(y)`, `f(x) = column` | recursion |
 | Absent / null values | nullable column, missing field | server-side rejection |
 | Literal vs parameter | `f(x, 2)` vs `f(x, :p)` | constant folding, `$literal` wrapping |
+| Two or more parameters | `f(:p, :q)`, not `f(:p, x)` | marker order matching binder order |
 
 ### Schema, DDL, and JDBC contexts
 
@@ -174,6 +175,11 @@ translation PR. These are the diff symptoms that indicate a violation:
   translator state and will diverge on the next change.
 - A new field on the translator, sitting alongside `elemMatchInnerAlias` and `letVariableCounter` ---
   that is the *sanctioned* pattern, so it is a point in the PR's favour, not a smell.
+- Anything that reorders, duplicates or drops translated nodes after they were visited: an explicit
+  permutation, a node reused in two positions, or a `TreeMap`/`SortedMap` of named arguments. Parameter
+  markers are paired with binders by position (`ARCHITECTURE.md`, "Parameter binding is positional"),
+  so each of these silently mis-binds. Probe it. A construct exercised only with literals looks
+  correct, and a single parameter is not enough either, since one marker cannot be out of order.
 
 ## Reading outcomes
 
@@ -221,6 +227,7 @@ review that arrives with a patch instead of a mechanism is harder to act on, not
 - About to write "this looks like it could break" without having tried to break it.
 - About to call something a regression without a parent-commit run.
 - Probe catches `Exception` instead of `Throwable` --- it will silently miss every `AssertionError`.
+- Every probe of a multi-argument construct passes literals, so no parameter marker was ever emitted.
 - Probe reports `(none of 0 captured)` --- the listener is not installed, so you are reading nothing
   and concluding something. Fix the harness before trusting a single result.
 - Signed off on a translation without seeing its `$match` output next to its `$project` output.

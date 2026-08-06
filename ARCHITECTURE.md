@@ -67,6 +67,36 @@ visitor as it evolves. It also bypasses `expects(...)`, and with it the filter-f
 `letVariableCounter`, `projectionKeyMap`, and `joinedTableQualifiers` all exist for exactly this. When
 a construct needs context that the visited node cannot carry, add a field and modify the visitor.
 
+## Parameter binding is positional
+
+A JDBC parameter carries no identity into the emitted command. `visitParameter` does two things:
+appends the parameter's binder to the translator's `parameterBinders` list, and yields the singleton
+`AstParameterMarker.INSTANCE`, which renders as BSON `undefined`. At execution
+`MongoPreparedStatement` walks the parsed command depth-first, in document-entry then array-index
+order, collecting one setter per `undefined`, and the i-th binder is bound into the i-th setter.
+
+**The i-th `undefined` in a depth-first walk of the rendered command must be the i-th node visited.**
+Nothing checks this. Visit order is fixed while the AST is built; marker order is a property of the
+finished BSON. Any step in between that changes the order or the number of markers breaks the pairing,
+and the two orders are never compared.
+
+Three ways to break it:
+
+- **Reordering after visiting.** Translating arguments into a list and then permuting that list moves
+  the slots while the markers stay put, so values land in each other's places. Nothing fails; the
+  answer is just wrong. Permute the `SqlAstNode`s *before* translating them.
+- **Rendering a visited node twice.** Reusing one translated node in two positions emits two markers
+  against one binder, and execution fails with `Parameter with index [n] is not set`. Visit the node
+  once per occurrence so each marker gets its own binder. `toBoundExpression`, used by the `BETWEEN`
+  translation, does this deliberately and says so.
+- **Collecting into a container that imposes an order.** A `TreeMap` of named arguments renders
+  alphabetically while the binders were appended in declaration order. Same defect as the first, with
+  nothing in the code that looks like a reordering.
+
+A construct with fewer than two parameters cannot expose any of this, so tests built from literals and
+field paths will pass over all three. Any construct taking more than one argument needs a case that
+binds two or more parameters.
+
 ## Filter form: two languages in `$match`, one in `$project`
 
 Two MongoDB languages are in play, and only one of the two names below is MongoDB's own:
