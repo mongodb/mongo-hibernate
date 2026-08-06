@@ -24,6 +24,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.util.List;
 import org.bson.BsonNull;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.junit.jupiter.api.Test;
 
 class AstAllFilterOperationTests {
@@ -33,7 +34,7 @@ class AstAllFilterOperationTests {
                 () -> assertRendering(
                         """
                         {"$all": ?}""",
-                        new AstAllFilterOperation(AstParameterMarker.INSTANCE)),
+                        new AstAllFilterOperation(new AstParameterMarker(JdbcParameterBinder.NOOP))),
                 () -> assertRendering(
                         """
                         {"$all": [null]}""",

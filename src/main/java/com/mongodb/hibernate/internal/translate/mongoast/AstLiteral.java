@@ -16,11 +16,13 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonBoolean;
 import org.bson.BsonValue;
 import org.bson.BsonWriter;
 import org.bson.codecs.BsonValueCodec;
 import org.bson.codecs.EncoderContext;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
@@ -34,7 +36,7 @@ public record AstLiteral(BsonValue literalValue) implements AstValue {
     public static final AstLiteral FALSE = new AstLiteral(BsonBoolean.FALSE);
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
     }
 }

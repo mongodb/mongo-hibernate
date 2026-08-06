@@ -16,10 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public interface AstNode {
-    void render(BsonWriter writer);
+    void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer);
 }

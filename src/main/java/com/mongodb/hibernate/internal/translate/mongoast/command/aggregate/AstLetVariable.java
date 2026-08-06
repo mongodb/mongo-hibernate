@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * A single {@code name → expression} binding in the {@code let} of a {@code $lookup} pipeline stage. Unlike an
@@ -31,8 +33,8 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstLetVariable(String name, AstExpression expression) implements AstNode {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeName(name);
-        expression.render(writer);
+        expression.render(writer, binderConsumer);
     }
 }
