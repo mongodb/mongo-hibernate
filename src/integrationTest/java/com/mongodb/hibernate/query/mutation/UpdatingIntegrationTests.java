@@ -159,6 +159,57 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                 Set.of(Book.COLLECTION_NAME));
     }
 
+    // A CASE assignment is a computed value, so the update is emitted as a $set pipeline stage whose value
+    // is the $switch translation of the CASE.
+    @Test
+    void testCaseExpressionAssignment() {
+        assertMutationQuery(
+                "update Book b set b.publishYear = case when b.id = 1 then 100 else 200 end where b.id = 1",
+                1,
+                """
+                {
+                  "update": "books",
+                  "updates": [
+                    {
+                      "q": {"_id": {"$eq": 1}},
+                      "u": [
+                        {
+                          "$set": {
+                            "publishYear": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$eq": ["$_id", 1]}, "then": 100}
+                                ],
+                                "default": 200
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "multi": true
+                    }
+                  ]
+                }""",
+                booksCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {"_id": 1, "title": "War & Peace", "outOfStock": true, "publishYear": 100, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
     @Test
     void testUpdateWithZeroMutationCount() {
         assertMutationQuery(
@@ -393,16 +444,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     query -> {},
                     FeatureNotSupportedException.class,
                     "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
-        }
-
-        @Test
-        void testCaseExpressionAssignment() {
-            var hql = "update Book b set b.publishYear = case when b.id = 1 then 100 else 200 end where b.id = 1";
-            assertMutationQueryFailure(
-                    hql,
-                    query -> {},
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
         }
 
         @Test
