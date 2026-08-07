@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * @see AstProjectStage
@@ -26,7 +28,7 @@ import org.bson.BsonWriter;
 public record AstProjectStageFieldPathSpecification(String field, String fieldPath)
         implements AstProjectStageSpecification {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeString(field, "$" + fieldPath);
     }
 }

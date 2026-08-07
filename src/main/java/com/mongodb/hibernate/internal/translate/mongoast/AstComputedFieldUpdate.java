@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * One field assignment inside a {@code $set} stage of a pipeline-form update, whose value is an aggregation expression.
@@ -27,8 +29,8 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstComputedFieldUpdate(String name, AstExpression value) implements AstNode {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeName(name);
-        value.render(writer);
+        value.render(writer, binderConsumer);
     }
 }

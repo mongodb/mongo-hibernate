@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/command/delete/">{@code delete}</a>.
@@ -26,7 +28,7 @@ import org.bson.BsonWriter;
  */
 public record AstDeleteCommand(String collection, AstFilter filter) implements AstCommand {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeString("delete", collection);
@@ -36,7 +38,7 @@ public record AstDeleteCommand(String collection, AstFilter filter) implements A
                 writer.writeStartDocument();
                 {
                     writer.writeName("q");
-                    filter.render(writer);
+                    filter.render(writer, binderConsumer);
                     writer.writeInt32("limit", 0);
                 }
                 writer.writeEndDocument();

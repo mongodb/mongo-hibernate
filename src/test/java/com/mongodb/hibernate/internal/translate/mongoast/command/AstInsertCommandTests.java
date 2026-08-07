@@ -25,6 +25,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import java.util.List;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.junit.jupiter.api.Test;
 
 class AstInsertCommandTests {
@@ -37,13 +38,13 @@ class AstInsertCommandTests {
         var elements1 = List.of(
                 new AstElement("title", new AstLiteral(new BsonString("War and Peace"))),
                 new AstElement("year", new AstLiteral(new BsonInt32(1867))),
-                new AstElement("_id", AstParameterMarker.INSTANCE));
+                new AstElement("_id", new AstParameterMarker(JdbcParameterBinder.NOOP)));
         var document1 = new AstDocument(elements1);
 
         var elements2 = List.of(
                 new AstElement("title", new AstLiteral(new BsonString("Crime and Punishment"))),
                 new AstElement("year", new AstLiteral(new BsonInt32(1868))),
-                new AstElement("_id", AstParameterMarker.INSTANCE));
+                new AstElement("_id", new AstParameterMarker(JdbcParameterBinder.NOOP)));
         var document2 = new AstDocument(elements2);
 
         var insertCommand = new AstInsertCommand(collection, List.of(document1, document2));

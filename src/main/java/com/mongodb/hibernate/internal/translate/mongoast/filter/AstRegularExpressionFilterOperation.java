@@ -16,8 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import java.util.function.Consumer;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -78,7 +80,7 @@ public record AstRegularExpressionFilterOperation(String pattern, String options
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$regex");

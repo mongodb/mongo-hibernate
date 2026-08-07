@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * Renders {@code { $expr: expression }} as a MongoDB aggregation expression predicate in a {@code $match} stage. Used
@@ -29,10 +31,10 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstExprFilter(AstExpression expression) implements AstFilter {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$expr");
-        expression.render(writer);
+        expression.render(writer, binderConsumer);
         writer.writeEndDocument();
     }
 }

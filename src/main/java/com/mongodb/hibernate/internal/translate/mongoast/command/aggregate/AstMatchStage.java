@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/match/">{@code $match}</a>.
@@ -26,11 +28,11 @@ import org.bson.BsonWriter;
  */
 public record AstMatchStage(AstFilter filter) implements AstStage {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$match");
-            filter.render(writer);
+            filter.render(writer, binderConsumer);
         }
         writer.writeEndDocument();
     }
