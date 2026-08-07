@@ -21,30 +21,43 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
 import org.bson.json.JsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
+import org.junit.jupiter.params.shadow.de.siegmar.fastcsv.util.Nullable;
 
 public final class AstNodeAssertions {
 
     private AstNodeAssertions() {}
 
     public static void assertRendering(String expectedCanonicalExtendedJson, AstNode node) {
-        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.DOCUMENT);
+        doAssertRendering(expectedCanonicalExtendedJson, null, node, AstNodeKind.DOCUMENT);
     }
 
     public static void assertElementRendering(String expectedCanonicalExtendedJson, AstNode node) {
-        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.ELEMENT);
+        doAssertRendering(expectedCanonicalExtendedJson, null, node, AstNodeKind.ELEMENT);
     }
 
     public static void assertValueRendering(String expectedCanonicalExtendedJson, AstValue node) {
-        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.VALUE);
+        doAssertRendering(expectedCanonicalExtendedJson, null, node, AstNodeKind.VALUE);
+    }
+
+    public static void assertValueRendering(
+            String expectedCanonicalExtendedJson, List<JdbcParameterBinder> expectedParameterBinders, AstValue node) {
+        doAssertRendering(expectedCanonicalExtendedJson, expectedParameterBinders, node, AstNodeKind.VALUE);
     }
 
     public static void assertExpressionRendering(String expectedCanonicalExtendedJson, AstExpression node) {
         // An expression renders in value position, so it uses the same rendering path as a value.
-        doAssertRendering(expectedCanonicalExtendedJson, node, AstNodeKind.VALUE);
+        doAssertRendering(expectedCanonicalExtendedJson, null, node, AstNodeKind.VALUE);
     }
 
-    private static void doAssertRendering(String expectedJson, AstNode node, AstNodeKind nodeKind) {
+    private static void doAssertRendering(
+            String expectedJson,
+            @Nullable List<JdbcParameterBinder> expectedParameterBinders,
+            AstNode node,
+            AstNodeKind nodeKind) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
             if (nodeKind != AstNodeKind.DOCUMENT) {
@@ -54,13 +67,17 @@ public final class AstNodeAssertions {
             if (nodeKind == AstNodeKind.VALUE) {
                 jsonWriter.writeName(ancillaryFieldName);
             }
-            node.render(jsonWriter, parameterBinder -> {});
+            var consumedBinders = new ArrayList<JdbcParameterBinder>();
+            node.render(jsonWriter, consumedBinders::add);
             if (nodeKind != AstNodeKind.DOCUMENT) {
                 jsonWriter.writeEndDocument();
             }
             jsonWriter.flush();
             var actualJson = stringWriter.toString();
             assertEquals(expectedJson, actualJson);
+            if (expectedParameterBinders != null) {
+                assertEquals(expectedParameterBinders, consumedBinders);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

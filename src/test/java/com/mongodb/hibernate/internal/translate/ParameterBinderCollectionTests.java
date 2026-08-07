@@ -16,13 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.translate.AbstractMqlTranslator.renderMongoAstNode;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertValueRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
-import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.junit.jupiter.api.Test;
@@ -33,12 +31,6 @@ class ParameterBinderCollectionTests {
         return (statement, startPosition, jdbcParameterBindings, executionContext) -> {};
     }
 
-    private static List<JdbcParameterBinder> render(AstDocument document) {
-        var parameterBinders = new ArrayList<JdbcParameterBinder>();
-        renderMongoAstNode(document, parameterBinders::add);
-        return parameterBinders;
-    }
-
     @Test
     void testBindersFollowRenderingOrderRatherThanConstructionOrder() {
         var first = binder();
@@ -47,8 +39,8 @@ class ParameterBinderCollectionTests {
         var document = new AstDocument(List.of(
                 new AstElement("a", new AstParameterMarker(second)),
                 new AstElement("b", new AstParameterMarker(first))));
-
-        assertEquals(List.of(second, first), render(document));
+        assertValueRendering("""
+                {"": {"a": ?, "b": ?}}""", List.of(second, first), document);
     }
 
     @Test
@@ -57,7 +49,7 @@ class ParameterBinderCollectionTests {
         var marker = new AstParameterMarker(shared);
 
         var document = new AstDocument(List.of(new AstElement("a", marker), new AstElement("b", marker)));
-
-        assertEquals(List.of(shared, shared), render(document));
+        assertValueRendering("""
+                {"": {"a": ?, "b": ?}}""", List.of(shared, shared), document);
     }
 }
