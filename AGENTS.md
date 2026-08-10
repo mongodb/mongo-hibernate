@@ -83,9 +83,18 @@ curl -s -X PUT \
   "https://jira.mongodb.org/rest/agile/1.0/issue/rank"
 ```
 
-## Adding HQL-to-MQL Translation Support
+## Architecture Invariants
 
-@.claude/skills/add-hql-to-mql-translation/SKILL.md
+`ARCHITECTURE.md` documents the contracts that new code has to respect: visitor dispatch and the
+`AstVisitorValueDescriptor` protocol, why translation must not use a parallel recursive descent,
+compact find syntax vs. `$expr` in `$match`, clause-position parity, the aggregation stage order, and
+the `FeatureNotSupportedException` vs. `AssertionError` failure contract. Read it before designing or
+reviewing a translation change.
+
+## Task-Specific Skills
+
+- Adding HQL-to-MQL translation support --- `.claude/skills/add-hql-to-mql-translation/SKILL.md`
+- Reviewing a pull request --- `.claude/skills/reviewing-pull-requests/SKILL.md`
 
 ## Code Style
 

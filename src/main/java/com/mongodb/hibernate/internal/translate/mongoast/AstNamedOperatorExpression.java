@@ -16,8 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * A general-purpose Mongo operator that includes arguments as a document
@@ -25,16 +27,16 @@ import org.bson.BsonWriter;
  * @param operator the name of the operator, including the <code>$</code>
  * @param arguments a map of name-argument pairs that will be converted into a document
  */
-public record AstNamedOperatorExpression(String operator, Map<String, AstExpression> arguments)
+public record AstNamedOperatorExpression(String operator, SortedMap<String, AstExpression> arguments)
         implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeStartDocument(operator);
             for (final var argument : arguments.entrySet()) {
                 writer.writeName(argument.getKey());
-                argument.getValue().render(writer);
+                argument.getValue().render(writer, binderConsumer);
             }
             writer.writeEndDocument();
         }

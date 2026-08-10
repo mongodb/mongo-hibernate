@@ -19,7 +19,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/sort/">{@code $sort}</a>.
@@ -33,13 +35,13 @@ public record AstSortStage(Collection<? extends AstSortField> sortFields) implem
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$sort");
             writer.writeStartDocument();
             {
-                sortFields.forEach(sortField -> sortField.render(writer));
+                sortFields.forEach(sortField -> sortField.render(writer, binderConsumer));
             }
             writer.writeEndDocument();
         }

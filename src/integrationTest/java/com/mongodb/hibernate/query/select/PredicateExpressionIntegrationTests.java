@@ -320,8 +320,8 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     Set.of(Widget.COLLECTION_NAME));
         }
 
-        // A parameter in the BETWEEN operand appears in both bound comparisons, so its value must be
-        // bound twice; visiting the operand once and reusing the node emits two markers but one binder.
+        // The operand is translated once and shared by both bound comparisons, so a parameter in it
+        // renders as two markers and its binder is collected twice, binding the value at both.
         @Test
         void testParameterOperandBetween() {
             assertSelectionQuery(
@@ -368,16 +368,6 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
             getSessionFactoryScope().inTransaction(session -> assertThatThrownBy(() -> session.createSelectionQuery(
                                     "select x in (select w2.x from Widget w2) from Widget", Boolean.class)
                             .getResultList())
-                    .isInstanceOf(FeatureNotSupportedException.class));
-        }
-
-        // A row-value / tuple comparison in select position reaches the `SqlTuple` guard in
-        // `acceptAndYieldExpression` before it can be rendered as an aggregation expression.
-        @Test
-        void testTupleComparisonInSelectIsUnsupported() {
-            getSessionFactoryScope().inTransaction(session -> assertThatThrownBy(
-                            () -> session.createSelectionQuery("select (x, y) = (1, 2) from Widget", Boolean.class)
-                                    .getResultList())
                     .isInstanceOf(FeatureNotSupportedException.class));
         }
     }

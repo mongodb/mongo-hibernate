@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import java.util.Map;
+import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 
 class AstNamedOperatorExpressionTests {
@@ -26,10 +27,11 @@ class AstNamedOperatorExpressionTests {
     @Test
     void testRendering() {
         var operation = new AstNamedOperatorExpression(
-                "$op", Map.of("a", new AstFieldPathExpression("x"), "b", new AstFieldPathExpression("y")));
+                "$op",
+                new TreeMap<>(Map.of("a", new AstFieldPathExpression("x"), "b", new AstFieldPathExpression("y"))));
         assertExpressionRendering(
                 """
-                {"": {"$op": {"b": "$y", "a": "$x"}}}\
+                {"": {"$op": {"a": "$x", "b": "$y"}}}\
                 """, operation);
     }
 }

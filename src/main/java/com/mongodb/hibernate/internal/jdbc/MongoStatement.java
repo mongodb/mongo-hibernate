@@ -246,7 +246,13 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
+        var command = AdminCommand.toAdminCommand(mql);
+        try {
+            command.execute(mongoDatabase);
+            return false;
+        } catch (RuntimeException exception) {
+            throw handleExecuteQueryOrUpdateException(exception);
+        }
     }
 
     @Override
@@ -353,7 +359,10 @@ class MongoStatement implements StatementAdapter {
     private static int getUpdateCount(CommandDescription commandDescription, BulkWriteResult bulkWriteResult) {
         return switch (commandDescription) {
             case INSERT -> bulkWriteResult.getInsertedCount();
-            case UPDATE -> bulkWriteResult.getModifiedCount();
+            // The Postgres driver (and others) returns matched count for updates (rather than modified count).
+            // Hibernate relies on this behavior for StatelessSession#upsert, which expects executeUpdate to
+            // return 1 even if the row was matched but not modified and throws a StaleStateException otherwise.
+            case UPDATE -> bulkWriteResult.getMatchedCount();
             case DELETE -> bulkWriteResult.getDeletedCount();
             default -> throw fail();
         };

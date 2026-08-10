@@ -1,0 +1,161 @@
+/*
+ * Copyright 2026-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// THROWAWAY REVIEW PROBE for schema / DDL / index work --- delete before finishing. Never commit.
+// Copy to src/integrationTest/java/com/mongodb/hibernate/query/ZzDdlProbeTests.java
+// Run: ./gradlew :integrationTest --tests ZzDdlProbeTests      (leading colon is required)
+// Read: grep -ohE 'PROBE\|[^<]*' build/test-results/integrationTest/TEST-*ZzDdlProbeTests.xml
+//
+// Why this differs from ProbeTests.java.template: schema export happens at SessionFactory BUILD
+// time, not per query. So this builds an independent registry + SessionFactory per probe rather
+// than reusing one shared, pre-built factory. It deliberately does NOT extend
+// AbstractQueryIntegrationTests and does not need MongoServiceRegistryProducer, because it never
+// goes through Hibernate's test framework for registry construction.
+//
+// Like the query probe, it owns its CommandListener rather than using the test framework's --- see
+// that template's header for the "(none of 0 captured)" troubleshooting note.
+
+package com.mongodb.hibernate.query;
+
+import com.mongodb.event.CommandListener;
+import com.mongodb.event.CommandStartedEvent;
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.bson.BsonDocument;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.junit.jupiter.api.Test;
+
+class ZzDdlProbeTests {
+
+    /** Handshake and session chatter that drowns out the commands under review. */
+    private static final List<String> NOISE = List.of("buildInfo", "hello", "ping", "endSessions");
+
+    /** The probe's own listener. A fresh one per probe, so no cross-probe contamination. */
+    static final class ProbeCommandListener implements CommandListener {
+        private final List<BsonDocument> commands = Collections.synchronizedList(new ArrayList<>());
+
+        @Override
+        public void commandStarted(CommandStartedEvent event) {
+            commands.add(event.getCommand().clone());
+        }
+
+        List<BsonDocument> started() {
+            return List.copyOf(commands);
+        }
+    }
+
+    /**
+     * Builds a SessionFactory with the given schema-generation action and reports which commands the
+     * server actually received.
+     *
+     * @param action {@code jakarta.persistence.schema-generation.database.action} --- one of
+     *     {@code create}, {@code drop-and-create}, {@code create-drop}, {@code drop}, {@code none}
+     */
+    private static void probe(String label, String action, Class<?> entityClass) {
+        var listener = new ProbeCommandListener();
+        var registry = new StandardServiceRegistryBuilder()
+                .applySettings(Map.of(
+                        "hibernate.hbm2ddl.auto", "none",
+                        "jakarta.persistence.schema-generation.database.action", action))
+                .addService(
+                        MongoConfigurationContributor.class,
+                        (MongoConfigurationContributor) configurator ->
+                                configurator.applyToMongoClientSettings(b -> b.addCommandListener(listener)))
+                .build();
+        try {
+            // close() is what triggers the drop half of create-drop, so let try-with-resources run.
+            try (var sessionFactory = new MetadataSources()
+                    .addAnnotatedClass(entityClass)
+                    .buildMetadata(registry)
+                    .buildSessionFactory()) {
+                sessionFactory.openSession().close();
+            }
+            System.out.println("PROBE|" + label + "|OK|" + summarize(listener));
+        } catch (Throwable t) {
+            var root = t;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            System.out.println("PROBE|" + label + "|THREW|" + root.getClass().getSimpleName() + ": "
+                    + root.getMessage() + "|after=" + summarize(listener));
+        }
+    }
+
+    private static String summarize(ProbeCommandListener listener) {
+        var all = listener.started();
+        var interesting = all.stream()
+                .filter(command -> !NOISE.contains(command.getFirstKey()))
+                .map(command -> command.getFirstKey() + "=" + command.toJson())
+                .toList();
+        // Always report the raw capture count. "(none of 0 captured)" means the listener was never
+        // installed --- a broken harness, not a quiet export. "(none of 4 captured)" means it worked
+        // and no schema command was actually emitted, which is itself a finding worth reporting.
+        return interesting.isEmpty()
+                ? "(none of " + all.size() + " captured)"
+                : String.join(" ;; ", interesting);
+    }
+
+    @Test
+    void probes() {
+        // One line per row of the schema/DDL matrix in SKILL.md. Keep labels stable so the
+        // parent-commit run diffs cleanly against the PR run.
+        probe("create", "create", Indexed.class);
+        probe("drop-and-create", "drop-and-create", Indexed.class);
+        probe("create-drop", "create-drop", Indexed.class);
+        probe("drop-alone", "drop", Indexed.class);
+        probe("idempotent-second-create", "create", Indexed.class);
+        probe("descending-column", "create", Descending.class);
+        probe("column-unique-idiom", "create", ColumnUnique.class);
+    }
+
+    @Entity(name = "Indexed")
+    @Table(name = "probe_indexed", indexes = @Index(name = "idx_t", columnList = "title"))
+    static class Indexed {
+        @Id
+        int id;
+
+        String title;
+    }
+
+    /** Column order must survive into the index key as -1, not be silently flattened to 1. */
+    @Entity(name = "Descending")
+    @Table(name = "probe_desc", indexes = @Index(name = "idx_desc", columnList = "title DESC"))
+    static class Descending {
+        @Id
+        int id;
+
+        String title;
+    }
+
+    /** The bare-@Column idiom, which Hibernate may never materialize as a UniqueKey at all. */
+    @Entity(name = "ColumnUnique")
+    @Table(name = "probe_col_unique")
+    static class ColumnUnique {
+        @Id
+        int id;
+
+        @jakarta.persistence.Column(unique = true)
+        String isbn;
+    }
+}

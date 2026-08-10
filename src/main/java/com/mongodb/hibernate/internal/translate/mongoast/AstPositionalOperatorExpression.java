@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * A general-purpose Mongo operator that includes the arguments as an array
@@ -27,12 +29,12 @@ import org.bson.BsonWriter;
  */
 public record AstPositionalOperatorExpression(String operator, List<AstExpression> arguments) implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeStartArray(operator);
             for (final var argument : arguments) {
-                argument.render(writer);
+                argument.render(writer, binderConsumer);
             }
             writer.writeEndArray();
         }

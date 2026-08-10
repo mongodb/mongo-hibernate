@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import java.util.Collection;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/command/aggregate/">{@code aggregate}</a>.
@@ -28,14 +30,14 @@ import org.bson.BsonWriter;
 public record AstAggregateCommand(String collection, Collection<? extends AstStage> stages) implements AstCommand {
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeString("aggregate", collection);
             writer.writeName("pipeline");
             writer.writeStartArray();
             {
-                stages.forEach(stage -> stage.render(writer));
+                stages.forEach(stage -> stage.render(writer, binderConsumer));
             }
             writer.writeEndArray();
         }

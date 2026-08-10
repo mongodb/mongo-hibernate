@@ -21,7 +21,9 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArray;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/all/">{@code $all}</a>.
@@ -35,11 +37,11 @@ public record AstAllFilterOperation(AstValue parameterMarkerOrArrayValue) implem
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$all");
-            parameterMarkerOrArrayValue.render(writer);
+            parameterMarkerOrArrayValue.render(writer, binderConsumer);
         }
         writer.writeEndDocument();
     }
