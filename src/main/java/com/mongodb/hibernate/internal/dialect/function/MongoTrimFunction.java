@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.query.sqm.function.AbstractSqmSelfRenderingFunctionDescriptor;
+import org.hibernate.query.sqm.produce.function.ArgumentTypesValidator;
 import org.hibernate.query.sqm.produce.function.FunctionParameterType;
 import org.hibernate.query.sqm.produce.function.StandardArgumentsValidators;
 import org.hibernate.query.sqm.produce.function.StandardFunctionArgumentTypeResolvers;
@@ -42,7 +43,11 @@ public final class MongoTrimFunction extends AbstractSqmSelfRenderingFunctionDes
     public MongoTrimFunction(TypeConfiguration typeConfiguration) {
         super(
                 "trim",
-                StandardArgumentsValidators.between(2, 3),
+                new ArgumentTypesValidator(
+                        StandardArgumentsValidators.between(2, 3),
+                        FunctionParameterType.TRIM_SPEC,
+                        FunctionParameterType.STRING,
+                        FunctionParameterType.STRING),
                 StandardFunctionReturnTypeResolvers.invariant(Objects.requireNonNull(
                         typeConfiguration.getBasicTypeRegistry().resolve(StandardBasicTypes.STRING))),
                 StandardFunctionArgumentTypeResolvers.byArgument(

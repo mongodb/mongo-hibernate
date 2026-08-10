@@ -24,7 +24,6 @@ import jakarta.persistence.Table;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -342,156 +341,314 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
     }
 
     @Test
-    void testLeftTrim() {
+    void testRepeat() {
         assertQueryResult(
-                "select ltrim(s) from Item",
-                "Hello ",
+                "select repeat(s, 2) from Item",
+                " Hello  Hello ",
                 """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$ltrim": {
-                            "input": "$s"
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
+                        {
+                                  "aggregate": "items",
+                                  "pipeline": [
+                                    {
+                                      "$project": {
+                                        "#c_1": {
+                                          "$let": {
+                                            "in": {
+                                              "$reduce": {
+                                                "in": {
+                                                  "$concat": [
+                                                    "$$value",
+                                                    "$$repeatStr"
+                                                  ]
+                                                },
+                                                "initialValue": {
+                                                  "$literal": ""
+                                                },
+                                                "input": {
+                                                  "$range": [
+                                                    {
+                                                      "$literal": 0
+                                                    },
+                                                    "$$count"
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            "vars": {
+                                              "count": 2,
+                                              "repeatStr": "$s"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
                 """);
     }
 
     @Test
-    void testLeftTrimChars() {
+    void testPadLeadingWS() {
         assertQueryResult(
-                "select ltrim(u, '_') from Item",
-                "Hello_",
+                "select pad(s with 20 leading) from Item",
+                "              Hello ",
                 """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$ltrim": {
-                            "chars": "_",
-                            "input": "$u"
-                          }
+                        {
+                          "aggregate": "items",
+                          "pipeline": [
+                            {
+                              "$project": {
+                                "#c_1": {
+                                  "$let": {
+                                    "in": {
+                                      "$reduce": {
+                                        "in": {
+                                          "$concat": [
+                                            "$$padding",
+                                            "$$value"
+                                          ]
+                                        },
+                                        "initialValue": "$$baseStr",
+                                        "input": {
+                                          "$range": [
+                                            {
+                                              "$literal": 0
+                                            },
+                                            {
+                                              "$floor": {
+                                                "$divide": [
+                                                  {
+                                                    "$subtract": [
+                                                      "$$targetLen",
+                                                      {
+                                                        "$strLenCP": "$$baseStr"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "$strLenCP": "$$padding"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "vars": {
+                                      "baseStr": {
+                                        "$toString": "$s"
+                                      },
+                                      "padding": {
+                                        "$literal": " "
+                                      },
+                                      "targetLen": 20
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
                         }
-                      }
-                    }
-                  ]
-                }
                 """);
     }
 
     @Test
-    void testReplaceAll() {
+    void testPadLeadingCh() {
         assertQueryResult(
-                "select replace_all(s, ' ', '_') from Item",
-                "_Hello_",
+                "select pad(s with 20 leading '*') from Item",
+                "************* Hello ",
                 """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$replaceAll": {
-                            "find": " ",
-                            "input": "$s",
-                            "replacement": "_"
-                          }
+                        {
+                          "aggregate": "items",
+                          "pipeline": [
+                            {
+                              "$project": {
+                                "#c_1": {
+                                  "$let": {
+                                    "in": {
+                                      "$reduce": {
+                                        "in": {
+                                          "$concat": [
+                                            "$$padding",
+                                            "$$value"
+                                          ]
+                                        },
+                                        "initialValue": "$$baseStr",
+                                        "input": {
+                                          "$range": [
+                                            {
+                                              "$literal": 0
+                                            },
+                                            {
+                                              "$floor": {
+                                                "$divide": [
+                                                  {
+                                                    "$subtract": [
+                                                      "$$targetLen",
+                                                      {
+                                                        "$strLenCP": "$$baseStr"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "$strLenCP": "$$padding"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "vars": {
+                                      "baseStr": {
+                                        "$toString": "$s"
+                                      },
+                                      "padding": {
+                                        "$toString": "*"
+                                      },
+                                      "targetLen": 20
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
                         }
-                      }
-                    }
-                  ]
-                }
                 """);
     }
 
     @Test
-    void testReplaceOne() {
+    void testPadTrailingWS() {
         assertQueryResult(
-                "select replace_one(s, ' ', '_') from Item",
-                "_Hello ",
+                "select pad(s with 20 trailing) from Item",
+                " Hello              ",
                 """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$replaceOne": {
-                            "find": " ",
-                            "input": "$s",
-                            "replacement": "_"
-                          }
+                        {
+                          "aggregate": "items",
+                          "pipeline": [
+                            {
+                              "$project": {
+                                "#c_1": {
+                                  "$let": {
+                                    "in": {
+                                      "$reduce": {
+                                        "in": {
+                                          "$concat": [
+                                            "$$value",
+                                            "$$padding"
+                                          ]
+                                        },
+                                        "initialValue": "$$baseStr",
+                                        "input": {
+                                          "$range": [
+                                            {
+                                              "$literal": 0
+                                            },
+                                            {
+                                              "$floor": {
+                                                "$divide": [
+                                                  {
+                                                    "$subtract": [
+                                                      "$$targetLen",
+                                                      {
+                                                        "$strLenCP": "$$baseStr"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "$strLenCP": "$$padding"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "vars": {
+                                      "baseStr": {
+                                        "$toString": "$s"
+                                      },
+                                      "padding": {
+                                        "$literal": " "
+                                      },
+                                      "targetLen": 20
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
                         }
-                      }
-                    }
-                  ]
-                }
                 """);
     }
 
     @Test
-    void testRightTrim() {
+    void testPadTrailingCh() {
         assertQueryResult(
-                "select rtrim(s) from Item",
-                " Hello",
+                "select pad(s with 20 trailing '*') from Item",
+                " Hello *************",
                 """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$rtrim": {
-                            "input": "$s"
-                          }
+                        {
+                          "aggregate": "items",
+                          "pipeline": [
+                            {
+                              "$project": {
+                                "#c_1": {
+                                  "$let": {
+                                    "in": {
+                                      "$reduce": {
+                                        "in": {
+                                          "$concat": [
+                                            "$$value",
+                                            "$$padding"
+                                          ]
+                                        },
+                                        "initialValue": "$$baseStr",
+                                        "input": {
+                                          "$range": [
+                                            {
+                                              "$literal": 0
+                                            },
+                                            {
+                                              "$floor": {
+                                                "$divide": [
+                                                  {
+                                                    "$subtract": [
+                                                      "$$targetLen",
+                                                      {
+                                                        "$strLenCP": "$$baseStr"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "$strLenCP": "$$padding"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "vars": {
+                                      "baseStr": {
+                                        "$toString": "$s"
+                                      },
+                                      "padding": {
+                                        "$toString": "*"
+                                      },
+                                      "targetLen": 20
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
                         }
-                      }
-                    }
-                  ]
-                }
                 """);
-    }
-
-    @Test
-    void testRightTrimChars() {
-        assertQueryResult(
-                "select rtrim(u, '_') from Item",
-                "_Hello",
-                """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$rtrim": {
-                            "chars": "_",
-                            "input": "$u"
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-                """);
-    }
-
-    @Test
-    void testRightTrimWrongType() {
-        assertSelectQueryFailure(
-                "select rtrim(u, 3) from Item",
-                String.class,
-                FunctionArgumentException.class,
-                "Parameter 2 of function 'rtrim()' has type 'STRING', but argument is of type 'java.lang.Integer' mapped to 'INTEGER'");
     }
 
     @Test

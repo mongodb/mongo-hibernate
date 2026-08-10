@@ -32,6 +32,8 @@ import com.mongodb.hibernate.internal.dialect.function.MongoExpressionNamedFunct
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionUnaryFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionVariadicFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoPadFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoRepeatFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoTrimFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
@@ -345,44 +347,19 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                         typeConfiguration,
                         StandardBasicTypes.STRING,
                         FunctionParameterType.STRING));
+        functionRegistry.register("lpad", new MongoPadFunction(typeConfiguration, true));
+        functionRegistry.register("repeat", new MongoRepeatFunction(typeConfiguration));
         functionRegistry.register(
-                "ltrim",
+                "replace",
                 new MongoExpressionNamedFunction(
-                        "ltrim",
-                        "$ltrim",
-                        typeConfiguration,
-                        StandardBasicTypes.STRING,
-                        required("input", FunctionParameterType.STRING),
-                        orMissing("chars", FunctionParameterType.STRING)));
-        functionRegistry.register(
-                "replace_all",
-                new MongoExpressionNamedFunction(
-                        "replace_all",
+                        "replace",
                         "$replaceAll",
                         typeConfiguration,
                         StandardBasicTypes.STRING,
                         required("input", FunctionParameterType.STRING),
                         required("find", FunctionParameterType.STRING),
                         required("replacement", FunctionParameterType.STRING)));
-        functionRegistry.register(
-                "replace_one",
-                new MongoExpressionNamedFunction(
-                        "replace_one",
-                        "$replaceOne",
-                        typeConfiguration,
-                        StandardBasicTypes.STRING,
-                        required("input", FunctionParameterType.STRING),
-                        required("find", FunctionParameterType.STRING),
-                        required("replacement", FunctionParameterType.STRING)));
-        functionRegistry.register(
-                "rtrim",
-                new MongoExpressionNamedFunction(
-                        "rtrim",
-                        "$rtrim",
-                        typeConfiguration,
-                        StandardBasicTypes.STRING,
-                        required("input", FunctionParameterType.STRING),
-                        orMissing("chars", FunctionParameterType.STRING)));
+        functionRegistry.register("rpad", new MongoPadFunction(typeConfiguration, false));
         functionRegistry.register(
                 "substring",
                 new MongoExpressionPositionalFunction(
@@ -405,7 +382,6 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                         FunctionParameterType.STRING));
         functionRegistry.registerAlternateKey("char_length", "character_length");
         functionRegistry.registerAlternateKey("length", "character_length");
-        functionRegistry.registerAlternateKey("replace", "replace_all");
     }
 
     /** @mongoCme The {@link MutationOperation} returned from this method does not have to be thread-safe. */
