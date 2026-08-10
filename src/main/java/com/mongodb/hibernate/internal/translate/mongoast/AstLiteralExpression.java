@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * An {@link AstValue} (a literal or parameter) wrapped in {@code $literal} for aggregation-expression position, so it
@@ -29,10 +31,10 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstLiteralExpression(AstValue value) implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$literal");
-        value.render(writer);
+        value.render(writer, binderConsumer);
         writer.writeEndDocument();
     }
 }

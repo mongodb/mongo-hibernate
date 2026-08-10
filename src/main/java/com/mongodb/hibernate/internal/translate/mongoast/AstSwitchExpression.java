@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * The MongoDB {@code $switch} aggregation expression, evaluating each branch's {@code case} in order and yielding the
@@ -31,16 +33,16 @@ import org.bson.BsonWriter;
 public record AstSwitchExpression(List<AstSwitchCase> branches, AstExpression defaultExpression)
         implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$switch");
         writer.writeStartDocument();
         writer.writeName("branches");
         writer.writeStartArray();
-        branches.forEach(branch -> branch.render(writer));
+        branches.forEach(branch -> branch.render(writer, binderConsumer));
         writer.writeEndArray();
         writer.writeName("default");
-        defaultExpression.render(writer);
+        defaultExpression.render(writer, binderConsumer);
         writer.writeEndDocument();
         writer.writeEndDocument();
     }

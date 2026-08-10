@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * A document-form update payload, rendered as {@code { "$set": { … } }}.
@@ -28,13 +30,13 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstDocumentUpdate(List<AstFieldUpdate> updates) implements AstUpdate {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$set");
             writer.writeStartDocument();
             {
-                updates.forEach(update -> update.render(writer));
+                updates.forEach(update -> update.render(writer, binderConsumer));
             }
             writer.writeEndDocument();
         }

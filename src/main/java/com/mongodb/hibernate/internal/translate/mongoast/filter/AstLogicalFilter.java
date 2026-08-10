@@ -19,7 +19,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/#logical">Query and Projection Operators.
@@ -35,13 +37,13 @@ public record AstLogicalFilter(AstLogicalFilterOperator operator, Collection<? e
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName(operator.getOperatorName());
             writer.writeStartArray();
             {
-                filters.forEach(filter -> filter.render(writer));
+                filters.forEach(filter -> filter.render(writer, binderConsumer));
             }
             writer.writeEndArray();
         }

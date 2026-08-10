@@ -17,19 +17,21 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public record AstInExpression(AstExpression value, List<? extends AstExpression> options) implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$in");
         writer.writeStartArray();
-        value.render(writer);
+        value.render(writer, binderConsumer);
         writer.writeStartArray();
-        options.forEach(option -> option.render(writer));
+        options.forEach(option -> option.render(writer, binderConsumer));
         writer.writeEndArray();
         writer.writeEndArray();
         writer.writeEndDocument();

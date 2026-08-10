@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * One branch of a {@link AstSwitchExpression}, rendered as {@code {"case": <caseExpression>, "then":
@@ -29,12 +31,12 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstSwitchCase(AstExpression caseExpression, AstExpression thenExpression) implements AstNode {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("case");
-        caseExpression.render(writer);
+        caseExpression.render(writer, binderConsumer);
         writer.writeName("then");
-        thenExpression.render(writer);
+        thenExpression.render(writer, binderConsumer);
         writer.writeEndDocument();
     }
 }

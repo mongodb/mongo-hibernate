@@ -1580,8 +1580,9 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
         @Test
         void testBetweenConjunct() {
-            // Delegation reuses visitBetweenPredicate (a $gte/$lte pair); the BETWEEN operand c.region binds a let
-            // variable for each bound. c.region falls within [o.id, o.total] for every diagonal-joined row.
+            // Delegation reuses visitBetweenPredicate (a $gte/$lte pair); the BETWEEN operand c.region is
+            // translated once, so both bounds read the same let variable. c.region falls within
+            // [o.id, o.total] for every diagonal-joined row.
             assertSelectionQuery(
                     "SELECT c.id, o.total FROM Customer c JOIN Order o"
                             + " ON c.id = o.id AND c.region BETWEEN o.id AND o.total ORDER BY c.id, o.id",
@@ -1595,8 +1596,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                             "from": "Order",
                             "let": {
                               "v0_c1_0__id": "$_id",
-                              "v1_c1_0_region": "$region",
-                              "v2_c1_0_region": "$region"
+                              "v1_c1_0_region": "$region"
                             },
                             "pipeline": [
                               {
@@ -1607,7 +1607,7 @@ class JoinSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
                                       {
                                         "$and": [
                                           { "$gte": [ "$$v1_c1_0_region", "$_id" ] },
-                                          { "$lte": [ "$$v2_c1_0_region", "$total" ] }
+                                          { "$lte": [ "$$v1_c1_0_region", "$total" ] }
                                         ]
                                       }
                                     ]

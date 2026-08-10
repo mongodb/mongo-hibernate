@@ -23,7 +23,7 @@ import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
 import static org.hibernate.sql.exec.spi.JdbcLockStrategy.NONE;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
@@ -64,19 +64,16 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcSelect> {
 
     static final class Result {
         private final AstCommand command;
-        private final List<JdbcParameterBinder> parameterBinders;
         private final Set<String> affectedTableNames;
         private final @Nullable JdbcParameter offsetParameter;
         private final @Nullable JdbcParameter limitParameter;
 
         Result(
                 AstCommand command,
-                List<JdbcParameterBinder> parameterBinders,
                 Set<String> affectedTableNames,
                 @Nullable JdbcParameter offsetParameter,
                 @Nullable JdbcParameter limitParameter) {
             this.command = command;
-            this.parameterBinders = parameterBinders;
             this.affectedTableNames = affectedTableNames;
             this.offsetParameter = offsetParameter;
             this.limitParameter = limitParameter;
@@ -88,8 +85,10 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcSelect> {
                     sessionFactory.getServiceRegistry().requireService(JdbcValuesMappingProducerProvider.class);
             var jdbcValuesMappingProducer =
                     jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, sessionFactory);
+            var parameterBinders = new ArrayList<JdbcParameterBinder>();
+            var mql = renderMongoAstNode(command, parameterBinders::add);
             return new JdbcOperationQuerySelect(
-                    renderMongoAstNode(command),
+                    mql,
                     parameterBinders,
                     jdbcValuesMappingProducer,
                     affectedTableNames,

@@ -22,7 +22,7 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static java.util.Collections.emptyList;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
-import java.util.List;
+import java.util.ArrayList;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -63,23 +63,24 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
     static final class Result {
         private final @Nullable AstCommand command;
 
-        private final List<JdbcParameterBinder> parameterBinders;
-
-        private Result(@Nullable AstCommand command, List<JdbcParameterBinder> parameterBinders) {
+        private Result(@Nullable AstCommand command) {
             this.command = command;
-            this.parameterBinders = parameterBinders;
         }
 
-        static Result create(AstCommand command, List<JdbcParameterBinder> parameterBinders) {
-            return new Result(assertNotNull(command), parameterBinders);
+        static Result create(AstCommand command) {
+            return new Result(assertNotNull(command));
         }
 
         private static Result empty() {
-            return new Result(null, emptyList());
+            return new Result(null);
         }
 
         private <O extends JdbcMutationOperation> O createJdbcMutationOperation(TableMutation<O> tableMutation) {
-            var mql = command == null ? "" : renderMongoAstNode(command);
+            if (command == null) {
+                return tableMutation.createMutationOperation("", emptyList());
+            }
+            var parameterBinders = new ArrayList<JdbcParameterBinder>();
+            var mql = renderMongoAstNode(command, parameterBinders::add);
             return tableMutation.createMutationOperation(mql, parameterBinders);
         }
     }

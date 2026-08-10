@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/unwind/">{@code $unwind}</a>.
@@ -25,7 +27,7 @@ import org.bson.BsonWriter;
  */
 public record AstUnwindStage(String path, boolean preserveNullAndEmptyArrays) implements AstStage {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$unwind");
         if (preserveNullAndEmptyArrays) {

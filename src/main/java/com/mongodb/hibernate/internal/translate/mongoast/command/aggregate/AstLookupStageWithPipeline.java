@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * The pipeline form of <a
@@ -31,7 +33,7 @@ import org.bson.BsonWriter;
 public record AstLookupStageWithPipeline(String from, List<AstLetVariable> let, List<AstStage> pipeline, String as)
         implements AstStage {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$lookup");
@@ -41,13 +43,13 @@ public record AstLookupStageWithPipeline(String from, List<AstLetVariable> let, 
                 writer.writeName("let");
                 writer.writeStartDocument();
                 {
-                    let.forEach(variable -> variable.render(writer));
+                    let.forEach(variable -> variable.render(writer, binderConsumer));
                 }
                 writer.writeEndDocument();
                 writer.writeName("pipeline");
                 writer.writeStartArray();
                 {
-                    pipeline.forEach(stage -> stage.render(writer));
+                    pipeline.forEach(stage -> stage.render(writer, binderConsumer));
                 }
                 writer.writeEndArray();
                 writer.writeString("as", as);

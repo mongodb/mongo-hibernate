@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/core/document/">Documents</a>.
@@ -26,10 +28,10 @@ import org.bson.BsonWriter;
  */
 public record AstDocument(Collection<? extends AstElement> elements) implements AstValue {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
-            elements.forEach(element -> element.render(writer));
+            elements.forEach(element -> element.render(writer, binderConsumer));
         }
         writer.writeEndDocument();
     }
