@@ -146,15 +146,17 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
                 bsonValue = toBsonValue(value);
             } else {
                 var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
-                var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
-                if (jdbcTypeCode == getJdbcTypeCode()) {
+                if (jdbcMapping.getJdbcType().getJdbcTypeCode() == getJdbcTypeCode()) {
                     var structValueBinder = assertInstanceOf(jdbcMapping.getJdbcValueBinder(), Binder.class);
                     bsonValue = structValueBinder.getJdbcType().createBindValue(value, options);
-                } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
+                } else if (jdbcMapping.getMappedJavaType().getJavaTypeClass().isInstance(value)) {
                     @SuppressWarnings("unchecked")
                     ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
                     bsonValue = toBsonValue(valueBinder.getBindValue(value, options));
                 } else {
+                    // The value is not an instance of its selectable's mapped type, which happens for shapes we do
+                    // not support, such as a flattened `@Embeddable` nested in a `@Struct` one. Report it by value
+                    // rather than letting the unwrap fail with a bare `ClassCastException`.
                     bsonValue = toBsonValue(value);
                 }
             }
@@ -199,8 +201,17 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
                 domainValue =
                         arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(assertNotNull(value)), options);
             } else {
-                domainValue = toDomainValue(
-                        assertNotNull(value), jdbcMapping.getMappedJavaType().getJavaTypeClass());
+                // The inverse of `createBindValue`: read the JDBC-level value the binder would have written, then
+                // wrap it back into the domain type. A `JdbcType` reporting no preferred Java type binds the domain
+                // value unchanged, so it is read back unchanged.
+                var preferredJavaTypeClass = jdbcMapping.getJdbcType().getPreferredJavaTypeClass(options);
+                var mappedJavaType = jdbcMapping.getMappedJavaType();
+                if (preferredJavaTypeClass == null) {
+                    domainValue = toDomainValue(assertNotNull(value), mappedJavaType.getJavaTypeClass());
+                } else {
+                    domainValue =
+                            mappedJavaType.wrap(toDomainValue(assertNotNull(value), preferredJavaTypeClass), options);
+                }
             }
             result[columnIndex] = domainValue;
         }

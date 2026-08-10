@@ -94,6 +94,18 @@ import org.hibernate.service.spi.ServiceContributor;
  *       <td>BSON {@code Date}</td>
  *     </tr>
  *     <tr>
+ *       <td>{@link java.time.Duration}</td>
+ *       <td>BSON {@code Decimal128} holding the number of nanoseconds</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link java.time.Year}</td>
+ *       <td>BSON {@code 32-bit integer}</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link java.time.ZoneId}, {@link java.time.ZoneOffset}, {@link java.util.TimeZone}</td>
+ *       <td>BSON {@code String} holding the zone or offset ID</td>
+ *     </tr>
+ *     <tr>
  *       <td>{@link java.sql.Struct} <a
  *           href="https://docs.hibernate.org/orm/6.6/userguide/html_single/#embeddable-mapping-aggregate">aggregate
  *           embeddable</a></td>
