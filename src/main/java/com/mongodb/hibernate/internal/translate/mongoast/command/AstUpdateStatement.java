@@ -26,7 +26,28 @@ import org.bson.BsonWriter;
  *
  * @hidden
  */
-public record AstUpdateStatement(AstFilter filter, AstUpdate update, boolean upsert, boolean multi) implements AstNode {
+public class AstUpdateStatement implements AstNode {
+    private final AstFilter filter;
+    private final AstUpdate update;
+    private final boolean upsert;
+    private final boolean multi;
+
+    public static AstUpdateStatement createUpsertStatement(AstFilter filter, AstUpdate update) {
+        return new AstUpdateStatement(filter, update, true, false);
+    }
+
+    public static AstUpdateStatement createMultiUpdateStatement(AstFilter filter, AstUpdate update) {
+        return new AstUpdateStatement(filter, update, false, true);
+    }
+
+    private AstUpdateStatement(
+            final AstFilter filter, final AstUpdate update, final boolean upsert, final boolean multi) {
+        this.filter = filter;
+        this.update = update;
+        this.upsert = upsert;
+        this.multi = multi;
+    }
+
     @Override
     public void render(BsonWriter writer) {
         writer.writeStartDocument();
