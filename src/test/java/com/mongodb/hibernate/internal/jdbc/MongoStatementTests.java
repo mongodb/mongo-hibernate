@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -30,13 +31,17 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 
 import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.bulk.BulkWriteUpsert;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -44,11 +49,13 @@ import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.function.BiConsumer;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -242,6 +249,84 @@ class MongoStatementTests {
 
             var sqlException = assertThrows(SQLException.class, () -> mongoStatement.executeUpdate(mql));
             assertEquals(dbAccessException, sqlException.getCause());
+        }
+    }
+
+    @Nested
+    class ExecuteUpdateWithUpsertTests {
+
+        private static final String UPSERT_MQL =
+                """
+                {
+                  update: "items",
+                  updates: [
+                    {
+                      q: { _id: { $eq: 1 } },
+                      u: { $set: { v: 10 } },
+                      upsert: true,
+                      multi: false
+                    }
+                  ]
+                }""";
+
+        @BeforeEach
+        void beforeEach() {
+            doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+        }
+
+        @Test
+        void testUpsertOptionIsPassedToTheWriteModel() throws SQLException {
+            doReturn(BulkWriteResult.acknowledged(0, 1, 0, 0, emptyList(), emptyList()))
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
+
+            mongoStatement.executeUpdate(UPSERT_MQL);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<WriteModel<BsonDocument>>> modelsCaptor = ArgumentCaptor.forClass(List.class);
+            verify(mongoCollection).bulkWrite(eq(clientSession), modelsCaptor.capture());
+            var model = (UpdateOneModel<BsonDocument>) modelsCaptor.getValue().get(0);
+            assertTrue(model.getOptions().isUpsert());
+        }
+
+        @Test
+        void testUpdateCountIsMatchedPlusUpserted() throws SQLException {
+            doReturn(BulkWriteResult.acknowledged(
+                            0, 2, 0, 0, List.of(new BulkWriteUpsert(0, new BsonInt32(1))), emptyList()))
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
+
+            assertEquals(3, mongoStatement.executeUpdate(UPSERT_MQL));
+        }
+
+        @Test
+        void testPipelineUpdateUpsertsAsWriteModel() throws SQLException {
+            doReturn(BulkWriteResult.acknowledged(0, 1, 0, 0, emptyList(), emptyList()))
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
+
+            var pipelineUpsertMql =
+                    """
+                    {
+                      update: "items",
+                      updates: [
+                        {
+                          q: { _id: { $eq: 1 } },
+                          u: [ { $set: { v: 10 } } ],
+                          upsert: true,
+                          multi: false
+                        }
+                      ]
+                    }""";
+
+            mongoStatement.executeUpdate(pipelineUpsertMql);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<WriteModel<BsonDocument>>> modelsCaptor = ArgumentCaptor.forClass(List.class);
+            verify(mongoCollection).bulkWrite(eq(clientSession), modelsCaptor.capture());
+            var model = (UpdateOneModel<BsonDocument>) modelsCaptor.getValue().get(0);
+            assertTrue(model.getOptions().isUpsert());
+            assertNotNull(model.getUpdatePipeline());
         }
     }
 

@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
+import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -26,7 +28,13 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  *
  * @hidden
  */
-public record AstUpdateCommand(String collection, AstFilter filter, AstUpdate update) implements AstCommand {
+@SuppressWarnings("InvalidParam")
+public record AstUpdateCommand(String collection, List<AstUpdateStatement> updates) implements AstCommand {
+
+    public AstUpdateCommand {
+        assertFalse(updates.isEmpty());
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
@@ -35,15 +43,7 @@ public record AstUpdateCommand(String collection, AstFilter filter, AstUpdate up
             writer.writeName("updates");
             writer.writeStartArray();
             {
-                writer.writeStartDocument();
-                {
-                    writer.writeName("q");
-                    filter.render(writer, binderConsumer);
-                    writer.writeName("u");
-                    update.render(writer, binderConsumer);
-                    writer.writeBoolean("multi", true);
-                }
-                writer.writeEndDocument();
+                updates.forEach(statement -> statement.render(writer, binderConsumer));
             }
             writer.writeEndArray();
         }

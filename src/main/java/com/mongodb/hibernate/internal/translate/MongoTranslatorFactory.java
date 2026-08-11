@@ -24,6 +24,7 @@ import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
 import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.model.ast.TableMutation;
+import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
 
 /**
@@ -52,5 +53,21 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
             TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactoryImplementor) {
         return new ModelMutationMqlTranslator<>(tableMutation, sessionFactoryImplementor);
+    }
+
+    /**
+     * For {@code StatelessSession.upsert}: translates the same {@link OptionalTableUpdate} node that
+     * {@link #buildModelMutationTranslator} translates as a plain update, requesting the upsert form via the value
+     * descriptor instead.
+     */
+    public SqlAstTranslator<JdbcMutationOperation> buildUpsertModelMutationTranslator(
+            OptionalTableUpdate optionalTableUpdate, SessionFactoryImplementor sessionFactoryImplementor) {
+        // OptionalTableUpdate is a TableMutation<MutationOperation>; the operation this translator
+        // makes it create is a JdbcUpdateMutation, so the narrowing is safe at runtime. Hibernate
+        // itself routes this node through the same <O extends JdbcMutationOperation> bound.
+        @SuppressWarnings("unchecked")
+        var tableMutation = (TableMutation<JdbcMutationOperation>) (TableMutation<?>) optionalTableUpdate;
+        return new ModelMutationMqlTranslator<>(
+                tableMutation, sessionFactoryImplementor, AstVisitorValueDescriptor.UPSERT_MODEL_MUTATION_RESULT);
     }
 }

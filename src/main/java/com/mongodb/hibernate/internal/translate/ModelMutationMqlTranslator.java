@@ -35,15 +35,24 @@ import org.jspecify.annotations.Nullable;
 /**
  * @mongoCme Does not have to be thread-safe because it is
  *     {@linkplain MongoTranslatorFactory#buildModelMutationTranslator(TableMutation, SessionFactoryImplementor)
- *     single-use}.
+ *     single-use}, as is {@link MongoTranslatorFactory#buildUpsertModelMutationTranslator}.
  */
 final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
 
     private final TableMutation<O> tableMutation;
+    private final AstVisitorValueDescriptor<Result> resultDescriptor;
 
     ModelMutationMqlTranslator(TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactory) {
+        this(tableMutation, sessionFactory, MODEL_MUTATION_RESULT);
+    }
+
+    ModelMutationMqlTranslator(
+            TableMutation<O> tableMutation,
+            SessionFactoryImplementor sessionFactory,
+            AstVisitorValueDescriptor<Result> resultDescriptor) {
         super(sessionFactory);
         this.tableMutation = tableMutation;
+        this.resultDescriptor = resultDescriptor;
     }
 
     @Override
@@ -55,7 +64,7 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
         if ((TableMutation<?>) tableMutation instanceof TableUpdateNoSet) {
             result = Result.empty();
         } else {
-            result = acceptAndYield(tableMutation, MODEL_MUTATION_RESULT);
+            result = acceptAndYield(tableMutation, resultDescriptor);
         }
         return result.createJdbcMutationOperation(tableMutation);
     }
