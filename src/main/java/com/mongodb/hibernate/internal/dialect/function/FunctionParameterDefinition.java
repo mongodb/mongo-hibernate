@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.dialect.function;
 
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 
+import com.mongodb.hibernate.internal.MongoAssertions;
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
@@ -119,20 +120,6 @@ public abstract sealed class FunctionParameterDefinition<N>
     }
 
     /**
-     * Define an optional parameter that will have a default value inserted if not provided in the HQL
-     *
-     * <p>Note that the type of this parameter is inferred to match the type of the default value provided.
-     *
-     * @param name the property name that should be emitted in the MQL
-     * @param defaultValue the default value to insert if a matching argument is not supplied in the HQL
-     * @return a parameter definition
-     * @see MongoExpressionNamedFunction
-     */
-    public static FunctionParameterDefinition<String> orDefault(String name, BsonValue defaultValue) {
-        return new Default<>(name, defaultValue);
-    }
-
-    /**
      * Define an optional parameter that will be omitted if not provided in the HQL
      *
      * @param type the type of the parameter
@@ -140,7 +127,7 @@ public abstract sealed class FunctionParameterDefinition<N>
      * @see MongoExpressionNamedFunction
      */
     @SuppressWarnings("NullAway")
-    public static Missing<Void> orMissing(FunctionParameterType type) {
+    public static FunctionParameterDefinition<Void> orMissing(FunctionParameterType type) {
         return new Missing<>(null, type);
     }
 
@@ -152,7 +139,7 @@ public abstract sealed class FunctionParameterDefinition<N>
      * @return a parameter definition
      * @see MongoExpressionNamedFunction
      */
-    public static Missing<String> orMissing(String name, FunctionParameterType type) {
+    public static FunctionParameterDefinition<String> orMissing(String name, FunctionParameterType type) {
         return new Missing<>(name, type);
     }
 
@@ -178,7 +165,6 @@ public abstract sealed class FunctionParameterDefinition<N>
                 .toArray(FunctionArgumentTypeResolver[]::new));
     }
 
-    @SuppressWarnings("varargs")
     static <N> void processArguments(
             FunctionParameterDefinition<N>[] parameters,
             List<? extends SqlAstNode> arguments,
@@ -186,7 +172,7 @@ public abstract sealed class FunctionParameterDefinition<N>
             ArgumentCollector<N> collector) {
         var translator = AbstractMqlTranslator.cast(walker);
         for (var index = 0; index < parameters.length; index++) {
-            final var parameter = parameters[index];
+            var parameter = parameters[index];
             if (index < arguments.size()) {
                 collector.append(
                         parameter.name(),
@@ -246,18 +232,13 @@ public abstract sealed class FunctionParameterDefinition<N>
 
         @Override
         public void incrementRequired() {
-            if (withDefault > 0 || missing > 0) {
-                throw new IllegalArgumentException(
-                        "Cannot have required parameters after default or missing parameters");
-            }
+            MongoAssertions.assertFalse(withDefault > 0 || missing > 0);
             required++;
         }
 
         @Override
         public void incrementDefault() {
-            if (missing > 0) {
-                throw new IllegalArgumentException("Cannot have default parameters after missing parameters");
-            }
+            MongoAssertions.assertFalse(missing > 0);
             withDefault++;
         }
 
@@ -283,10 +264,7 @@ public abstract sealed class FunctionParameterDefinition<N>
 
         @Override
         public void incrementRequired() {
-            if (other > 0) {
-                throw new IllegalArgumentException(
-                        "Cannot have required parameters after default or missing parameters");
-            }
+            MongoAssertions.assertFalse(other > 0);
             required++;
         }
 
@@ -432,7 +410,7 @@ public abstract sealed class FunctionParameterDefinition<N>
         }
     }
 
-    public static final class Missing<N> extends FunctionParameterDefinition<N> {
+    static final class Missing<N> extends FunctionParameterDefinition<N> {
         private final N name;
         private final FunctionParameterType type;
 

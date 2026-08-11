@@ -92,7 +92,7 @@ public final class MongoExpressionVariadicFunction extends AbstractSqmSelfRender
             Function<? super AstExpression, ? extends AstExpression> inputMapper) {
         super(
                 hqlName,
-                new ArgumentTypesValidator(StandardArgumentsValidators.NONE, parameterType),
+                new ArgumentTypesValidator(StandardArgumentsValidators.min(1), parameterType),
                 StandardFunctionReturnTypeResolvers.invariant(Objects.requireNonNull(
                         typeConfiguration.getBasicTypeRegistry().resolve(returnType))),
                 StandardFunctionArgumentTypeResolvers.impliedOrInvariant(typeConfiguration, parameterType));

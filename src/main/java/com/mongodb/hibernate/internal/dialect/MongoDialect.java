@@ -17,11 +17,8 @@
 package com.mongodb.hibernate.internal.dialect;
 
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
-import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.orDefault;
 import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.orMissing;
 import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.required;
-import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.allModifications;
-import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.offsetToEnd;
 import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.swap;
 import static java.lang.String.format;
 
@@ -34,6 +31,7 @@ import com.mongodb.hibernate.internal.dialect.function.MongoExpressionUnaryFunct
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionVariadicFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoPadFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoRepeatFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoSubstringFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoTrimFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayConstructorFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoArrayContainsFunction;
@@ -54,7 +52,6 @@ import java.util.Collection;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.bson.BsonDocument;
-import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.hibernate.JDBCException;
 import org.hibernate.boot.Metadata;
@@ -334,11 +331,10 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                         typeConfiguration,
                         StandardBasicTypes.INTEGER,
                         FunctionParameterDefinition::addOne,
-                        allModifications(swap(0, 1), offsetToEnd(2, 3)),
+                        swap(0, 1),
                         required(FunctionParameterType.STRING),
                         required(FunctionParameterType.STRING),
-                        orMissing(FunctionParameterType.INTEGER).map(FunctionParameterDefinition::subtractOne),
-                        orMissing(FunctionParameterType.INTEGER)));
+                        orMissing(FunctionParameterType.INTEGER).map(FunctionParameterDefinition::subtractOne)));
         functionRegistry.register(
                 "lower",
                 new MongoExpressionUnaryFunction(
@@ -360,16 +356,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                         required("find", FunctionParameterType.STRING),
                         required("replacement", FunctionParameterType.STRING)));
         functionRegistry.register("rpad", new MongoPadFunction(typeConfiguration, false));
-        functionRegistry.register(
-                "substring",
-                new MongoExpressionPositionalFunction(
-                        "substring",
-                        "$substrCP",
-                        typeConfiguration,
-                        StandardBasicTypes.STRING,
-                        required(FunctionParameterType.STRING),
-                        required(FunctionParameterType.INTEGER).map(FunctionParameterDefinition::subtractOne),
-                        orDefault(new BsonInt32(Integer.MAX_VALUE))));
+        functionRegistry.register("substring", new MongoSubstringFunction(typeConfiguration));
         functionRegistry.register("trim", new MongoTrimFunction(typeConfiguration));
         functionRegistry.register("unnest", new MongoUnnestFunction());
         functionRegistry.register(

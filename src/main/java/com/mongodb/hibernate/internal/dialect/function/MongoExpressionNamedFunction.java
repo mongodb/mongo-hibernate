@@ -103,7 +103,7 @@ public final class MongoExpressionNamedFunction extends AbstractSqmSelfRendering
             ReturnableType<?> returnType,
             SqlAstTranslator<?> walker) {
         var translator = AbstractMqlTranslator.cast(walker);
-        final var namedArguments = new TreeMap<String, AstExpression>();
+        var namedArguments = new TreeMap<String, AstExpression>();
         FunctionParameterDefinition.processArguments(parameters, arguments, walker, namedArguments::put);
         translator.yield(EXPRESSION, outputMapper.apply(new AstNamedOperatorExpression(mongoOperator, namedArguments)));
     }

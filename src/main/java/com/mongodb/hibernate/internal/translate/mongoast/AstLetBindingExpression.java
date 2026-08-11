@@ -21,8 +21,7 @@ import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
-/** @hidden */
-@SuppressWarnings("MissingSummary")
+/** Define an expression with locally bound variables */
 public record AstLetBindingExpression(AstExpression in, SortedMap<String, AstExpression> vars)
         implements AstExpression {
 

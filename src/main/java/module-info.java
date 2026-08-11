@@ -117,6 +117,7 @@ module com.mongodb.hibernate {
     requires transitive org.mongodb.driver.core;
     requires transitive org.mongodb.driver.sync.client;
     requires org.jspecify;
+    requires jdk.compiler;
 
     provides ServiceContributor with
             StandardServiceRegistryScopedState.ServiceContributor;

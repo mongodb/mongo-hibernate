@@ -44,7 +44,7 @@ public final class MongoTrimFunction extends AbstractSqmSelfRenderingFunctionDes
         super(
                 "trim",
                 new ArgumentTypesValidator(
-                        StandardArgumentsValidators.between(2, 3),
+                        StandardArgumentsValidators.exactly(3),
                         FunctionParameterType.TRIM_SPEC,
                         FunctionParameterType.STRING,
                         FunctionParameterType.STRING),
@@ -66,15 +66,9 @@ public final class MongoTrimFunction extends AbstractSqmSelfRenderingFunctionDes
             ReturnableType<?> returnType,
             SqlAstTranslator<?> walker) {
         var translator = AbstractMqlTranslator.cast(walker);
-        if (arguments.size() != 2 && arguments.size() != 3) {
-            throw new IllegalArgumentException("Invalid number of arguments to trim");
-        }
-        final var namedArguments = new TreeMap<String, AstExpression>();
-        namedArguments.put("input", translator.acceptAndYield(arguments.get(arguments.size() - 1), EXPRESSION));
-
-        if (arguments.size() == 3) {
-            namedArguments.put("chars", translator.acceptAndYield(arguments.get(1), EXPRESSION));
-        }
+        var namedArguments = new TreeMap<String, AstExpression>();
+        namedArguments.put("chars", translator.acceptAndYield(arguments.get(1), EXPRESSION));
+        namedArguments.put("input", translator.acceptAndYield(arguments.get(2), EXPRESSION));
 
         translator.yield(
                 EXPRESSION,

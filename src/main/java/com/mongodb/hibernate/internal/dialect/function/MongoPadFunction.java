@@ -21,9 +21,12 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLetBindingExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNamedOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
@@ -85,43 +88,90 @@ public final class MongoPadFunction extends AbstractSqmSelfRenderingFunctionDesc
                 : new AstUnaryOperatorExpression("$toString", translator.acceptAndYield(arguments.get(2), EXPRESSION));
         // All parameters are processed in the binding so that variables won't shadow anything outside, so fresh names
         // aren't required
-        final var repeats = new AstUnaryOperatorExpression(
-                "$floor",
+        var paddingLength = new AstBinaryOperatorExpression(
+                AstArithmeticExpressionOperator.SUBTRACT,
+                new AstVariableExpression("targetLen"),
+                new AstUnaryOperatorExpression("$strLenCP", new AstVariableExpression("baseStr")));
+        var repeats = new AstUnaryOperatorExpression(
+                "$ceil",
                 new AstBinaryOperatorExpression(
                         AstArithmeticExpressionOperator.DIVIDE,
-                        new AstBinaryOperatorExpression(
-                                AstArithmeticExpressionOperator.SUBTRACT,
-                                new AstVariableExpression("targetLen"),
-                                new AstUnaryOperatorExpression("$strLenCP", new AstVariableExpression("baseStr"))),
+                        paddingLength,
                         new AstUnaryOperatorExpression("$strLenCP", new AstVariableExpression("padding"))));
-        translator.yield(
-                EXPRESSION,
-                new AstLetBindingExpression(
+        var baseStr = new AstVariableExpression("baseStr");
+        var combinedPadding = new AstPositionalOperatorExpression(
+                "$substrCP",
+                List.of(
                         new AstNamedOperatorExpression(
                                 "$reduce",
                                 new TreeMap<>(Map.of(
-                                        "initialValue", new AstVariableExpression("baseStr"),
+                                        "initialValue",
+                                        new AstLiteralExpression(new AstLiteral(new BsonString(""))),
                                         "in",
-                                                new AstPositionalOperatorExpression(
-                                                        "$concat",
-                                                        left
-                                                                ? List.of(
-                                                                        new AstVariableExpression("padding"),
-                                                                        new AstVariableExpression("value"))
-                                                                : List.of(
-                                                                        new AstVariableExpression("value"),
-                                                                        new AstVariableExpression("padding"))),
+                                        new AstPositionalOperatorExpression(
+                                                "$concat",
+                                                left
+                                                        ? List.of(
+                                                                new AstVariableExpression("padding"),
+                                                                new AstVariableExpression("value"))
+                                                        : List.of(
+                                                                new AstVariableExpression("value"),
+                                                                new AstVariableExpression("padding"))),
                                         "input",
-                                                new AstPositionalOperatorExpression(
-                                                        "$range",
-                                                        List.of(
-                                                                new AstLiteralExpression(
-                                                                        new AstLiteral(new BsonInt32(0))),
-                                                                repeats))))),
+                                        new AstPositionalOperatorExpression(
+                                                "$range",
+                                                List.of(
+                                                        new AstLiteralExpression(new AstLiteral(new BsonInt32(0))),
+                                                        repeats))))),
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(0))),
+                        paddingLength));
+
+        translator.yield(
+                EXPRESSION,
+                new AstLetBindingExpression(
+                        new AstPositionalOperatorExpression(
+                                "$cond",
+                                List.of(
+                                        new AstBinaryOperatorExpression(
+                                                AstComparisonExpressionOperator.LTE,
+                                                new AstVariableExpression("targetLen"),
+                                                new AstLiteralExpression(new AstLiteral(new BsonInt32(0)))),
+                                        new AstLiteralExpression(new AstLiteral(new BsonString(""))),
+                                        new AstPositionalOperatorExpression(
+                                                "$cond",
+                                                List.of(
+                                                        new AstLogicalOperatorExpression(
+                                                                AstLogicalOperator.OR,
+                                                                List.of(
+                                                                        new AstBinaryOperatorExpression(
+                                                                                AstComparisonExpressionOperator.GTE,
+                                                                                new AstUnaryOperatorExpression(
+                                                                                        "$strLenCP", baseStr),
+                                                                                new AstVariableExpression("targetLen")),
+                                                                        new AstBinaryOperatorExpression(
+                                                                                AstComparisonExpressionOperator.EQ,
+                                                                                new AstUnaryOperatorExpression(
+                                                                                        "$strLenCP",
+                                                                                        new AstVariableExpression(
+                                                                                                "padding")),
+                                                                                new AstLiteralExpression(
+                                                                                        new AstLiteral(
+                                                                                                new BsonInt32(0)))))),
+                                                        new AstPositionalOperatorExpression(
+                                                                "$substrCP",
+                                                                List.of(
+                                                                        new AstVariableExpression("baseStr"),
+                                                                        new AstLiteralExpression(
+                                                                                new AstLiteral(new BsonInt32(0))),
+                                                                        new AstVariableExpression("targetLen"))),
+                                                        new AstPositionalOperatorExpression(
+                                                                "$concat",
+                                                                left
+                                                                        ? List.of(combinedPadding, baseStr)
+                                                                        : List.of(baseStr, combinedPadding)))))),
                         new TreeMap<>(Map.of(
                                 "baseStr",
-                                new AstUnaryOperatorExpression(
-                                        "$toString", translator.acceptAndYield(arguments.get(0), EXPRESSION)),
+                                translator.acceptAndYield(arguments.get(0), EXPRESSION),
                                 "targetLen",
                                 translator.acceptAndYield(arguments.get(1), EXPRESSION),
                                 "padding",

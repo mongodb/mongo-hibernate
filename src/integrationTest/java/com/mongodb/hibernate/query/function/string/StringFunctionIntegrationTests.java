@@ -185,6 +185,45 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
     }
 
     @Test
+    void testLocateWithStart() {
+        assertQueryResult(
+                "select locate(' ', s, 4) from Item",
+                7,
+                """
+                        {
+                          "aggregate": "items",
+                          "pipeline": [
+                            {
+                              "$project": {
+                                "#c_1": {
+                                  "$add": [
+                                    {
+                                      "$indexOfCP": [
+                                        "$s",
+                                        " ",
+                                        {
+                                          "$subtract": [
+                                            4,
+                                            {
+                                              "$literal": 1
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "$literal": 1
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          ]
+                        }
+                """);
+    }
+
+    @Test
     void testLocateMissing() {
         assertQueryResult(
                 "select locate('z', s) from Item",
@@ -201,110 +240,6 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                               "$indexOfCP": [
                                 "$s",
                                 "z"
-                              ]
-                            },
-                            {
-                              "$literal": 1
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-                """);
-    }
-
-    @Test
-    void testLocateOffset() {
-        assertQueryResult(
-                "select locate('H', s, 1, 2) from Item",
-                2,
-                """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$add": [
-                            {
-                              "$indexOfCP": [
-                                "$s",
-                                "H",
-                                {
-                                  "$subtract": [
-                                    1,
-                                    {
-                                      "$literal": 1
-                                    }
-                                  ]
-                                },
-                                {
-                                  "$add": [
-                                    {
-                                      "$subtract": [
-                                        1,
-                                        {
-                                          "$literal": 1
-                                        }
-                                      ]
-                                    },
-                                    2
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "$literal": 1
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  ]
-                }
-                """);
-    }
-
-    @Test
-    void testLocateOffsetMissing() {
-        assertQueryResult(
-                "select locate('o', s, 1, 2) from Item",
-                0,
-                """
-                {
-                  "aggregate": "items",
-                  "pipeline": [
-                    {
-                      "$project": {
-                        "#c_1": {
-                          "$add": [
-                            {
-                              "$indexOfCP": [
-                                "$s",
-                                "o",
-                                {
-                                  "$subtract": [
-                                    1,
-                                    {
-                                      "$literal": 1
-                                    }
-                                  ]
-                                },
-                                {
-                                  "$add": [
-                                    {
-                                      "$subtract": [
-                                        1,
-                                        {
-                                          "$literal": 1
-                                        }
-                                      ]
-                                    },
-                                    2
-                                  ]
-                                }
                               ]
                             },
                             {
@@ -401,44 +336,114 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                 "#c_1": {
                                   "$let": {
                                     "in": {
-                                      "$reduce": {
-                                        "in": {
-                                          "$concat": [
-                                            "$$padding",
-                                            "$$value"
-                                          ]
-                                        },
-                                        "initialValue": "$$baseStr",
-                                        "input": {
-                                          "$range": [
+                                      "$cond": [
+                                        {
+                                          "$lte": [
+                                            "$$targetLen",
                                             {
                                               "$literal": 0
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "$literal": ""
+                                        },
+                                        {
+                                          "$cond": [
+                                            {
+                                              "$or": [
+                                                {
+                                                  "$gte": [
+                                                    {
+                                                      "$strLenCP": "$$baseStr"
+                                                    },
+                                                    "$$targetLen"
+                                                  ]
+                                                },
+                                                {
+                                                  "$eq": [
+                                                    {
+                                                      "$strLenCP": "$$padding"
+                                                    },
+                                                    {
+                                                      "$literal": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
                                             },
                                             {
-                                              "$floor": {
-                                                "$divide": [
-                                                  {
-                                                    "$subtract": [
-                                                      "$$targetLen",
-                                                      {
-                                                        "$strLenCP": "$$baseStr"
+                                              "$substrCP": [
+                                                "$$baseStr",
+                                                {
+                                                  "$literal": 0
+                                                },
+                                                "$$targetLen"
+                                              ]
+                                            },
+                                            {
+                                              "$concat": [
+                                                {
+                                                  "$substrCP": [
+                                                    {
+                                                      "$reduce": {
+                                                        "in": {
+                                                          "$concat": [
+                                                            "$$padding",
+                                                            "$$value"
+                                                          ]
+                                                        },
+                                                        "initialValue": {
+                                                          "$literal": ""
+                                                        },
+                                                        "input": {
+                                                          "$range": [
+                                                            {
+                                                              "$literal": 0
+                                                            },
+                                                            {
+                                                              "$ceil": {
+                                                                "$divide": [
+                                                                  {
+                                                                    "$subtract": [
+                                                                      "$$targetLen",
+                                                                      {
+                                                                        "$strLenCP": "$$baseStr"
+                                                                      }
+                                                                    ]
+                                                                  },
+                                                                  {
+                                                                    "$strLenCP": "$$padding"
+                                                                  }
+                                                                ]
+                                                              }
+                                                            }
+                                                          ]
+                                                        }
                                                       }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "$strLenCP": "$$padding"
-                                                  }
-                                                ]
-                                              }
+                                                    },
+                                                    {
+                                                      "$literal": 0
+                                                    },
+                                                    {
+                                                      "$subtract": [
+                                                        "$$targetLen",
+                                                        {
+                                                          "$strLenCP": "$$baseStr"
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                },
+                                                "$$baseStr"
+                                              ]
                                             }
                                           ]
                                         }
-                                      }
+                                      ]
                                     },
                                     "vars": {
-                                      "baseStr": {
-                                        "$toString": "$s"
-                                      },
+                                      "baseStr": "$s",
                                       "padding": {
                                         "$literal": " "
                                       },
@@ -460,62 +465,132 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                 "************* Hello ",
                 """
                         {
-                          "aggregate": "items",
-                          "pipeline": [
-                            {
-                              "$project": {
-                                "#c_1": {
-                                  "$let": {
-                                    "in": {
-                                      "$reduce": {
-                                        "in": {
-                                          "$concat": [
-                                            "$$padding",
-                                            "$$value"
-                                          ]
-                                        },
-                                        "initialValue": "$$baseStr",
-                                        "input": {
-                                          "$range": [
-                                            {
-                                              "$literal": 0
+                                  "aggregate": "items",
+                                  "pipeline": [
+                                    {
+                                      "$project": {
+                                        "#c_1": {
+                                          "$let": {
+                                            "in": {
+                                              "$cond": [
+                                                {
+                                                  "$lte": [
+                                                    "$$targetLen",
+                                                    {
+                                                      "$literal": 0
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "$literal": ""
+                                                },
+                                                {
+                                                  "$cond": [
+                                                    {
+                                                      "$or": [
+                                                        {
+                                                          "$gte": [
+                                                            {
+                                                              "$strLenCP": "$$baseStr"
+                                                            },
+                                                            "$$targetLen"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "$eq": [
+                                                            {
+                                                              "$strLenCP": "$$padding"
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$substrCP": [
+                                                        "$$baseStr",
+                                                        {
+                                                          "$literal": 0
+                                                        },
+                                                        "$$targetLen"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$concat": [
+                                                        {
+                                                          "$substrCP": [
+                                                            {
+                                                              "$reduce": {
+                                                                "in": {
+                                                                  "$concat": [
+                                                                    "$$padding",
+                                                                    "$$value"
+                                                                  ]
+                                                                },
+                                                                "initialValue": {
+                                                                  "$literal": ""
+                                                                },
+                                                                "input": {
+                                                                  "$range": [
+                                                                    {
+                                                                      "$literal": 0
+                                                                    },
+                                                                    {
+                                                                      "$ceil": {
+                                                                        "$divide": [
+                                                                          {
+                                                                            "$subtract": [
+                                                                              "$$targetLen",
+                                                                              {
+                                                                                "$strLenCP": "$$baseStr"
+                                                                              }
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "$strLenCP": "$$padding"
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              }
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            },
+                                                            {
+                                                              "$subtract": [
+                                                                "$$targetLen",
+                                                                {
+                                                                  "$strLenCP": "$$baseStr"
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        },
+                                                        "$$baseStr"
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
                                             },
-                                            {
-                                              "$floor": {
-                                                "$divide": [
-                                                  {
-                                                    "$subtract": [
-                                                      "$$targetLen",
-                                                      {
-                                                        "$strLenCP": "$$baseStr"
-                                                      }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "$strLenCP": "$$padding"
-                                                  }
-                                                ]
-                                              }
+                                            "vars": {
+                                              "baseStr": "$s",
+                                              "padding": {
+                                                "$toString": "*"
+                                              },
+                                              "targetLen": 20
                                             }
-                                          ]
+                                          }
                                         }
                                       }
-                                    },
-                                    "vars": {
-                                      "baseStr": {
-                                        "$toString": "$s"
-                                      },
-                                      "padding": {
-                                        "$toString": "*"
-                                      },
-                                      "targetLen": 20
                                     }
-                                  }
+                                  ]
                                 }
-                              }
-                            }
-                          ]
-                        }
                 """);
     }
 
@@ -526,62 +601,132 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                 " Hello              ",
                 """
                         {
-                          "aggregate": "items",
-                          "pipeline": [
-                            {
-                              "$project": {
-                                "#c_1": {
-                                  "$let": {
-                                    "in": {
-                                      "$reduce": {
-                                        "in": {
-                                          "$concat": [
-                                            "$$value",
-                                            "$$padding"
-                                          ]
-                                        },
-                                        "initialValue": "$$baseStr",
-                                        "input": {
-                                          "$range": [
-                                            {
-                                              "$literal": 0
+                                  "aggregate": "items",
+                                  "pipeline": [
+                                    {
+                                      "$project": {
+                                        "#c_1": {
+                                          "$let": {
+                                            "in": {
+                                              "$cond": [
+                                                {
+                                                  "$lte": [
+                                                    "$$targetLen",
+                                                    {
+                                                      "$literal": 0
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "$literal": ""
+                                                },
+                                                {
+                                                  "$cond": [
+                                                    {
+                                                      "$or": [
+                                                        {
+                                                          "$gte": [
+                                                            {
+                                                              "$strLenCP": "$$baseStr"
+                                                            },
+                                                            "$$targetLen"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "$eq": [
+                                                            {
+                                                              "$strLenCP": "$$padding"
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$substrCP": [
+                                                        "$$baseStr",
+                                                        {
+                                                          "$literal": 0
+                                                        },
+                                                        "$$targetLen"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$concat": [
+                                                        "$$baseStr",
+                                                        {
+                                                          "$substrCP": [
+                                                            {
+                                                              "$reduce": {
+                                                                "in": {
+                                                                  "$concat": [
+                                                                    "$$value",
+                                                                    "$$padding"
+                                                                  ]
+                                                                },
+                                                                "initialValue": {
+                                                                  "$literal": ""
+                                                                },
+                                                                "input": {
+                                                                  "$range": [
+                                                                    {
+                                                                      "$literal": 0
+                                                                    },
+                                                                    {
+                                                                      "$ceil": {
+                                                                        "$divide": [
+                                                                          {
+                                                                            "$subtract": [
+                                                                              "$$targetLen",
+                                                                              {
+                                                                                "$strLenCP": "$$baseStr"
+                                                                              }
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "$strLenCP": "$$padding"
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              }
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            },
+                                                            {
+                                                              "$subtract": [
+                                                                "$$targetLen",
+                                                                {
+                                                                  "$strLenCP": "$$baseStr"
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
                                             },
-                                            {
-                                              "$floor": {
-                                                "$divide": [
-                                                  {
-                                                    "$subtract": [
-                                                      "$$targetLen",
-                                                      {
-                                                        "$strLenCP": "$$baseStr"
-                                                      }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "$strLenCP": "$$padding"
-                                                  }
-                                                ]
-                                              }
+                                            "vars": {
+                                              "baseStr": "$s",
+                                              "padding": {
+                                                "$literal": " "
+                                              },
+                                              "targetLen": 20
                                             }
-                                          ]
+                                          }
                                         }
                                       }
-                                    },
-                                    "vars": {
-                                      "baseStr": {
-                                        "$toString": "$s"
-                                      },
-                                      "padding": {
-                                        "$literal": " "
-                                      },
-                                      "targetLen": 20
                                     }
-                                  }
+                                  ]
                                 }
-                              }
-                            }
-                          ]
-                        }
                 """);
     }
 
@@ -592,62 +737,676 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                 " Hello *************",
                 """
                         {
-                          "aggregate": "items",
-                          "pipeline": [
-                            {
-                              "$project": {
-                                "#c_1": {
-                                  "$let": {
-                                    "in": {
-                                      "$reduce": {
-                                        "in": {
-                                          "$concat": [
-                                            "$$value",
-                                            "$$padding"
+                                  "aggregate": "items",
+                                  "pipeline": [
+                                    {
+                                      "$project": {
+                                        "#c_1": {
+                                          "$let": {
+                                            "in": {
+                                              "$cond": [
+                                                {
+                                                  "$lte": [
+                                                    "$$targetLen",
+                                                    {
+                                                      "$literal": 0
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "$literal": ""
+                                                },
+                                                {
+                                                  "$cond": [
+                                                    {
+                                                      "$or": [
+                                                        {
+                                                          "$gte": [
+                                                            {
+                                                              "$strLenCP": "$$baseStr"
+                                                            },
+                                                            "$$targetLen"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "$eq": [
+                                                            {
+                                                              "$strLenCP": "$$padding"
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$substrCP": [
+                                                        "$$baseStr",
+                                                        {
+                                                          "$literal": 0
+                                                        },
+                                                        "$$targetLen"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$concat": [
+                                                        "$$baseStr",
+                                                        {
+                                                          "$substrCP": [
+                                                            {
+                                                              "$reduce": {
+                                                                "in": {
+                                                                  "$concat": [
+                                                                    "$$value",
+                                                                    "$$padding"
+                                                                  ]
+                                                                },
+                                                                "initialValue": {
+                                                                  "$literal": ""
+                                                                },
+                                                                "input": {
+                                                                  "$range": [
+                                                                    {
+                                                                      "$literal": 0
+                                                                    },
+                                                                    {
+                                                                      "$ceil": {
+                                                                        "$divide": [
+                                                                          {
+                                                                            "$subtract": [
+                                                                              "$$targetLen",
+                                                                              {
+                                                                                "$strLenCP": "$$baseStr"
+                                                                              }
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "$strLenCP": "$$padding"
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              }
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            },
+                                                            {
+                                                              "$subtract": [
+                                                                "$$targetLen",
+                                                                {
+                                                                  "$strLenCP": "$$baseStr"
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "vars": {
+                                              "baseStr": "$s",
+                                              "padding": {
+                                                "$toString": "*"
+                                              },
+                                              "targetLen": 20
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                """);
+    }
+
+    @Test
+    void testLpadPadsToRequestedLengthWithMultiCharacterPadding() {
+        assertQueryResult(
+                "select lpad('x', 6, 'ab') from Item",
+                "ababax",
+                """
+                                {
+                                  "aggregate": "items",
+                                  "pipeline": [
+                                    {
+                                      "$project": {
+                                        "#c_1": {
+                                          "$let": {
+                                            "in": {
+                                              "$cond": [
+                                                {
+                                                  "$lte": [
+                                                    "$$targetLen",
+                                                    {
+                                                      "$literal": 0
+                                                    }
+                                                  ]
+                                                },
+                                                {
+                                                  "$literal": ""
+                                                },
+                                                {
+                                                  "$cond": [
+                                                    {
+                                                      "$or": [
+                                                        {
+                                                          "$gte": [
+                                                            {
+                                                              "$strLenCP": "$$baseStr"
+                                                            },
+                                                            "$$targetLen"
+                                                          ]
+                                                        },
+                                                        {
+                                                          "$eq": [
+                                                            {
+                                                              "$strLenCP": "$$padding"
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$substrCP": [
+                                                        "$$baseStr",
+                                                        {
+                                                          "$literal": 0
+                                                        },
+                                                        "$$targetLen"
+                                                      ]
+                                                    },
+                                                    {
+                                                      "$concat": [
+                                                        {
+                                                          "$substrCP": [
+                                                            {
+                                                              "$reduce": {
+                                                                "in": {
+                                                                  "$concat": [
+                                                                    "$$padding",
+                                                                    "$$value"
+                                                                  ]
+                                                                },
+                                                                "initialValue": {
+                                                                  "$literal": ""
+                                                                },
+                                                                "input": {
+                                                                  "$range": [
+                                                                    {
+                                                                      "$literal": 0
+                                                                    },
+                                                                    {
+                                                                      "$ceil": {
+                                                                        "$divide": [
+                                                                          {
+                                                                            "$subtract": [
+                                                                              "$$targetLen",
+                                                                              {
+                                                                                "$strLenCP": "$$baseStr"
+                                                                              }
+                                                                            ]
+                                                                          },
+                                                                          {
+                                                                            "$strLenCP": "$$padding"
+                                                                          }
+                                                                        ]
+                                                                      }
+                                                                    }
+                                                                  ]
+                                                                }
+                                                              }
+                                                            },
+                                                            {
+                                                              "$literal": 0
+                                                            },
+                                                            {
+                                                              "$subtract": [
+                                                                "$$targetLen",
+                                                                {
+                                                                  "$strLenCP": "$$baseStr"
+                                                                }
+                                                              ]
+                                                            }
+                                                          ]
+                                                        },
+                                                        "$$baseStr"
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            "vars": {
+                                              "baseStr": "x",
+                                              "padding": {
+                                                "$toString": "ab"
+                                              },
+                                              "targetLen": 6
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                """);
+    }
+
+    @Test
+    void testLpadWithEmptyPaddingReturnsInput() {
+        assertQueryResult(
+                "select lpad(s, 60, '') from Item",
+                " Hello ",
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$cond": [
+                                {
+                                  "$lte": [
+                                    "$$targetLen",
+                                    {
+                                      "$literal": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "$literal": ""
+                                },
+                                {
+                                  "$cond": [
+                                    {
+                                      "$or": [
+                                        {
+                                          "$gte": [
+                                            {
+                                              "$strLenCP": "$$baseStr"
+                                            },
+                                            "$$targetLen"
                                           ]
                                         },
-                                        "initialValue": "$$baseStr",
-                                        "input": {
-                                          "$range": [
+                                        {
+                                          "$eq": [
+                                            {
+                                              "$strLenCP": "$$padding"
+                                            },
+                                            {
+                                              "$literal": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "$substrCP": [
+                                        "$$baseStr",
+                                        {
+                                          "$literal": 0
+                                        },
+                                        "$$targetLen"
+                                      ]
+                                    },
+                                    {
+                                      "$concat": [
+                                        {
+                                          "$substrCP": [
+                                            {
+                                              "$reduce": {
+                                                "in": {
+                                                  "$concat": [
+                                                    "$$padding",
+                                                    "$$value"
+                                                  ]
+                                                },
+                                                "initialValue": {
+                                                  "$literal": ""
+                                                },
+                                                "input": {
+                                                  "$range": [
+                                                    {
+                                                      "$literal": 0
+                                                    },
+                                                    {
+                                                      "$ceil": {
+                                                        "$divide": [
+                                                          {
+                                                            "$subtract": [
+                                                              "$$targetLen",
+                                                              {
+                                                                "$strLenCP": "$$baseStr"
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "$strLenCP": "$$padding"
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            },
                                             {
                                               "$literal": 0
                                             },
                                             {
-                                              "$floor": {
-                                                "$divide": [
-                                                  {
-                                                    "$subtract": [
-                                                      "$$targetLen",
-                                                      {
-                                                        "$strLenCP": "$$baseStr"
-                                                      }
-                                                    ]
-                                                  },
-                                                  {
-                                                    "$strLenCP": "$$padding"
-                                                  }
-                                                ]
-                                              }
+                                              "$subtract": [
+                                                "$$targetLen",
+                                                {
+                                                  "$strLenCP": "$$baseStr"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "$$baseStr"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            "vars": {
+                              "baseStr": "$s",
+                              "padding": {
+                                "$toString": ""
+                              },
+                              "targetLen": 60
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """);
+    }
+
+    @Test
+    void testPadLeadingTruncatesWhenTargetIsShorterThanInput() {
+        assertQueryResult(
+                "select pad(s with 3 leading) from Item",
+                " He",
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$cond": [
+                                {
+                                  "$lte": [
+                                    "$$targetLen",
+                                    {
+                                      "$literal": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "$literal": ""
+                                },
+                                {
+                                  "$cond": [
+                                    {
+                                      "$or": [
+                                        {
+                                          "$gte": [
+                                            {
+                                              "$strLenCP": "$$baseStr"
+                                            },
+                                            "$$targetLen"
+                                          ]
+                                        },
+                                        {
+                                          "$eq": [
+                                            {
+                                              "$strLenCP": "$$padding"
+                                            },
+                                            {
+                                              "$literal": 0
                                             }
                                           ]
                                         }
-                                      }
+                                      ]
                                     },
-                                    "vars": {
-                                      "baseStr": {
-                                        "$toString": "$s"
-                                      },
-                                      "padding": {
-                                        "$toString": "*"
-                                      },
-                                      "targetLen": 20
+                                    {
+                                      "$substrCP": [
+                                        "$$baseStr",
+                                        {
+                                          "$literal": 0
+                                        },
+                                        "$$targetLen"
+                                      ]
+                                    },
+                                    {
+                                      "$concat": [
+                                        {
+                                          "$substrCP": [
+                                            {
+                                              "$reduce": {
+                                                "in": {
+                                                  "$concat": [
+                                                    "$$padding",
+                                                    "$$value"
+                                                  ]
+                                                },
+                                                "initialValue": {
+                                                  "$literal": ""
+                                                },
+                                                "input": {
+                                                  "$range": [
+                                                    {
+                                                      "$literal": 0
+                                                    },
+                                                    {
+                                                      "$ceil": {
+                                                        "$divide": [
+                                                          {
+                                                            "$subtract": [
+                                                              "$$targetLen",
+                                                              {
+                                                                "$strLenCP": "$$baseStr"
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "$strLenCP": "$$padding"
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "$literal": 0
+                                            },
+                                            {
+                                              "$subtract": [
+                                                "$$targetLen",
+                                                {
+                                                  "$strLenCP": "$$baseStr"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "$$baseStr"
+                                      ]
                                     }
-                                  }
+                                  ]
                                 }
-                              }
+                              ]
+                            },
+                            "vars": {
+                              "baseStr": "$s",
+                              "padding": {
+                                "$literal": " "
+                              },
+                              "targetLen": 3
                             }
-                          ]
+                          }
                         }
+                      }
+                    }
+                  ]
+                }
+                """);
+    }
+
+    @Test
+    void testPadWithNegativeTargetReturnsEmptyString() {
+        assertQueryResult(
+                "select pad(s with -1 leading) from Item",
+                "",
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$cond": [
+                                {
+                                  "$lte": [
+                                    "$$targetLen",
+                                    {
+                                      "$literal": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "$literal": ""
+                                },
+                                {
+                                  "$cond": [
+                                    {
+                                      "$or": [
+                                        {
+                                          "$gte": [
+                                            {
+                                              "$strLenCP": "$$baseStr"
+                                            },
+                                            "$$targetLen"
+                                          ]
+                                        },
+                                        {
+                                          "$eq": [
+                                            {
+                                              "$strLenCP": "$$padding"
+                                            },
+                                            {
+                                              "$literal": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "$substrCP": [
+                                        "$$baseStr",
+                                        {
+                                          "$literal": 0
+                                        },
+                                        "$$targetLen"
+                                      ]
+                                    },
+                                    {
+                                      "$concat": [
+                                        {
+                                          "$substrCP": [
+                                            {
+                                              "$reduce": {
+                                                "in": {
+                                                  "$concat": [
+                                                    "$$padding",
+                                                    "$$value"
+                                                  ]
+                                                },
+                                                "initialValue": {
+                                                  "$literal": ""
+                                                },
+                                                "input": {
+                                                  "$range": [
+                                                    {
+                                                      "$literal": 0
+                                                    },
+                                                    {
+                                                      "$ceil": {
+                                                        "$divide": [
+                                                          {
+                                                            "$subtract": [
+                                                              "$$targetLen",
+                                                              {
+                                                                "$strLenCP": "$$baseStr"
+                                                              }
+                                                            ]
+                                                          },
+                                                          {
+                                                            "$strLenCP": "$$padding"
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "$literal": 0
+                                            },
+                                            {
+                                              "$subtract": [
+                                                "$$targetLen",
+                                                {
+                                                  "$strLenCP": "$$baseStr"
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "$$baseStr"
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            "vars": {
+                              "baseStr": "$s",
+                              "padding": {
+                                "$literal": " "
+                              },
+                              "targetLen": -1
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
                 """);
     }
 
@@ -663,20 +1422,50 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                     {
                       "$project": {
                         "#c_1": {
-                          "$substrCP": [
-                            "$s",
-                            {
-                              "$subtract": [
-                                2,
-                                {
-                                  "$literal": 1
+                          "$let": {
+                            "in": {
+                              "$let": {
+                                "in": {
+                                  "$substrCP": [
+                                    "$$str",
+                                    "$$adjustedStart",
+                                    {
+                                      "$literal": 2147483647
+                                    }
+                                  ]
+                                },
+                                "vars": {
+                                  "adjustedStart": {
+                                    "$cond": [
+                                      {
+                                        "$lt": [
+                                          "$$start",
+                                          {
+                                            "$literal": 0
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "$literal": 0
+                                      },
+                                      "$$start"
+                                    ]
+                                  }
                                 }
-                              ]
+                              }
                             },
-                            {
-                              "$literal": 2147483647
+                            "vars": {
+                              "start": {
+                                "$subtract": [
+                                  2,
+                                  {
+                                    "$literal": 1
+                                  }
+                                ]
+                              },
+                              "str": "$s"
                             }
-                          ]
+                          }
                         }
                       }
                     }
@@ -697,18 +1486,269 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                     {
                       "$project": {
                         "#c_1": {
-                          "$substrCP": [
-                            "$s",
-                            {
-                              "$subtract": [
-                                3,
-                                {
-                                  "$literal": 1
+                          "$let": {
+                            "in": {
+                              "$let": {
+                                "in": {
+                                  "$substrCP": [
+                                    "$$str",
+                                    "$$adjustedStart",
+                                    {
+                                      "$add": [
+                                        "$$len",
+                                        {
+                                          "$subtract": [
+                                            "$$start",
+                                            "$$adjustedStart"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "vars": {
+                                  "adjustedStart": {
+                                    "$cond": [
+                                      {
+                                        "$lt": [
+                                          "$$start",
+                                          {
+                                            "$literal": 0
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "$literal": 0
+                                      },
+                                      "$$start"
+                                    ]
+                                  }
                                 }
-                              ]
+                              }
                             },
-                            2
-                          ]
+                            "vars": {
+                              "len": 2,
+                              "start": {
+                                "$subtract": [
+                                  3,
+                                  {
+                                    "$literal": 1
+                                  }
+                                ]
+                              },
+                              "str": "$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """);
+    }
+
+    @Test
+    void testSubstringWithZeroStart() {
+        assertQueryResult(
+                "select substring(s, 0) from Item",
+                " Hello ",
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$let": {
+                                "in": {
+                                  "$substrCP": [
+                                    "$$str",
+                                    "$$adjustedStart",
+                                    {
+                                      "$literal": 2147483647
+                                    }
+                                  ]
+                                },
+                                "vars": {
+                                  "adjustedStart": {
+                                    "$cond": [
+                                      {
+                                        "$lt": [
+                                          "$$start",
+                                          {
+                                            "$literal": 0
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "$literal": 0
+                                      },
+                                      "$$start"
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            "vars": {
+                              "start": {
+                                "$subtract": [
+                                  0,
+                                  {
+                                    "$literal": 1
+                                  }
+                                ]
+                              },
+                              "str": "$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """);
+    }
+
+    @Test
+    void testSubstringFromNegativeStartForLength() {
+        assertQueryResult(
+                "select substring(s, -1, 3) from Item",
+                " ",
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$let": {
+                                "in": {
+                                  "$substrCP": [
+                                    "$$str",
+                                    "$$adjustedStart",
+                                    {
+                                      "$add": [
+                                        "$$len",
+                                        {
+                                          "$subtract": [
+                                            "$$start",
+                                            "$$adjustedStart"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "vars": {
+                                  "adjustedStart": {
+                                    "$cond": [
+                                      {
+                                        "$lt": [
+                                          "$$start",
+                                          {
+                                            "$literal": 0
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "$literal": 0
+                                      },
+                                      "$$start"
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            "vars": {
+                              "len": 3,
+                              "start": {
+                                "$subtract": [
+                                  -1,
+                                  {
+                                    "$literal": 1
+                                  }
+                                ]
+                              },
+                              "str": "$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """);
+    }
+
+    @Test
+    void testSubstringWithZeroStartAndLength() {
+        assertQueryResult(
+                "select substring(s, 0, 3) from Item",
+                " H",
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$let": {
+                                "in": {
+                                  "$substrCP": [
+                                    "$$str",
+                                    "$$adjustedStart",
+                                    {
+                                      "$add": [
+                                        "$$len",
+                                        {
+                                          "$subtract": [
+                                            "$$start",
+                                            "$$adjustedStart"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "vars": {
+                                  "adjustedStart": {
+                                    "$cond": [
+                                      {
+                                        "$lt": [
+                                          "$$start",
+                                          {
+                                            "$literal": 0
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "$literal": 0
+                                      },
+                                      "$$start"
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            "vars": {
+                              "len": 3,
+                              "start": {
+                                "$subtract": [
+                                  0,
+                                  {
+                                    "$literal": 1
+                                  }
+                                ]
+                              },
+                              "str": "$s"
+                            }
+                          }
                         }
                       }
                     }

@@ -19,8 +19,6 @@ package com.mongodb.hibernate.internal.dialect.function;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
-import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
-import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
 import java.util.ArrayList;
@@ -103,38 +101,6 @@ public final class MongoExpressionPositionalFunction extends AbstractSqmSelfRend
         this.modifier = modifier;
         this.outputMapper = outputMapper;
         this.parameters = parameters;
-    }
-
-    /**
-     * Applies a series of modifications in sequence
-     *
-     * @param modifiers the modifications to apply
-     * @return an modifier that applies all modifications
-     */
-    public static ArgumentModifier allModifications(ArgumentModifier... modifiers) {
-        return arguments -> {
-            for (final var modifier : modifiers) {
-                modifier.mutate(arguments);
-            }
-        };
-    }
-
-    /**
-     * Changes a length parameter into an end position
-     *
-     * @param start the position of the start argument
-     * @param length the position of the length argument
-     * @return an argument modifier that replaces the length argument with an end position by adding the start argument
-     *     to that position; the start argument is unmodified
-     */
-    public static ArgumentModifier offsetToEnd(int start, int length) {
-        return arguments -> {
-            if (start < arguments.size() && length < arguments.size()) {
-                final var end = new AstBinaryOperatorExpression(
-                        AstArithmeticExpressionOperator.ADD, arguments.get(start), arguments.get(length));
-                arguments.set(length, end);
-            }
-        };
     }
 
     /**
