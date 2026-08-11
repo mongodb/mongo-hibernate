@@ -17,18 +17,20 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public record AstLogicalOperatorExpression(AstLogicalOperator operator, List<? extends AstExpression> operands)
         implements AstExpression {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName(operator.getOperatorName());
         writer.writeStartArray();
-        operands.forEach(operand -> operand.render(writer));
+        operands.forEach(operand -> operand.render(writer, binderConsumer));
         writer.writeEndArray();
         writer.writeEndDocument();
     }

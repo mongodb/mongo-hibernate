@@ -17,15 +17,17 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public record AstProjectStageExpressionSpecification(String key, AstExpression expression)
         implements AstProjectStageSpecification {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeName(key);
-        expression.render(writer);
+        expression.render(writer, binderConsumer);
     }
 }

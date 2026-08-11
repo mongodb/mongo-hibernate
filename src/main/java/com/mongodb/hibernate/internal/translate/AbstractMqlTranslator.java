@@ -76,6 +76,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpre
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchCase;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
@@ -129,6 +131,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
@@ -278,8 +281,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private @Nullable JoinLookupContext joinLookupContext;
 
-    private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
-
     private final Set<String> affectedTableNames = new HashSet<>();
 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
@@ -397,10 +398,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
         astVisitorValueHolder.yield(
                 MODEL_MUTATION_RESULT,
-                ModelMutationMqlTranslator.Result.create(
-                        new AstInsertCommand(
-                                tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements))),
-                        parameterBinders));
+                ModelMutationMqlTranslator.Result.create(new AstInsertCommand(
+                        tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements)))));
     }
 
     @Override
@@ -444,8 +443,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(
-                        new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter),
-                        parameterBinders));
+                        new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter)));
     }
 
     @Override
@@ -466,7 +464,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private ModelMutationMqlTranslator.Result createMutationResult(
             List<ColumnValueBinding> valueBindings, String tableName, AstFilter keyFilter) {
         var astUpdateCommand = createAstUpdateCommand(valueBindings, tableName, keyFilter);
-        return ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders);
+        return ModelMutationMqlTranslator.Result.create(astUpdateCommand);
     }
 
     private AstFilter createKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
@@ -494,8 +492,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
-        parameterBinders.add(jdbcParameter.getParameterBinder());
-        yieldValueOrExpression(AstParameterMarker.INSTANCE, parameterNeedsLiteralWrapping(jdbcParameter));
+        yieldValueOrExpression(
+                new AstParameterMarker(jdbcParameter.getParameterBinder()),
+                parameterNeedsLiteralWrapping(jdbcParameter));
     }
 
     // A parameter's bound value is unknown at translation time, so a string-typed parameter (which could
@@ -545,7 +544,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 SELECT_RESULT,
                 new SelectMqlTranslator.Result(
                         new AstAggregateCommand(collection, stages),
-                        parameterBinders,
                         affectedTableNames,
                         skipLimitStagesAndJdbcParams.offset(),
                         skipLimitStagesAndJdbcParams.limit()));
@@ -1058,8 +1056,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
-                new MutationMqlTranslator.Result(
-                        new AstDeleteCommand(collection, filter), parameterBinders, affectedTableNames));
+                new MutationMqlTranslator.Result(new AstDeleteCommand(collection, filter), affectedTableNames));
     }
 
     @Override
@@ -1074,7 +1071,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
                         new AstUpdateCommand(collection, List.of(createMultiUpdateStatement(filter, update))),
-                        parameterBinders,
                         affectedTableNames));
     }
 
@@ -1133,8 +1129,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * {@code UpdateCoordinatorStandard} binds a single value for the aggregate as a whole. Emitting the leaves would
      * therefore leave the aggregate's bound value without a matching parameter, so each aggregate's leaves collapse
      * into one field update, named after the aggregate column and backed by a parameter carrying the aggregate's own
-     * mapping. The leaves' value expressions must not be visited: every visit appends a parameter binder and emits a
-     * placeholder, and the JDBC layer pairs the two by position.
+     * mapping. The leaves' value expressions must not be visited: every visit emits a placeholder carrying a parameter
+     * binder, and the JDBC layer pairs binders with placeholders by position.
      *
      * <p>This exists only to work around <a href="https://hibernate.atlassian.net/browse/HHH-20754">HHH-20754</a>.
      * {@code MergeCoordinatorStandard} overrides {@code forEachUpdatable} to call {@code forEachSelectable}, which
@@ -1155,9 +1151,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             if (aggregate == null) {
                 updates.add(createFieldUpdate(valueBinding));
             } else if (collapsedAggregates.add(aggregate.getSelectionExpression())) {
-                parameterBinders.add(
-                        new ColumnValueParameter(new ColumnReference(mutatingTable, aggregate), ParameterUsage.SET));
-                updates.add(new AstFieldUpdate(aggregate.getSelectionExpression(), AstParameterMarker.INSTANCE));
+                var parameter =
+                        new ColumnValueParameter(new ColumnReference(mutatingTable, aggregate), ParameterUsage.SET);
+                updates.add(new AstFieldUpdate(
+                        aggregate.getSelectionExpression(), new AstParameterMarker(parameter.getParameterBinder())));
             }
         }
         return updates;
@@ -1238,8 +1235,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
-                new MutationMqlTranslator.Result(
-                        new AstInsertCommand(collection, documents), parameterBinders, affectedTableNames));
+                new MutationMqlTranslator.Result(new AstInsertCommand(collection, documents), affectedTableNames));
     }
 
     @Override
@@ -1380,12 +1376,54 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitCaseSearchedExpression(CaseSearchedExpression caseSearchedExpression) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
+        // A CASE only produces an aggregation expression ($switch); a position wanting a field path or a
+        // value (e.g. a LIKE match expression, or a sort key) cannot take it, so refuse cleanly rather
+        // than tripping the value holder's descriptor assertion.
+        assertCaseExpressionPosition();
+        // Searched CASE: each `when` predicate is a boolean aggregation expression (the branch's `case`),
+        // its result the branch's `then`.
+        var branches = new ArrayList<AstSwitchCase>(
+                caseSearchedExpression.getWhenFragments().size());
+        for (var whenFragment : caseSearchedExpression.getWhenFragments()) {
+            var caseExpression = acceptAndYield(whenFragment.getPredicate(), EXPRESSION);
+            var thenExpression = acceptAndYieldExpression(whenFragment.getResult());
+            branches.add(new AstSwitchCase(caseExpression, thenExpression));
+        }
+        astVisitorValueHolder.yield(
+                EXPRESSION,
+                new AstSwitchExpression(branches, resolveCaseDefault(caseSearchedExpression.getOtherwise())));
     }
 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
+        assertCaseExpressionPosition();
+        var fixture = acceptAndYieldExpression(caseSimpleExpression.getFixture());
+        var branches = new ArrayList<AstSwitchCase>(
+                caseSimpleExpression.getWhenFragments().size());
+        for (var whenFragment : caseSimpleExpression.getWhenFragments()) {
+            var checkValue = acceptAndYieldExpression(whenFragment.getCheckValue());
+            var caseExpression =
+                    new AstBinaryOperatorExpression(AstComparisonExpressionOperator.EQ, fixture, checkValue);
+            var thenExpression = acceptAndYieldExpression(whenFragment.getResult());
+            branches.add(new AstSwitchCase(caseExpression, thenExpression));
+        }
+        astVisitorValueHolder.yield(
+                EXPRESSION, new AstSwitchExpression(branches, resolveCaseDefault(caseSimpleExpression.getOtherwise())));
+    }
+
+    private void assertCaseExpressionPosition() {
+        if (!astVisitorValueHolder.expects(EXPRESSION)) {
+            throw new FeatureNotSupportedException(
+                    "CASE expression is only supported in aggregation-expression position");
+        }
+    }
+
+    // The CASE `default` (its ELSE). A missing ELSE returns SQL NULL, so it maps to a null literal — which
+    // also keeps $switch from erroring at runtime when no branch matches and no default is present.
+    private AstExpression resolveCaseDefault(@Nullable Expression otherwise) {
+        return otherwise == null
+                ? new AstValueExpression(new AstLiteral(BsonNull.VALUE))
+                : acceptAndYieldExpression(otherwise);
     }
 
     @Override
@@ -1505,7 +1543,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstLogicalOperatorExpression toBetweenExpression(BetweenPredicate betweenPredicate) {
-        var operand = betweenPredicate.getExpression();
+        var operand = acceptAndYieldExpression(betweenPredicate.getExpression());
         return new AstLogicalOperatorExpression(
                 betweenPredicate.isNegated() ? AstLogicalOperator.OR : AstLogicalOperator.AND,
                 List.of(
@@ -1523,12 +1561,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                                 betweenPredicate.getUpperBound())));
     }
 
-    // Each bound is visited on its own (never a reused node): the operand appears in both comparisons,
-    // so a parameter in it must register a binder per occurrence to stay aligned with the rendered markers.
     private AstBinaryOperatorExpression toBoundExpression(
-            Expression operand, ComparisonOperator operator, Expression bound) {
+            AstExpression operand, ComparisonOperator operator, Expression bound) {
         return new AstBinaryOperatorExpression(
-                toExprComparisonOperator(operator), acceptAndYieldExpression(operand), acceptAndYieldExpression(bound));
+                toExprComparisonOperator(operator), operand, acceptAndYieldExpression(bound));
     }
 
     @Override
@@ -1865,7 +1901,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     optionalTableUpdate.getMutatingTable().getTableName(),
                     List.of(createUpsertStatement(keyFilter, update)));
             astVisitorValueHolder.yield(
-                    UPSERT_MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(command, parameterBinders));
+                    UPSERT_MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(command));
         } else {
             var mutationResult = createMutationResult(
                     optionalTableUpdate.getValueBindings(),
@@ -1880,10 +1916,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         throw new FeatureNotSupportedException();
     }
 
-    static String renderMongoAstNode(AstNode rootAstNode) {
+    // The binders are collected by the rendering itself, so they come out in the order in which
+    // MongoPreparedStatement recovers the markers they were rendered as.
+    static String renderMongoAstNode(AstNode rootAstNode, Consumer<JdbcParameterBinder> parameterBinderConsumer) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
-            rootAstNode.render(jsonWriter);
+            rootAstNode.render(jsonWriter, parameterBinderConsumer);
             jsonWriter.flush();
             return stringWriter.toString();
         } catch (IOException e) {

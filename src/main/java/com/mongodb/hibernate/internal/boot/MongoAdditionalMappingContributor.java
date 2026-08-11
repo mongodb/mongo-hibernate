@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.boot;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
@@ -74,6 +75,7 @@ import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.SimpleValue;
+import org.hibernate.mapping.UniqueKey;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
@@ -147,9 +149,28 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             forbidJdbcTypeCodeAnnotation(persistentClass);
             forbidColumnFragmentAnnotations(persistentClass);
             setIdentifierColumnName(persistentClass);
+            materializeUniqueColumns(persistentClass);
         });
         forbidCatalog(metadata, buildingContext);
         forbidCollidingCollectionNames(metadata);
+    }
+
+    /**
+     * Creates a {@link UniqueKey} for each column mapped with {@code @Column(unique = true)} or
+     * {@link org.hibernate.annotations.NaturalId}.
+     *
+     * <p>For SQL dialects, a unique column is specified as part of the table definition. In MongoDB it is an index, so
+     * it is represented as an ordinary unique key.
+     */
+    private static void materializeUniqueColumns(PersistentClass persistentClass) {
+        var table = persistentClass.getTable();
+        for (var column : table.getColumns()) {
+            if (column.isUnique() && !table.isPrimaryKey(column)) {
+                var keyName = column.getUniqueKeyName();
+                assertNotNull(keyName);
+                table.getOrCreateUniqueKey(keyName).addColumn(column);
+            }
+        }
     }
 
     /**

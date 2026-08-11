@@ -20,7 +20,9 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * A document-form update payload, carrying {@code $set} and/or {@code $setOnInsert}, each rendered only when non-empty.
@@ -39,23 +41,27 @@ public record AstDocumentUpdate(List<AstFieldUpdate> set, List<AstFieldUpdate> s
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
-            renderOperator(writer, "$set", set);
-            renderOperator(writer, "$setOnInsert", setOnInsert);
+            renderOperator(writer, "$set", set, binderConsumer);
+            renderOperator(writer, "$setOnInsert", setOnInsert, binderConsumer);
         }
         writer.writeEndDocument();
     }
 
-    private static void renderOperator(BsonWriter writer, String operator, List<AstFieldUpdate> updates) {
+    private static void renderOperator(
+            BsonWriter writer,
+            String operator,
+            List<AstFieldUpdate> updates,
+            Consumer<JdbcParameterBinder> binderConsumer) {
         if (updates.isEmpty()) {
             return;
         }
         writer.writeName(operator);
         writer.writeStartDocument();
         {
-            updates.forEach(update -> update.render(writer));
+            updates.forEach(update -> update.render(writer, binderConsumer));
         }
         writer.writeEndDocument();
     }

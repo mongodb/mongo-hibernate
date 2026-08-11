@@ -320,8 +320,8 @@ class PredicateExpressionIntegrationTests extends AbstractQueryIntegrationTests 
                     Set.of(Widget.COLLECTION_NAME));
         }
 
-        // A parameter in the BETWEEN operand appears in both bound comparisons, so its value must be
-        // bound twice; visiting the operand once and reusing the node emits two markers but one binder.
+        // The operand is translated once and shared by both bound comparisons, so a parameter in it
+        // renders as two markers and its binder is collected twice, binding the value at both.
         @Test
         void testParameterOperandBetween() {
             assertSelectionQuery(

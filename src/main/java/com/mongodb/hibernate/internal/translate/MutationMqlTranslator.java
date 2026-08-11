@@ -26,7 +26,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
@@ -67,17 +67,16 @@ final class MutationMqlTranslator extends AbstractMqlTranslator<JdbcOperationQue
 
     static final class Result {
         private final AstCommand command;
-        private final List<JdbcParameterBinder> parameterBinders;
         private final Set<String> affectedTableNames;
 
-        Result(AstCommand command, List<JdbcParameterBinder> parameterBinders, Set<String> affectedTableNames) {
+        Result(AstCommand command, Set<String> affectedTableNames) {
             this.command = command;
-            this.parameterBinders = parameterBinders;
             this.affectedTableNames = affectedTableNames;
         }
 
         private JdbcOperationQueryMutation createJdbcOperationQueryMutation() {
-            var mql = renderMongoAstNode(command);
+            var parameterBinders = new ArrayList<JdbcParameterBinder>();
+            var mql = renderMongoAstNode(command, parameterBinders::add);
             if (command instanceof AstInsertCommand) {
                 return new JdbcOperationQueryInsertImpl(mql, parameterBinders, affectedTableNames);
             } else if (command instanceof AstUpdateCommand) {

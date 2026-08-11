@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * @see AstSortStage
@@ -26,8 +28,8 @@ import org.bson.BsonWriter;
 @SuppressWarnings("MissingSummary")
 public record AstSortField(String path, AstSortOrder order) implements AstNode {
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeName(path);
-        order.render(writer);
+        order.render(writer, binderConsumer);
     }
 }

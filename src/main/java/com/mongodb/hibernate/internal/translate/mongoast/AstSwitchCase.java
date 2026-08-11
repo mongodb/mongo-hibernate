@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,29 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
+package com.mongodb.hibernate.internal.translate.mongoast;
 
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
- * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/lookup/">{@code $lookup}</a>.
+ * One branch of a {@link AstSwitchExpression}, rendered as {@code {"case": <caseExpression>, "then":
+ * <thenExpression>}}. {@code caseExpression} is a boolean aggregation expression; {@code thenExpression} is the value
+ * produced when it is {@code true}.
  *
+ * @see AstSwitchExpression
  * @hidden
  */
-public record AstLookupStage(String from, String localField, String foreignField, String as) implements AstStage {
+@SuppressWarnings("MissingSummary")
+public record AstSwitchCase(AstExpression caseExpression, AstExpression thenExpression) implements AstNode {
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
-        {
-            writer.writeName("$lookup");
-            writer.writeStartDocument();
-            {
-                writer.writeString("from", from);
-                writer.writeString("localField", localField);
-                writer.writeString("foreignField", foreignField);
-                writer.writeString("as", as);
-            }
-            writer.writeEndDocument();
-        }
+        writer.writeName("case");
+        caseExpression.render(writer, binderConsumer);
+        writer.writeName("then");
+        thenExpression.render(writer, binderConsumer);
         writer.writeEndDocument();
     }
 }

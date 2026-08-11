@@ -67,6 +67,24 @@ visitor as it evolves. It also bypasses `expects(...)`, and with it the filter-f
 `letVariableCounter`, `projectionKeyMap`, and `joinedTableQualifiers` all exist for exactly this. When
 a construct needs context that the visited node cannot carry, add a field and modify the visitor.
 
+## Parameter binders are collected while rendering
+
+A JDBC parameter carries no identity into the emitted command: it renders as BSON `undefined`, and
+`MongoPreparedStatement` recovers the parameter positions by walking the parsed command depth-first,
+in document-entry then array-index order. Hibernate then binds the i-th `JdbcParameterBinder` the
+translator produced into the i-th of those positions, so the two orders have to agree.
+
+They agree by construction. `visitParameter` yields an `AstParameterMarker` holding its own binder, and
+`AstNode.render` takes a `Consumer<JdbcParameterBinder>`: the marker appends its binder in the same
+statement that writes the `undefined`. Every binder in the list corresponds to a marker that was
+actually rendered, in the order it was rendered.
+
+The translator therefore imposes no ordering rule on the code that builds the AST. Reordering
+translated nodes is fine. Dropping one drops its binder with it. Reusing a single translated node in
+two positions renders two markers and collects its binder twice, which binds the same value at both
+positions, so a construct whose operand appears more than once may translate it once and share it
+rather than visiting it per occurrence.
+
 ## Filter form: two languages in `$match`, one in `$project`
 
 Two MongoDB languages are in play, and only one of the two names below is MongoDB's own:

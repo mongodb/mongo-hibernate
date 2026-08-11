@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,34 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
-/** @hidden */
+/**
+ * The MongoDB {@code $switch} aggregation expression, evaluating each branch's {@code case} in order and yielding the
+ * matching branch's {@code then}, or {@code defaultExpression} when none match. Both HQL {@code CASE} flavours (simple
+ * and searched) translate to this; a missing {@code ELSE} maps to a {@code null} default, matching SQL semantics.
+ *
+ * @see AstSwitchCase
+ * @hidden
+ */
 @SuppressWarnings("MissingSummary")
-public record AstBinaryOperatorExpression(String operator, AstExpression left, AstExpression right)
+public record AstSwitchExpression(List<AstSwitchCase> branches, AstExpression defaultExpression)
         implements AstExpression {
-
-    public AstBinaryOperatorExpression(
-            AstComparisonExpressionOperator operator, AstExpression left, AstExpression right) {
-        this(operator.getOperatorName(), left, right);
-    }
-
-    public AstBinaryOperatorExpression(
-            AstArithmeticExpressionOperator operator, AstExpression left, AstExpression right) {
-        this(operator.getOperatorName(), left, right);
-    }
-
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
-        writer.writeName(operator);
+        writer.writeName("$switch");
+        writer.writeStartDocument();
+        writer.writeName("branches");
         writer.writeStartArray();
-        left.render(writer, binderConsumer);
-        right.render(writer, binderConsumer);
+        branches.forEach(branch -> branch.render(writer, binderConsumer));
         writer.writeEndArray();
+        writer.writeName("default");
+        defaultExpression.render(writer, binderConsumer);
+        writer.writeEndDocument();
         writer.writeEndDocument();
     }
 }

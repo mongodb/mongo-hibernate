@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,22 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import java.util.function.Consumer;
-import org.bson.BsonWriter;
-import org.hibernate.sql.exec.spi.JdbcParameterBinder;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertValueRendering;
 
-/** @hidden */
-@SuppressWarnings("MissingSummary")
-public record AstFieldPathExpression(String fieldPath) implements AstExpression {
-    @Override
-    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
-        writer.writeString("$" + fieldPath);
+import java.util.List;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
+import org.junit.jupiter.api.Test;
+
+public class AstParameterMarkerTests {
+    private static JdbcParameterBinder binder() {
+        return (statement, startPosition, jdbcParameterBindings, executionContext) -> {};
+    }
+
+    @Test
+    void testRender() {
+        var binder = binder();
+        var expr = new AstParameterMarker(binder);
+        assertValueRendering("""
+                             {"": ?}""", List.of(binder), expr);
     }
 }

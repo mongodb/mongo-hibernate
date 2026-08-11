@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See the <a href="https://www.mongodb.com/docs/manual/reference/command/update/#update-statements">update
@@ -49,13 +51,13 @@ public class AstUpdateStatement implements AstNode {
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("q");
-            filter.render(writer);
+            filter.render(writer, binderConsumer);
             writer.writeName("u");
-            update.render(writer);
+            update.render(writer, binderConsumer);
             if (upsert) {
                 writer.writeBoolean("upsert", true);
             }
