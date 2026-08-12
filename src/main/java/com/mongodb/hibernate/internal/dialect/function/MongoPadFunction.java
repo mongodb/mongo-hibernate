@@ -85,7 +85,7 @@ public final class MongoPadFunction extends AbstractSqmSelfRenderingFunctionDesc
         var translator = AbstractMqlTranslator.cast(walker);
         var padding = arguments.size() < 3
                 ? new AstLiteralExpression(new AstLiteral(new BsonString(" ")))
-                : new AstUnaryOperatorExpression("$toString", translator.acceptAndYield(arguments.get(2), EXPRESSION));
+                : translator.acceptAndYield(arguments.get(2), EXPRESSION);
         // All parameters are processed in the binding so that variables won't shadow anything outside, so fresh names
         // aren't required
         var paddingLength = new AstBinaryOperatorExpression(

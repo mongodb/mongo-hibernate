@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.dialect.function;
 
+import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.atLeastZero;
 import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.subtractOne;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 
@@ -86,13 +87,13 @@ public final class MongoSubstringFunction extends AbstractSqmSelfRenderingFuncti
         AstExpression length;
         if (arguments.size() == 3) {
             vars.put("len", translator.acceptAndYield(arguments.get(2), EXPRESSION));
-            length = new AstBinaryOperatorExpression(
+            length = atLeastZero(new AstBinaryOperatorExpression(
                     AstArithmeticExpressionOperator.ADD,
                     new AstVariableExpression("len"),
                     new AstBinaryOperatorExpression(
                             AstArithmeticExpressionOperator.SUBTRACT,
                             new AstVariableExpression("start"),
-                            new AstVariableExpression("adjustedStart")));
+                            new AstVariableExpression("adjustedStart"))));
         } else {
             length = new AstLiteralExpression(new AstLiteral(new BsonInt32(Integer.MAX_VALUE)));
         }

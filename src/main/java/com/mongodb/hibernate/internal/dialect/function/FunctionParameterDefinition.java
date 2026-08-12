@@ -22,11 +22,17 @@ import com.mongodb.hibernate.internal.MongoAssertions;
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLetBindingExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.bson.BsonInt32;
@@ -207,6 +213,27 @@ public abstract sealed class FunctionParameterDefinition<N>
      */
     public final FunctionParameterDefinition<N> map(Function<? super AstExpression, ? extends AstExpression> mapper) {
         return new Mapped<>(this, mapper);
+    }
+
+    /**
+     * Ensures that an input value, which must be a number, is greater than zero
+     *
+     * @param input the expression to clamp
+     * @return an expression which returns the original value or zero if the original value is less than zero
+     */
+    public static AstExpression atLeastZero(AstExpression input) {
+        // All variables are bound, so we don't need to worry about aliasing
+        return new AstLetBindingExpression(
+                new AstPositionalOperatorExpression(
+                        "$cond",
+                        List.of(
+                                new AstBinaryOperatorExpression(
+                                        AstComparisonExpressionOperator.LT,
+                                        new AstVariableExpression("x"),
+                                        new AstLiteralExpression(new AstLiteral(new BsonInt32(0)))),
+                                new AstLiteralExpression(new AstLiteral(new BsonInt32(0))),
+                                new AstVariableExpression("x"))),
+                new TreeMap<>(Map.of("x", input)));
     }
 
     interface RelativePositionChecker {

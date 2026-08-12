@@ -334,7 +334,9 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                         swap(0, 1),
                         required(FunctionParameterType.STRING),
                         required(FunctionParameterType.STRING),
-                        orMissing(FunctionParameterType.INTEGER).map(FunctionParameterDefinition::subtractOne)));
+                        orMissing(FunctionParameterType.INTEGER)
+                                .map(FunctionParameterDefinition::subtractOne)
+                                .map(FunctionParameterDefinition::atLeastZero)));
         functionRegistry.register(
                 "lower",
                 new MongoExpressionUnaryFunction(
