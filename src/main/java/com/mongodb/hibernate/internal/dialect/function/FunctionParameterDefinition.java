@@ -22,17 +22,12 @@ import com.mongodb.hibernate.internal.MongoAssertions;
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLetBindingExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.bson.BsonInt32;
@@ -223,17 +218,8 @@ public abstract sealed class FunctionParameterDefinition<N>
      */
     public static AstExpression atLeastZero(AstExpression input) {
         // All variables are bound, so we don't need to worry about aliasing
-        return new AstLetBindingExpression(
-                new AstPositionalOperatorExpression(
-                        "$cond",
-                        List.of(
-                                new AstBinaryOperatorExpression(
-                                        AstComparisonExpressionOperator.LT,
-                                        new AstVariableExpression("x"),
-                                        new AstLiteralExpression(new AstLiteral(new BsonInt32(0)))),
-                                new AstLiteralExpression(new AstLiteral(new BsonInt32(0))),
-                                new AstVariableExpression("x"))),
-                new TreeMap<>(Map.of("x", input)));
+        return new AstPositionalOperatorExpression(
+                "$max", List.of(input, new AstLiteralExpression(new AstLiteral(new BsonInt32(0)))));
     }
 
     interface RelativePositionChecker {

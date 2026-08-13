@@ -202,34 +202,19 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                 "$s",
                                 " ",
                                 {
-                                  "$let": {
-                                    "in": {
-                                      "$cond": [
+                                  "$max": [
+                                    {
+                                      "$subtract": [
+                                        4,
                                         {
-                                          "$lt": [
-                                            "$$x",
-                                            {
-                                              "$literal": 0
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "$literal": 0
-                                        },
-                                        "$$x"
+                                          "$literal": 1
+                                        }
                                       ]
                                     },
-                                    "vars": {
-                                      "x": {
-                                        "$subtract": [
-                                          4,
-                                          {
-                                            "$literal": 1
-                                          }
-                                        ]
-                                      }
+                                    {
+                                      "$literal": 0
                                     }
-                                  }
+                                  ]
                                 }
                               ]
                             },
@@ -263,34 +248,19 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                 "$s",
                                 "o",
                                 {
-                                  "$let": {
-                                    "in": {
-                                      "$cond": [
+                                  "$max": [
+                                    {
+                                      "$subtract": [
+                                        0,
                                         {
-                                          "$lt": [
-                                            "$$x",
-                                            {
-                                              "$literal": 0
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "$literal": 0
-                                        },
-                                        "$$x"
+                                          "$literal": 1
+                                        }
                                       ]
                                     },
-                                    "vars": {
-                                      "x": {
-                                        "$subtract": [
-                                          0,
-                                          {
-                                            "$literal": 1
-                                          }
-                                        ]
-                                      }
+                                    {
+                                      "$literal": 0
                                     }
-                                  }
+                                  ]
                                 }
                               ]
                             },
@@ -324,34 +294,19 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                 "$s",
                                 "o",
                                 {
-                                  "$let": {
-                                    "in": {
-                                      "$cond": [
+                                  "$max": [
+                                    {
+                                      "$subtract": [
+                                        -3,
                                         {
-                                          "$lt": [
-                                            "$$x",
-                                            {
-                                              "$literal": 0
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "$literal": 0
-                                        },
-                                        "$$x"
+                                          "$literal": 1
+                                        }
                                       ]
                                     },
-                                    "vars": {
-                                      "x": {
-                                        "$subtract": [
-                                          -3,
-                                          {
-                                            "$literal": 1
-                                          }
-                                        ]
-                                      }
+                                    {
+                                      "$literal": 0
                                     }
-                                  }
+                                  ]
                                 }
                               ]
                             },
@@ -385,34 +340,19 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                 "$s",
                                 " ",
                                 {
-                                  "$let": {
-                                    "in": {
-                                      "$cond": [
+                                  "$max": [
+                                    {
+                                      "$subtract": [
+                                        4,
                                         {
-                                          "$lt": [
-                                            "$$x",
-                                            {
-                                              "$literal": 0
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "$literal": 0
-                                        },
-                                        "$$x"
+                                          "$literal": 1
+                                        }
                                       ]
                                     },
-                                    "vars": {
-                                      "x": {
-                                        "$subtract": [
-                                          4,
-                                          {
-                                            "$literal": 1
-                                          }
-                                        ]
-                                      }
+                                    {
+                                      "$literal": 0
                                     }
-                                  }
+                                  ]
                                 }
                               ]
                             },
@@ -2767,37 +2707,22 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                     "$$str",
                                     "$$adjustedStart",
                                     {
-                                      "$let": {
-                                        "in": {
-                                          "$cond": [
+                                      "$max": [
+                                        {
+                                          "$add": [
+                                            "$$len",
                                             {
-                                              "$lt": [
-                                                "$$x",
-                                                {
-                                                  "$literal": 0
-                                                }
+                                              "$subtract": [
+                                                "$$start",
+                                                "$$adjustedStart"
                                               ]
-                                            },
-                                            {
-                                              "$literal": 0
-                                            },
-                                            "$$x"
+                                            }
                                           ]
                                         },
-                                        "vars": {
-                                          "x": {
-                                            "$add": [
-                                              "$$len",
-                                              {
-                                                "$subtract": [
-                                                  "$$start",
-                                                  "$$adjustedStart"
-                                                ]
-                                              }
-                                            ]
-                                          }
+                                        {
+                                          "$literal": 0
                                         }
-                                      }
+                                      ]
                                     }
                                   ]
                                 },
@@ -2926,37 +2851,22 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                     "$$str",
                                     "$$adjustedStart",
                                     {
-                                      "$let": {
-                                        "in": {
-                                          "$cond": [
+                                      "$max": [
+                                        {
+                                          "$add": [
+                                            "$$len",
                                             {
-                                              "$lt": [
-                                                "$$x",
-                                                {
-                                                  "$literal": 0
-                                                }
+                                              "$subtract": [
+                                                "$$start",
+                                                "$$adjustedStart"
                                               ]
-                                            },
-                                            {
-                                              "$literal": 0
-                                            },
-                                            "$$x"
+                                            }
                                           ]
                                         },
-                                        "vars": {
-                                          "x": {
-                                            "$add": [
-                                              "$$len",
-                                              {
-                                                "$subtract": [
-                                                  "$$start",
-                                                  "$$adjustedStart"
-                                                ]
-                                              }
-                                            ]
-                                          }
+                                        {
+                                          "$literal": 0
                                         }
-                                      }
+                                      ]
                                     }
                                   ]
                                 },
@@ -3021,37 +2931,22 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                     "$$str",
                                     "$$adjustedStart",
                                     {
-                                      "$let": {
-                                        "in": {
-                                          "$cond": [
+                                      "$max": [
+                                        {
+                                          "$add": [
+                                            "$$len",
                                             {
-                                              "$lt": [
-                                                "$$x",
-                                                {
-                                                  "$literal": 0
-                                                }
+                                              "$subtract": [
+                                                "$$start",
+                                                "$$adjustedStart"
                                               ]
-                                            },
-                                            {
-                                              "$literal": 0
-                                            },
-                                            "$$x"
+                                            }
                                           ]
                                         },
-                                        "vars": {
-                                          "x": {
-                                            "$add": [
-                                              "$$len",
-                                              {
-                                                "$subtract": [
-                                                  "$$start",
-                                                  "$$adjustedStart"
-                                                ]
-                                              }
-                                            ]
-                                          }
+                                        {
+                                          "$literal": 0
                                         }
-                                      }
+                                      ]
                                     }
                                   ]
                                 },
@@ -3116,37 +3011,22 @@ public class StringFunctionIntegrationTests extends AbstractQueryIntegrationTest
                                     "$$str",
                                     "$$adjustedStart",
                                     {
-                                      "$let": {
-                                        "in": {
-                                          "$cond": [
+                                      "$max": [
+                                        {
+                                          "$add": [
+                                            "$$len",
                                             {
-                                              "$lt": [
-                                                "$$x",
-                                                {
-                                                  "$literal": 0
-                                                }
+                                              "$subtract": [
+                                                "$$start",
+                                                "$$adjustedStart"
                                               ]
-                                            },
-                                            {
-                                              "$literal": 0
-                                            },
-                                            "$$x"
+                                            }
                                           ]
                                         },
-                                        "vars": {
-                                          "x": {
-                                            "$add": [
-                                              "$$len",
-                                              {
-                                                "$subtract": [
-                                                  "$$start",
-                                                  "$$adjustedStart"
-                                                ]
-                                              }
-                                            ]
-                                          }
+                                        {
+                                          "$literal": 0
                                         }
-                                      }
+                                      ]
                                     }
                                   ]
                                 },
