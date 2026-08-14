@@ -604,7 +604,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 elements.add(
                         new AstElement(groupKey, new AstFieldReferenceValue(new AstFieldPathExpression(fieldPath))));
             } else {
-                throw new FeatureNotSupportedException("Only column references are supported in group by");
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-241 Only column references are supported in group by");
             }
         }
         groupByContext.finishPopulating();

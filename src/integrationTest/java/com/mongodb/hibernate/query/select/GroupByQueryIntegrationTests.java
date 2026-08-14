@@ -594,7 +594,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                     "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1",
                     Object.class,
                     FeatureNotSupportedException.class,
-                    "Only column references are supported in group by");
+                    "TODO-HIBERNATE-241 Only column references are supported in group by");
         }
 
         @Test
@@ -603,7 +603,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                     "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1 HAVING b.primitiveInt + 1 > 2",
                     Object.class,
                     FeatureNotSupportedException.class,
-                    "Only column references are supported in group by");
+                    "TODO-HIBERNATE-241 Only column references are supported in group by");
         }
 
         @Test

@@ -16,13 +16,13 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 public record AstFieldReferenceValue(AstFieldPathExpression fieldPathExpression) implements AstValue {
     @Override
-    public void render(final BsonWriter writer) {
-        {
-            writer.writeString("$" + fieldPathExpression.fieldPath());
-        }
+    public void render(final BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
+        writer.writeString("$" + fieldPathExpression.fieldPath());
     }
 }
