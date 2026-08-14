@@ -838,7 +838,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitSelectClause(SelectClause selectClause) {
         if (selectClause.isDistinct()) {
-            throw new FeatureNotSupportedException("SELECT DISTINCT is not supported");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-205 SELECT DISTINCT is not supported");
         }
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());

@@ -621,7 +621,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                     "select DISTINCT b.primitiveInt from Item as b GROUP BY b.primitiveInt",
                     Object.class,
                     FeatureNotSupportedException.class,
-                    "SELECT DISTINCT is not supported");
+                    "TODO-HIBERNATE-205 SELECT DISTINCT is not supported");
         }
     }
 
