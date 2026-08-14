@@ -33,6 +33,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import java.util.List;
 import java.util.Set;
+import org.bson.BsonDocument;
 import org.hibernate.annotations.Struct;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection mongoCollection;
+    private static MongoCollection<BsonDocument> mongoCollection;
 
     @Entity(name = "Item")
     static class Item {
@@ -102,7 +103,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         new Item(7, 3, "c", true, new ItemStruct(3)),
                         new Item(8, 4, "c", false, new ItemStruct(4)))
                 .forEach(session::persist));
-        getTestCommandListener().clear();
+        commandHistory.clear();
     }
 
     @Test
@@ -260,7 +261,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                 TESTING_ITEMS.stream().map(itemA -> itemA.itemB).forEach(session::persist);
                 TESTING_ITEMS.forEach(session::persist);
             });
-            getTestCommandListener().clear();
+            commandHistory.clear();
         }
 
         @Test
