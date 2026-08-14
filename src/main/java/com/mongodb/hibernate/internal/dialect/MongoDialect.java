@@ -29,6 +29,7 @@ import com.mongodb.hibernate.internal.dialect.function.MongoExpressionNamedFunct
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionUnaryFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoExpressionVariadicFunction;
+import com.mongodb.hibernate.internal.dialect.function.MongoExtractFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoPadFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoRepeatFunction;
 import com.mongodb.hibernate.internal.dialect.function.MongoSubstringFunction;
@@ -324,6 +325,16 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                         Function.identity(),
                         FunctionParameterType.ANY,
                         input -> new AstUnaryOperatorExpression("$toString", input)));
+        functionRegistry.register("extract", new MongoExtractFunction(typeConfiguration));
+        functionRegistry.register(
+                "format",
+                new MongoExpressionNamedFunction(
+                        "format",
+                        "$dateToString",
+                        typeConfiguration,
+                        StandardBasicTypes.STRING,
+                        required("date", FunctionParameterType.TEMPORAL),
+                        required("format", FunctionParameterType.STRING)));
         functionRegistry.register(
                 "locate",
                 new MongoExpressionPositionalFunction(
