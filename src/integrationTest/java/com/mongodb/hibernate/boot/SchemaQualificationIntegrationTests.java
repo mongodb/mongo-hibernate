@@ -65,16 +65,16 @@ import org.junit.jupiter.api.Test;
 class SchemaQualificationIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection("library.books")
-    private static MongoCollection<BsonDocument> libraryBooks;
+    private MongoCollection<BsonDocument> libraryBooks;
 
     @InjectMongoCollection("archive.entries")
-    private static MongoCollection<BsonDocument> archiveEntries;
+    private MongoCollection<BsonDocument> archiveEntries;
 
     @InjectMongoCollection("shared.things")
-    private static MongoCollection<BsonDocument> sharedThings;
+    private MongoCollection<BsonDocument> sharedThings;
 
     @InjectMongoCollection("zoo.animals")
-    private static MongoCollection<BsonDocument> zooAnimals;
+    private MongoCollection<BsonDocument> zooAnimals;
 
     @BeforeEach
     void seed() {
@@ -88,7 +88,7 @@ class SchemaQualificationIntegrationTests extends AbstractQueryIntegrationTests 
             session.persist(new SharedTwo(200, "two"));
             session.persist(new Dog(30, "canis", "labrador"));
         });
-        getTestCommandListener().clear();
+        commandHistory.clear();
     }
 
     // ~~~ write path: schema folds into the physical collection name ~~~

@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
@@ -34,12 +36,12 @@ public record AstBinaryOperatorExpression(String operator, AstExpression left, A
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName(operator);
         writer.writeStartArray();
-        left.render(writer);
-        right.render(writer);
+        left.render(writer, binderConsumer);
+        right.render(writer, binderConsumer);
         writer.writeEndArray();
         writer.writeEndDocument();
     }

@@ -19,8 +19,10 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/query/type/">{@code $type}</a>.
@@ -33,7 +35,7 @@ public record AstTypeFilterOperation(Collection<BsonType> types) implements AstF
     }
 
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
             writer.writeName("$type");

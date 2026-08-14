@@ -108,7 +108,7 @@ tasks.withType<JavaCompile>().configureEach {
                 option("NullAway:AnnotatedPackages", "com.mongodb.hibernate")
                 error("NullAway")
             }
-        else -> options.errorprone.isEnabled = false
+        else -> options.errorprone.enabled = false
     }
 }
 
@@ -212,14 +212,28 @@ val gitVersion: String by lazy {
         .getOrElse("UNKNOWN")
 }
 
+// A plain `tasks.named(name)` below would resolve to the root project's task alone, leaving the
+// publications of the subprojects unpublished. The Provider defers looking at the projects until the task
+// graph is built, by which point the subprojects have been evaluated and their plugins are visible.
+fun publishingTaskInEveryProject(name: String) = provider {
+    val publishing = allprojects.filter { it.pluginManager.hasPlugin("mongo-hibernate-publish") }
+    val withPublications = allprojects.filter {
+        it.extensions.findByType<PublishingExtension>()?.publications?.isNotEmpty() == true
+    }
+    require((withPublications - publishing.toSet()).isEmpty()) {
+        "Projects declare publications but don't apply mongo-hibernate-publish: ${withPublications - publishing.toSet()}"
+    }
+    publishing.map { it.tasks.named(name) }
+}
+
 // Publish snapshots
 tasks.register("publishSnapshots") {
     group = "publishing"
     description = "Publishes snapshots to Sonatype"
 
     if (version.toString().endsWith("-SNAPSHOT")) {
-        dependsOn(tasks.named("publishAllPublicationsToLocalBuildRepository"))
-        dependsOn(tasks.named("publishToSonatype"))
+        dependsOn(publishingTaskInEveryProject("publishAllPublicationsToLocalBuildRepository"))
+        dependsOn(publishingTaskInEveryProject("publishToSonatype"))
     }
 }
 
@@ -248,8 +262,8 @@ tasks.register("publishArchives") {
         }
     }
     if (gitVersionMatch) {
-        dependsOn(tasks.named("publishAllPublicationsToLocalBuildRepository"))
-        dependsOn(tasks.named("publishToSonatype"))
+        dependsOn(publishingTaskInEveryProject("publishAllPublicationsToLocalBuildRepository"))
+        dependsOn(publishingTaskInEveryProject("publishToSonatype"))
     }
 }
 

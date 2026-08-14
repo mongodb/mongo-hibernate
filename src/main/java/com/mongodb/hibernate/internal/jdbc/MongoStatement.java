@@ -42,6 +42,7 @@ import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.UpdateManyModel;
 import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.VisibleForTesting;
@@ -246,7 +247,13 @@ class MongoStatement implements StatementAdapter {
     public boolean execute(String mql) throws SQLException {
         checkClosed();
         closeLastOpenResultSet();
-        throw new SQLFeatureNotSupportedException("TODO-HIBERNATE-66 https://jira.mongodb.org/browse/HIBERNATE-66");
+        var command = AdminCommand.toAdminCommand(mql);
+        try {
+            command.execute(mongoDatabase);
+            return false;
+        } catch (RuntimeException exception) {
+            throw handleExecuteQueryOrUpdateException(exception);
+        }
     }
 
     @Override
@@ -353,7 +360,12 @@ class MongoStatement implements StatementAdapter {
     private static int getUpdateCount(CommandDescription commandDescription, BulkWriteResult bulkWriteResult) {
         return switch (commandDescription) {
             case INSERT -> bulkWriteResult.getInsertedCount();
-            case UPDATE -> bulkWriteResult.getModifiedCount();
+            // The Postgres driver (and others) returns matched count for updates (rather than modified count).
+            // Hibernate relies on this behavior for StatelessSession#upsert, which expects executeUpdate to
+            // return 1 even if the row was matched but not modified and throws a StaleStateException otherwise.
+            // An upsert counts as a match as well.
+            case UPDATE ->
+                bulkWriteResult.getMatchedCount() + bulkWriteResult.getUpserts().size();
             case DELETE -> bulkWriteResult.getDeletedCount();
             default -> throw fail();
         };
@@ -517,7 +529,7 @@ class MongoStatement implements StatementAdapter {
         private static final Set<String> SUPPORTED_INSERT_COMMAND_FIELDS = Set.of("documents");
 
         private static final Set<String> SUPPORTED_UPDATE_COMMAND_FIELDS = Set.of("updates");
-        private static final Set<String> SUPPORTED_UPDATE_STATEMENT_FIELDS = Set.of("q", "u", "multi");
+        private static final Set<String> SUPPORTED_UPDATE_STATEMENT_FIELDS = Set.of("q", "u", "multi", "upsert");
 
         private static final Set<String> SUPPORTED_DELETE_COMMAND_FIELDS = Set.of("deletes");
         private static final Set<String> SUPPORTED_DELETE_STATEMENT_FIELDS = Set.of("q", "limit");
@@ -568,6 +580,8 @@ class MongoStatement implements StatementAdapter {
                 throws SQLFeatureNotSupportedException {
             checkStatementFields(updateStatement, commandDescription, SUPPORTED_UPDATE_STATEMENT_FIELDS);
             var isMulti = updateStatement.getBoolean("multi", FALSE).getValue();
+            var options = new UpdateOptions()
+                    .upsert(updateStatement.getBoolean("upsert", FALSE).getValue());
             var filter = updateStatement.getDocument("q");
             var updateModification = updateStatement.get("u");
             if (updateModification == null) {
@@ -576,14 +590,14 @@ class MongoStatement implements StatementAdapter {
             }
             if (updateModification instanceof BsonDocument updateDocument) {
                 return isMulti
-                        ? new UpdateManyModel<>(filter, updateDocument)
-                        : new UpdateOneModel<>(filter, updateDocument);
+                        ? new UpdateManyModel<>(filter, updateDocument, options)
+                        : new UpdateOneModel<>(filter, updateDocument, options);
             } else if (updateModification instanceof BsonArray updatePipelineArray) {
                 var updatePipeline =
                         updatePipelineArray.stream().map(BsonValue::asDocument).toList();
                 return isMulti
-                        ? new UpdateManyModel<>(filter, updatePipeline)
-                        : new UpdateOneModel<>(filter, updatePipeline);
+                        ? new UpdateManyModel<>(filter, updatePipeline, options)
+                        : new UpdateOneModel<>(filter, updatePipeline, options);
             } else {
                 throw new SQLFeatureNotSupportedException(
                         "Only document or pipeline type is supported as value for field: [u]");

@@ -50,10 +50,10 @@ import org.junit.jupiter.api.Test;
 class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(Book.COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> booksCollection;
+    private MongoCollection<BsonDocument> booksCollection;
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> itemsCollection;
+    private MongoCollection<BsonDocument> itemsCollection;
 
     private static final List<Book> testingBooks = List.of(
             new Book(1, "War & Peace", 1869, true),
@@ -65,7 +65,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> testingBooks.forEach(session::persist));
-        getTestCommandListener().clear();
     }
 
     @Test
@@ -150,6 +149,141 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                                 {
                                   "_id": 5,
                                   "title": "War and Peace",
+                                  "outOfStock": false,
+                                  "publishYear": 2025,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """)),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
+    // A CASE assignment is a computed value, so the update is emitted as a $set pipeline stage whose value
+    // is the $switch translation of the CASE.
+    @Test
+    void testCaseExpressionAssignment() {
+        assertMutationQuery(
+                "update Book b set b.publishYear = case when b.id = 1 then 100 else 200 end where b.id = 1",
+                1,
+                """
+                {
+                  "update": "books",
+                  "updates": [
+                    {
+                      "q": {"_id": {"$eq": 1}},
+                      "u": [
+                        {
+                          "$set": {
+                            "publishYear": {
+                              "$switch": {
+                                "branches": [
+                                  {"case": {"$eq": ["$_id", 1]}, "then": 100}
+                                ],
+                                "default": 200
+                              }
+                            }
+                          }
+                        }
+                      ],
+                      "multi": true
+                    }
+                  ]
+                }""",
+                booksCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {"_id": 1, "title": "War & Peace", "outOfStock": true, "publishYear": 100, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
+    @Test
+    void testFunctionExpressionAssignment() {
+        var hql = "update Book b set b.title = upper(b.title) where b.id = 1";
+        assertMutationQuery(
+                hql,
+                query -> {},
+                1,
+                """
+                {
+                    "update": "books",
+                    "updates": [
+                        {
+                            "q": {"_id": {"$eq": {"$numberInt": "1"}}},
+                            "u": [{"$set": {"title": {"$toUpper": "$title"}}}],
+                            "multi": true
+                        }
+                    ]
+                }
+                """,
+                booksCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 1,
+                                  "title": "WAR & PEACE",
+                                  "outOfStock": true,
+                                  "publishYear": 1869,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 2,
+                                  "title": "Crime and Punishment",
+                                  "outOfStock": false,
+                                  "publishYear": 1866,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 3,
+                                  "title": "Anna Karenina",
+                                  "outOfStock": false,
+                                  "publishYear": 1877,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 4,
+                                  "title": "The Brothers Karamazov",
+                                  "outOfStock": false,
+                                  "publishYear": 1880,
+                                  "isbn13": null,
+                                  "discount": null,
+                                  "price": null
+                                }
+                                """),
+                        BsonDocument.parse(
+                                """
+                                {
+                                  "_id": 5,
+                                  "title": "War & Peace",
                                   "outOfStock": false,
                                   "publishYear": 2025,
                                   "isbn13": null,
@@ -338,27 +472,54 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                 Set.of(Book.COLLECTION_NAME));
     }
 
+    @Test
+    void testUpdateMutationCountIsMatchedCount() {
+        assertMutationQuery(
+                "update Book set outOfStock = false where id = 1 or id = 2",
+                2,
+                """
+                {
+                   "update": "books",
+                   "updates": [
+                     {
+                       "multi": true,
+                       "q": {
+                         "$or": [
+                           {"_id": {"$eq": 1}},
+                           {"_id": {"$eq": 2}}
+                         ]
+                       },
+                       "u": {
+                         "$set": {
+                           "outOfStock": false
+                         }
+                       }
+                     }
+                   ]
+                }
+                """,
+                booksCollection,
+                List.of(
+                        BsonDocument.parse(
+                                """
+                                {"_id": 1, "title": "War & Peace", "outOfStock": false, "publishYear": 1869, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 2, "title": "Crime and Punishment", "outOfStock": false, "publishYear": 1866, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 3, "title": "Anna Karenina", "outOfStock": false, "publishYear": 1877, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 4, "title": "The Brothers Karamazov", "outOfStock": false, "publishYear": 1880, "isbn13": null, "discount": null, "price": null}"""),
+                        BsonDocument.parse(
+                                """
+                                {"_id": 5, "title": "War & Peace", "outOfStock": false, "publishYear": 2025, "isbn13": null, "discount": null, "price": null}""")),
+                Set.of(Book.COLLECTION_NAME));
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
-        @Test
-        void testFunctionExpressionAssignment() {
-            var hql = "update Book b set b.title = upper(b.title) where b.id = 1";
-            assertMutationQueryFailure(
-                    hql,
-                    query -> {},
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
-        }
-
-        @Test
-        void testCaseExpressionAssignment() {
-            var hql = "update Book b set b.publishYear = case when b.id = 1 then 100 else 200 end where b.id = 1";
-            assertMutationQueryFailure(
-                    hql,
-                    query -> {},
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
-        }
 
         @Test
         void testScalarSubqueryAssignment() {
@@ -375,7 +536,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
             getSessionFactoryScope()
                     .inTransaction(session -> session.persist(
                             new ItemWithNestedValue(1, new StructAggregateEmbeddableIntegrationTests.Single(7))));
-            getTestCommandListener().clear();
         }
 
         @Test
@@ -440,7 +600,6 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
         @BeforeEach
         void seed() {
             getSessionFactoryScope().inTransaction(session -> session.persist(new ItemWithPair(1, new Pair(10, 20))));
-            getTestCommandListener().clear();
         }
 
         @Test

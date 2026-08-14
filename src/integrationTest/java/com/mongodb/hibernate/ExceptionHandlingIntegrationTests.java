@@ -37,9 +37,11 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.SessionFactoryScopeAware;
 import org.hibernate.testing.orm.junit.Setting;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -47,6 +49,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 @SessionFactory(exportSchema = false)
 @DomainModel(annotatedClasses = {ExceptionHandlingIntegrationTests.Item.class})
 @ExtendWith(MongoExtension.class)
+// Enables the mongod-global `failCommand` fail point (a single shared server-side switch), so it must not run
+// concurrently with any other test.
+@Isolated
 class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware, MongoServiceRegistryProducer {
     private static final String COLLECTION_NAME = "items";
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
@@ -61,6 +66,19 @@ class ExceptionHandlingIntegrationTests implements SessionFactoryScopeAware, Mon
     @Override
     public void injectSessionFactoryScope(SessionFactoryScope sessionFactoryScope) {
         this.sessionFactoryScope = sessionFactoryScope;
+    }
+
+    // This class is @Isolated because it toggles the mongod-global failCommand fail point; disable it after each test
+    // (also covers the nested Batch tests) so nothing leaks past this class.
+    @AfterEach
+    void disableFailPoint() {
+        mongoClient
+                .getDatabase("admin")
+                .runCommand(
+                        BsonDocument.parse(
+                                """
+                                { "configureFailPoint": "failCommand", "mode": "off" }
+                                """));
     }
 
     @ParameterizedTest

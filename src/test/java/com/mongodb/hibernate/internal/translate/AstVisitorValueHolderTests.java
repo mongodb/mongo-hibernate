@@ -18,7 +18,6 @@ package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MODEL_MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
-import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -29,6 +28,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
 import java.util.List;
 import org.bson.BsonString;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,14 +58,14 @@ class AstVisitorValueHolderTests {
 
         Runnable tableInserter = () -> {
             Runnable fieldValueYielder = () -> {
-                astVisitorValueHolder.yield(VALUE, AstParameterMarker.INSTANCE);
+                astVisitorValueHolder.yield(VALUE, new AstParameterMarker(JdbcParameterBinder.NOOP));
             };
             var fieldValue = astVisitorValueHolder.execute(VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);
             astVisitorValueHolder.yield(
                     MODEL_MUTATION_RESULT,
                     ModelMutationMqlTranslator.Result.create(
-                            new AstInsertCommand("city", List.of(new AstDocument(List.of(astElement)))), emptyList()));
+                            new AstInsertCommand("city", List.of(new AstDocument(List.of(astElement))))));
         };
 
         astVisitorValueHolder.execute(MODEL_MUTATION_RESULT, tableInserter);

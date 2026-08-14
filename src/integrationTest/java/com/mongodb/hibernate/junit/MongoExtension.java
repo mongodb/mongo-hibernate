@@ -17,91 +17,203 @@
 package com.mongodb.hibernate.junit;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertTrue;
 import static org.junit.platform.commons.support.AnnotationSupport.findAnnotatedFields;
 import static org.junit.platform.commons.util.ReflectionUtils.isStatic;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.hibernate.cfg.MongoConfigurator;
+import com.mongodb.event.CommandListener;
+import com.mongodb.event.CommandStartedEvent;
+import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.internal.cfg.MongoConfigurationBuilder;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
 import org.hibernate.cfg.Configuration;
 import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
+import org.junit.jupiter.api.extension.TestInstancePostProcessor;
 
 /**
- * Assumes that all tests that use this {@linkplain ExtendWith#value() extension} run <a
- * href="https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution">sequentially</a>.
- *
- * <p>The {@linkplain MongoConfigurator#databaseName(String) database} is dropped
- * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
- * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests. The fail points are disabled
- * {@linkplain MongoExtension#beforeEach(ExtensionContext) before each} test and
- * {@linkplain MongoExtension#afterAll(ExtensionContext) after all} tests.
+ * Isolates concurrently running test classes from one another. Test classes run in parallel (JUnit parallel execution,
+ * classes-concurrent / methods-same-thread), so each top-level test class gets its own database, assigned once per
+ * class and memoized; nested classes share their top-level class's database. Whatever {@code SessionFactory} a class
+ * uses — built by the testing framework ({@code @SessionFactory}, meta-annotated {@code @TestInstance(PER_CLASS)}) or
+ * directly in {@code @BeforeAll} — is pointed at that database via {@link #configurationContributorForClass}. Between
+ * tests the class's collections are emptied; after all the class's tests finish the database is dropped.
  */
-public final class MongoExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback {
-
-    /** Disables {@code failCommand} fail point. */
-    private static final BsonDocument DISABLE_FAIL_POINT_COMMAND = BsonDocument.parse(
-            """
-            {
-              "configureFailPoint": "failCommand",
-              "mode": "off"
-            }
-            """);
+public final class MongoExtension
+        implements TestInstancePostProcessor, BeforeEachCallback, AfterAllCallback, InvocationInterceptor {
 
     private static final State STATE = State.create();
 
-    /** Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections}. */
+    /**
+     * A {@link MongoConfigurationContributor} that points a {@code SessionFactory} at {@code testClass}'s
+     * {@linkplain #databaseNameFor database} and installs the {@link TestCommandListener}. Used by
+     * {@link MongoServiceRegistryProducer} and by tests that bootstrap Hibernate directly, so every test is isolated to
+     * its own database without any per-thread state.
+     */
+    public static MongoConfigurationContributor configurationContributorForClass(Class<?> testClass) {
+        var databaseName = databaseNameFor(testClass);
+        return configurator -> configurator
+                .databaseName(databaseName)
+                .applyToMongoClientSettings(
+                        builder -> builder.addCommandListener(STATE.commandListenerByDatabase.computeIfAbsent(
+                                databaseName, ignored -> new TestCommandListener())));
+    }
+
+    /**
+     * Injects the {@linkplain InjectMongoClient client}, {@linkplain InjectMongoCollection collections},
+     * {@linkplain InjectCommandHistory command history}.
+     */
     @Override
-    public void beforeAll(ExtensionContext context) throws Exception {
-        var fieldMustBeStaticMsgFormat = "The field [%s] must be static";
-        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoClient.class)) {
-            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+    public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
+        var fieldMustNotBeStaticMsgFormat =
+                "The field [%s] must not be static — use an instance field to avoid races under parallel execution";
+        var databaseName = databaseNameFor(testInstance.getClass());
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectMongoClient.class)) {
             field.setAccessible(true);
-            field.set(null, STATE.mongoClient());
+            // MongoClient is shared across all classes — safe as static or instance
+            if (isStatic(field)) {
+                field.set(null, STATE.mongoClient());
+            } else {
+                field.set(testInstance, STATE.mongoClient());
+            }
         }
-        for (var field : findAnnotatedFields(context.getRequiredTestClass(), InjectMongoCollection.class)) {
-            assertTrue(format(fieldMustBeStaticMsgFormat, field), isStatic(field));
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectMongoCollection.class)) {
+            if (isStatic(field)) {
+                throw new IllegalStateException(format(fieldMustNotBeStaticMsgFormat, field));
+            }
             var annotation = field.getDeclaredAnnotation(InjectMongoCollection.class);
             var collectionName = annotation.value();
-            var mongoCollection = STATE.mongoDatabase().getCollection(collectionName, BsonDocument.class);
+            var mongoCollection =
+                    STATE.mongoClient().getDatabase(databaseName).getCollection(collectionName, BsonDocument.class);
             field.setAccessible(true);
-            field.set(null, mongoCollection);
+            field.set(testInstance, mongoCollection);
+        }
+        for (var field : findAnnotatedFields(testInstance.getClass(), InjectCommandHistory.class)) {
+            if (isStatic(field)) {
+                throw new IllegalStateException(format(fieldMustNotBeStaticMsgFormat, field));
+            }
+            field.setAccessible(true);
+            field.set(
+                    testInstance,
+                    STATE.commandListenerByDatabase.computeIfAbsent(
+                            databaseName, ignored -> new TestCommandListener()));
         }
     }
 
     @Override
     public void afterAll(ExtensionContext context) {
-        disableFailPoint();
-        STATE.mongoDatabase().drop();
+        // Nested classes share the top-level class's database, so only the top-level class drops it; a nested drop
+        // would redundantly drop the shared database.
+        if (context.getRequiredTestClass().getEnclosingClass() == null) {
+            currentDatabase(context).drop();
+        }
+    }
+
+    /** Empties every {@linkplain InjectMongoCollection collection} in the class's database before each test. */
+    @Override
+    public void beforeEach(ExtensionContext context) {
+        clearDatabase(context);
     }
 
     /**
-     * {@linkplain MongoDatabase#drop() Drops} the {@link MongoConfigurator#databaseName(String) database}, thus
-     * dropping all {@linkplain InjectMongoCollection collections}.
+     * Clears the class's captured commands just before each test body runs — after any {@code @BeforeEach} seeding — so
+     * a test that does not clear explicitly still sees only its own commands. {@code @Test} methods route through
+     * {@link #interceptTestMethod} and {@code @ParameterizedTest}/{@code @RepeatedTest} through
+     * {@link #interceptTestTemplateMethod}, so both are overridden. Tests needing a finer boundary (mid-method) still
+     * call {@link CommandHistory#clear()} explicitly.
      */
     @Override
-    @SuppressWarnings("try")
-    public void beforeEach(ExtensionContext context) throws Exception {
-        try (AutoCloseable disableFilPoint = MongoExtension::disableFailPoint;
-                AutoCloseable dropDatabase = () -> STATE.mongoDatabase().drop()) {}
+    public void interceptTestMethod(
+            Invocation<Void> invocation,
+            ReflectiveInvocationContext<Method> invocationContext,
+            ExtensionContext extensionContext)
+            throws Throwable {
+        clearCommandsBeforeTestBody(extensionContext);
+        invocation.proceed();
     }
 
-    private record State(MongoClient mongoClient, MongoDatabase mongoDatabase, MongoDatabase adminDatabase) {
+    @Override
+    public void interceptTestTemplateMethod(
+            Invocation<Void> invocation,
+            ReflectiveInvocationContext<Method> invocationContext,
+            ExtensionContext extensionContext)
+            throws Throwable {
+        clearCommandsBeforeTestBody(extensionContext);
+        invocation.proceed();
+    }
+
+    private static void clearCommandsBeforeTestBody(ExtensionContext context) {
+        // A missing listener means no SessionFactory was built for this class yet, so nothing was captured — clearing
+        // is a legitimate no-op here.
+        var commandListener = STATE.commandListenerByDatabase.get(databaseNameFor(context));
+        if (commandListener != null) {
+            commandListener.clear();
+        }
+    }
+
+    private static String databaseNameFor(ExtensionContext context) {
+        return databaseNameFor(context.getRequiredTestClass());
+    }
+
+    /// The database for `testClass`: a unique name assigned once per top-level class and memoized, so a class and
+    /// its nested classes share one database. Used to point each test's `SessionFactory` at the same database this
+    /// extension drops, without depending on any per-thread state.
+    private static String databaseNameFor(Class<?> testClass) {
+        return STATE.databaseByTopLevelClass.computeIfAbsent(
+                topLevelClass(testClass),
+                ignored -> STATE.baseDatabaseName() + "_" + STATE.databaseCounter.incrementAndGet());
+    }
+
+    private static Class<?> topLevelClass(Class<?> testClass) {
+        var current = testClass;
+        while (current.getEnclosingClass() != null) {
+            current = current.getEnclosingClass();
+        }
+        return current;
+    }
+
+    private static MongoDatabase currentDatabase(ExtensionContext context) {
+        return STATE.mongoClient().getDatabase(databaseNameFor(context));
+    }
+
+    // Clear data by emptying each collection rather than dropDatabase(): dropDatabase is a ~125ms catalog operation,
+    // while deleteMany is ordinary CRUD (~sub-ms). Collections/indexes persist (harmless; tests re-seed).
+    private static void clearDatabase(ExtensionContext context) {
+        var database = currentDatabase(context);
+        for (var collectionName : database.listCollectionNames()) {
+            database.getCollection(collectionName).deleteMany(new BsonDocument());
+        }
+    }
+
+    private record State(
+            AtomicInteger databaseCounter,
+            Map<Class<?>, String> databaseByTopLevelClass,
+            Map<String, TestCommandListener> commandListenerByDatabase,
+            MongoClient mongoClient,
+            String baseDatabaseName) {
         static State create() {
             @SuppressWarnings("unchecked")
             var hibernateProperties = (Map<String, Object>) (Map<?, Object>) new Configuration().getProperties();
             var mongoConfig = new MongoConfigurationBuilder(hibernateProperties).build();
             var mongoClient = MongoClients.create(mongoConfig.mongoClientSettings());
+
             var state = new State(
-                    mongoClient, mongoClient.getDatabase(mongoConfig.databaseName()), mongoClient.getDatabase("admin"));
+                    new AtomicInteger(),
+                    new ConcurrentHashMap<>(),
+                    new ConcurrentHashMap<>(),
+                    mongoClient,
+                    mongoConfig.databaseName());
             Runtime.getRuntime().addShutdownHook(new Thread(state::close));
             return state;
         }
@@ -111,7 +223,23 @@ public final class MongoExtension implements BeforeAllCallback, BeforeEachCallba
         }
     }
 
-    private static void disableFailPoint() {
-        STATE.adminDatabase().runCommand(DISABLE_FAIL_POINT_COMMAND);
+    private static final class TestCommandListener implements CommandListener, CommandHistory {
+
+        private final List<BsonDocument> commands = new ArrayList<>();
+
+        @Override
+        public void commandStarted(CommandStartedEvent event) {
+            commands.add(event.getCommand().clone());
+        }
+
+        @Override
+        public List<BsonDocument> getCommands() {
+            return List.copyOf(commands);
+        }
+
+        @Override
+        public void clear() {
+            commands.clear();
+        }
     }
 }

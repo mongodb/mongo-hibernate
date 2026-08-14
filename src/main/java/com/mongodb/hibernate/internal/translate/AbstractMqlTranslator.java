@@ -34,9 +34,12 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SORT_FIELDS;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.TUPLE;
+import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.UPSERT_MODEL_MUTATION_RESULT;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.FALSE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.TRUE;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.createMultiUpdateStatement;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.createUpsertStatement;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -50,8 +53,10 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCo
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
+import static org.hibernate.sql.ast.tree.expression.SqlTupleContainer.getSqlTuple;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.dialect.function.ExpressionFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
@@ -73,6 +78,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpre
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchCase;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
@@ -128,15 +135,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
+import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
 import org.hibernate.persister.entity.SingleTableEntityPersister;
@@ -189,7 +200,6 @@ import org.hibernate.sql.ast.tree.expression.QueryLiteral;
 import org.hibernate.sql.ast.tree.expression.SelfRenderingExpression;
 import org.hibernate.sql.ast.tree.expression.SqlSelectionExpression;
 import org.hibernate.sql.ast.tree.expression.SqlTuple;
-import org.hibernate.sql.ast.tree.expression.SqlTupleContainer;
 import org.hibernate.sql.ast.tree.expression.Star;
 import org.hibernate.sql.ast.tree.expression.Summarization;
 import org.hibernate.sql.ast.tree.expression.TrimSpecification;
@@ -238,7 +248,9 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
 import org.hibernate.sql.model.ast.ColumnValueBinding;
+import org.hibernate.sql.model.ast.ColumnValueParameter;
 import org.hibernate.sql.model.ast.ColumnWriteFragment;
+import org.hibernate.sql.model.ast.MutatingTableReference;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.internal.TableDeleteCustomSql;
 import org.hibernate.sql.model.internal.TableDeleteStandard;
@@ -271,7 +283,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private @Nullable String elemMatchInnerAlias;
 
-    private final List<JdbcParameterBinder> parameterBinders = new ArrayList<>();
+    private @Nullable JoinLookupContext joinLookupContext;
 
     private final Set<String> affectedTableNames = new HashSet<>();
 
@@ -428,10 +440,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
         astVisitorValueHolder.yield(
                 MODEL_MUTATION_RESULT,
-                ModelMutationMqlTranslator.Result.create(
-                        new AstInsertCommand(
-                                tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements))),
-                        parameterBinders));
+                ModelMutationMqlTranslator.Result.create(new AstInsertCommand(
+                        tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements)))));
     }
 
     @Override
@@ -475,8 +485,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(
-                        new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter),
-                        parameterBinders));
+                        new AstDeleteCommand(tableDelete.getMutatingTable().getTableName(), keyFilter)));
     }
 
     @Override
@@ -497,7 +506,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private ModelMutationMqlTranslator.Result createMutationResult(
             List<ColumnValueBinding> valueBindings, String tableName, AstFilter keyFilter) {
         var astUpdateCommand = createAstUpdateCommand(valueBindings, tableName, keyFilter);
-        return ModelMutationMqlTranslator.Result.create(astUpdateCommand, parameterBinders);
+        return ModelMutationMqlTranslator.Result.create(astUpdateCommand);
     }
 
     private AstFilter createKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
@@ -525,8 +534,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitParameter(JdbcParameter jdbcParameter) {
-        parameterBinders.add(jdbcParameter.getParameterBinder());
-        yieldValueOrExpression(AstParameterMarker.INSTANCE, parameterNeedsLiteralWrapping(jdbcParameter));
+        yieldValueOrExpression(
+                new AstParameterMarker(jdbcParameter.getParameterBinder()),
+                parameterNeedsLiteralWrapping(jdbcParameter));
     }
 
     // A parameter's bound value is unknown at translation time, so a string-typed parameter (which could
@@ -574,7 +584,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 SELECT_RESULT,
                 new SelectMqlTranslator.Result(
                         new AstAggregateCommand(collection, stages),
-                        parameterBinders,
                         affectedTableNames,
                         skipLimitStagesAndJdbcParams.offset(),
                         skipLimitStagesAndJdbcParams.limit()));
@@ -721,37 +730,85 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    // A field-vs-value comparison uses the compact `{field: {$op: value}}` form;
-    // anything else wraps the comparison expression in `$expr`.
     private AstFilter toFilter(ComparisonPredicate comparisonPredicate) {
-        return isComparingFieldWithValue(comparisonPredicate)
+        return isFieldValueComparison(comparisonPredicate)
                 ? toFieldValueFilter(comparisonPredicate)
                 : new AstExprFilter(toComparisonExpression(comparisonPredicate));
     }
 
-    private AstFieldOperationFilter toFieldValueFilter(ComparisonPredicate comparisonPredicate) {
-        var lhs = comparisonPredicate.getLeftHandExpression();
-        var rhs = comparisonPredicate.getRightHandExpression();
-        var isFieldOnLeftHandSide = isFieldPathExpression(lhs);
-        if (!isFieldOnLeftHandSide) {
-            assertTrue(isFieldPathExpression(rhs));
+    private AstFilter toFieldValueFilter(ComparisonPredicate comparisonPredicate) {
+        if (getSqlTuple(comparisonPredicate.getLeftHandExpression()) != null) {
+            return toRowValueFieldFilter(comparisonPredicate);
+        } else {
+            var lhs = comparisonPredicate.getLeftHandExpression();
+            var rhs = comparisonPredicate.getRightHandExpression();
+            var isFieldOnLeftHandSide = isFieldPathExpression(lhs);
+            if (!isFieldOnLeftHandSide) {
+                assertTrue(isFieldPathExpression(rhs));
+            }
+            var fieldPath = acceptAndYield(isFieldOnLeftHandSide ? lhs : rhs, FIELD_PATH);
+            var comparisonValue = acceptAndYield(isFieldOnLeftHandSide ? rhs : lhs, VALUE);
+            // The MQL operator always reads field-then-value, so invert when the field is on the right.
+            var operator = isFieldOnLeftHandSide
+                    ? comparisonPredicate.getOperator()
+                    : comparisonPredicate.getOperator().invert();
+            return new AstFieldOperationFilter(
+                    fieldPath,
+                    new AstComparisonFilterOperation(createAstComparisonFilterOperator(operator), comparisonValue));
         }
-        var fieldPath = acceptAndYield(isFieldOnLeftHandSide ? lhs : rhs, FIELD_PATH);
-        var comparisonValue = acceptAndYield(isFieldOnLeftHandSide ? rhs : lhs, VALUE);
-        // The MQL operator always reads field-then-value, so invert when the field is on the right.
-        var operator = isFieldOnLeftHandSide
-                ? comparisonPredicate.getOperator()
-                : comparisonPredicate.getOperator().invert();
-        return new AstFieldOperationFilter(
-                fieldPath,
-                new AstComparisonFilterOperation(createAstComparisonFilterOperator(operator), comparisonValue));
     }
 
-    private AstBinaryOperatorExpression toComparisonExpression(ComparisonPredicate comparisonPredicate) {
-        var lhsExpr = acceptAndYieldExpression(comparisonPredicate.getLeftHandExpression());
-        var rhsExpr = acceptAndYieldExpression(comparisonPredicate.getRightHandExpression());
-        return new AstBinaryOperatorExpression(
-                toExprComparisonOperator(comparisonPredicate.getOperator()), lhsExpr, rhsExpr);
+    private AstExpression toComparisonExpression(ComparisonPredicate comparisonPredicate) {
+        if (getSqlTuple(comparisonPredicate.getLeftHandExpression()) != null) {
+            var operator = comparisonPredicate.getOperator();
+            if (operator != ComparisonOperator.EQUAL && operator != ComparisonOperator.NOT_EQUAL) {
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-211 https://jira.mongodb.org/browse/HIBERNATE-211");
+            }
+            var lhsTuple = getSqlTuple(comparisonPredicate.getLeftHandExpression());
+            var rhsTuple = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()));
+            var lhsComponents = lhsTuple.getExpressions();
+            var rhsComponents = rhsTuple.getExpressions();
+            assertTrue(lhsComponents.size() == rhsComponents.size());
+            var componentEqualities = new ArrayList<AstExpression>(lhsComponents.size());
+            for (var i = 0; i < lhsComponents.size(); i++) {
+                componentEqualities.add(new AstBinaryOperatorExpression(
+                        toExprComparisonOperator(ComparisonOperator.EQUAL),
+                        acceptAndYieldExpression(lhsComponents.get(i)),
+                        acceptAndYieldExpression(rhsComponents.get(i))));
+            }
+            var conjunction = new AstLogicalOperatorExpression(AstLogicalOperator.AND, componentEqualities);
+            return operator == ComparisonOperator.EQUAL
+                    ? conjunction
+                    : new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(conjunction));
+        } else {
+            var lhsExpr = acceptAndYieldExpression(comparisonPredicate.getLeftHandExpression());
+            var rhsExpr = acceptAndYieldExpression(comparisonPredicate.getRightHandExpression());
+            return new AstBinaryOperatorExpression(
+                    toExprComparisonOperator(comparisonPredicate.getOperator()), lhsExpr, rhsExpr);
+        }
+    }
+
+    // Compact form of a row-value = / <> comparison: AND of per-component {field: {$eq: value}} (field side
+    // detected per component), wrapped in $nor for <>. Only reached when isFieldValueComparison is true.
+    private AstFilter toRowValueFieldFilter(ComparisonPredicate comparisonPredicate) {
+        var lhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getLeftHandExpression()))
+                .getExpressions();
+        var rhsComponents = assertNotNull(getSqlTuple(comparisonPredicate.getRightHandExpression()))
+                .getExpressions();
+        var componentFilters = new ArrayList<AstFilter>(lhsComponents.size());
+        for (var i = 0; i < lhsComponents.size(); i++) {
+            var left = lhsComponents.get(i);
+            var right = rhsComponents.get(i);
+            var fieldOnLeft = isFieldPathExpression(left);
+            componentFilters.add(new AstFieldOperationFilter(
+                    acceptAndYield(fieldOnLeft ? left : right, FIELD_PATH),
+                    new AstComparisonFilterOperation(EQ, acceptAndYield(fieldOnLeft ? right : left, VALUE))));
+        }
+        var conjunction = new AstLogicalFilter(AstLogicalFilterOperator.AND, componentFilters);
+        return comparisonPredicate.getOperator() == ComparisonOperator.EQUAL
+                ? conjunction
+                : new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(conjunction));
     }
 
     @Override
@@ -813,6 +870,20 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitColumnReference(ColumnReference columnReference) {
         if (columnReference.isColumnExpressionFormula()) {
             throw new FeatureNotSupportedException("Formula is not supported");
+        }
+        if (joinLookupContext != null) {
+            // Inside a $lookup sub-pipeline the joined collection is the root, so its columns are bare field
+            // paths; any other (outer) column is out of scope and must be bound into a `let` variable and
+            // referenced as `$$v…`. This lets the ON predicate reuse the general EXPRESSION-mode visitors.
+            if (joinLookupContext.isJoinedColumn(columnReference)) {
+                yieldFieldPathOrExpression(columnReference.getColumnExpression());
+            } else {
+                var letVariableName = nextLetVariableName(columnReference);
+                joinLookupContext.addLetVariable(new AstLetVariable(
+                        letVariableName, new AstFieldPathExpression(resolveFieldPath(columnReference))));
+                astVisitorValueHolder.yield(EXPRESSION, new AstVariableExpression(letVariableName));
+            }
+            return;
         }
         if (elemMatchInnerAlias != null) {
             var qualifier = assertNotNull(columnReference.getQualifier());
@@ -1010,7 +1081,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     case DESCENDING -> DESC;
                 };
         var sortExpression = sortSpecification.getSortExpression();
-        var sqlTuple = SqlTupleContainer.getSqlTuple(sortExpression);
+        var sqlTuple = getSqlTuple(sortExpression);
         if (sqlTuple == null) {
             var astSortField = createAstSortField(sortExpression, astSortOrder);
             astVisitorValueHolder.yield(SORT_FIELDS, List.of(astSortField));
@@ -1036,7 +1107,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitTuple(SqlTuple sqlTuple) {
         var expressions = new ArrayList<Expression>(sqlTuple.getExpressions().size());
         for (var expression : sqlTuple.getExpressions()) {
-            if (SqlTupleContainer.getSqlTuple(expression) != null) {
+            if (getSqlTuple(expression) != null) {
                 expressions.addAll(acceptAndYield(expression, TUPLE));
             } else {
                 expressions.add(expression);
@@ -1053,8 +1124,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
-                new MutationMqlTranslator.Result(
-                        new AstDeleteCommand(collection, filter), parameterBinders, affectedTableNames));
+                new MutationMqlTranslator.Result(new AstDeleteCommand(collection, filter), affectedTableNames));
     }
 
     @Override
@@ -1068,7 +1138,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstUpdateCommand(collection, filter, update), parameterBinders, affectedTableNames));
+                        new AstUpdateCommand(collection, List.of(createMultiUpdateStatement(filter, update))),
+                        affectedTableNames));
     }
 
     private AstDocumentUpdate buildDocumentUpdate(List<Assignment> assignments) {
@@ -1107,15 +1178,87 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         return restriction == null ? AstEmptyFilter.INSTANCE : acceptAndYield(restriction, FILTER);
     }
 
-    private AstUpdateCommand createAstUpdateCommand(
-            final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
+    private List<AstFieldUpdate> createFieldUpdates(List<ColumnValueBinding> valueBindings) {
         var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
         for (var valueBinding : valueBindings) {
-            var fieldName = acceptAndYield(valueBinding.getColumnReference(), FIELD_PATH);
-            var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
-            updates.add(new AstFieldUpdate(fieldName, fieldValue));
+            updates.add(createFieldUpdate(valueBinding));
         }
-        return new AstUpdateCommand(tableName, keyFilter, new AstDocumentUpdate(updates));
+        return updates;
+    }
+
+    private AstFieldUpdate createFieldUpdate(ColumnValueBinding valueBinding) {
+        var fieldName = acceptAndYield(valueBinding.getColumnReference(), FIELD_PATH);
+        var fieldValue = acceptAndYield(valueBinding.getValueExpression(), VALUE);
+        return new AstFieldUpdate(fieldName, fieldValue);
+    }
+
+    /**
+     * The merge coordinator decomposes a {@code @Struct} embeddable into one binding per leaf field, but
+     * {@code UpdateCoordinatorStandard} binds a single value for the aggregate as a whole. Emitting the leaves would
+     * therefore leave the aggregate's bound value without a matching parameter, so each aggregate's leaves collapse
+     * into one field update, named after the aggregate column and backed by a parameter carrying the aggregate's own
+     * mapping. The leaves' value expressions must not be visited: every visit emits a placeholder carrying a parameter
+     * binder, and the JDBC layer pairs binders with placeholders by position.
+     *
+     * <p>This exists only to work around <a href="https://hibernate.atlassian.net/browse/HHH-20754">HHH-20754</a>.
+     * {@code MergeCoordinatorStandard} overrides {@code forEachUpdatable} to call {@code forEachSelectable}, which
+     * descends into the leaves, while {@code EmbeddableMappingTypeImpl.forEachUpdatable} short-circuits on
+     * {@code shouldMutateAggregateMapping()} and emits the aggregate. That is why the standard update path needs none
+     * of this. Once the merge path emits the aggregate, {@link #findAggregate} stops matching and this collapsing
+     * becomes dead rather than wrong, so it can be deleted along with {@link #aggregateMappings} and
+     * {@link #findAggregate}, restoring plain per-binding rendering.
+     */
+    private List<AstFieldUpdate> createUpsertFieldUpdates(
+            List<ColumnValueBinding> valueBindings,
+            List<SelectableMapping> aggregates,
+            MutatingTableReference mutatingTable) {
+        var updates = new ArrayList<AstFieldUpdate>(valueBindings.size());
+        var collapsedAggregates = new HashSet<String>();
+        for (var valueBinding : valueBindings) {
+            var aggregate = findAggregate(aggregates, valueBinding);
+            if (aggregate == null) {
+                updates.add(createFieldUpdate(valueBinding));
+            } else if (collapsedAggregates.add(aggregate.getSelectionExpression())) {
+                var parameter =
+                        new ColumnValueParameter(new ColumnReference(mutatingTable, aggregate), ParameterUsage.SET);
+                updates.add(new AstFieldUpdate(
+                        aggregate.getSelectionExpression(), new AstParameterMarker(parameter.getParameterBinder())));
+            }
+        }
+        return updates;
+    }
+
+    private static List<SelectableMapping> aggregateMappings(OptionalTableUpdate optionalTableUpdate) {
+        var aggregates = new ArrayList<SelectableMapping>();
+        optionalTableUpdate.getMutationTarget().getTargetPart().forEachAttributeMapping(attributeMapping -> {
+            if (attributeMapping instanceof EmbeddedAttributeMapping embeddedAttributeMapping) {
+                var aggregate =
+                        embeddedAttributeMapping.getEmbeddableTypeDescriptor().getAggregateMapping();
+                if (aggregate != null) {
+                    aggregates.add(aggregate);
+                }
+            }
+        });
+        return aggregates;
+    }
+
+    private static @Nullable SelectableMapping findAggregate(
+            List<SelectableMapping> aggregates, ColumnValueBinding valueBinding) {
+        var columnExpression = valueBinding.getColumnReference().getColumnExpression();
+        for (var aggregate : aggregates) {
+            if (columnExpression.startsWith(aggregate.getSelectionExpression() + ".")) {
+                return aggregate;
+            }
+        }
+        return null;
+    }
+
+    private AstUpdateCommand createAstUpdateCommand(
+            final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
+        return new AstUpdateCommand(
+                tableName,
+                List.of(createMultiUpdateStatement(
+                        keyFilter, new AstDocumentUpdate(createFieldUpdates(valueBindings)))));
     }
 
     @Override
@@ -1160,8 +1303,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
-                new MutationMqlTranslator.Result(
-                        new AstInsertCommand(collection, documents), parameterBinders, affectedTableNames));
+                new MutationMqlTranslator.Result(new AstInsertCommand(collection, documents), affectedTableNames));
     }
 
     @Override
@@ -1302,12 +1444,54 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitCaseSearchedExpression(CaseSearchedExpression caseSearchedExpression) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
+        // A CASE only produces an aggregation expression ($switch); a position wanting a field path or a
+        // value (e.g. a LIKE match expression, or a sort key) cannot take it, so refuse cleanly rather
+        // than tripping the value holder's descriptor assertion.
+        assertCaseExpressionPosition();
+        // Searched CASE: each `when` predicate is a boolean aggregation expression (the branch's `case`),
+        // its result the branch's `then`.
+        var branches = new ArrayList<AstSwitchCase>(
+                caseSearchedExpression.getWhenFragments().size());
+        for (var whenFragment : caseSearchedExpression.getWhenFragments()) {
+            var caseExpression = acceptAndYield(whenFragment.getPredicate(), EXPRESSION);
+            var thenExpression = acceptAndYieldExpression(whenFragment.getResult());
+            branches.add(new AstSwitchCase(caseExpression, thenExpression));
+        }
+        astVisitorValueHolder.yield(
+                EXPRESSION,
+                new AstSwitchExpression(branches, resolveCaseDefault(caseSearchedExpression.getOtherwise())));
     }
 
     @Override
     public void visitCaseSimpleExpression(CaseSimpleExpression caseSimpleExpression) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-83 https://jira.mongodb.org/browse/HIBERNATE-83");
+        assertCaseExpressionPosition();
+        var fixture = acceptAndYieldExpression(caseSimpleExpression.getFixture());
+        var branches = new ArrayList<AstSwitchCase>(
+                caseSimpleExpression.getWhenFragments().size());
+        for (var whenFragment : caseSimpleExpression.getWhenFragments()) {
+            var checkValue = acceptAndYieldExpression(whenFragment.getCheckValue());
+            var caseExpression =
+                    new AstBinaryOperatorExpression(AstComparisonExpressionOperator.EQ, fixture, checkValue);
+            var thenExpression = acceptAndYieldExpression(whenFragment.getResult());
+            branches.add(new AstSwitchCase(caseExpression, thenExpression));
+        }
+        astVisitorValueHolder.yield(
+                EXPRESSION, new AstSwitchExpression(branches, resolveCaseDefault(caseSimpleExpression.getOtherwise())));
+    }
+
+    private void assertCaseExpressionPosition() {
+        if (!astVisitorValueHolder.expects(EXPRESSION)) {
+            throw new FeatureNotSupportedException(
+                    "CASE expression is only supported in aggregation-expression position");
+        }
+    }
+
+    // The CASE `default` (its ELSE). A missing ELSE returns SQL NULL, so it maps to a null literal — which
+    // also keeps $switch from erroring at runtime when no branch matches and no default is present.
+    private AstExpression resolveCaseDefault(@Nullable Expression otherwise) {
+        return otherwise == null
+                ? new AstValueExpression(new AstLiteral(BsonNull.VALUE))
+                : acceptAndYieldExpression(otherwise);
     }
 
     @Override
@@ -1332,14 +1516,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitSelfRenderingExpression(SelfRenderingExpression selfRenderingExpression) {
-        if (!(selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression)) {
+        if (selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression<?> sqlAstExpression) {
+            if (astVisitorValueHolder.expects(EXPRESSION)
+                    && !(sqlAstExpression.getFunctionRenderer() instanceof ExpressionFunction)) {
+                // a function call as an operand within an aggregation expression is not yet supported
+                throw new FeatureNotSupportedException(
+                        "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
+            }
+            selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
+        } else {
             throw new FeatureNotSupportedException("Only function expressions are supported");
         }
-        if (astVisitorValueHolder.expects(EXPRESSION)) {
-            // a function call as an operand within an aggregation expression is not yet supported
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
-        }
-        selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
     }
 
     @Override
@@ -1427,7 +1614,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstLogicalOperatorExpression toBetweenExpression(BetweenPredicate betweenPredicate) {
-        var operand = betweenPredicate.getExpression();
+        var operand = acceptAndYieldExpression(betweenPredicate.getExpression());
         return new AstLogicalOperatorExpression(
                 betweenPredicate.isNegated() ? AstLogicalOperator.OR : AstLogicalOperator.AND,
                 List.of(
@@ -1445,12 +1632,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                                 betweenPredicate.getUpperBound())));
     }
 
-    // Each bound is visited on its own (never a reused node): the operand appears in both comparisons,
-    // so a parameter in it must register a binder per occurrence to stay aligned with the rendered markers.
     private AstBinaryOperatorExpression toBoundExpression(
-            Expression operand, ComparisonOperator operator, Expression bound) {
+            AstExpression operand, ComparisonOperator operator, Expression bound) {
         return new AstBinaryOperatorExpression(
-                toExprComparisonOperator(operator), acceptAndYieldExpression(operand), acceptAndYieldExpression(bound));
+                toExprComparisonOperator(operator), operand, acceptAndYieldExpression(bound));
     }
 
     @Override
@@ -1471,33 +1656,116 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitInListPredicate(InListPredicate inListPredicate) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
-            var value = acceptAndYieldExpression(inListPredicate.getTestExpression());
-            var options = new ArrayList<AstExpression>(
-                    inListPredicate.getListExpressions().size());
-            for (var item : inListPredicate.getListExpressions()) {
-                options.add(acceptAndYieldExpression(item));
+            if (getSqlTuple(inListPredicate.getTestExpression()) != null) {
+                astVisitorValueHolder.yield(EXPRESSION, toTupleInListExpression(inListPredicate));
+            } else {
+                var value = acceptAndYieldExpression(inListPredicate.getTestExpression());
+                var options = new ArrayList<AstExpression>(
+                        inListPredicate.getListExpressions().size());
+                for (var item : inListPredicate.getListExpressions()) {
+                    options.add(acceptAndYieldExpression(item));
+                }
+                AstExpression in = new AstInExpression(value, options);
+                astVisitorValueHolder.yield(
+                        EXPRESSION,
+                        inListPredicate.isNegated()
+                                ? new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(in))
+                                : in);
             }
-            AstExpression in = new AstInExpression(value, options);
-            astVisitorValueHolder.yield(
-                    EXPRESSION,
-                    inListPredicate.isNegated()
-                            ? new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(in))
-                            : in);
         } else {
             var expression = inListPredicate.getTestExpression();
-            if (!isFieldPathExpression(expression)) {
+            if (getSqlTuple(expression) != null) {
+                astVisitorValueHolder.yield(FILTER, createTupleInListFilter(inListPredicate));
+            } else if (isFieldPathExpression(expression)) {
+                var fieldPath = acceptAndYield(expression, FIELD_PATH);
+                var operator = inListPredicate.isNegated() ? NIN : IN;
+                var operation = new AstListComparisonFilterOperation(
+                        operator,
+                        inListPredicate.getListExpressions().stream()
+                                .map(item -> acceptAndYield(item, VALUE))
+                                .toList());
+                astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
+            } else {
                 throw new FeatureNotSupportedException(
                         "Only the following list predicates are supported: field in [not] (...)");
             }
-            var fieldPath = acceptAndYield(expression, FIELD_PATH);
-            var operator = inListPredicate.isNegated() ? NIN : IN;
-            var operation = new AstListComparisonFilterOperation(
-                    operator,
-                    inListPredicate.getListExpressions().stream()
-                            .map(item -> acceptAndYield(item, VALUE))
-                            .toList());
-            astVisitorValueHolder.yield(FILTER, new AstFieldOperationFilter(fieldPath, operation));
         }
+    }
+
+    // Row-value IN in aggregation-expression position: OR of per-row (AND of per-component $eq); a single-row
+    // list collapses to the bare AND; a negated list is wrapped in $not.
+    private AstExpression toTupleInListExpression(InListPredicate inListPredicate) {
+        if (inListPredicate.getListExpressions().isEmpty()) {
+            return new AstLiteralExpression(inListPredicate.isNegated() ? TRUE : FALSE);
+        }
+        var keyExpressions = getSqlTuple(inListPredicate.getTestExpression()).getExpressions();
+        var rowExpressions = new ArrayList<AstExpression>(
+                inListPredicate.getListExpressions().size());
+        for (var rowExpression : inListPredicate.getListExpressions()) {
+            var rowValues = assertNotNull(getSqlTuple(rowExpression)).getExpressions();
+            assertTrue(keyExpressions.size() == rowValues.size());
+            var componentEqualities = new ArrayList<AstExpression>(keyExpressions.size());
+            for (var i = 0; i < keyExpressions.size(); i++) {
+                componentEqualities.add(new AstBinaryOperatorExpression(
+                        toExprComparisonOperator(ComparisonOperator.EQUAL),
+                        acceptAndYieldExpression(keyExpressions.get(i)),
+                        acceptAndYieldExpression(rowValues.get(i))));
+            }
+            rowExpressions.add(new AstLogicalOperatorExpression(AstLogicalOperator.AND, componentEqualities));
+        }
+        var disjunction = rowExpressions.size() == 1
+                ? rowExpressions.get(0)
+                : new AstLogicalOperatorExpression(AstLogicalOperator.OR, rowExpressions);
+        return inListPredicate.isNegated()
+                ? new AstLogicalOperatorExpression(AstLogicalOperator.NOT, List.of(disjunction))
+                : disjunction;
+    }
+
+    private AstFilter createTupleInListFilter(InListPredicate inListPredicate) {
+        if (inListPredicate.getListExpressions().isEmpty()) {
+            return new AstExprFilter(new AstValueExpression(inListPredicate.isNegated() ? TRUE : FALSE));
+        }
+        // Compact form when the test is all field paths and every row is all values; otherwise $expr.
+        return isCompactTupleInList(inListPredicate)
+                ? toCompactTupleInListFilter(inListPredicate)
+                : new AstExprFilter(toTupleInListExpression(inListPredicate));
+    }
+
+    private static boolean isCompactTupleInList(InListPredicate inListPredicate) {
+        if (!getSqlTuple(inListPredicate.getTestExpression()).getExpressions().stream()
+                .allMatch(AbstractMqlTranslator::isFieldPathExpression)) {
+            return false;
+        }
+        for (var rowExpression : inListPredicate.getListExpressions()) {
+            var rowValues = assertNotNull(getSqlTuple(rowExpression)).getExpressions();
+            if (!rowValues.stream().allMatch(AbstractMqlTranslator::isValueExpression)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private AstFilter toCompactTupleInListFilter(InListPredicate inListPredicate) {
+        var keyExpressions = getSqlTuple(inListPredicate.getTestExpression()).getExpressions();
+        var rowFilters =
+                new ArrayList<AstFilter>(inListPredicate.getListExpressions().size());
+        for (var rowExpression : inListPredicate.getListExpressions()) {
+            var rowValues = assertNotNull(getSqlTuple(rowExpression)).getExpressions();
+            assertTrue(keyExpressions.size() == rowValues.size());
+            var componentFilters = new ArrayList<AstFilter>(keyExpressions.size());
+            for (var i = 0; i < keyExpressions.size(); i++) {
+                componentFilters.add(new AstFieldOperationFilter(
+                        acceptAndYield(keyExpressions.get(i), FIELD_PATH),
+                        new AstComparisonFilterOperation(EQ, acceptAndYield(rowValues.get(i), VALUE))));
+            }
+            rowFilters.add(new AstLogicalFilter(AstLogicalFilterOperator.AND, componentFilters));
+        }
+        var disjunction = rowFilters.size() == 1
+                ? rowFilters.get(0)
+                : new AstLogicalFilter(AstLogicalFilterOperator.OR, rowFilters);
+        return inListPredicate.isNegated()
+                ? new AstLogicalFilter(AstLogicalFilterOperator.NOR, List.of(disjunction))
+                : disjunction;
     }
 
     @Override
@@ -1677,11 +1945,41 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (optionalTableUpdate.getMutatingTable().getTableMapping().isOptional()) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
         }
-        var mutationResult = createMutationResult(
-                optionalTableUpdate.getValueBindings(),
-                optionalTableUpdate.getMutatingTable().getTableName(),
-                createKeyFilter(optionalTableUpdate));
-        astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, mutationResult);
+        if (astVisitorValueHolder.expects(UPSERT_MODEL_MUTATION_RESULT)) {
+            var aggregates = aggregateMappings(optionalTableUpdate);
+            var setBindings = new ArrayList<ColumnValueBinding>();
+            var setOnInsertBindings = new ArrayList<ColumnValueBinding>();
+            for (var valueBinding : optionalTableUpdate.getValueBindings()) {
+                // MongoDialect returns a rejecting operation for non-insertable bindings and the
+                // merge coordinator filters out bindings with neither flag, so insertable holds here.
+                assertTrue(valueBinding.isAttributeInsertable());
+                var aggregate = findAggregate(aggregates, valueBinding);
+                // An aggregate's leaves may individually claim to be non-updatable, but the coordinator binds
+                // the aggregate as a whole, so the aggregate column's own flag is what governs.
+                var updatable = aggregate != null ? aggregate.isUpdateable() : valueBinding.isAttributeUpdatable();
+                if (updatable) {
+                    setBindings.add(valueBinding);
+                } else {
+                    setOnInsertBindings.add(valueBinding);
+                }
+            }
+            var keyFilter = createKeyFilter(optionalTableUpdate);
+            var mutatingTable = optionalTableUpdate.getMutatingTable();
+            var update = new AstDocumentUpdate(
+                    createUpsertFieldUpdates(setBindings, aggregates, mutatingTable),
+                    createUpsertFieldUpdates(setOnInsertBindings, aggregates, mutatingTable));
+            var command = new AstUpdateCommand(
+                    optionalTableUpdate.getMutatingTable().getTableName(),
+                    List.of(createUpsertStatement(keyFilter, update)));
+            astVisitorValueHolder.yield(
+                    UPSERT_MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(command));
+        } else {
+            var mutationResult = createMutationResult(
+                    optionalTableUpdate.getValueBindings(),
+                    optionalTableUpdate.getMutatingTable().getTableName(),
+                    createKeyFilter(optionalTableUpdate));
+            astVisitorValueHolder.yield(MODEL_MUTATION_RESULT, mutationResult);
+        }
     }
 
     @Override
@@ -1689,10 +1987,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         throw new FeatureNotSupportedException();
     }
 
-    static String renderMongoAstNode(AstNode rootAstNode) {
+    // The binders are collected by the rendering itself, so they come out in the order in which
+    // MongoPreparedStatement recovers the markers they were rendered as.
+    static String renderMongoAstNode(AstNode rootAstNode, Consumer<JdbcParameterBinder> parameterBinderConsumer) {
         try (var stringWriter = new StringWriter();
                 var jsonWriter = new JsonWriter(stringWriter, EXTENDED_JSON_WRITER_SETTINGS)) {
-            rootAstNode.render(jsonWriter);
+            rootAstNode.render(jsonWriter, parameterBinderConsumer);
             jsonWriter.flush();
             return stringWriter.toString();
         } catch (IOException e) {
@@ -1780,11 +2080,39 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 || expression instanceof SqmParameterInterpretation;
     }
 
-    private static boolean isComparingFieldWithValue(ComparisonPredicate comparisonPredicate) {
-        var lhs = comparisonPredicate.getLeftHandExpression();
-        var rhs = comparisonPredicate.getRightHandExpression();
-        return (isFieldPathExpression(lhs) && isValueExpression(rhs))
-                || (isFieldPathExpression(rhs) && isValueExpression(lhs));
+    // Whether the comparison can render as a compact field filter: a scalar field-vs-value, or a row-value
+    // = / <> whose components are all field-vs-value pairs. Everything else goes to $expr.
+    private static boolean isFieldValueComparison(ComparisonPredicate comparisonPredicate) {
+        if (getSqlTuple(comparisonPredicate.getLeftHandExpression()) == null) {
+            return isFieldValuePair(
+                    comparisonPredicate.getLeftHandExpression(), comparisonPredicate.getRightHandExpression());
+        } else {
+            var operator = comparisonPredicate.getOperator();
+            if (operator != ComparisonOperator.EQUAL && operator != ComparisonOperator.NOT_EQUAL) {
+                return false;
+            }
+            var lhsTuple = getSqlTuple(comparisonPredicate.getLeftHandExpression());
+            var rhsTuple = getSqlTuple(comparisonPredicate.getRightHandExpression());
+            if (rhsTuple == null) {
+                return false;
+            }
+            var lhsComponents = lhsTuple.getExpressions();
+            var rhsComponents = rhsTuple.getExpressions();
+            if (lhsComponents.size() != rhsComponents.size()) {
+                return false;
+            }
+            for (var i = 0; i < lhsComponents.size(); i++) {
+                if (!isFieldValuePair(lhsComponents.get(i), rhsComponents.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private static boolean isFieldValuePair(Expression left, Expression right) {
+        return (isFieldPathExpression(left) && isValueExpression(right))
+                || (isValueExpression(left) && isFieldPathExpression(right));
     }
 
     private static BsonValue toBsonValue(@Nullable Object value) {
@@ -1861,7 +2189,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 type.getSimpleName(), context));
     }
 
-    private record JoinColumns(ColumnReference outer, ColumnReference joined, boolean joinedOnLeft) {}
+    private record JoinColumns(ColumnReference outer, ColumnReference joined) {}
 
     private List<AstStage> buildJoinStages(TableGroup tableGroup) {
         var stages = new ArrayList<AstStage>();
@@ -1935,23 +2263,24 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     /**
-     * Builds the {@code $lookup} stage for a join {@code ON} condition. An {@code EQUAL} comparison maps to the simple
-     * {@code localField}/{@code foreignField} form; the ordering and inequality operators ({@code <}, {@code <=},
-     * {@code >}, {@code >=}, {@code !=}) require the pipeline form, which binds the outer column into a {@code let}
-     * variable and compares it against the joined column with {@code $expr}.
+     * Builds the {@code $lookup} stage for a join {@code ON} condition.
+     *
+     * <p>A lone one-outer-one-joined equijoin uses the compact, index-friendly {@code localField}/{@code foreignField}
+     * form. Every other shape uses the pipeline form: the {@code ON} predicate is always rendered as an {@code $expr},
+     * built by delegating to the shared EXPRESSION-mode predicate visitors — the same expression logic and operator
+     * mapping the {@code WHERE} translator uses whenever it needs an aggregation expression. (Unlike a {@code WHERE}
+     * clause, which also has a compact {@code {field: {$op: value}}} {@code $match} form for field-vs-value
+     * comparisons, an {@code ON} condition inside the sub-pipeline always uses {@code $expr}.) The
+     * {@link #joinLookupContext} makes {@link #visitColumnReference} bind outer columns into {@code let} variables and
+     * treat joined columns as sub-pipeline field paths.
      */
     private AstStage buildJoinLookupStage(@Nullable Predicate predicate, String joinedCollection, String joinedAlias) {
-        if (predicate instanceof Junction) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-164 https://jira.mongodb.org/browse/HIBERNATE-164");
-        }
-        if (!(predicate instanceof ComparisonPredicate cp)) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
-        }
-        var operator = cp.getOperator();
-        var columns = extractJoinColumns(cp, joinedAlias);
         var joinAlias = JOIN_ALIAS_PREFIX + joinedAlias;
 
-        if (operator == ComparisonOperator.EQUAL) {
+        // unwrapGrouped call lets a parenthesized equijoin ON (a = b) use the compact form instead of pipeline.
+        var simpleEquijoin = trySimpleEquijoinColumns(unwrapGrouped(predicate), joinedAlias);
+        if (simpleEquijoin.isPresent()) {
+            var columns = simpleEquijoin.get();
             return new AstLookupStage(
                     joinedCollection,
                     resolveFieldPath(columns.outer()),
@@ -1959,20 +2288,73 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     joinAlias);
         }
 
-        // The $expr array is always [<outer>, <joined>]; invert the operator when Hibernate placed the joined column
-        // on the left so the operand order stays outer-then-joined.
-        var exprOperator = toJoinExprComparisonOperator(columns.joinedOnLeft() ? operator.invert() : operator);
-
-        var letVariable = nextLetVariableName(columns.outer());
-        var expr = new AstExprFilter(new AstBinaryOperatorExpression(
-                exprOperator,
-                new AstVariableExpression(letVariable),
-                new AstFieldPathExpression(columns.joined().getColumnExpression())));
-        return new AstLookupStageWithPipeline(
+        if (joinLookupContext != null) {
+            throw fail("Nested join ON conditions are not supported");
+        }
+        joinLookupContext = new JoinLookupContext(joinedAlias);
+        var expr = acceptAndYieldExpression(assertNotNull(predicate));
+        var lookupStage = new AstLookupStageWithPipeline(
                 joinedCollection,
-                List.of(new AstLetVariable(letVariable, new AstFieldPathExpression(resolveFieldPath(columns.outer())))),
-                List.of(new AstMatchStage(expr)),
+                joinLookupContext.letVariables(),
+                List.of(new AstMatchStage(new AstExprFilter(expr))),
                 joinAlias);
+        joinLookupContext = null;
+        return lookupStage;
+    }
+
+    /**
+     * Names the joined alias whose collection is the {@code $lookup} sub-pipeline root and accumulates its {@code let}
+     * bindings while a join {@code ON} condition is translated; see {@link #visitColumnReference}.
+     */
+    private record JoinLookupContext(String joinedAlias, List<AstLetVariable> letVariables) {
+        JoinLookupContext(String joinedAlias) {
+            this(joinedAlias, new ArrayList<>());
+        }
+
+        /**
+         * Determines whether the given column belongs to the joined collection.
+         *
+         * @param columnReference the column being translated within the join {@code ON} condition
+         * @return {@code true} if the column's qualifier matches the joined alias; {@code false} if it references an
+         *     outer table
+         */
+        boolean isJoinedColumn(ColumnReference columnReference) {
+            return joinedAlias.equals(columnReference.getQualifier());
+        }
+
+        void addLetVariable(AstLetVariable letVariable) {
+            letVariables.add(letVariable);
+        }
+    }
+
+    /** Strips any {@link GroupedPredicate} (parenthesis) wrappers, returning the innermost predicate. */
+    private static @Nullable Predicate unwrapGrouped(@Nullable Predicate predicate) {
+        while (predicate instanceof GroupedPredicate groupedPredicate) {
+            predicate = groupedPredicate.getSubPredicate();
+        }
+        return predicate;
+    }
+
+    /**
+     * Returns the outer/joined column split for a lone equijoin eligible for the compact
+     * {@code localField}/{@code foreignField} {@code $lookup} form: both operands must be plain (non-formula) columns
+     * with exactly one referencing the joined table. Any other shape returns empty and is handled by the pipeline form.
+     */
+    private static Optional<JoinColumns> trySimpleEquijoinColumns(@Nullable Predicate predicate, String joinedAlias) {
+        if (!(predicate instanceof ComparisonPredicate cp) || cp.getOperator() != ComparisonOperator.EQUAL) {
+            return Optional.empty();
+        }
+        var lhs = extractColumnReference(cp.getLeftHandExpression());
+        var rhs = extractColumnReference(cp.getRightHandExpression());
+        if (lhs == null || rhs == null || lhs.isColumnExpressionFormula() || rhs.isColumnExpressionFormula()) {
+            return Optional.empty();
+        }
+        var lhsIsJoined = joinedAlias.equals(lhs.getQualifier());
+        var rhsIsJoined = joinedAlias.equals(rhs.getQualifier());
+        if (lhsIsJoined == rhsIsJoined) {
+            return Optional.empty();
+        }
+        return Optional.of(lhsIsJoined ? new JoinColumns(rhs, lhs) : new JoinColumns(lhs, rhs));
     }
 
     /**
@@ -1986,42 +2368,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var suffix = ((qualifier != null ? qualifier + "_" : "") + outer.getColumnExpression())
                 .replaceAll("[^a-zA-Z0-9_]", "_");
         return "v" + letVariableCounter++ + "_" + suffix;
-    }
-
-    private JoinColumns extractJoinColumns(ComparisonPredicate cp, String joinedAlias) {
-        var lhsCr = extractColumnReference(cp.getLeftHandExpression());
-        var rhsCr = extractColumnReference(cp.getRightHandExpression());
-        if (lhsCr == null || rhsCr == null) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-166 https://jira.mongodb.org/browse/HIBERNATE-166");
-        }
-        if (lhsCr.isColumnExpressionFormula() || rhsCr.isColumnExpressionFormula()) {
-            throw new FeatureNotSupportedException(
-                    "TODO-HIBERNATE-182 https://jira.mongodb.org/browse/HIBERNATE-182 @JoinFormula is not supported");
-        }
-        var lhsIsJoined = joinedAlias.equals(lhsCr.getQualifier());
-        var rhsIsJoined = joinedAlias.equals(rhsCr.getQualifier());
-        if (lhsIsJoined == rhsIsJoined) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-170 https://jira.mongodb.org/browse/HIBERNATE-170");
-        }
-        return lhsIsJoined ? new JoinColumns(rhsCr, lhsCr, true) : new JoinColumns(lhsCr, rhsCr, false);
-    }
-
-    /**
-     * Maps the non-equality comparison operators supported for non-equijoin {@code ON} conditions to their
-     * aggregation-expression counterparts. {@code EQUAL} never reaches here — it is routed to the simple
-     * {@code $lookup} form by the caller — and {@code DISTINCT_FROM}/{@code NOT_DISTINCT_FROM} are not yet supported.
-     */
-    private static AstComparisonExpressionOperator toJoinExprComparisonOperator(ComparisonOperator operator) {
-        return switch (operator) {
-            case NOT_EQUAL -> AstComparisonExpressionOperator.NE;
-            case LESS_THAN -> AstComparisonExpressionOperator.LT;
-            case LESS_THAN_OR_EQUAL -> AstComparisonExpressionOperator.LTE;
-            case GREATER_THAN -> AstComparisonExpressionOperator.GT;
-            case GREATER_THAN_OR_EQUAL -> AstComparisonExpressionOperator.GTE;
-            default ->
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-200 https://jira.mongodb.org/browse/HIBERNATE-200");
-        };
     }
 
     private static final class OffsetJdbcParameter extends AbstractJdbcParameter {

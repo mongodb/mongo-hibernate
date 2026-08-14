@@ -16,27 +16,52 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import java.util.List;
+import java.util.function.Consumer;
 import org.bson.BsonWriter;
+import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
- * A document-form update payload, rendered as {@code { "$set": { … } }}.
+ * A document-form update payload, carrying {@code $set} and/or {@code $setOnInsert}, each rendered only when non-empty.
  *
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstDocumentUpdate(List<AstFieldUpdate> updates) implements AstUpdate {
+public record AstDocumentUpdate(List<AstFieldUpdate> set, List<AstFieldUpdate> setOnInsert) implements AstUpdate {
+
+    public AstDocumentUpdate {
+        assertFalse(set.isEmpty() && setOnInsert.isEmpty());
+    }
+
+    public AstDocumentUpdate(List<AstFieldUpdate> set) {
+        this(set, List.of());
+    }
+
     @Override
-    public void render(BsonWriter writer) {
+    public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {
-            writer.writeName("$set");
-            writer.writeStartDocument();
-            {
-                updates.forEach(update -> update.render(writer));
-            }
-            writer.writeEndDocument();
+            renderOperator(writer, "$set", set, binderConsumer);
+            renderOperator(writer, "$setOnInsert", setOnInsert, binderConsumer);
+        }
+        writer.writeEndDocument();
+    }
+
+    private static void renderOperator(
+            BsonWriter writer,
+            String operator,
+            List<AstFieldUpdate> updates,
+            Consumer<JdbcParameterBinder> binderConsumer) {
+        if (updates.isEmpty()) {
+            return;
+        }
+        writer.writeName(operator);
+        writer.writeStartDocument();
+        {
+            updates.forEach(update -> update.render(writer, binderConsumer));
         }
         writer.writeEndDocument();
     }

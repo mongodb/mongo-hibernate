@@ -21,6 +21,12 @@ MongoDB Extension for Hibernate ORM — a Hibernate dialect and JDBC adapter tha
 Integration tests require MongoDB replica set running at `localhost:27017` with `--enableTestCommands=1`. Override the connection string via `jakarta.persistence.jdbc.url` in `src/integrationTest/resources/hibernate.properties`. 
 The replica set has typically already been started by the developer and is available.
 
+### Integration test parallelism
+
+Integration tests run concurrently within a single JVM via JUnit parallel execution (configured in `src/integrationTest/resources/junit-platform.properties`: test classes run concurrently, methods within a class stay on one thread). Each top-level test class is isolated to its own database, assigned once per class and memoized — see `MongoExtension.configurationContributorForClass`, applied by `MongoServiceRegistryProducer` and by the few tests that bootstrap Hibernate directly. There is no per-thread state; captured commands are likewise partitioned by database name in `MongoExtension`.
+
+Tests that manipulate mongod-global state — e.g. the `failCommand` fail point, a single shared server-side switch — must not run concurrently with anything; annotate them `@Isolated`. There is a single `integrationTest` task running one JVM, so `--tests` works normally; the JUnit thread count is fixed in `junit-platform.properties` (the fastest value is machine-specific and does not track core count).
+
 ## Architecture
 
 ### Layers
@@ -77,9 +83,18 @@ curl -s -X PUT \
   "https://jira.mongodb.org/rest/agile/1.0/issue/rank"
 ```
 
-## Adding HQL-to-MQL Translation Support
+## Architecture Invariants
 
-@.claude/skills/add-hql-to-mql-translation/SKILL.md
+`ARCHITECTURE.md` documents the contracts that new code has to respect: visitor dispatch and the
+`AstVisitorValueDescriptor` protocol, why translation must not use a parallel recursive descent,
+compact find syntax vs. `$expr` in `$match`, clause-position parity, the aggregation stage order, and
+the `FeatureNotSupportedException` vs. `AssertionError` failure contract. Read it before designing or
+reviewing a translation change.
+
+## Task-Specific Skills
+
+- Adding HQL-to-MQL translation support --- `.claude/skills/add-hql-to-mql-translation/SKILL.md`
+- Reviewing a pull request --- `.claude/skills/reviewing-pull-requests/SKILL.md`
 
 ## Code Style
 

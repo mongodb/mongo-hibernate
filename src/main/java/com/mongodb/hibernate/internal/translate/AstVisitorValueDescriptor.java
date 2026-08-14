@@ -37,6 +37,8 @@ public final class AstVisitorValueDescriptor<T> {
 
     static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> MODEL_MUTATION_RESULT =
             new AstVisitorValueDescriptor<>();
+    static final AstVisitorValueDescriptor<ModelMutationMqlTranslator.Result> UPSERT_MODEL_MUTATION_RESULT =
+            new AstVisitorValueDescriptor<>();
     static final AstVisitorValueDescriptor<SelectMqlTranslator.Result> SELECT_RESULT =
             new AstVisitorValueDescriptor<>();
     static final AstVisitorValueDescriptor<MutationMqlTranslator.Result> MUTATION_RESULT =
