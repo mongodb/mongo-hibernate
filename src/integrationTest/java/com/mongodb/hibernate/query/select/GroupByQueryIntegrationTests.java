@@ -107,6 +107,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testSingle() {
         assertSelectionQuery(
                 "select b.primitiveInt from Item as b GROUP BY b.primitiveInt",
@@ -130,13 +131,12 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                   ]
                 }
                 """,
-                results -> {
-                    assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(1, 2, 3, 4);
-                },
+                results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(1, 2, 3, 4),
                 Set.of(COLLECTION_NAME));
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testSingleWithStruct() {
         assertSelectionQuery(
                 "select b.itemStruct.primitiveInt from Item as b GROUP BY b.itemStruct.primitiveInt",
@@ -207,6 +207,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testMultiple() {
         assertSelectionQuery(
                 "select b.primitiveInt, b.primitiveBoolean from Item as b GROUP BY b.primitiveInt, b.primitiveBoolean",
