@@ -999,7 +999,7 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
                     "select count(id) from Item group by case when y > 5 then 1 else 0 end",
                     Long.class,
                     FeatureNotSupportedException.class,
-                    "GroupBy is not supported");
+                    "TODO-HIBERNATE-241 Only column references are supported in group by");
         }
 
         @Test

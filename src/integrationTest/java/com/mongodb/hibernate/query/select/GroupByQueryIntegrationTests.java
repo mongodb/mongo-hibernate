@@ -47,7 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection<BsonDocument> mongoCollection;
+    private MongoCollection<BsonDocument> mongoCollection;
 
     @Entity(name = "Item")
     static class Item {
