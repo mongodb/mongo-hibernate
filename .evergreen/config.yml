@@ -197,6 +197,10 @@ axes:
   - id: mongo-version
     display_name: "MongoDB Version"
     values:
+      - id: "9.0"
+        display_name: "9.0"
+        variables:
+          MONGODB_VERSION: "9.0"
       - id: "8.0"
         display_name: "8.0"
         variables:
