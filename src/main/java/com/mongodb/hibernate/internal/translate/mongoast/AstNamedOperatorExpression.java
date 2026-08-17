@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SortedMap;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -29,6 +31,20 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  */
 public record AstNamedOperatorExpression(String operator, SortedMap<String, AstExpression> arguments)
         implements AstExpression {
+
+    @Override
+    public int valueNumber(VNRegistry vn) {
+        return vn.memoize(this, r -> {
+            List<Object> parts = new ArrayList<>();
+            parts.add(operator);
+            for (var e : arguments.entrySet()) {
+                parts.add(e.getKey());
+                parts.add(e.getValue().valueNumber(r));
+            }
+            return r.intern("NamedOp", parts.toArray());
+        });
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

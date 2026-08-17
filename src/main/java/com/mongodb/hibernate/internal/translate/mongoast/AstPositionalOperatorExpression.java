@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -28,6 +29,19 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * @param arguments a list of arguments that will be converted into an array
  */
 public record AstPositionalOperatorExpression(String operator, List<AstExpression> arguments) implements AstExpression {
+
+    @Override
+    public int valueNumber(VNRegistry vn) {
+        return vn.memoize(this, r -> {
+            List<Object> parts = new ArrayList<>();
+            parts.add(operator);
+            for (var arg : arguments) {
+                parts.add(arg.valueNumber(r));
+            }
+            return r.intern("PosOp", parts.toArray());
+        });
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

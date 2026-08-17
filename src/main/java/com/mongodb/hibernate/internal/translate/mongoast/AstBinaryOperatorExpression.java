@@ -36,6 +36,14 @@ public record AstBinaryOperatorExpression(String operator, AstExpression left, A
     }
 
     @Override
+    public int valueNumber(VNRegistry vn) {
+        return vn.memoize(
+                this,
+                vnRegistry -> vnRegistry.intern(
+                        "Binary", operator, left.valueNumber(vnRegistry), right.valueNumber(vnRegistry)));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName(operator);

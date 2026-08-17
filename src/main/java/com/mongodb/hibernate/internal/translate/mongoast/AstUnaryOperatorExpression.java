@@ -29,6 +29,11 @@ public record AstUnaryOperatorExpression(String operator, AstExpression operand)
     }
 
     @Override
+    public int valueNumber(VNRegistry vn) {
+        return vn.memoize(this, vnRegistry -> vnRegistry.intern("Unary", operator, operand.valueNumber(vnRegistry)));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName(operator);

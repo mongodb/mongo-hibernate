@@ -24,6 +24,12 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public record AstRegexMatchExpression(AstExpression input, String regex, String options) implements AstExpression {
     @Override
+    public int valueNumber(VNRegistry vn) {
+        return vn.memoize(
+                this, vnRegistry -> vnRegistry.intern("Regex", input.valueNumber(vnRegistry), regex, options));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$regexMatch");
