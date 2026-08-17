@@ -18,10 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
-import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstFieldReferenceValue;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -29,9 +26,8 @@ class AstGroupStageTests {
 
     @Test
     void testRenderingSingleKey() {
-        var groupKey = new AstDocument(
-                List.of(new AstElement("country", new AstFieldReferenceValue(new AstFieldPathExpression("country")))));
-        var astGroupStage = new AstGroupStage(groupKey);
+        var astGroupStage = new AstGroupStage(
+                List.of(new AstGroupStageSpecification("country", new AstFieldPathExpression("country"))));
 
         var expectedJson = """
                 {"$group": {"_id": {"country": "$country"}}}\
@@ -41,10 +37,9 @@ class AstGroupStageTests {
 
     @Test
     void testRenderingMultipleKeys() {
-        var groupKey = new AstDocument(List.of(
-                new AstElement("country", new AstFieldReferenceValue(new AstFieldPathExpression("country"))),
-                new AstElement("city", new AstFieldReferenceValue(new AstFieldPathExpression("city")))));
-        var astGroupStage = new AstGroupStage(groupKey);
+        var astGroupStage = new AstGroupStage(List.of(
+                new AstGroupStageSpecification("country", new AstFieldPathExpression("country")),
+                new AstGroupStageSpecification("city", new AstFieldPathExpression("city"))));
 
         var expectedJson =
                 """
@@ -55,9 +50,8 @@ class AstGroupStageTests {
 
     @Test
     void testRenderingNestedFieldKey() {
-        var groupKey = new AstDocument(List.of(new AstElement(
-                "address#city", new AstFieldReferenceValue(new AstFieldPathExpression("address.city")))));
-        var astGroupStage = new AstGroupStage(groupKey);
+        var astGroupStage = new AstGroupStage(
+                List.of(new AstGroupStageSpecification("address#city", new AstFieldPathExpression("address.city"))));
 
         var expectedJson =
                 """

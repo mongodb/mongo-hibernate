@@ -68,7 +68,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstFieldReferenceValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
@@ -92,6 +91,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
@@ -295,7 +295,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * Per-query state for GROUP BY translation. Populated by {@link #createGroupStage} and consulted by
      * {@link #resolveFieldPath} to rewrite grouped column references to {@code $_id.<subKey>}.
      */
-    // TODO When sub-queries are supported, this context must use stack offer and pop.
     static final class GroupByContext {
         enum Phase {
             INACTIVE,
@@ -594,22 +593,24 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             return Optional.empty();
         }
         groupByContext.beginPopulating();
-        List<AstElement> elements = new ArrayList<>();
-        for (Expression groupByClauseExpression : querySpec.getGroupByClauseExpressions()) {
-            if (groupByClauseExpression.getColumnReference() != null) {
-                var columnReference = groupByClauseExpression.getColumnReference();
-                var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
-                var groupKey = fieldPath.replace('.', '#');
-                groupByContext.put(columnReference, groupKey);
-                elements.add(
-                        new AstElement(groupKey, new AstFieldReferenceValue(new AstFieldPathExpression(fieldPath))));
-            } else {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-241 Only column references are supported in group by");
+        try {
+            List<AstGroupStageSpecification> specifications = new ArrayList<>();
+            for (Expression groupByClauseExpression : querySpec.getGroupByClauseExpressions()) {
+                if (groupByClauseExpression.getColumnReference() != null) {
+                    var columnReference = groupByClauseExpression.getColumnReference();
+                    var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
+                    var groupKey = fieldPath.replace('.', '#');
+                    groupByContext.put(columnReference, groupKey);
+                    specifications.add(new AstGroupStageSpecification(groupKey, new AstFieldPathExpression(fieldPath)));
+                } else {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-241 Only column references are supported in group by");
+                }
             }
+            return Optional.of(new AstGroupStage(specifications));
+        } finally {
+            groupByContext.finishPopulating();
         }
-        groupByContext.finishPopulating();
-        return Optional.of(new AstGroupStage(new AstDocument(elements)));
     }
 
     private Optional<AstMatchStage> createMatchStage(Predicate whereClauseRestrictions) {
@@ -903,7 +904,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             if (groupKey != null) {
                 return "_id." + groupKey;
             }
-            throw new FeatureNotSupportedException("Columns that are not part of group by are not supported");
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-241 Columns that are not part of group by are not supported");
         }
         return (qualifier != null && joinedTableQualifiers.contains(qualifier))
                 ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()

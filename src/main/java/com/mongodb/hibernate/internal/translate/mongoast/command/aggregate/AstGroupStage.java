@@ -16,38 +16,37 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
+
+import java.util.Collection;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
- * Represents MongoDB's $group aggregation stage.
+ * Represents MongoDB's {@code $group} aggregation stage.
  *
- * <p>SQL: SELECT country FROM Contact GROUP BY country
+ * <p>HQL: SELECT country FROM Contact GROUP BY country
  *
  * <p>MongoDB:
  *
  * <pre>
  * {
  *   "$group": {
- *     "_id": "$country",
- *     "count": { "$sum": 1 },
- *     "avgAge": { "$avg": "$age" }
+ *     "_id": {
+ *       "country": "$country"
+ *     }
  *   }
  * }
  * </pre>
  *
- * <p>Group Key Variants:
- *
- * <ul>
- *   <li>Single field: "_id": "$country"
- *   <li>Multiple fields: "_id": { "country": "$country", "age": "$age" }
- *   <li>Global aggregation: "_id": null (no GROUP BY clause)
- * </ul>
+ * @hidden
  */
-public record AstGroupStage(AstValue groupKey // What to group by (goes in _id field)
-        ) implements AstStage {
+public record AstGroupStage(Collection<? extends AstGroupStageSpecification> specifications) implements AstStage {
+
+    public AstGroupStage {
+        assertFalse(specifications.isEmpty());
+    }
 
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
@@ -56,9 +55,12 @@ public record AstGroupStage(AstValue groupKey // What to group by (goes in _id f
             writer.writeName("$group");
             writer.writeStartDocument();
             {
-                // Group key (_id field)
                 writer.writeName("_id");
-                groupKey.render(writer, binderConsumer);
+                writer.writeStartDocument();
+                {
+                    specifications.forEach(specification -> specification.render(writer, binderConsumer));
+                }
+                writer.writeEndDocument();
             }
             writer.writeEndDocument();
         }

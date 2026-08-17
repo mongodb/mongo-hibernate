@@ -246,6 +246,125 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                 Set.of(COLLECTION_NAME));
     }
 
+    @Test
+    void testWithHaving() {
+        assertSelectionQuery(
+                "select b.primitiveInt from Item as b GROUP BY b.primitiveInt HAVING b.primitiveInt > 1 ORDER BY b.primitiveInt",
+                Object.class,
+                """
+                {
+                       "aggregate": "Item",
+                       "pipeline": [
+                         {
+                           "$group": {
+                             "_id": {
+                               "primitiveInt": "$primitiveInt"
+                             }
+                           }
+                         },
+                         {
+                           "$match": {
+                             "_id.primitiveInt": {
+                               "$gt": 1
+                             }
+                           }
+                         },
+                         {
+                           "$sort": {
+                             "_id.primitiveInt": 1
+                           }
+                         },
+                         {
+                           "$project": {
+                             "_id#primitiveInt": "$_id.primitiveInt"
+                           }
+                         }
+                       ]
+                     }
+                """,
+                List.of(2, 3, 4),
+                Set.of(COLLECTION_NAME));
+    }
+
+    @Test
+    void testWithHavingWithStruct() {
+        assertSelectionQuery(
+                "select b.itemStruct.primitiveInt from Item as b GROUP BY b.itemStruct.primitiveInt HAVING b.itemStruct.primitiveInt > 1 ORDER BY b.itemStruct.primitiveInt",
+                Object.class,
+                """
+                {
+                  "aggregate": "Item",
+                  "pipeline": [
+                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
+                    {"$match": {"_id.itemStruct#primitiveInt": {"$gt": 1}}},
+                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
+                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
+                  ]
+                }
+                """,
+                List.of(2, 3, 4),
+                Set.of(COLLECTION_NAME));
+    }
+
+    @Test
+    void testWithWhere() {
+        assertSelectionQuery(
+                "select b.primitiveInt from Item as b WHERE b.primitiveInt > 1 GROUP BY b.primitiveInt ORDER BY b.primitiveInt",
+                Object.class,
+                """
+                {
+                  "aggregate": "Item",
+                  "pipeline": [
+                    {"$match": {"primitiveInt": {"$gt": 1}}},
+                    {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
+                    {"$sort": {"_id.primitiveInt": 1}},
+                    {"$project": {"_id#primitiveInt": "$_id.primitiveInt"}}
+                  ]
+                }
+                """,
+                List.of(2, 3, 4),
+                Set.of(COLLECTION_NAME));
+    }
+
+    @Test
+    void testWithWhereWithStruct() {
+        assertSelectionQuery(
+                "select b.itemStruct.primitiveInt from Item as b WHERE b.itemStruct.primitiveInt > 1 GROUP BY b.itemStruct.primitiveInt ORDER BY b.itemStruct.primitiveInt",
+                Object.class,
+                """
+                {
+                  "aggregate": "Item",
+                  "pipeline": [
+                    {"$match": {"itemStruct.primitiveInt": {"$gt": 1}}},
+                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
+                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
+                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
+                  ]
+                }
+                """,
+                List.of(2, 3, 4),
+                Set.of(COLLECTION_NAME));
+    }
+
+    @Test
+    void testGroupByIdColumn() {
+        assertSelectionQuery(
+                "select b.id from Item as b GROUP BY b.id ORDER BY b.id",
+                Object.class,
+                """
+                {
+                  "aggregate": "Item",
+                  "pipeline": [
+                    {"$group": {"_id": {"_id": "$_id"}}},
+                    {"$sort": {"_id._id": 1}},
+                    {"$project": {"_id#_id": "$_id._id"}}
+                  ]
+                }
+                """,
+                List.of(1, 2, 3, 4, 5, 6, 7, 8),
+                Set.of(COLLECTION_NAME));
+    }
+
     @Nested
     @DomainModel(annotatedClasses = {ManyToOneJoin.ItemA.class, ManyToOneJoin.ItemB.class})
     class ManyToOneJoin extends AbstractQueryIntegrationTests {
@@ -625,124 +744,5 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                     FeatureNotSupportedException.class,
                     "TODO-HIBERNATE-205 SELECT DISTINCT is not supported");
         }
-    }
-
-    @Test
-    void testWithHaving() {
-        assertSelectionQuery(
-                "select b.primitiveInt from Item as b GROUP BY b.primitiveInt HAVING b.primitiveInt > 1 ORDER BY b.primitiveInt",
-                Object.class,
-                """
-                {
-                       "aggregate": "Item",
-                       "pipeline": [
-                         {
-                           "$group": {
-                             "_id": {
-                               "primitiveInt": "$primitiveInt"
-                             }
-                           }
-                         },
-                         {
-                           "$match": {
-                             "_id.primitiveInt": {
-                               "$gt": 1
-                             }
-                           }
-                         },
-                         {
-                           "$sort": {
-                             "_id.primitiveInt": 1
-                           }
-                         },
-                         {
-                           "$project": {
-                             "_id#primitiveInt": "$_id.primitiveInt"
-                           }
-                         }
-                       ]
-                     }
-                """,
-                List.of(2, 3, 4),
-                Set.of(COLLECTION_NAME));
-    }
-
-    @Test
-    void testWithHavingWithStruct() {
-        assertSelectionQuery(
-                "select b.itemStruct.primitiveInt from Item as b GROUP BY b.itemStruct.primitiveInt HAVING b.itemStruct.primitiveInt > 1 ORDER BY b.itemStruct.primitiveInt",
-                Object.class,
-                """
-                {
-                  "aggregate": "Item",
-                  "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$match": {"_id.itemStruct#primitiveInt": {"$gt": 1}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
-                  ]
-                }
-                """,
-                List.of(2, 3, 4),
-                Set.of(COLLECTION_NAME));
-    }
-
-    @Test
-    void testWithWhere() {
-        assertSelectionQuery(
-                "select b.primitiveInt from Item as b WHERE b.primitiveInt > 1 GROUP BY b.primitiveInt ORDER BY b.primitiveInt",
-                Object.class,
-                """
-                {
-                  "aggregate": "Item",
-                  "pipeline": [
-                    {"$match": {"primitiveInt": {"$gt": 1}}},
-                    {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                    {"$sort": {"_id.primitiveInt": 1}},
-                    {"$project": {"_id#primitiveInt": "$_id.primitiveInt"}}
-                  ]
-                }
-                """,
-                List.of(2, 3, 4),
-                Set.of(COLLECTION_NAME));
-    }
-
-    @Test
-    void testWithWhereWithStruct() {
-        assertSelectionQuery(
-                "select b.itemStruct.primitiveInt from Item as b WHERE b.itemStruct.primitiveInt > 1 GROUP BY b.itemStruct.primitiveInt ORDER BY b.itemStruct.primitiveInt",
-                Object.class,
-                """
-                {
-                  "aggregate": "Item",
-                  "pipeline": [
-                    {"$match": {"itemStruct.primitiveInt": {"$gt": 1}}},
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt"}}
-                  ]
-                }
-                """,
-                List.of(2, 3, 4),
-                Set.of(COLLECTION_NAME));
-    }
-
-    @Test
-    void testGroupByIdColumn() {
-        assertSelectionQuery(
-                "select b.id from Item as b GROUP BY b.id ORDER BY b.id",
-                Object.class,
-                """
-                {
-                  "aggregate": "Item",
-                  "pipeline": [
-                    {"$group": {"_id": {"_id": "$_id"}}},
-                    {"$sort": {"_id._id": 1}},
-                    {"$project": {"_id#_id": "$_id._id"}}
-                  ]
-                }
-                """,
-                List.of(1, 2, 3, 4, 5, 6, 7, 8),
-                Set.of(COLLECTION_NAME));
     }
 }
