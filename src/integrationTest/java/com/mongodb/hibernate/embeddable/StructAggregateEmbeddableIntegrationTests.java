@@ -36,7 +36,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
@@ -63,7 +62,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
             StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingArraysAndCollections.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonInsertable.class,
             StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingNonUpdatable.class,
-            StructAggregateEmbeddableIntegrationTests.Unsupported.ItemWithNestedValueHavingEmbeddable.class
+            StructAggregateEmbeddableIntegrationTests.ItemWithNestedValueHavingEmbeddable.class
         })
 @ExtendWith(MongoExtension.class)
 public class StructAggregateEmbeddableIntegrationTests
@@ -533,6 +532,42 @@ public class StructAggregateEmbeddableIntegrationTests
         assertEq(expectedItem, loadedItem);
     }
 
+    /**
+     * A flattened {@code @Embeddable} contributes its columns to the enclosing {@code @Struct} one, so it lands as
+     * fields of the same subdocument.
+     */
+    @Test
+    void testNestedValueHavingFlattenedEmbeddable() {
+        var item = new ItemWithNestedValueHavingEmbeddable(
+                1, new SingleHavingEmbeddable(new EmbeddableIntegrationTests.Single(2)));
+        sessionFactoryScope.inTransaction(session -> session.persist(item));
+        assertCollectionContainsExactly("""
+                                        {_id: 1, nested: {a: 2}}""");
+        var loadedItem = sessionFactoryScope.fromTransaction(
+                session -> session.find(ItemWithNestedValueHavingEmbeddable.class, item.id));
+        assertEq(item, loadedItem);
+    }
+
+    @Entity
+    @Table(name = COLLECTION_NAME)
+    static class ItemWithNestedValueHavingEmbeddable {
+        @Id
+        int id;
+
+        SingleHavingEmbeddable nested;
+
+        ItemWithNestedValueHavingEmbeddable() {}
+
+        ItemWithNestedValueHavingEmbeddable(int id, SingleHavingEmbeddable nested) {
+            this.id = id;
+            this.nested = nested;
+        }
+    }
+
+    @Embeddable
+    @Struct(name = "SingleHavingEmbeddable")
+    record SingleHavingEmbeddable(EmbeddableIntegrationTests.Single flattened) {}
+
     private void assertCollectionContainsExactly(String documentAsJsonObject) {
         assertThat(mongoCollection.find()).containsExactly(BsonDocument.parse(documentAsJsonObject));
     }
@@ -784,14 +819,6 @@ public class StructAggregateEmbeddableIntegrationTests
         }
 
         @Test
-        void testEmbeddable() {
-            var item = new ItemWithNestedValueHavingEmbeddable(
-                    1, new SingleHavingEmbeddable(new EmbeddableIntegrationTests.Single(2)));
-            assertThatThrownBy(() -> sessionFactoryScope.inTransaction(session -> session.persist(item)))
-                    .hasRootCauseInstanceOf(SQLFeatureNotSupportedException.class);
-        }
-
-        @Test
         void testNoPersistentAttributes() {
             assertThatThrownBy(() -> new MetadataSources()
                             .addAnnotatedClass(ItemWithNestedValueHavingNoPersistentAttributes.class)
@@ -895,24 +922,6 @@ public class StructAggregateEmbeddableIntegrationTests
                 this.a = a;
             }
         }
-
-        @Entity
-        @Table(name = COLLECTION_NAME)
-        static class ItemWithNestedValueHavingEmbeddable {
-            @Id
-            int id;
-
-            SingleHavingEmbeddable nested;
-
-            ItemWithNestedValueHavingEmbeddable(int id, SingleHavingEmbeddable nested) {
-                this.id = id;
-                this.nested = nested;
-            }
-        }
-
-        @Embeddable
-        @Struct(name = "SingleHavingEmbeddable")
-        record SingleHavingEmbeddable(EmbeddableIntegrationTests.Single flattened) {}
 
         @Entity
         @Table(name = COLLECTION_NAME)

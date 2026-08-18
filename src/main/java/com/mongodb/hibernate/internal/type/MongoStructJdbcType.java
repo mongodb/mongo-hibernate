@@ -25,6 +25,8 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.isNull;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
+import static org.hibernate.type.descriptor.jdbc.StructHelper.getAttributeValues;
+import static org.hibernate.type.descriptor.jdbc.StructHelper.getJdbcValues;
 import static org.hibernate.type.descriptor.jdbc.StructHelper.instantiate;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -41,7 +43,6 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Struct;
 import org.bson.BsonDocument;
-import org.bson.BsonValue;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.SqlTypes;
@@ -52,7 +53,6 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
-import org.hibernate.type.descriptor.jdbc.StructAttributeValues;
 import org.hibernate.type.descriptor.jdbc.StructuredJdbcType;
 import org.jspecify.annotations.Nullable;
 
@@ -126,6 +126,11 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
             return null;
         }
         var embeddableMappingType = getEmbeddableMappingType();
+        // `StructHelper` flattens the domain value to one JDBC value per column, applying each column's
+        // `ValueBinder` on the way, which is the unwrap this method needs, and yielding the `BsonDocument` a nested
+        // `@Struct` binds to. The order mapping is null because this type writes fields by selectable name rather
+        // than by physical position.
+        var jdbcValues = getJdbcValues(embeddableMappingType, null, domainValue, options);
         var result = new BsonDocument();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         for (var columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
@@ -139,26 +144,7 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
                 throw new FeatureNotSupportedException(
                         "Persistent attributes of a `@Struct @Embeddable` must be updatable");
             }
-            var fieldName = jdbcValueSelectable.getSelectableName();
-            var value = embeddableMappingType.getValue(domainValue, columnIndex);
-            BsonValue bsonValue;
-            if (value == null) {
-                bsonValue = toBsonValue(value);
-            } else {
-                var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
-                var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
-                if (jdbcTypeCode == getJdbcTypeCode()) {
-                    var structValueBinder = assertInstanceOf(jdbcMapping.getJdbcValueBinder(), Binder.class);
-                    bsonValue = structValueBinder.getJdbcType().createBindValue(value, options);
-                } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
-                    @SuppressWarnings("unchecked")
-                    ValueBinder<Object> valueBinder = jdbcMapping.getJdbcValueBinder();
-                    bsonValue = toBsonValue(valueBinder.getBindValue(value, options));
-                } else {
-                    bsonValue = toBsonValue(value);
-                }
-            }
-            result.append(fieldName, bsonValue);
+            result.append(jdbcValueSelectable.getSelectableName(), toBsonValue(jdbcValues[columnIndex]));
         }
         return result;
     }
@@ -199,8 +185,17 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
                 domainValue =
                         arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(assertNotNull(value)), options);
             } else {
-                domainValue = toDomainValue(
-                        assertNotNull(value), jdbcMapping.getMappedJavaType().getJavaTypeClass());
+                // The inverse of `createBindValue`: read the JDBC-level value the binder would have written, then
+                // wrap it back into the domain type. A `JdbcType` reporting no preferred Java type binds the domain
+                // value unchanged, so it is read back unchanged.
+                var preferredJavaTypeClass = jdbcMapping.getJdbcType().getPreferredJavaTypeClass(options);
+                var mappedJavaType = jdbcMapping.getMappedJavaType();
+                if (preferredJavaTypeClass == null) {
+                    domainValue = toDomainValue(assertNotNull(value), mappedJavaType.getJavaTypeClass());
+                } else {
+                    domainValue =
+                            mappedJavaType.wrap(toDomainValue(assertNotNull(value), preferredJavaTypeClass), options);
+                }
             }
             result[columnIndex] = domainValue;
         }
@@ -278,7 +273,8 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
             } else {
                 var embeddableMappingType = getEmbeddableMappingType();
                 assertTrue(classX.equals(embeddableMappingType.getJavaType().getJavaTypeClass()));
-                result = instantiate(embeddableMappingType, new StructAttributeValues(jdbcValues.length, jdbcValues));
+                result = instantiate(
+                        embeddableMappingType, getAttributeValues(embeddableMappingType, jdbcValues, options));
             }
             return classX.cast(result);
         }

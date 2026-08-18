@@ -265,6 +265,7 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.SqlTypes;
+import org.hibernate.type.descriptor.ValueBinder;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -1036,8 +1037,28 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitQueryLiteral(QueryLiteral<?> queryLiteral) {
-        var bsonValue = toBsonValue(queryLiteral.getLiteralValue());
+        var bsonValue = toBsonValue(toBindValue(queryLiteral));
         yieldValueOrExpression(new AstLiteral(bsonValue), needsLiteralWrapping(bsonValue));
+    }
+
+    /**
+     * Unwraps the literal's domain value the way binding a parameter of that type would, so that
+     * {@link ValueConversions} sees the JDBC-level value.
+     */
+    private @Nullable Object toBindValue(QueryLiteral<?> queryLiteral) {
+        var literalValue = queryLiteral.getLiteralValue();
+        if (literalValue == null) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        ValueBinder<Object> valueBinder = queryLiteral.getJdbcMapping().getJdbcValueBinder();
+        try {
+            return valueBinder.getBindValue(literalValue, getSessionFactory().getWrapperOptions());
+        } catch (SQLFeatureNotSupportedException e) {
+            throw new FeatureNotSupportedException(e);
+        } catch (SQLException e) {
+            throw fail(e.toString());
+        }
     }
 
     @Override
