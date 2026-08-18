@@ -50,9 +50,11 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCo
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.NIN;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
+import static java.util.Comparator.comparing;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 import static org.hibernate.sql.ast.tree.expression.SqlTupleContainer.getSqlTuple;
 
+import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
@@ -129,7 +131,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.bson.BsonInt32;
@@ -380,20 +382,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // components ordered by name for a canonical shape, since the "_id" unique index is sensitive
     // to BSON field order.
     private static List<AstElement> assembleWithIdSubdocument(List<AstElement> flat) {
-        var idComponents = new TreeMap<String, AstValue>();
+        var idComponents = new TreeSet<>(comparing(AstElement::name));
         var result = new ArrayList<AstElement>(flat.size());
         for (var element : flat) {
-            if (element.name().startsWith(ID_FIELD_NAME + ".")) {
-                idComponents.put(element.name().substring(ID_FIELD_NAME.length() + 1), element.value());
+            if (EmbeddedIdColumnName.isComponent(element.name())) {
+                idComponents.add(new AstElement(EmbeddedIdColumnName.componentName(element.name()), element.value()));
             } else {
                 result.add(element);
             }
         }
         if (!idComponents.isEmpty()) {
-            var idElements = idComponents.entrySet().stream()
-                    .map(entry -> new AstElement(entry.getKey(), entry.getValue()))
-                    .toList();
-            result.add(0, new AstElement(ID_FIELD_NAME, new AstDocument(idElements)));
+            result.add(0, new AstElement(ID_FIELD_NAME, new AstDocument(idComponents)));
         }
         return result;
     }
