@@ -860,8 +860,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 }
             } else {
                 var key = resolveProjectionKey(sqlSelection);
-                spec = new AstProjectStageExpressionSpecification(
-                        key, acceptAndYieldExpression(sqlSelection.getExpression()));
+                var projectionExpression = acceptAndYieldExpression(sqlSelection.getExpression());
+                if (projectionExpression instanceof AstValueExpression valueExpression) {
+                    // A $project field value is misread whatever the value is, so the verbatim/wrapped
+                    // decision the visitor just made does not apply here: a number or boolean is an
+                    // inclusion/exclusion flag rather than a constant.
+                    spec = new AstProjectStageExpressionSpecification(
+                            key, new AstLiteralExpression(valueExpression.value()));
+                } else {
+                    spec = new AstProjectStageExpressionSpecification(key, projectionExpression);
+                }
             }
             projectStageSpecifications.add(spec);
         }
@@ -916,6 +924,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // position a value and an expression do not always render the same (a $-prefixed string is a field
     // path there, a document/array is an operator invocation). A value that could be misread is wrapped
     // in $literal via AstLiteralExpression; one that cannot is used verbatim via AstValueExpression.
+    // This applies to operand position, the only one reachable from here. A $project field value is the
+    // exception, misread whatever the value is, and visitSelectClause wraps it unconditionally.
     private void yieldValueOrExpression(AstValue value, boolean literalWrapped) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
             astVisitorValueHolder.yield(
@@ -925,8 +935,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    // Whether a literal value would be misread in aggregation-expression position and so needs $literal:
-    // a string beginning with `$` (a field path), or a document/array (an operator invocation).
+    // Whether a literal value would be misread in operand position and so needs $literal: a string
+    // beginning with `$` (a field path), or a document/array (an operator invocation).
     private static boolean needsLiteralWrapping(BsonValue value) {
         return value.isDocument()
                 || value.isArray()

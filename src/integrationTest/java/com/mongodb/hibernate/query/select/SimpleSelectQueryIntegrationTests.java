@@ -760,6 +760,47 @@ class SimpleSelectQueryIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
+        void testProjectionOfLiteralsAndParameter() {
+            assertSelectionQuery(
+                    "select 1, 'foobar', null, true, :age, c.name, 7 as seven from Contact as c",
+                    Object[].class,
+                    q -> q.setParameter("age", 18),
+                    """
+                    {
+                      "aggregate": "contacts",
+                      "pipeline": [
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$literal": 1
+                            },
+                            "#c_2": {
+                              "$literal": "foobar"
+                            },
+                            "#c_3": {
+                              "$literal": null
+                            },
+                            "#c_4": {
+                              "$literal": true
+                            },
+                            "#c_5": {
+                              "$literal": 18
+                            },
+                            "name": true,
+                            "seven": {
+                              "$literal": 7
+                            }
+                          }
+                        }
+                      ]
+                    }""",
+                    testingContacts.stream()
+                            .map(contact -> new Object[] {1, "foobar", null, true, 18, contact.name, 7})
+                            .toList(),
+                    Set.of(Contact.COLLECTION_NAME));
+        }
+
+        @Test
         void testProjectUsingWrongAlias() {
             assertSelectQueryFailure(
                     "select k.name, c.age from Contact as c where c.country = :country",
