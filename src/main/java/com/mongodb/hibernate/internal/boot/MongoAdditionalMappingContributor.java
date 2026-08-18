@@ -21,9 +21,10 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toSet;
 
+import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Column;
@@ -37,7 +38,6 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -71,10 +71,12 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.mapping.AggregateColumn;
+import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.SimpleValue;
+import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.UniqueKey;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
@@ -92,7 +94,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      * described in <a href="https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/">Field Names with
      * Periods and Dollar Signs</a>. We also reserve '#' as a separator for computed projections in MQL joins.
      */
-    private static final Collection<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$", "#");
+    private static final Set<String> UNSUPPORTED_FIELD_NAME_CHARACTERS = Set.of(".", "$", "#");
 
     private static final Set<Class<?>> UNSUPPORTED_TYPES = Set.of(
             // Temporal types
@@ -141,11 +143,14 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             // avoid interfering with bootstrapping unrelated to the MongoDB Extension for Hibernate ORM
             return;
         }
+        forbidIdClassIdentifiers(metadata);
         forbidEmbeddablesWithoutPersistentAttributes(metadata);
         metadata.getEntityBindings().forEach(persistentClass -> {
             checkPropertyTypes(persistentClass);
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
+            forbidNonScalarIdComponent(persistentClass);
+            forbidDerivedIdentity(persistentClass);
             forbidJdbcTypeCodeAnnotation(persistentClass);
             forbidColumnFragmentAnnotations(persistentClass);
             setIdentifierColumnName(persistentClass);
@@ -272,6 +277,71 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         }
     }
 
+    /**
+     * Forbid a non-aggregated composite identifier ({@code @IdClass}, or multiple {@code @Id} attributes). Must run
+     * before {@link #forbidEmbeddablesWithoutPersistentAttributes}, which would otherwise misfire on the synthetic
+     * identifier-mapper {@link Component} with a misleading message.
+     */
+    private static void forbidIdClassIdentifiers(InFlightMetadataCollector metadata) {
+        metadata.getEntityBindings().forEach(persistentClass -> {
+            if (persistentClass.getIdentifierMapper() != null) {
+                throw new FeatureNotSupportedException(format(
+                        "%s: a non-aggregated composite identifier (@IdClass, or multiple @Id attributes) is not"
+                                + " supported; declare the composite key with @EmbeddedId."
+                                + " TODO-HIBERNATE-235 https://jira.mongodb.org/browse/HIBERNATE-235",
+                        persistentClass));
+            }
+        });
+    }
+
+    /**
+     * Forbid a composite id component that is not a basic value: a nested embeddable or a collection, or an association
+     * (derived identity nested inside the id, as opposed to the entity-level {@code @MapsId} shape caught by
+     * {@link #forbidDerivedIdentity}). Every component of a composite id must be a basic value.
+     */
+    private static void forbidNonScalarIdComponent(PersistentClass persistentClass) {
+        if (persistentClass.getIdentifier() instanceof Component idComponent) {
+            for (var property : idComponent.getProperties()) {
+                var value = property.getValue();
+                if (value instanceof ToOne) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s: an association inside the id (derived identity) is not supported;"
+                                    + " every component of a composite id must be a basic value."
+                                    + " TODO-HIBERNATE-237 https://jira.mongodb.org/browse/HIBERNATE-237",
+                            persistentClass));
+                }
+                if (value instanceof Component || value instanceof Collection) {
+                    throw new FeatureNotSupportedException(format(
+                            "%s: a non-scalar id component (nested embeddable or collection) is not supported;"
+                                    + " every component of a composite id must be a basic value."
+                                    + " TODO-HIBERNATE-236 https://jira.mongodb.org/browse/HIBERNATE-236",
+                            persistentClass));
+                }
+            }
+        }
+    }
+
+    /**
+     * Forbid derived identity ({@code @MapsId}): an entity-level {@link ToOne} property whose column(s) overlap the
+     * identifier's columns. Must run before {@link #setIdentifierColumnName}, which renames the id column(s) to
+     * {@code _id} (or {@code _id.<component>}) and would destroy the overlap this check relies on.
+     */
+    private static void forbidDerivedIdentity(PersistentClass persistentClass) {
+        var idColumnNames = persistentClass.getIdentifier().getColumns().stream()
+                .map(column -> column.getName())
+                .collect(toSet());
+        for (var property : persistentClass.getProperties()) {
+            if (property.getValue() instanceof ToOne toOne
+                    && !toOne.hasFormula()
+                    && toOne.getColumns().stream().anyMatch(column -> idColumnNames.contains(column.getName()))) {
+                throw new FeatureNotSupportedException(format(
+                        "%s: derived identity (an association participating in the id, e.g. @MapsId) is not"
+                                + " supported. TODO-HIBERNATE-237 https://jira.mongodb.org/browse/HIBERNATE-237",
+                        persistentClass));
+            }
+        }
+    }
+
     /** Forbid usage of {@link JdbcTypeCode} annotation. */
     private static void forbidJdbcTypeCodeAnnotation(PersistentClass persistentClass) {
         ClassElementChecker.check(persistentClass, true, ClassElementChecker.forbid(JdbcTypeCode.class));
@@ -346,9 +416,15 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         assertFalse(identifier.hasFormula());
         var idColumns = identifier.getColumns();
         if (idColumns.size() > 1) {
-            throw new FeatureNotSupportedException(format(
-                    "%s: %s does not support primary key spanning multiple columns %s",
-                    persistentClass, MONGO_DBMS_NAME, idColumns));
+            // Non-scalar id components (nested embeddable or collection) were already rejected by
+            // forbidNonScalarIdComponent, so each component of this composite id has exactly one column.
+            var idComponent = assertInstanceOf(identifier, Component.class);
+            for (var property : idComponent.getProperties()) {
+                var componentColumns = property.getValue().getColumns();
+                assertTrue(componentColumns.size() == 1);
+                componentColumns.get(0).setName(EmbeddedIdColumnName.forComponent(property.getName()));
+            }
+            return;
         }
         assertTrue(idColumns.size() == 1);
         var idColumn = idColumns.get(0);
