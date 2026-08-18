@@ -23,6 +23,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
@@ -52,9 +53,11 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCo
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstListComparisonFilterOperator.NIN;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation.quoteMeta;
 import static java.lang.String.format;
+import static java.util.Comparator.comparing;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 import static org.hibernate.sql.ast.tree.expression.SqlTupleContainer.getSqlTuple;
 
+import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.ExpressionFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
@@ -90,6 +93,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpda
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStage;
@@ -128,10 +133,12 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.bson.BsonInt32;
@@ -287,6 +294,43 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
 
+    private final GroupByContext groupByContext = new GroupByContext();
+
+    /**
+     * Per-query state for GROUP BY translation. Populated by {@link #createGroupStage} and consulted by
+     * {@link #resolveFieldPath} to rewrite grouped column references to {@code $_id.<subKey>}.
+     */
+    static final class GroupByContext {
+        enum Phase {
+            INACTIVE,
+            POPULATING,
+            AFTER_GROUP
+        }
+
+        private Phase phase = Phase.INACTIVE;
+        private final Map<Expression, String> exprMappings = new LinkedHashMap<>();
+
+        void beginPopulating() {
+            phase = Phase.POPULATING;
+        }
+
+        void finishPopulating() {
+            phase = Phase.AFTER_GROUP;
+        }
+
+        boolean isAfterGroup() {
+            return phase == Phase.AFTER_GROUP;
+        }
+
+        void put(Expression key, String subKey) {
+            exprMappings.put(key, subKey);
+        }
+
+        @Nullable String get(Expression key) {
+            return exprMappings.get(key);
+        }
+    }
+
     // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
     private int letVariableCounter;
 
@@ -383,6 +427,27 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(valueDescriptor, value);
     }
 
+    // Column bindings for a composite id are flattened by boot-time metadata into sibling
+    // "_id.<component>" columns; gather them back into a single leading "_id" sub-document, with
+    // components ordered by name for a canonical shape, since the "_id" unique index is sensitive
+    // to BSON field order.
+    private static List<AstElement> assembleWithIdSubdocument(List<AstElement> flat) {
+        var idComponents = new TreeSet<>(comparing(AstElement::name));
+        var result = new ArrayList<AstElement>(flat.size());
+        for (var element : flat) {
+            if (EmbeddedIdColumnName.isComponent(element.name())) {
+                assertTrue(idComponents.add(
+                        new AstElement(EmbeddedIdColumnName.componentName(element.name()), element.value())));
+            } else {
+                result.add(element);
+            }
+        }
+        if (!idComponents.isEmpty()) {
+            result.add(0, new AstElement(ID_FIELD_NAME, new AstDocument(idComponents)));
+        }
+        return result;
+    }
+
     @Override
     public void visitStandardTableInsert(TableInsertStandard tableInsert) {
         if (tableInsert.getNumberOfReturningColumns() > 0) {
@@ -401,7 +466,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(new AstInsertCommand(
-                        tableInsert.getMutatingTable().getTableName(), List.of(new AstDocument(astElements)))));
+                        tableInsert.getMutatingTable().getTableName(),
+                        List.of(new AstDocument(assembleWithIdSubdocument(astElements))))));
     }
 
     @Override
@@ -470,14 +536,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstFilter createKeyFilter(AbstractRestrictedTableMutation<? extends MutationOperation> tableMutation) {
-        if (tableMutation.getNumberOfKeyBindings() > 1) {
-            throw new FeatureNotSupportedException(
-                    format("%s does not support primary key spanning multiple columns", MONGO_DBMS_NAME));
+        var predicates = new ArrayList<AstFilter>(
+                tableMutation.getNumberOfKeyBindings() + tableMutation.getNumberOfOptimisticLockBindings());
+        for (var keyBinding : tableMutation.getKeyBindings()) {
+            predicates.add(createEqualityFilter(keyBinding));
         }
-        assertTrue(tableMutation.getNumberOfKeyBindings() == 1);
-
-        var predicates = new ArrayList<AstFilter>(1 + tableMutation.getNumberOfOptimisticLockBindings());
-        predicates.add(createEqualityFilter(tableMutation.getKeyBindings().get(0)));
         for (var lockBinding : tableMutation.getOptimisticLockBindings()) {
             predicates.add(createEqualityFilter(lockBinding));
         }
@@ -522,10 +585,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitQuerySpec(QuerySpec querySpec) {
-        if (!querySpec.getGroupByClauseExpressions().isEmpty()) {
-            throw new FeatureNotSupportedException("GroupBy is not supported");
-        }
-
         var collection = acceptAndYield(querySpec.getFromClause(), COLLECTION_NAME);
 
         var stages = new ArrayList<AstStage>();
@@ -533,7 +592,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var root = querySpec.getFromClause().getRoots().get(0);
         stages.addAll(buildJoinStages(root));
 
-        createMatchStage(querySpec).ifPresent(stages::add);
+        createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
+        createGroupStage(querySpec).ifPresent(stages::add);
+        createMatchStage(querySpec.getHavingClauseRestrictions()).ifPresent(stages::add);
         createSortStage(querySpec).ifPresent(stages::add);
 
         var skipLimitStagesAndJdbcParams =
@@ -551,8 +612,32 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         skipLimitStagesAndJdbcParams.limit()));
     }
 
-    private Optional<AstMatchStage> createMatchStage(QuerySpec querySpec) {
-        var whereClauseRestrictions = querySpec.getWhereClauseRestrictions();
+    private Optional<AstGroupStage> createGroupStage(final QuerySpec querySpec) {
+        if (querySpec.getGroupByClauseExpressions().isEmpty()) {
+            return Optional.empty();
+        }
+        groupByContext.beginPopulating();
+        try {
+            List<AstGroupStageSpecification> specifications = new ArrayList<>();
+            for (Expression groupByClauseExpression : querySpec.getGroupByClauseExpressions()) {
+                if (groupByClauseExpression.getColumnReference() != null) {
+                    var columnReference = groupByClauseExpression.getColumnReference();
+                    var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
+                    var groupKey = fieldPath.replace('.', '#');
+                    groupByContext.put(columnReference, groupKey);
+                    specifications.add(new AstGroupStageSpecification(groupKey, new AstFieldPathExpression(fieldPath)));
+                } else {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-241 Only column references are supported in group by");
+                }
+            }
+            return Optional.of(new AstGroupStage(specifications));
+        } finally {
+            groupByContext.finishPopulating();
+        }
+    }
+
+    private Optional<AstMatchStage> createMatchStage(Predicate whereClauseRestrictions) {
         if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
             var filter = acceptAndYield(whereClauseRestrictions, FILTER);
             return Optional.of(new AstMatchStage(filter));
@@ -778,7 +863,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void visitSelectClause(SelectClause selectClause) {
         if (selectClause.isDistinct()) {
-            throw new FeatureNotSupportedException();
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-205 SELECT DISTINCT is not supported");
         }
         var projectStageSpecifications = new ArrayList<AstProjectStageSpecification>(
                 selectClause.getSqlSelections().size());
@@ -799,8 +884,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 }
             } else {
                 var key = resolveProjectionKey(sqlSelection);
-                spec = new AstProjectStageExpressionSpecification(
-                        key, acceptAndYieldExpression(sqlSelection.getExpression()));
+                var projectionExpression = acceptAndYieldExpression(sqlSelection.getExpression());
+                if (projectionExpression instanceof AstValueExpression valueExpression) {
+                    // A $project field value is misread whatever the value is, so the verbatim/wrapped
+                    // decision the visitor just made does not apply here: a number or boolean is an
+                    // inclusion/exclusion flag rather than a constant.
+                    spec = new AstProjectStageExpressionSpecification(
+                            key, new AstLiteralExpression(valueExpression.value()));
+                } else {
+                    spec = new AstProjectStageExpressionSpecification(key, projectionExpression);
+                }
             }
             projectStageSpecifications.add(spec);
         }
@@ -838,6 +931,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private String resolveFieldPath(ColumnReference columnReference) {
         var qualifier = columnReference.getQualifier();
+        if (groupByContext.isAfterGroup()) {
+            String groupKey = groupByContext.get(columnReference);
+            if (groupKey != null) {
+                return "_id." + groupKey;
+            }
+            throw new FeatureNotSupportedException(
+                    "TODO-HIBERNATE-241 Columns that are not part of group by are not supported");
+        }
         return (qualifier != null && joinedTableQualifiers.contains(qualifier))
                 ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()
                 : columnReference.getColumnExpression();
@@ -847,6 +948,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // position a value and an expression do not always render the same (a $-prefixed string is a field
     // path there, a document/array is an operator invocation). A value that could be misread is wrapped
     // in $literal via AstLiteralExpression; one that cannot is used verbatim via AstValueExpression.
+    // This applies to operand position, the only one reachable from here. A $project field value is the
+    // exception, misread whatever the value is, and visitSelectClause wraps it unconditionally.
     private void yieldValueOrExpression(AstValue value, boolean literalWrapped) {
         if (astVisitorValueHolder.expects(EXPRESSION)) {
             astVisitorValueHolder.yield(
@@ -856,8 +959,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
     }
 
-    // Whether a literal value would be misread in aggregation-expression position and so needs $literal:
-    // a string beginning with `$` (a field path), or a document/array (an operator invocation).
+    // Whether a literal value would be misread in operand position and so needs $literal: a string
+    // beginning with `$` (a field path), or a document/array (an operator invocation).
     private static boolean needsLiteralWrapping(BsonValue value) {
         return value.isDocument()
                 || value.isArray()
@@ -1240,19 +1343,24 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         var documents = new ArrayList<AstDocument>(valuesList.size());
         for (var values : valuesList) {
-            var fieldValueExpressions = values.getExpressions();
-            assertTrue(fieldNames.size() == fieldValueExpressions.size());
-            var astElements = new ArrayList<AstElement>(fieldValueExpressions.size());
-            for (var i = 0; i < fieldNames.size(); i++) {
-                var fieldName = fieldNames.get(i);
-                var fieldValueExpression = fieldValueExpressions.get(i);
-                if (!isValueExpression(fieldValueExpression)) {
-                    throw new FeatureNotSupportedException();
+            // A composite id bound as a single VALUES-clause parameter arrives here as one tuple-valued
+            // expression covering several consecutive target columns, rather than one expression per column;
+            // unwrap it so each sub-expression lines up with its own field name.
+            var astElements = new ArrayList<AstElement>(fieldNames.size());
+            var fieldIndex = 0;
+            for (var fieldValueExpression : values.getExpressions()) {
+                var tuple = getSqlTuple(fieldValueExpression);
+                var subExpressions = tuple != null ? tuple.getExpressions() : List.of(fieldValueExpression);
+                for (var subExpression : subExpressions) {
+                    if (!isValueExpression(subExpression)) {
+                        throw new FeatureNotSupportedException();
+                    }
+                    var fieldValue = acceptAndYield(subExpression, VALUE);
+                    astElements.add(new AstElement(fieldNames.get(fieldIndex++), fieldValue));
                 }
-                var fieldValue = acceptAndYield(fieldValueExpression, VALUE);
-                astElements.add(new AstElement(fieldName, fieldValue));
             }
-            documents.add(new AstDocument(astElements));
+            assertTrue(fieldIndex == fieldNames.size());
+            documents.add(new AstDocument(assembleWithIdSubdocument(astElements)));
         }
 
         astVisitorValueHolder.yield(

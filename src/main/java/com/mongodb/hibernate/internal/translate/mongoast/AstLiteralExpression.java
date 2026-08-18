@@ -23,8 +23,9 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 /**
  * An {@link AstValue} (a literal or parameter) wrapped in {@code $literal} for aggregation-expression position, so it
  * is taken verbatim rather than as a field path or an operator invocation. Use this when the value could otherwise be
- * misread there (a string beginning with {@code $}, or a document/array); a value that cannot be misread uses
- * {@link AstValueExpression} instead.
+ * misread there (a string beginning with {@code $}, or a document/array), and for every value in a {@code $project}
+ * field, where a number or boolean would otherwise be an inclusion/exclusion flag; a value in operand position that
+ * cannot be misread uses {@link AstValueExpression} instead.
  *
  * @hidden
  */

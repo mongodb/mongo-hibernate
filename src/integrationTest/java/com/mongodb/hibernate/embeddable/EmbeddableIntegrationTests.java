@@ -807,14 +807,6 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware, Mon
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
         @Test
-        void testPrimaryKeySpanningMultipleFields() {
-            assertThatThrownBy(() -> new MetadataSources()
-                            .addAnnotatedClass(ItemWithPluralAsId.class)
-                            .buildMetadata())
-                    .hasMessageContaining("does not support primary key spanning multiple columns");
-        }
-
-        @Test
         void testStructAggregateEmbeddable() {
             var item = new ItemWithFlattenedValueHavingStructAggregateEmbeddable(
                     1,
@@ -832,13 +824,6 @@ public class EmbeddableIntegrationTests implements SessionFactoryScopeAware, Mon
                             .close())
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("must have at least one persistent attribute");
-        }
-
-        @Entity
-        @Table(name = COLLECTION_NAME)
-        static class ItemWithPluralAsId {
-            @Id
-            Plural id;
         }
 
         @Entity

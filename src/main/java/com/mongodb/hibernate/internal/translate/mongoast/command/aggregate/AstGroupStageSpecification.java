@@ -1,5 +1,5 @@
 /*
- * Copyright 2025-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,23 @@
  * limitations under the License.
  */
 
-package com.mongodb.hibernate.internal.translate.mongoast;
+package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
- * An {@link AstValue} (a literal or parameter) used verbatim in aggregation-expression position. Use this only when the
- * value cannot be misread there; a value that could be taken as a field path or an operator invocation (a string
- * beginning with {@code $}, or a document/array) must instead go through {@link AstLiteralExpression} so it is wrapped
- * in {@code $literal}. That leaves operand position, an operator's argument. A {@code $project} field value is misread
- * whatever the value is, a number or boolean being an inclusion/exclusion flag there, so it always uses
- * {@link AstLiteralExpression}.
- *
+ * @see AstGroupStage
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstValueExpression(AstValue value) implements AstExpression {
+public record AstGroupStageSpecification(String key, AstExpression expression) implements AstNode {
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
-        value.render(writer, binderConsumer);
+        writer.writeName(key);
+        expression.render(writer, binderConsumer);
     }
 }
