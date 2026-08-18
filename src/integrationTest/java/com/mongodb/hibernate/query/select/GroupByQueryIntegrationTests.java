@@ -396,7 +396,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -440,7 +440,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -484,7 +484,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -533,7 +533,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -582,7 +582,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -637,7 +637,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -693,7 +693,7 @@ public class GroupByQueryIntegrationTests extends AbstractQueryIntegrationTests 
             int id;
 
             @ManyToOne(fetch = FetchType.LAZY)
-            @JoinColumn(name = "id")
+            @JoinColumn(name = "itemBId")
             ManyToOneJoin.ItemB itemB;
 
             ItemA() {}
