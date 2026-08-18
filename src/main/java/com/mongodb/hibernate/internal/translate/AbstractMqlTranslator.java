@@ -386,7 +386,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var result = new ArrayList<AstElement>(flat.size());
         for (var element : flat) {
             if (EmbeddedIdColumnName.isComponent(element.name())) {
-                idComponents.add(new AstElement(EmbeddedIdColumnName.componentName(element.name()), element.value()));
+                assertTrue(idComponents.add(
+                        new AstElement(EmbeddedIdColumnName.componentName(element.name()), element.value())));
             } else {
                 result.add(element);
             }
