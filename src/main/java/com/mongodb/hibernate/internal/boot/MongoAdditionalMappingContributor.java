@@ -24,6 +24,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
+import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Column;
@@ -421,7 +422,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             for (var property : idComponent.getProperties()) {
                 var componentColumns = property.getValue().getColumns();
                 assertTrue(componentColumns.size() == 1);
-                componentColumns.get(0).setName(ID_FIELD_NAME + "." + property.getName());
+                componentColumns.get(0).setName(EmbeddedIdColumnName.forComponent(property.getName()));
             }
             return;
         }
