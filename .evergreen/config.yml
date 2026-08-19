@@ -66,6 +66,46 @@ functions:
         args:
           - ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
 
+  trace-artifacts:
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: bash
+        add_to_path:
+          - .evergreen
+        env:
+          PRODUCT_NAME: ${product_name}
+        args:
+          - ssdlc-expansions.sh
+    - command: expansions.update
+      params:
+        file: src/ssdlc-expansions.yml
+    # The set Maven Central receives. papertrail.trace rejects two patterns matching the same
+    # basename, and the glob has no `**`.
+    - command: papertrail.trace
+      params:
+        key_id: ${papertrail_key_id}
+        secret_key: ${papertrail_secret_key}
+        product: ${product_name}
+        version: ${product_version}
+        filenames:
+          - src/build/repo/org/mongodb/*/*/*.jar
+          - src/build/repo/org/mongodb/*/*/*.jar.asc
+          - src/build/repo/org/mongodb/*/*/*.jar*.md5
+          - src/build/repo/org/mongodb/*/*/*.jar*.sha1
+          - src/build/repo/org/mongodb/*/*/*.pom
+          - src/build/repo/org/mongodb/*/*/*.pom.asc
+          - src/build/repo/org/mongodb/*/*/*.pom*.md5
+          - src/build/repo/org/mongodb/*/*/*.pom*.sha1
+          - src/*/build/repo/org/mongodb/*/*/*.jar
+          - src/*/build/repo/org/mongodb/*/*/*.jar.asc
+          - src/*/build/repo/org/mongodb/*/*/*.jar*.md5
+          - src/*/build/repo/org/mongodb/*/*/*.jar*.sha1
+          - src/*/build/repo/org/mongodb/*/*/*.pom
+          - src/*/build/repo/org/mongodb/*/*/*.pom.asc
+          - src/*/build/repo/org/mongodb/*/*/*.pom*.md5
+          - src/*/build/repo/org/mongodb/*/*/*.pom*.sha1
+
   upload-test-results:
     - command: attach.xunit_results
       params:
@@ -171,6 +211,9 @@ tasks:
             RELEASE: "false"
           args:
             - .evergreen/publish.sh
+      - func: trace-artifacts
+        vars:
+          product_name: mongo-hibernate-snapshot
 
   - name: publish-release
     git_tag_only: true
@@ -189,6 +232,9 @@ tasks:
             RELEASE: "true"
           args:
             - .evergreen/publish.sh
+      - func: trace-artifacts
+        vars:
+          product_name: mongo-hibernate
 
 ########################################
 #              Axes                    #
