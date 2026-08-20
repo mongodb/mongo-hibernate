@@ -48,7 +48,7 @@ jobs:
       # The Gradle toolchain is pinned to 17 and settings.gradle.kts registers no toolchain
       # resolver, so the JDK has to be on the runner already.
       - if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: 17
