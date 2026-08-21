@@ -109,6 +109,66 @@ functions:
           - src/*/build/repo/org/mongodb/*/*/*.pom.sha1
           - src/*/build/repo/org/mongodb/*/*/*.asc.sha1
 
+  create-and-upload-SSDLC-release-assets:
+    # Reading code-scanning/analyses is 401 for anonymous callers even though the repository
+    # is public, so the task mints an installation token scoped to that one permission.
+    - command: github.generate_token
+      params:
+        owner: mongodb
+        repo: mongo-hibernate
+        expansion_name: ssdlc_github_token
+        permissions:
+          security_events: read
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: python3
+        env:
+          GITHUB_TOKEN: ${ssdlc_github_token}
+        args:
+          - .evergreen/download-codeql-sarifs.py
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: bash
+        add_to_path:
+          - .evergreen
+        env:
+          PRODUCT_NAME: ${product_name}
+          PRODUCT_VERSION: ${product_version}
+          EVERGREEN_VERSION_ID: ${version_id}
+        args:
+          - ssdlc-report.sh
+    - command: ec2.assume_role
+      params:
+        role_arn: ${UPLOAD_SSDLC_RELEASE_ASSETS_ROLE_ARN}
+    - command: s3.put
+      params:
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        local_file: ./src/build/ssdlc/ssdlc_compliance_report.md
+        remote_file: ${product_name}/${product_version}/ssdlc_compliance_report.md
+        bucket: java-driver-release-assets
+        region: us-west-1
+        permissions: private
+        content_type: text/markdown
+        display_name: "ssdlc_compliance_report.md"
+    - command: s3.put
+      params:
+        aws_key: ${AWS_ACCESS_KEY_ID}
+        aws_secret: ${AWS_SECRET_ACCESS_KEY}
+        aws_session_token: ${AWS_SESSION_TOKEN}
+        local_files_include_filter:
+          - build/ssdlc/static-analysis-reports/*.sarif
+        local_files_include_filter_prefix: ./src/
+        remote_file: ${product_name}/${product_version}/static-analysis-reports/
+        bucket: java-driver-release-assets
+        region: us-west-1
+        permissions: private
+        content_type: application/sarif+json
+        display_name: "static-analysis-reports/"
+
   upload-test-results:
     - command: attach.xunit_results
       params:
@@ -217,6 +277,7 @@ tasks:
       - func: trace-artifacts
         vars:
           product_name: mongo-hibernate-snapshot
+      - func: create-and-upload-SSDLC-release-assets
 
   - name: publish-release
     git_tag_only: true
@@ -238,6 +299,7 @@ tasks:
       - func: trace-artifacts
         vars:
           product_name: mongo-hibernate
+      - func: create-and-upload-SSDLC-release-assets
 
 ########################################
 #              Axes                    #

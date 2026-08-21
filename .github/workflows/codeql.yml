@@ -17,7 +17,9 @@ on:
         type: string
 
 concurrency:
-  group: codeql-${{ github.ref }}
+  # A release or snapshot publish waits for the analyses of the exact commit it publishes, so
+  # every commit needs a group of its own. Cancellation then deduplicates runs of one commit.
+  group: codeql-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 permissions:
