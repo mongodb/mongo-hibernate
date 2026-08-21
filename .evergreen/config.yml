@@ -80,8 +80,9 @@ functions:
     - command: expansions.update
       params:
         file: src/ssdlc-expansions.yml
-    # The set Maven Central receives. papertrail.trace rejects two patterns matching the same
-    # basename, and the glob has no `**`.
+    # The set Maven Central receives, which the publish tasks mirror into build/repo. Signatures get
+    # their own checksums, and there is no sha256/sha512 because publish.sh publishes only md5 and sha1.
+    # The glob has no `**` and papertrail.trace rejects two patterns matching the same basename.
     - command: papertrail.trace
       params:
         key_id: ${papertrail_key_id}
@@ -90,21 +91,23 @@ functions:
         version: ${product_version}
         filenames:
           - src/build/repo/org/mongodb/*/*/*.jar
-          - src/build/repo/org/mongodb/*/*/*.jar.asc
-          - src/build/repo/org/mongodb/*/*/*.jar*.md5
-          - src/build/repo/org/mongodb/*/*/*.jar*.sha1
           - src/build/repo/org/mongodb/*/*/*.pom
-          - src/build/repo/org/mongodb/*/*/*.pom.asc
-          - src/build/repo/org/mongodb/*/*/*.pom*.md5
-          - src/build/repo/org/mongodb/*/*/*.pom*.sha1
+          - src/build/repo/org/mongodb/*/*/*.asc
+          - src/build/repo/org/mongodb/*/*/*.jar.md5
+          - src/build/repo/org/mongodb/*/*/*.pom.md5
+          - src/build/repo/org/mongodb/*/*/*.asc.md5
+          - src/build/repo/org/mongodb/*/*/*.jar.sha1
+          - src/build/repo/org/mongodb/*/*/*.pom.sha1
+          - src/build/repo/org/mongodb/*/*/*.asc.sha1
           - src/*/build/repo/org/mongodb/*/*/*.jar
-          - src/*/build/repo/org/mongodb/*/*/*.jar.asc
-          - src/*/build/repo/org/mongodb/*/*/*.jar*.md5
-          - src/*/build/repo/org/mongodb/*/*/*.jar*.sha1
           - src/*/build/repo/org/mongodb/*/*/*.pom
-          - src/*/build/repo/org/mongodb/*/*/*.pom.asc
-          - src/*/build/repo/org/mongodb/*/*/*.pom*.md5
-          - src/*/build/repo/org/mongodb/*/*/*.pom*.sha1
+          - src/*/build/repo/org/mongodb/*/*/*.asc
+          - src/*/build/repo/org/mongodb/*/*/*.jar.md5
+          - src/*/build/repo/org/mongodb/*/*/*.pom.md5
+          - src/*/build/repo/org/mongodb/*/*/*.asc.md5
+          - src/*/build/repo/org/mongodb/*/*/*.jar.sha1
+          - src/*/build/repo/org/mongodb/*/*/*.pom.sha1
+          - src/*/build/repo/org/mongodb/*/*/*.asc.sha1
 
   upload-test-results:
     - command: attach.xunit_results
