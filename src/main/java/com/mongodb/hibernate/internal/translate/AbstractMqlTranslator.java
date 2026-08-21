@@ -122,6 +122,9 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCompariso
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation;
+import com.mongodb.hibernate.internal.translate.rewrite.AstRewriter;
+import com.mongodb.hibernate.internal.translate.rewrite.ExprToMatchDowngradeRule;
+import com.mongodb.hibernate.internal.translate.rewrite.GroupBySubstitutionRule;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
@@ -133,7 +136,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -296,6 +298,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private final GroupByContext groupByContext = new GroupByContext();
 
+    /** Per-query VN registry, shared with the GROUP BY rewriter. */
+    private final com.mongodb.hibernate.internal.translate.mongoast.VNRegistry vnRegistry =
+            new com.mongodb.hibernate.internal.translate.mongoast.VNRegistry();
+
+    /**
+     * VN of each GROUP BY key expression -> the sub-key under {@code _id}. Consulted by
+     * {@link GroupBySubstitutionRule}.
+     */
+    private final Map<Integer, String> groupKeyVN = new HashMap<>();
+
+    /** Post-GROUP BY rewriter over HAVING/SORT/PROJECT stages; {@code null} when the query has no GROUP BY. */
+    private @Nullable AstRewriter astRewriter;
+
     /**
      * Per-query state for GROUP BY translation. Populated by {@link #createGroupStage} and consulted by
      * {@link #resolveFieldPath} to rewrite grouped column references to {@code $_id.<subKey>}.
@@ -308,7 +323,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         }
 
         private Phase phase = Phase.INACTIVE;
-        private final Map<Expression, String> exprMappings = new LinkedHashMap<>();
 
         void beginPopulating() {
             phase = Phase.POPULATING;
@@ -320,14 +334,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         boolean isAfterGroup() {
             return phase == Phase.AFTER_GROUP;
-        }
-
-        void put(Expression key, String subKey) {
-            exprMappings.put(key, subKey);
-        }
-
-        @Nullable String get(Expression key) {
-            return exprMappings.get(key);
         }
     }
 
@@ -593,15 +599,30 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         stages.addAll(buildJoinStages(root));
 
         createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
-        createGroupStage(querySpec).ifPresent(stages::add);
-        createMatchStage(querySpec.getHavingClauseRestrictions()).ifPresent(stages::add);
-        createSortStage(querySpec).ifPresent(stages::add);
+        var groupStage = createGroupStage(querySpec);
+
+        if (groupStage.isPresent()) {
+            astRewriter = new AstRewriter(
+                    List.of(new GroupBySubstitutionRule(groupKeyVN, vnRegistry)),
+                    List.of(new ExprToMatchDowngradeRule()));
+        }
+        groupStage.ifPresent(stages::add);
+        createMatchStage(querySpec.getHavingClauseRestrictions())
+                .map(ms -> astRewriter != null ? astRewriter.rewrite(ms) : ms)
+                .ifPresent(stages::add);
+        createSortStage(querySpec)
+                .map(ss -> astRewriter != null ? astRewriter.rewrite(ss) : ss)
+                .ifPresent(stages::add);
 
         var skipLimitStagesAndJdbcParams =
                 assertNotNull(queryOptionsLimit).createSkipLimitStagesAndJdbcParams(querySpec);
         stages.addAll(skipLimitStagesAndJdbcParams.stages());
 
-        stages.add(createProjectStage(querySpec.getSelectClause()));
+        var projectStage = createProjectStage(querySpec.getSelectClause());
+        if (astRewriter != null) {
+            projectStage = astRewriter.rewrite(projectStage);
+        }
+        stages.add(projectStage);
 
         astVisitorValueHolder.yield(
                 SELECT_RESULT,
@@ -619,16 +640,21 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         groupByContext.beginPopulating();
         try {
             List<AstGroupStageSpecification> specifications = new ArrayList<>();
-            for (Expression groupByClauseExpression : querySpec.getGroupByClauseExpressions()) {
+            var groupByExpressions = querySpec.getGroupByClauseExpressions();
+            for (int i = 0; i < groupByExpressions.size(); i++) {
+                var groupByClauseExpression = groupByExpressions.get(i);
                 if (groupByClauseExpression.getColumnReference() != null) {
                     var columnReference = groupByClauseExpression.getColumnReference();
                     var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
                     var groupKey = fieldPath.replace('.', '#');
-                    groupByContext.put(columnReference, groupKey);
-                    specifications.add(new AstGroupStageSpecification(groupKey, new AstFieldPathExpression(fieldPath)));
+                    var fieldPathExpr = new AstFieldPathExpression(fieldPath);
+                    groupKeyVN.put(fieldPathExpr.valueNumber(vnRegistry), groupKey);
+                    specifications.add(new AstGroupStageSpecification(groupKey, fieldPathExpr));
                 } else {
-                    throw new FeatureNotSupportedException(
-                            "TODO-HIBERNATE-241 Only column references are supported in group by");
+                    var groupKey = "k" + i;
+                    var expr = acceptAndYieldExpression(groupByClauseExpression);
+                    groupKeyVN.put(expr.valueNumber(vnRegistry), groupKey);
+                    specifications.add(new AstGroupStageSpecification(groupKey, expr));
                 }
             }
             return Optional.of(new AstGroupStage(specifications));
@@ -931,14 +957,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private String resolveFieldPath(ColumnReference columnReference) {
         var qualifier = columnReference.getQualifier();
-        if (groupByContext.isAfterGroup()) {
-            String groupKey = groupByContext.get(columnReference);
-            if (groupKey != null) {
-                return "_id." + groupKey;
-            }
-            throw new FeatureNotSupportedException(
-                    "TODO-HIBERNATE-241 Columns that are not part of group by are not supported");
-        }
         return (qualifier != null && joinedTableQualifiers.contains(qualifier))
                 ? JOIN_ALIAS_PREFIX + qualifier + "." + columnReference.getColumnExpression()
                 : columnReference.getColumnExpression();

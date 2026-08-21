@@ -27,6 +27,8 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMa
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageExpressionSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
@@ -67,6 +69,10 @@ public final class AstRewriter {
         return (AstMatchStage) rewriteNode(node);
     }
 
+    public AstSortStage rewrite(AstSortStage node) {
+        return (AstSortStage) rewriteNode(node);
+    }
+
     private AstNode rewriteNode(AstNode node) {
         for (RewriteRule<AstNode> rule : preRules) {
             AstNode hit = rule.tryMatch(node);
@@ -96,16 +102,24 @@ public final class AstRewriter {
                     new ArrayList<>(ps.specifications().size());
             for (AstProjectStageSpecification spec : ps.specifications()) {
                 if (spec instanceof AstProjectStageExpressionSpecification exprSpec) {
-                    newSpecs.add(
-                            new AstProjectStageExpressionSpecification(exprSpec.key(), rewrite(exprSpec.expression())));
+                    var rewritten =
+                            new AstProjectStageExpressionSpecification(exprSpec.key(), rewrite(exprSpec.expression()));
+                    newSpecs.add((AstProjectStageSpecification) rewriteNode(rewritten));
                 } else {
-                    newSpecs.add(spec);
+                    newSpecs.add((AstProjectStageSpecification) rewriteNode(spec));
                 }
             }
             return new AstProjectStage(newSpecs);
         }
         if (node instanceof AstMatchStage ms) {
             return new AstMatchStage(rewrite(ms.filter()));
+        }
+        if (node instanceof AstSortStage ss) {
+            List<AstSortField> newFields = new ArrayList<>(ss.sortFields().size());
+            for (AstSortField sf : ss.sortFields()) {
+                newFields.add((AstSortField) rewriteNode(sf));
+            }
+            return new AstSortStage(newFields);
         }
         return node;
     }

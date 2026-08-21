@@ -39,7 +39,7 @@ public enum AstComparisonFilterOperator {
         this.operatorName = operatorName;
     }
 
-    String getOperatorName() {
+    public String getOperatorName() {
         return operatorName;
     }
 

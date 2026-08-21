@@ -42,7 +42,7 @@ public enum AstComparisonExpressionOperator {
         this.operatorName = operatorName;
     }
 
-    String getOperatorName() {
+    public String getOperatorName() {
         return operatorName;
     }
 
