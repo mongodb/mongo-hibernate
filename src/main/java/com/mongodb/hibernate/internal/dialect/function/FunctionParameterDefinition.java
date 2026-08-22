@@ -26,6 +26,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -66,6 +67,26 @@ public abstract sealed class FunctionParameterDefinition<N>
         return new AstBinaryOperatorExpression(
                 AstArithmeticExpressionOperator.ADD, input, new AstLiteralExpression(new AstLiteral(new BsonInt32(1))));
     }
+
+    /**
+     * Utility function that divides a value and applies another operation after and converts the result to an integer
+     *
+     * @param input the value to divide
+     * @param divisor the divisor to use in the calculation
+     * @param operator the operator to apply after division (typically, <code>$floor</code> or <code>$ceil</code>
+     * @return a function that will apply the additional operations to the tree provided
+     */
+    public static AstExpression divideAndSomethingAsInt(AstExpression input, int divisor, String operator) {
+        return new AstUnaryOperatorExpression(
+                "$toInt",
+                new AstUnaryOperatorExpression(
+                        operator,
+                        new AstBinaryOperatorExpression(
+                                AstArithmeticExpressionOperator.DIVIDE,
+                                input,
+                                new AstLiteralExpression(new AstLiteral(new BsonInt32(divisor))))));
+    }
+
     /**
      * Utility function that transforms an operation into one that returns one less than its original output
      *

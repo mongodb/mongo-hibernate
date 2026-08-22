@@ -146,6 +146,7 @@ import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
+import org.hibernate.dialect.Replacer;
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -1409,7 +1410,86 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitFormat(Format format) {
-        throw new FeatureNotSupportedException();
+        var f = new Replacer(format.getFormat(), "'", "\"")
+                // era
+                .replace("GG", "AD")
+                .replace("G", "AD")
+
+                // year
+                .replace("yyyy", "%Y")
+                .replace("yyy", "%Y")
+                .replace("yy", "%Y")
+                .replace("y", "%Y")
+
+                // month of year
+                .replace("MMMM", "%B")
+                .replace("MMM", "%b")
+                .replace("MM", "%m")
+                .replace("M", "%m")
+
+                // week of year
+                .replace("ww", "%U")
+                .replace("w", "%U")
+                // year for week
+                .replace("YYYY", "%G")
+                .replace("YYY", "%G")
+                .replace("YY", "%G")
+                .replace("Y", "%G")
+
+                // week of month
+                .replace("W", "W")
+
+                // day of week
+                .replace("EEEE", "%u")
+                .replace("EEE", "%u")
+                .replace("ee", "%u")
+                .replace("e", "%u")
+
+                // day of month
+                .replace("dd", "%d")
+                .replace("d", "%d")
+
+                // day of year
+                .replace("DDD", "%j")
+                .replace("DD", "%j")
+                .replace("D", "%j")
+
+                // am pm (not supported in Mongo; since we're forcing 24 hours, drop)
+                .replace("a", "")
+
+                // hour
+                .replace("hh", "%H")
+                .replace("HH", "%H")
+                .replace("h", "%H")
+                .replace("H", "%H")
+
+                // minute
+                .replace("mm", "%M")
+                .replace("m", "%M")
+
+                // second
+                .replace("ss", "%S")
+                .replace("s", "%S")
+
+                // fractional seconds
+                .replace("SSSSSS", "%L")
+                .replace("SSSSS", "%L")
+                .replace("SSSS", "%L")
+                .replace("SSS", "%L")
+                .replace("SS", "%L")
+                .replace("S", "%L")
+
+                // timezones
+                .replace("zzz", "%z")
+                .replace("zz", "%z")
+                .replace("z", "%z")
+                .replace("ZZZ", "%z")
+                .replace("ZZ", "%z")
+                .replace("Z", "%z")
+                .replace("xxx", "%z")
+                .replace("xx", "%z")
+                .replace("x", "%z");
+        this.yield(EXPRESSION, new AstLiteralExpression(new AstLiteral(new BsonString(f.result()))));
     }
 
     @Override

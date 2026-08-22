@@ -127,6 +127,11 @@ final class MongoResultSet implements ResultSetAdapter {
     }
 
     @Override
+    public float getFloat(int columnIndex) throws SQLException {
+        return (float) getDouble(columnIndex);
+    }
+
+    @Override
     public long getLong(int columnIndex) throws SQLException {
         checkClosed();
         checkColumnIndex(columnIndex);
