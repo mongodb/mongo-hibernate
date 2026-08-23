@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.rewrite;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
@@ -31,6 +32,11 @@ import org.jspecify.annotations.Nullable;
  * Pre-rule that replaces an expression whose value number matches a GROUP BY key with a reference to that key's
  * {@code _id.<subKey>} field. Runs top-down: a parent whole-match wins over a child leaf-match, preserving the
  * canonical form of the rewritten pipeline.
+ *
+ * <p>Any raw field-path leaf that survives without matching a GROUP BY key is a stray — a SELECT/HAVING/ORDER BY
+ * reference to a column that is neither in GROUP BY nor inside an aggregate function. The rule throws
+ * {@link FeatureNotSupportedException} in that case rather than emit a post-{@code $group} pipeline that references a
+ * non-existent field. Extend the whitelist here when accumulator support lands.
  */
 public final class GroupBySubstitutionRule implements RewriteRule<AstNode> {
 
@@ -46,26 +52,49 @@ public final class GroupBySubstitutionRule implements RewriteRule<AstNode> {
     public @Nullable AstNode tryMatch(AstNode node) {
         if (node instanceof AstExpression expr) {
             String subKey = groupKeyVN.get(expr.valueNumber(vnRegistry));
-            return subKey != null ? new AstFieldPathExpression("_id." + subKey) : null;
+            if (subKey != null) {
+                return new AstFieldPathExpression("_id." + subKey);
+            }
+            if (expr instanceof AstFieldPathExpression fp) {
+                throw strayColumn(fp.fieldPath());
+            }
+            return null;
         }
         if (node instanceof AstFieldOperationFilter fof) {
             String subKey = lookupByFieldPath(fof.fieldPath());
-            return subKey != null ? new AstFieldOperationFilter("_id." + subKey, fof.filterOperation()) : null;
+            if (subKey == null) {
+                throw strayColumn(fof.fieldPath());
+            }
+            return new AstFieldOperationFilter("_id." + subKey, fof.filterOperation());
         }
         if (node instanceof AstSortField sf) {
             String subKey = lookupByFieldPath(sf.path());
-            return subKey != null ? new AstSortField("_id." + subKey, sf.order()) : null;
+            if (subKey == null) {
+                throw strayColumn(sf.path());
+            }
+            return new AstSortField("_id." + subKey, sf.order());
         }
         if (node instanceof AstProjectStageIncludeSpecification inc) {
             String subKey = lookupByFieldPath(inc.field());
-            return subKey != null ? new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey) : null;
+            if (subKey == null) {
+                throw strayColumn(inc.field());
+            }
+            return new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey);
         }
         if (node instanceof AstProjectStageFieldPathSpecification fps) {
             String subKey = lookupByFieldPath(fps.fieldPath());
-            return subKey != null ? new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey) : null;
+            if (subKey == null) {
+                throw strayColumn(fps.fieldPath());
+            }
+            return new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey);
         }
-        // fall through
         return null;
+    }
+
+    private static FeatureNotSupportedException strayColumn(String fieldPath) {
+        return new FeatureNotSupportedException("column '" + fieldPath
+                + "' appears in SELECT/HAVING/ORDER BY but is not a GROUP BY key "
+                + "and is not inside an aggregate function");
     }
 
     private @Nullable String lookupByFieldPath(String fieldPath) {
