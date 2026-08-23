@@ -19,9 +19,14 @@ package com.mongodb.hibernate.internal.translate.rewrite;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLetBindingExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNamedOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchCase;
+import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
@@ -34,6 +39,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 
 /**
  * Single walker that traverses any {@link AstNode} tree — expressions, filters, and their interleaving — applying pre-
@@ -141,6 +147,31 @@ public final class AstRewriter {
         }
         if (node instanceof AstRegexMatchExpression r) {
             return new AstRegexMatchExpression(rewrite(r.input()), r.regex(), r.options());
+        }
+        if (node instanceof AstSwitchExpression s) {
+            var newBranches = new ArrayList<AstSwitchCase>(s.branches().size());
+            for (AstSwitchCase b : s.branches()) {
+                newBranches.add(new AstSwitchCase(rewrite(b.caseExpression()), rewrite(b.thenExpression())));
+            }
+            return new AstSwitchExpression(newBranches, rewrite(s.defaultExpression()));
+        }
+        if (node instanceof AstLetBindingExpression let) {
+            var newVars = new TreeMap<String, AstExpression>();
+            for (var e : let.vars().entrySet()) {
+                newVars.put(e.getKey(), rewrite(e.getValue()));
+            }
+            return new AstLetBindingExpression(rewrite(let.in()), newVars);
+        }
+        if (node instanceof AstNamedOperatorExpression n) {
+            var newArgs = new TreeMap<String, AstExpression>();
+            for (var e : n.arguments().entrySet()) {
+                newArgs.put(e.getKey(), rewrite(e.getValue()));
+            }
+            return new AstNamedOperatorExpression(n.operator(), newArgs);
+        }
+        if (node instanceof AstPositionalOperatorExpression p) {
+            return new AstPositionalOperatorExpression(
+                    p.operator(), p.arguments().stream().map(this::rewrite).toList());
         }
         // Leaves: AstFieldPathExpression, AstLiteralExpression, AstValueExpression, AstVariableExpression
         return node;

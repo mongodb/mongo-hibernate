@@ -86,6 +86,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpress
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstDocumentUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
@@ -296,45 +297,19 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private final Set<String> joinedTableQualifiers = new HashSet<>();
 
-    private final GroupByContext groupByContext = new GroupByContext();
-
-    /** Per-query VN registry, shared with the GROUP BY rewriter. */
-    private final com.mongodb.hibernate.internal.translate.mongoast.VNRegistry vnRegistry =
-            new com.mongodb.hibernate.internal.translate.mongoast.VNRegistry();
-
-    /**
-     * VN of each GROUP BY key expression -> the sub-key under {@code _id}. Consulted by
-     * {@link GroupBySubstitutionRule}.
-     */
-    private final Map<Integer, String> groupKeyVN = new HashMap<>();
+    private @Nullable GroupByContext groupByContext;
 
     /** Post-GROUP BY rewriter over HAVING/SORT/PROJECT stages; {@code null} when the query has no GROUP BY. */
     private @Nullable AstRewriter astRewriter;
 
     /**
-     * Per-query state for GROUP BY translation. Populated by {@link #createGroupStage} and consulted by
-     * {@link #resolveFieldPath} to rewrite grouped column references to {@code $_id.<subKey>}.
+     * Per-query GROUP BY state: the VN registry and the group-key-to-sub-key map. Created by {@link #createGroupStage}
+     * when the query has a GROUP BY clause; {@code null} otherwise. When sub-queries are supported, this should be
+     * pushed/popped on a stack.
      */
     static final class GroupByContext {
-        enum Phase {
-            INACTIVE,
-            POPULATING,
-            AFTER_GROUP
-        }
-
-        private Phase phase = Phase.INACTIVE;
-
-        void beginPopulating() {
-            phase = Phase.POPULATING;
-        }
-
-        void finishPopulating() {
-            phase = Phase.AFTER_GROUP;
-        }
-
-        boolean isAfterGroup() {
-            return phase == Phase.AFTER_GROUP;
-        }
+        final VNRegistry vnRegistry = new VNRegistry();
+        final Map<Integer, String> registeredGroupKeyByVN = new HashMap<>();
     }
 
     // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
@@ -602,8 +577,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var groupStage = createGroupStage(querySpec);
 
         if (groupStage.isPresent()) {
+            var ctx = assertNotNull(groupByContext);
             astRewriter = new AstRewriter(
-                    List.of(new GroupBySubstitutionRule(groupKeyVN, vnRegistry)),
+                    List.of(new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry)),
                     List.of(new ExprToMatchDowngradeRule()));
         }
         groupStage.ifPresent(stages::add);
@@ -637,39 +613,35 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (querySpec.getGroupByClauseExpressions().isEmpty()) {
             return Optional.empty();
         }
-        groupByContext.beginPopulating();
-        try {
-            List<AstGroupStageSpecification> specifications = new ArrayList<>();
-            var groupByExpressions = querySpec.getGroupByClauseExpressions();
-            for (int i = 0; i < groupByExpressions.size(); i++) {
-                var groupByClauseExpression = groupByExpressions.get(i);
-                if (groupByClauseExpression.getColumnReference() != null) {
-                    var columnReference = groupByClauseExpression.getColumnReference();
-                    var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
-                    var groupKey = fieldPath.replace('.', '#');
-                    var fieldPathExpr = new AstFieldPathExpression(fieldPath);
-                    groupKeyVN.put(fieldPathExpr.valueNumber(vnRegistry), groupKey);
-                    specifications.add(new AstGroupStageSpecification(groupKey, fieldPathExpr));
-                } else {
-                    var groupKey = "k" + i;
-                    var expr = acceptAndYieldExpression(groupByClauseExpression);
-                    groupKeyVN.put(expr.valueNumber(vnRegistry), groupKey);
-                    specifications.add(new AstGroupStageSpecification(groupKey, expr));
-                }
+        var ctx = new GroupByContext();
+        groupByContext = ctx;
+        List<AstGroupStageSpecification> specs = new ArrayList<>();
+        var groupByExpressions = querySpec.getGroupByClauseExpressions();
+        for (int i = 0; i < groupByExpressions.size(); i++) {
+            var groupByClauseExpression = groupByExpressions.get(i);
+            if (groupByClauseExpression.getColumnReference() != null) {
+                var columnReference = groupByClauseExpression.getColumnReference();
+                var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
+                var groupKey = fieldPath.replace('.', '#');
+                var fieldPathExpr = new AstFieldPathExpression(fieldPath);
+                ctx.registeredGroupKeyByVN.put(fieldPathExpr.valueNumber(ctx.vnRegistry), groupKey);
+                specs.add(new AstGroupStageSpecification(groupKey, fieldPathExpr));
+            } else {
+                var groupKey = "k" + i;
+                var expr = acceptAndYieldExpression(groupByClauseExpression);
+                ctx.registeredGroupKeyByVN.put(expr.valueNumber(ctx.vnRegistry), groupKey);
+                specs.add(new AstGroupStageSpecification(groupKey, expr));
             }
-            return Optional.of(new AstGroupStage(specifications));
-        } finally {
-            groupByContext.finishPopulating();
         }
+        return Optional.of(new AstGroupStage(specs));
     }
 
-    private Optional<AstMatchStage> createMatchStage(Predicate whereClauseRestrictions) {
-        if (whereClauseRestrictions != null && !whereClauseRestrictions.isEmpty()) {
-            var filter = acceptAndYield(whereClauseRestrictions, FILTER);
+    private Optional<AstMatchStage> createMatchStage(@Nullable Predicate restrictions) {
+        if (restrictions != null && !restrictions.isEmpty()) {
+            var filter = acceptAndYield(restrictions, FILTER);
             return Optional.of(new AstMatchStage(filter));
-        } else {
-            return Optional.empty();
         }
+        return Optional.empty();
     }
 
     private Optional<AstSortStage> createSortStage(QuerySpec querySpec) {

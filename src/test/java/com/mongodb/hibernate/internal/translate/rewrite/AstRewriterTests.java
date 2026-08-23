@@ -17,7 +17,9 @@
 package com.mongodb.hibernate.internal.translate.rewrite;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
@@ -91,16 +93,15 @@ class AstRewriterTests {
     }
 
     @Test
-    void noMatchReturnsUnchanged() {
+    void noMatchThrows() {
         var vn = new VNRegistry();
         var groupKeyVN = new HashMap<Integer, String>();
         groupKeyVN.put(y().valueNumber(vn), "y");
 
         var rewriter = new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
         var input = add(x(), lit(1));
-        var output = rewriter.rewrite(input);
 
-        assertThat(output).isEqualTo(input);
+        assertThatExceptionOfType(FeatureNotSupportedException.class).isThrownBy(() -> rewriter.rewrite(input));
     }
 
     @Test

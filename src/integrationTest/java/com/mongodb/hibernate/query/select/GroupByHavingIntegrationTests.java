@@ -18,6 +18,7 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.query.select.GroupByHavingIntegrationTests.Item.COLLECTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -33,12 +34,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.hibernate.annotations.Struct;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(MongoExtension.class)
 @DomainModel(
@@ -47,7 +52,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests {
 
     @InjectMongoCollection(COLLECTION_NAME)
-    private static MongoCollection mongoCollection;
+    private MongoCollection mongoCollection;
 
     @Entity(name = "Item")
     static class Item {
@@ -103,7 +108,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         new Item(7, 3, "c", true, new ItemStruct(3)),
                         new Item(8, 4, "c", false, new ItemStruct(4)))
                 .forEach(session::persist));
-        commandHistory.clear();
     }
 
     @Test
@@ -261,7 +265,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 TESTING_ITEMS.stream().map(itemA -> itemA.itemB).forEach(session::persist);
                 TESTING_ITEMS.forEach(session::persist);
             });
-            commandHistory.clear();
         }
 
         @Test
@@ -276,7 +279,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -320,7 +323,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -364,7 +367,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -413,7 +416,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -462,7 +465,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -517,7 +520,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$lookup": {
                             "from": "ItemB",
-                            "localField": "id",
+                            "localField": "itemBId",
                             "foreignField": "_id",
                             "as": "#ib1_0"
                           }
@@ -573,7 +576,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
             int id;
 
             @ManyToOne(fetch = FetchType.LAZY)
-            @JoinColumn(name = "id")
+            @JoinColumn(name = "itemBId")
             ManyToOneJoin.ItemB itemB;
 
             ItemA() {}
@@ -614,7 +617,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                                 new Item(4, 4, "d", false, new ItemStruct(4)))
                         .forEach(session::persist);
             });
-            commandHistory.clear();
         }
 
         @Test
@@ -733,35 +735,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     Set.of(COLLECTION_NAME));
         }
 
-        // Documents current (unfixed) behavior for a stray column: b.primitiveInt appears in SELECT
-        // but not in GROUP BY. The rewriter has no VN match for the raw column ref, so the project
-        // spec is emitted as raw {primitiveInt: true} which references a field absent post-$group.
-        // Stray-column detection is deferred; this test locks in the current output so future work
-        // that fixes it will surface here.
-        @Test
-        void selectExpressionAndStrayColumn_currentBehavior() {
-            assertSelectionQuery(
-                    "select b.primitiveInt + 1, b.primitiveInt from Item as b GROUP BY b.primitiveInt + 1",
-                    Object[].class,
-                    """
-                    {
-                      "aggregate": "Item",
-                      "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "primitiveInt": true}}
-                      ]
-                    }
-                    """,
-                    results -> assertThat((Iterable<Object[]>) results)
-                            .extracting(row -> java.util.Arrays.asList(row[0], row[1]))
-                            .containsExactlyInAnyOrder(
-                                    java.util.Arrays.asList(2, null),
-                                    java.util.Arrays.asList(3, null),
-                                    java.util.Arrays.asList(4, null),
-                                    java.util.Arrays.asList(5, null)),
-                    Set.of(COLLECTION_NAME));
-        }
-
         @Test
         void groupByArithmeticWithHaving() {
             assertSelectionQuery(
@@ -804,6 +777,266 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     }
                     """,
                     results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(3, 4),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // CASE in SELECT with a group-key column reference in the WHEN predicate. Verifies the
+        // rewriter descends into AstSwitchExpression (and the AstSwitchCase branches) and substitutes
+        // the raw $primitiveInt reference with $_id.primitiveInt.
+        @Test
+        void groupByColumnCaseInSelectSimplePredicate() {
+            assertSelectionQuery(
+                    "select case when b.primitiveInt > 2 then 1 else 0 end from Item as b GROUP BY b.primitiveInt",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
+                        {"$project": {"#c_1": {"$switch": {
+                          "branches": [{"case": {"$gt": ["$_id.primitiveInt", 2]}, "then": 1}],
+                          "default": 0
+                        }}}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(0, 0, 1, 1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // Compound AND inside a CASE WHEN predicate: the only current HQL shape that trips
+        // visitJunction's EXPRESSION branch and yields an AstLogicalOperatorExpression(AND, [...]).
+        // Verifies the rewriter descends into the logical-expression operands to substitute each
+        // group-key column reference.
+        @Test
+        void groupByColumnCaseInSelectCompoundAndPredicate() {
+            assertSelectionQuery(
+                    "select case when b.primitiveInt > 1 and b.primitiveInt < 4 then 1 else 0 end "
+                            + "from Item as b GROUP BY b.primitiveInt",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
+                        {"$project": {"#c_1": {"$switch": {
+                          "branches": [{"case": {"$and": [
+                            {"$gt": ["$_id.primitiveInt", 1]},
+                            {"$lt": ["$_id.primitiveInt", 4]}
+                          ]}, "then": 1}],
+                          "default": 0
+                        }}}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(0, 1, 1, 0),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // SELECT function(col) GROUP BY function(col): whole-match on a function-shaped key. The
+        // group key AST is an AstUnaryOperatorExpression($strLenCP, ...); the projection reduces
+        // to the sub-key path via the whole-match branch of the rewriter.
+        @Test
+        void groupByFunctionWholeMatch() {
+            assertSelectionQuery(
+                    "select character_length(b.string) from Item as b GROUP BY character_length(b.string)",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
+                        {"$project": {"#c_1": "$_id.k0"}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // SELECT function(col) + 1 GROUP BY function(col): the outer arithmetic wraps the grouped
+        // function. The rewriter must find the function inside the $add and substitute it with the
+        // sub-key path.
+        @Test
+        void groupByFunctionCompositeOverKey() {
+            assertSelectionQuery(
+                    "select character_length(b.string) + 1 from Item as b GROUP BY character_length(b.string)",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
+                        {"$project": {"#c_1": {"$add": ["$_id.k0", 1]}}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(2),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // SELECT function(function(col)) GROUP BY function(function(col)): nested-function whole-match.
+        // Verifies VN of a composed function-of-function expression matches between SELECT and GROUP BY.
+        @Test
+        void groupByNestedFunctionWholeMatch() {
+            assertSelectionQuery(
+                    "select upper(lower(b.string)) from Item as b GROUP BY upper(lower(b.string))",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$toUpper": {"$toLower": "$string"}}}}},
+                        {"$project": {"#c_1": "$_id.k0"}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<String>) results).containsExactlyInAnyOrder("A", "B", "C", "D"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // SELECT outer(inner(col)) GROUP BY inner(col): only the inner function is grouped; the outer
+        // wraps the grouped sub-key. Exercises the leaf-rewrite path where the rewriter descends into
+        // the outer function's argument to substitute the sub-key.
+        @Test
+        void groupByInnerFunctionLeafRewriteInOuter() {
+            assertSelectionQuery(
+                    "select upper(lower(b.string)) from Item as b GROUP BY lower(b.string)",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$toLower": "$string"}}}},
+                        {"$project": {"#c_1": {"$toUpper": "$_id.k0"}}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<String>) results).containsExactlyInAnyOrder("A", "B", "C", "D"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // Function-key referenced twice in SELECT: bare and inside arithmetic. Both references must
+        // canonicalize to the same sub-key ($_id.k0) — no duplicate function evaluation in $project.
+        @Test
+        void groupByFunctionKeyReferencedTwiceInSelect() {
+            assertSelectionQuery(
+                    "select character_length(b.string), character_length(b.string) + 1 "
+                            + "from Item as b GROUP BY character_length(b.string)",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
+                        {"$project": {"#c_1": "$_id.k0", "#c_2": {"$add": ["$_id.k0", 1]}}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .extracting(row -> List.of(row[0], row[1]))
+                            .containsExactlyInAnyOrder(List.of(1, 2)),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // Function key used in HAVING: exercises the full pipeline path — the HAVING predicate
+        // contains the same function-of-column shape as the group key, so the rewriter substitutes
+        // it and the downgrade rule collapses the resulting $expr to a direct $match.
+        @Test
+        void groupByFunctionKeyWithHaving() {
+            assertSelectionQuery(
+                    "select character_length(b.string) from Item as b "
+                            + "GROUP BY character_length(b.string) HAVING character_length(b.string) > 0",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
+                        {"$match": {"_id.k0": {"$gt": 0}}},
+                        {"$project": {"#c_1": "$_id.k0"}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // CASE WHEN over a function-key: the WHEN predicate's operand is a function-of-column call
+        // that matches the group key. The rewriter must descend AstSwitchExpression → AstSwitchCase
+        // → AstBinaryOperatorExpression to reach the function call and substitute it.
+        @Test
+        void groupByFunctionKeyCaseInSelect() {
+            assertSelectionQuery(
+                    "select case when character_length(b.string) > 0 then 1 else 0 end "
+                            + "from Item as b GROUP BY character_length(b.string)",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
+                        {"$project": {"#c_1": {"$switch": {
+                          "branches": [{"case": {"$gt": ["$_id.k0", 0]}, "then": 1}],
+                          "default": 0
+                        }}}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // Composite: a variadic function ($concat) fed to a unary function ($strLenCP) as the group
+        // key. Verifies VN memoization across an AstPositionalOperatorExpression argument list, and
+        // that the rewriter's descent into positional operator args works.
+        @Test
+        void groupByStrLenOfConcatWholeMatch() {
+            assertSelectionQuery(
+                    "select character_length(concat(b.string, b.string)) from Item as b "
+                            + "GROUP BY character_length(concat(b.string, b.string))",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$strLenCP": {"$concat": [
+                          {"$toString": "$string"},
+                          {"$toString": "$string"}
+                        ]}}}}},
+                        {"$project": {"#c_1": "$_id.k0"}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(2),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        // Mixed keys — a bare column and a function of a different column — both grouped and both
+        // referenced in SELECT. Verifies the rewriter distinguishes VNs correctly and substitutes
+        // each reference to its own sub-key.
+        @Test
+        void groupByMixedColumnAndFunctionKeys() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, upper(b.string) from Item as b "
+                            + "GROUP BY b.primitiveInt, upper(b.string)",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {
+                          "primitiveInt": "$primitiveInt",
+                          "k1": {"$toUpper": "$string"}
+                        }}},
+                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "#c_2": "$_id.k1"}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .extracting(row -> List.of(row[0], row[1]))
+                            .containsExactlyInAnyOrder(
+                                    List.of(1, "A"), List.of(2, "B"), List.of(3, "C"), List.of(4, "D")),
                     Set.of(COLLECTION_NAME));
         }
     }
@@ -925,5 +1158,42 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 """,
                 List.of(1, 2, 3, 4, 5, 6, 7, 8),
                 Set.of(COLLECTION_NAME));
+    }
+
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class StrayColumnDetection extends AbstractQueryIntegrationTests {
+
+        static Stream<Arguments> strayColumnQueries() {
+            return Stream.of(
+                    Arguments.of(
+                            "select b.primitiveInt + 1, b.primitiveInt from Item as b GROUP BY b.primitiveInt + 1",
+                            "primitiveInt"),
+                    Arguments.of("select b.string from Item as b GROUP BY b.primitiveInt", "string"),
+                    Arguments.of("select b.primitiveInt + b.id from Item as b GROUP BY b.primitiveInt", "_id"),
+                    Arguments.of(
+                            "select b.primitiveInt from Item as b GROUP BY b.primitiveInt HAVING b.string = 'a'",
+                            "string"),
+                    Arguments.of(
+                            "select b.primitiveInt from Item as b GROUP BY b.primitiveInt ORDER BY b.string", "string"),
+                    Arguments.of("select upper(b.string) from Item as b GROUP BY b.primitiveInt", "string"),
+                    Arguments.of(
+                            "select case when b.string = 'a' then 1 else 0 end from Item as b GROUP BY b.primitiveInt",
+                            "string"),
+                    Arguments.of(
+                            "select b.primitiveInt from Item as b GROUP BY character_length(b.string)", "primitiveInt"),
+                    Arguments.of("select b.primitiveInt, b.string from Item as b GROUP BY b.primitiveInt", "string"));
+        }
+
+        @ParameterizedTest
+        @MethodSource("strayColumnQueries")
+        void strayColumnIsRejected(String hql, String expectedStrayColumn) {
+            assertThatThrownBy(() -> getSessionFactoryScope()
+                            .inTransaction(session -> session.createSelectionQuery(hql, Object.class)
+                                    .getResultList()))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining(expectedStrayColumn)
+                    .hasMessageContaining("not a GROUP BY key");
+        }
     }
 }

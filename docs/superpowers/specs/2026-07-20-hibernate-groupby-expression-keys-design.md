@@ -784,12 +784,148 @@ identify for global value numbering with side-effecting operators.
   auto-generated `equals`/`hashCode` contract mandates structural
   equality over the record's components.
 
+## Stray column detection
+
+A *stray column* is a field reference in SELECT, HAVING, or ORDER BY that
+is neither a GROUP BY key nor inside an aggregate function. SQL rejects
+these; our translator must too.
+
+Detection is built into `GroupBySubstitutionRule` itself — no separate
+rule or pass needed. When `tryMatch` encounters an `AstFieldPathExpression`
+whose VN does not match any group key, it throws
+`FeatureNotSupportedException` with the offending column name. Same for
+`AstFieldOperationFilter`, `AstSortField`, and project specifications
+whose field paths have no VN match.
+
+This works because substitution and validation are the same question:
+"does this leaf's VN exist in `groupKeyVN`?" If yes, substitute; if no,
+it's a stray. The rewriter's top-down traversal ensures parent
+whole-matches short-circuit before children are checked — so a stray
+inside a successfully-matched subtree is never reached.
+
+Worked example — stray detection:
+
+```
+SELECT x + 1, y FROM t GROUP BY x + 1
+```
+
+- `x + 1`: VN matches group key → substituted to `$_id.k0`. Done; `x`
+  inside is never visited (top-down short-circuit).
+- `y`: `AstFieldPathExpression("y")`, VN not in `groupKeyVN` → throws
+  `"column 'y' appears in SELECT/HAVING/ORDER BY but is not a GROUP BY
+  key and is not inside an aggregate function"`.
+
+When accumulator support lands (SUM, AVG, etc.), the accumulator's output
+field name (`sum_0`, `avg_1`, etc.) will be a post-`$group` field — not a
+raw source field. These are `AstFieldPathExpression` nodes that the
+rewriter encounters. Two options to whitelist them:
+
+1. Accumulator names are generated during `$group` construction and added
+   to a `Set<String> accumulatorFields`. The rule checks membership
+   before throwing.
+2. Accumulator references are yielded as a distinct node type (e.g.
+   `AstAccumulatorRefExpression`) that the rule ignores.
+
+Option 1 is simpler; option 2 is more type-safe. Decide when implementing
+HIBERNATE-196.
+
+## Correlated subqueries and scope safety
+
+Correlated subqueries (when supported) will reference outer-scope columns
+inside their WHERE/HAVING/SELECT clauses. The `$let`-based translation
+converts correlated references to `AstVariableExpression("$$let_<var>")`
+— a different node type from `AstFieldPathExpression`.
+
+This naturally side-steps three potential problems:
+
+1. **State clobbering**: The recursive `visitQuerySpec` for the inner
+   subquery overwrites translator fields (`groupKeyVN`, `vnRegistry`,
+   `astRewriter`). Fix: push/pop a `GroupByScope` on entry/exit of
+   `visitQuerySpec`. The rewriter framework itself needs no change —
+   each scope's rewriter only walks that scope's stages.
+
+2. **Stray false positives**: The stray check fires on
+   `AstFieldPathExpression` only. `AstVariableExpression("$$let_b_x")`
+   is not a field path — it passes through the rule untouched. No
+   scope-stack lookup needed.
+
+3. **VN collision**: If the inner scope groups by a correlated ref
+   (`GROUP BY b.x`), the translated form is
+   `AstVariableExpression("$$let_b_x")`. Its VN is
+   `intern("Var", "$$let_b_x")` — distinct from the outer scope's
+   `intern("Column", "b", "x")`. No cross-scope VN collision.
+
+The only real implementation work for subquery support is scoping the
+translator's group-by fields via a stack — the rewriter, VN registry,
+and stray detection all compose correctly without modification.
+
+## Function and CASE expression key support
+
+### Function keys
+
+With CASE support (HIBERNATE-83) and function translation
+(`visitSelfRenderingExpression`) both merged, GROUP BY now supports
+function-shaped keys: `GROUP BY character_length(b.string)`,
+`GROUP BY upper(lower(b.string))`, `GROUP BY concat(b.x, b.y)`, etc.
+
+These work because `createGroupStage` accepts any `AstExpression` as a
+group key value — not just column paths — and `AstExpression.valueNumber()`
+is implemented on every expression variant. Function calls emit
+`AstUnaryOperatorExpression` (unary functions like `$toLower`),
+`AstPositionalOperatorExpression` (variadic functions like `$concat`),
+or `AstNamedOperatorExpression` (named-arg functions like `$replaceAll`).
+All have `valueNumber()` implementations.
+
+Verified shapes:
+
+| HQL | Group key MQL | Rewriter behavior |
+|-----|--------------|-------------------|
+| `GROUP BY character_length(b.string)` | `{$strLenCP: "$string"}` | Whole-match in SELECT/HAVING |
+| `SELECT f(col) + 1 ... GROUP BY f(col)` | `{$strLenCP: "$string"}` | Leaf-rewrite inside `$add` |
+| `GROUP BY upper(lower(b.string))` | `{$toUpper: {$toLower: "$string"}}` | Nested whole-match |
+| `SELECT outer(inner(col)) ... GROUP BY inner(col)` | `{$toLower: "$string"}` | Leaf-rewrite inside outer |
+| `GROUP BY b.primitiveInt, upper(b.string)` | Mixed column + function keys | Each sub-key distinct |
+
+### CASE keys
+
+CASE expressions (`visitCaseSearchedExpression`, `visitCaseSimpleExpression`)
+translate to `AstSwitchExpression` with `AstSwitchCase` branches. The
+rewriter descends into `AstSwitchExpression` to substitute group-key
+references inside WHEN predicates and THEN/ELSE values.
+
+Critically, CASE is the **only** current HQL shape that reaches
+`visitJunction`'s EXPRESSION branch (as opposed to FILTER). A compound
+predicate inside `CASE WHEN x > 1 AND x < 4 THEN ...` builds an
+`AstLogicalOperatorExpression(AND, [...])` — the rewriter walks its
+operands to substitute each group-key column reference.
+
+### Rewriter descent coverage
+
+The `AstRewriter.descendExpression` method covers all non-leaf
+`AstExpression` variants:
+
+| Node type | Descent behavior |
+|-----------|-----------------|
+| `AstBinaryOperatorExpression` | Recurse left and right |
+| `AstUnaryOperatorExpression` | Recurse operand |
+| `AstLogicalOperatorExpression` | Recurse all operands |
+| `AstInExpression` | Recurse value and all options |
+| `AstRegexMatchExpression` | Recurse input |
+| `AstSwitchExpression` | Recurse each branch's case + then, and default |
+| `AstLetBindingExpression` | Recurse `in` and all var bindings |
+| `AstNamedOperatorExpression` | Recurse all named arguments |
+| `AstPositionalOperatorExpression` | Recurse all positional arguments |
+
+Leaf types (`AstFieldPathExpression`, `AstLiteralExpression`,
+`AstValueExpression`, `AstVariableExpression`) are returned as-is.
+
 ## Open questions
 
 - **Sub-key name collisions between column keys (`address#city`) and
   positional keys (`k0`)**: append `_<i>` on collision. Vanishingly rare.
 - **Nested subqueries**: out of scope — already throws at
-  `visitSelectStatement` line 505.
+  `visitSelectStatement` line 505. Scoping via `GroupByScope` stack is
+  the planned approach (see correlated subquery section).
 
 ## Follow-up tickets
 
@@ -798,3 +934,7 @@ identify for global value numbering with side-effecting operators.
 - **Sub-ticket B**: expression-key support (this document).
 - **Sub-ticket C** (HIBERNATE-196 dependency): function keys once
   `visitSelfRenderingExpression` yields into EXPRESSION mode.
+- **Sub-ticket D**: accumulator support (SUM, AVG, etc.) — extends stray
+  detection whitelist and `$group` field generation.
+- **Sub-ticket E**: correlated subquery GROUP BY — push/pop `GroupByScope`
+  in `visitQuerySpec`.
