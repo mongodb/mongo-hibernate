@@ -19,17 +19,44 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
+import org.jspecify.annotations.Nullable;
 
 /**
+ * @param parameterId {@link org.hibernate.sql.ast.tree.expression.JdbcParameter#getParameterId()} of the parameter this
+ *     marker stands for, or {@code null} where Hibernate supplies none.
  * @see org.hibernate.cfg.AvailableSettings#DIALECT_NATIVE_PARAM_MARKERS
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public record AstParameterMarker(JdbcParameterBinder binder) implements AstValue {
+public record AstParameterMarker(
+        JdbcParameterBinder binder, @Nullable Integer parameterId) implements AstValue {
 
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeUndefined();
         binderConsumer.accept(binder);
+    }
+
+    /**
+     * Two markers stand for the same query parameter when Hibernate assigned them the same parameter id: one query
+     * parameter occurring in several clauses yields a separate {@code JdbcParameter} node, with its own binder, per
+     * occurrence. Where an id is absent, distinct parameters must not be conflated, so those markers compare by binder
+     * identity.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof AstParameterMarker other)) {
+            return false;
+        }
+        if (parameterId == null || other.parameterId == null) {
+            return parameterId == null && other.parameterId == null && binder == other.binder;
+        } else {
+            return parameterId.equals(other.parameterId);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return parameterId != null ? parameterId.hashCode() : System.identityHashCode(binder);
     }
 }

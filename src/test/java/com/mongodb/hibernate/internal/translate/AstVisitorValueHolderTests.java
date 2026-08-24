@@ -58,7 +58,7 @@ class AstVisitorValueHolderTests {
 
         Runnable tableInserter = () -> {
             Runnable fieldValueYielder = () -> {
-                astVisitorValueHolder.yield(VALUE, new AstParameterMarker(JdbcParameterBinder.NOOP));
+                astVisitorValueHolder.yield(VALUE, new AstParameterMarker(JdbcParameterBinder.NOOP, null));
             };
             var fieldValue = astVisitorValueHolder.execute(VALUE, fieldValueYielder);
             AstElement astElement = new AstElement("province", fieldValue);

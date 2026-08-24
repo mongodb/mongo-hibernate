@@ -34,7 +34,7 @@ class AstAllFilterOperationTests {
                 () -> assertRendering(
                         """
                         {"$all": ?}""",
-                        new AstAllFilterOperation(new AstParameterMarker(JdbcParameterBinder.NOOP))),
+                        new AstAllFilterOperation(new AstParameterMarker(JdbcParameterBinder.NOOP, null))),
                 () -> assertRendering(
                         """
                         {"$all": [null]}""",
