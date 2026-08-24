@@ -47,9 +47,39 @@ class QueryLiteralIntegrationTests extends AbstractQueryIntegrationTests {
     @BeforeEach
     void beforeEach() {
         getSessionFactoryScope().inTransaction(session -> {
-            session.persist(new Item(1));
-            session.persist(new Item(2));
+            session.persist(matchingItem());
+            session.persist(nonMatchingItem());
         });
+    }
+
+    private static Item matchingItem() {
+        var item = new Item();
+        item.id = 1;
+        item.stringValue = QueryLiteralConstants.STRING;
+        item.characterValue = QueryLiteralConstants.CHARACTER;
+        item.intValue = QueryLiteralConstants.INT;
+        item.longValue = QueryLiteralConstants.LONG;
+        item.doubleValue = QueryLiteralConstants.DOUBLE;
+        item.booleanValue = QueryLiteralConstants.BOOLEAN;
+        item.bigDecimalValue = QueryLiteralConstants.BIG_DECIMAL;
+        item.objectIdValue = QueryLiteralConstants.OBJECT_ID;
+        item.instantValue = QueryLiteralConstants.INSTANT;
+        return item;
+    }
+
+    private static Item nonMatchingItem() {
+        var item = new Item();
+        item.id = 2;
+        item.stringValue = "Anna Karenina";
+        item.characterValue = 'z';
+        item.intValue = -1;
+        item.longValue = -1L;
+        item.doubleValue = -1.5;
+        item.booleanValue = false;
+        item.bigDecimalValue = new BigDecimal("-1.25");
+        item.objectIdValue = new ObjectId("000000000000000000000002");
+        item.instantValue = Instant.parse("1999-01-04T10:05:01Z");
+        return item;
     }
 
     private static Stream<Arguments> literals() {
@@ -113,20 +143,5 @@ class QueryLiteralIntegrationTests extends AbstractQueryIntegrationTests {
         Instant instantValue;
 
         Item() {}
-
-        /** Item 1 holds every constant's value; item 2 holds values none of the constants match. */
-        Item(int id) {
-            this.id = id;
-            var matching = id == 1;
-            this.stringValue = matching ? QueryLiteralConstants.STRING : "Anna Karenina";
-            this.characterValue = matching ? QueryLiteralConstants.CHARACTER : 'z';
-            this.intValue = matching ? QueryLiteralConstants.INT : -1;
-            this.longValue = matching ? QueryLiteralConstants.LONG : -1L;
-            this.doubleValue = matching ? QueryLiteralConstants.DOUBLE : -1.5;
-            this.booleanValue = matching ? QueryLiteralConstants.BOOLEAN : !QueryLiteralConstants.BOOLEAN;
-            this.bigDecimalValue = matching ? QueryLiteralConstants.BIG_DECIMAL : new BigDecimal("-1.25");
-            this.objectIdValue = matching ? QueryLiteralConstants.OBJECT_ID : new ObjectId("000000000000000000000002");
-            this.instantValue = matching ? QueryLiteralConstants.INSTANT : Instant.parse("1999-01-04T10:05:01Z");
-        }
     }
 }
