@@ -365,7 +365,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
     void testExtractWeekOfYear() {
         assertQueryResult(
                 "select extract(week of year from before) from Item",
-                ITEM.before.atZone(ZoneId.systemDefault()).get(ChronoField.ALIGNED_WEEK_OF_YEAR),
+                sundayBasedWeek(ITEM.before.atZone(ZoneId.systemDefault()).getDayOfYear()),
                 """
                 {
                   "aggregate": "items",
@@ -373,11 +373,38 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "$project": {
                         "#c_1": {
-                          "$isoWeek": {
-                            "date": "$before",
-                            "timezone": {
-                              "$literal": "%1$s"
-                            }
+                          "$let": {
+                            "in": {
+                              "$add": [
+                                {
+                                  "$toInt": {
+                                    "$ceil": {
+                                      "$divide": [
+                                        {
+                                          "$subtract": [
+                                            {
+                                              "$dayOfYear": {
+                                                "date": "$$time",
+                                                "timezone": { "$literal": "%1$s" }
+                                              }
+                                            },
+                                            {
+                                              "$dayOfWeek": {
+                                                "date": "$$time",
+                                                "timezone": { "$literal": "%1$s" }
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        { "$literal": 7 }
+                                      ]
+                                    }
+                                  }
+                                },
+                                { "$literal": 1 }
+                              ]
+                            },
+                            "vars": { "time": "$before" }
                           }
                         }
                       }
@@ -388,12 +415,20 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                         .formatted(ZoneId.systemDefault().getId()));
     }
 
+    /**
+     * Hibernate defines both Sunday-based week units as {@code ceiling((dayOfPeriod - dayOfWeek)/7.0 + 1)}, with Sunday
+     * as day one.
+     */
+    private static int sundayBasedWeek(int dayOfPeriod) {
+        var isoDayOfWeek = ITEM.before.atZone(ZoneId.systemDefault()).get(ChronoField.DAY_OF_WEEK);
+        return (int) Math.ceil((dayOfPeriod - ((isoDayOfWeek % 7) + 1)) / 7.0 + 1);
+    }
+
     @Test
     void testExtractWeek() {
-        // Java uses 1-based weeks while Mongo uses 0-based.
         assertQueryResult(
                 "select extract(week from before) from Item",
-                ITEM.before.atZone(ZoneId.systemDefault()).get(ChronoField.ALIGNED_WEEK_OF_YEAR) - 1,
+                ITEM.before.atZone(ZoneId.systemDefault()).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR),
                 """
                 {
                   "aggregate": "items",
@@ -401,7 +436,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                     {
                       "$project": {
                         "#c_1": {
-                          "$week": {
+                          "$isoWeek": {
                             "date": "$before",
                             "timezone": {
                               "$literal": "%1$s"

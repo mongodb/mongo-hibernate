@@ -16,7 +16,8 @@
 
 package com.mongodb.hibernate.internal.dialect.function;
 
-import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.divideAndSomethingAsInt;
+import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.addOne;
+import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.ceilingDivideAsInt;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL_UNIT;
@@ -25,6 +26,7 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.AbstractMqlTranslator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLetBindingExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
@@ -193,7 +195,7 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                 new TreeMap<>(Map.of("time", input)));
                     case NATIVE -> new AstUnaryOperatorExpression("$toDate", input);
                     case QUARTER ->
-                        divideAndSomethingAsInt(
+                        ceilingDivideAsInt(
                                 new AstNamedOperatorExpression(
                                         "$month",
                                         new TreeMap<>(Map.of(
@@ -202,8 +204,7 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                 "timezone",
                                                 new AstLiteralExpression(new AstLiteral(new BsonString(
                                                         ZoneId.systemDefault().getId())))))),
-                                3,
-                                "$ceil");
+                                3);
                     case SECOND ->
                         new AstLetBindingExpression(
                                 new AstBinaryOperatorExpression(
@@ -215,18 +216,10 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                         "$millisecond", new AstVariableExpression("time")),
                                                 new AstLiteralExpression(new AstLiteral(new BsonInt32(1000))))),
                                 new TreeMap<>(Map.of("time", input)));
-                    case WEEK_OF_YEAR ->
-                        new AstNamedOperatorExpression(
-                                "$isoWeek",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
+                    case WEEK_OF_YEAR -> weekOfYear(input);
                     case WEEK ->
                         new AstNamedOperatorExpression(
-                                "$week",
+                                "$isoWeek",
                                 new TreeMap<>(Map.of(
                                         "date",
                                         input,
@@ -275,6 +268,36 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                 ZoneId.systemDefault().getId()))))));
                     default -> throw new FeatureNotSupportedException("Time unit %s not supported".formatted(unit));
                 });
-        ;
+    }
+
+    /**
+     * Hibernate defines {@link org.hibernate.query.common.TemporalUnit#WEEK_OF_YEAR} as a 1-origin count whose weeks
+     * start on Sunday, which {@code ExtractFunction} computes as {@code ceiling((dayOfYear - dayOfWeek)/7.0 + 1)} with
+     * Sunday as day one. MongoDB's {@code $week} is a different definition, 0-origin and without a week-year, and no
+     * constant adjustment relates the two: {@code $week + 1} agrees with the rule except in a year that begins on a
+     * Sunday, where {@code $week} has no week 0 and so already starts at 1. Transliterating the rule avoids that
+     * special case.
+     */
+    private static AstExpression weekOfYear(AstExpression input) {
+        var time = new AstVariableExpression("time");
+        return new AstLetBindingExpression(
+                addOne(ceilingDivideAsInt(
+                        new AstBinaryOperatorExpression(
+                                AstArithmeticExpressionOperator.SUBTRACT,
+                                dateOperator("$dayOfYear", time),
+                                dateOperator("$dayOfWeek", time)),
+                        7)),
+                new TreeMap<>(Map.of("time", input)));
+    }
+
+    private static AstExpression dateOperator(String operator, AstExpression date) {
+        return new AstNamedOperatorExpression(
+                operator,
+                new TreeMap<>(Map.of(
+                        "date",
+                        date,
+                        "timezone",
+                        new AstLiteralExpression(new AstLiteral(
+                                new BsonString(ZoneId.systemDefault().getId()))))));
     }
 }

@@ -69,18 +69,16 @@ public abstract sealed class FunctionParameterDefinition<N>
     }
 
     /**
-     * Utility function that divides a value and applies another operation after and converts the result to an integer
+     * Divides a value, rounds the quotient up, and returns it as an integer.
      *
      * @param input the value to divide
-     * @param divisor the divisor to use in the calculation
-     * @param operator the operator to apply after division (typically, <code>$floor</code> or <code>$ceil</code>
-     * @return a function that will apply the additional operations to the tree provided
+     * @param divisor the divisor
      */
-    public static AstExpression divideAndSomethingAsInt(AstExpression input, int divisor, String operator) {
+    public static AstExpression ceilingDivideAsInt(AstExpression input, int divisor) {
         return new AstUnaryOperatorExpression(
                 "$toInt",
                 new AstUnaryOperatorExpression(
-                        operator,
+                        "$ceil",
                         new AstBinaryOperatorExpression(
                                 AstArithmeticExpressionOperator.DIVIDE,
                                 input,
