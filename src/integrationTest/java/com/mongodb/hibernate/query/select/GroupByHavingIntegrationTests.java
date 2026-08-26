@@ -593,6 +593,15 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
     class Unsupported extends AbstractQueryIntegrationTests {
 
         @Test
+        void orderByAnExpressionKeyThrows() {
+            assertSelectQueryFailure(
+                    "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1 ORDER BY b.primitiveInt + 1",
+                    Object.class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251");
+        }
+
+        @Test
         void selectDistinctWithGroupByThrows() {
             assertSelectQueryFailure(
                     "select DISTINCT b.primitiveInt from Item as b GROUP BY b.primitiveInt",

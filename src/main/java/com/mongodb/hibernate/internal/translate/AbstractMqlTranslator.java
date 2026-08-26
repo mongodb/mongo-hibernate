@@ -1146,7 +1146,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private AstSortField createAstSortField(Expression sortExpression, AstSortOrder astSortOrder) {
         if (!isFieldPathExpression(sortExpression)) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
+            // Under a GROUP BY, an expression $group has already computed is orderable in principle; with no GROUP BY
+            // nothing has computed it, which is the wider problem.
+            throw new FeatureNotSupportedException(
+                    groupByContext != null
+                            ? "TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251"
+                            : "TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
         }
         var fieldPath = acceptAndYield(sortExpression, FIELD_PATH);
         return new AstSortField(fieldPath, astSortOrder);
