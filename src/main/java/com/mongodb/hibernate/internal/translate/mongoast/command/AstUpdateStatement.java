@@ -28,26 +28,18 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  *
  * @hidden
  */
-public class AstUpdateStatement implements AstNode {
-    private final AstFilter filter;
-    private final AstUpdate update;
-    private final boolean upsert;
-    private final boolean multi;
+@SuppressWarnings("MissingSummary")
+public record AstUpdateStatement(AstFilter filter, AstUpdate update, Kind kind) implements AstNode {
 
-    public static AstUpdateStatement createUpsertStatement(AstFilter filter, AstUpdate update) {
-        return new AstUpdateStatement(filter, update, true, false);
-    }
-
-    public static AstUpdateStatement createMultiUpdateStatement(AstFilter filter, AstUpdate update) {
-        return new AstUpdateStatement(filter, update, false, true);
-    }
-
-    private AstUpdateStatement(
-            final AstFilter filter, final AstUpdate update, final boolean upsert, final boolean multi) {
-        this.filter = filter;
-        this.update = update;
-        this.upsert = upsert;
-        this.multi = multi;
+    /**
+     * How many documents the statement applies to, and whether it inserts when none match. The {@code update} command
+     * carries these as separate {@code upsert} and {@code multi} flags, but only one at a time is ever set.
+     */
+    public enum Kind {
+        /** Updates the single matching document, inserting it when there is none. */
+        UPSERT,
+        /** Updates every matching document, inserting nothing. */
+        MULTI
     }
 
     @Override
@@ -58,10 +50,10 @@ public class AstUpdateStatement implements AstNode {
             filter.render(writer, binderConsumer);
             writer.writeName("u");
             update.render(writer, binderConsumer);
-            if (upsert) {
+            if (kind == Kind.UPSERT) {
                 writer.writeBoolean("upsert", true);
             }
-            writer.writeBoolean("multi", multi);
+            writer.writeBoolean("multi", kind == Kind.MULTI);
         }
         writer.writeEndDocument();
     }

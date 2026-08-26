@@ -39,8 +39,8 @@ import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.VALUE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.FALSE;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstLiteral.TRUE;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.createMultiUpdateStatement;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.createUpsertStatement;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.MULTI;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.UPSERT;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.DESC;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
@@ -93,6 +93,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
@@ -1185,7 +1186,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
-                        new AstUpdateCommand(collection, List.of(createMultiUpdateStatement(filter, update))),
+                        new AstUpdateCommand(collection, List.of(new AstUpdateStatement(filter, update, MULTI))),
                         affectedTableNames));
     }
 
@@ -1305,8 +1306,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             final List<ColumnValueBinding> valueBindings, final String tableName, final AstFilter keyFilter) {
         return new AstUpdateCommand(
                 tableName,
-                List.of(createMultiUpdateStatement(
-                        keyFilter, new AstDocumentUpdate(createFieldUpdates(valueBindings)))));
+                List.of(new AstUpdateStatement(
+                        keyFilter, new AstDocumentUpdate(createFieldUpdates(valueBindings)), MULTI)));
     }
 
     @Override
@@ -2023,7 +2024,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                     createUpsertFieldUpdates(setOnInsertBindings, aggregates, mutatingTable));
             var command = new AstUpdateCommand(
                     optionalTableUpdate.getMutatingTable().getTableName(),
-                    List.of(createUpsertStatement(keyFilter, update)));
+                    List.of(new AstUpdateStatement(keyFilter, update, UPSERT)));
             astVisitorValueHolder.yield(
                     UPSERT_MODEL_MUTATION_RESULT, ModelMutationMqlTranslator.Result.create(command));
         } else {

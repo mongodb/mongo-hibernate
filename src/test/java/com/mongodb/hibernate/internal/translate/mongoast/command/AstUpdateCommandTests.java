@@ -17,7 +17,8 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
-import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.createUpsertStatement;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.MULTI;
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.UPSERT;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
@@ -51,8 +52,8 @@ class AstUpdateCommandTests {
 
         var updateCommand = new AstUpdateCommand(
                 collection,
-                List.of(AstUpdateStatement.createMultiUpdateStatement(
-                        filter, new AstDocumentUpdate(List.of(astFieldUpdate1, astFieldUpdate2)))));
+                List.of(new AstUpdateStatement(
+                        filter, new AstDocumentUpdate(List.of(astFieldUpdate1, astFieldUpdate2)), MULTI)));
 
         var expectedJson =
                 """
@@ -73,9 +74,7 @@ class AstUpdateCommandTests {
                         new AstFieldPathExpression("publishYear"),
                         new AstValueExpression(new AstLiteral(new BsonInt32(1)))));
         var updateCommand = new AstUpdateCommand(
-                "books",
-                List.of(AstUpdateStatement.createMultiUpdateStatement(
-                        filter, new AstPipelineUpdate(List.of(computed)))));
+                "books", List.of(new AstUpdateStatement(filter, new AstPipelineUpdate(List.of(computed)), MULTI)));
 
         var expectedJson =
                 """
@@ -90,7 +89,7 @@ class AstUpdateCommandTests {
                 "_id",
                 new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1))));
         var update = new AstDocumentUpdate(List.of(new AstFieldUpdate("v", new AstLiteral(new BsonInt32(10)))));
-        var updateCommand = new AstUpdateCommand("items", List.of(createUpsertStatement(filter, update)));
+        var updateCommand = new AstUpdateCommand("items", List.of(new AstUpdateStatement(filter, update, UPSERT)));
 
         var expectedJson =
                 """
@@ -107,7 +106,7 @@ class AstUpdateCommandTests {
         var update = new AstDocumentUpdate(
                 List.of(new AstFieldUpdate("label", new AstLiteral(new BsonString("a")))),
                 List.of(new AstFieldUpdate("createdBy", new AstLiteral(new BsonString("jeff")))));
-        var updateCommand = new AstUpdateCommand("items", List.of(createUpsertStatement(filter, update)));
+        var updateCommand = new AstUpdateCommand("items", List.of(new AstUpdateStatement(filter, update, UPSERT)));
 
         var expectedJson =
                 """
