@@ -121,6 +121,13 @@ class ExprToMatchDowngradeRuleTests {
     }
 
     @Test
+    void doesNotFireOnAnExprFilterWrappingSomethingOtherThanAComparison() {
+        // {$expr: "$x"} — no operator to downgrade, so the filter has to stay as it is.
+        assertThat(new ExprToMatchDowngradeRule().tryMatch(new AstExprFilter(field("x"))))
+                .isNull();
+    }
+
+    @Test
     void doesNotDowngradeArithmeticOperator() {
         // {$expr: {$add: [x, 1]}} — not a comparison; can't be a match filter regardless.
         var rule = new ExprToMatchDowngradeRule();

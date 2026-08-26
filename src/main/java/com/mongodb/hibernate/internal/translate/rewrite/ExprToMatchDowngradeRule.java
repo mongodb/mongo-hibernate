@@ -16,6 +16,8 @@
 
 package com.mongodb.hibernate.internal.translate.rewrite;
 
+import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
+
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
@@ -79,11 +81,10 @@ public final class ExprToMatchDowngradeRule implements RewriteRule {
         if (bin.right() instanceof AstFieldPathExpression fpRight) {
             AstValue value = asValue(bin.left());
             if (value != null) {
-                AstComparisonFilterOperator flipped = FLIPPED.get(op);
-                if (flipped != null) {
-                    return new AstFieldOperationFilter(
-                            fpRight.fieldPath(), new AstComparisonFilterOperation(flipped, value));
-                }
+                // Every operator NAME_TO_FILTER_OP yields has a FLIPPED entry. Without this, one added to the first
+                // and not the second would quietly decline to downgrade, emitting $expr where the compact form fits.
+                return new AstFieldOperationFilter(
+                        fpRight.fieldPath(), new AstComparisonFilterOperation(assertNotNull(FLIPPED.get(op)), value));
             }
         }
         return null;
