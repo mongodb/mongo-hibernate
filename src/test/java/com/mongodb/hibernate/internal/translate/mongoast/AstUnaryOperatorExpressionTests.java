@@ -60,7 +60,7 @@ class AstUnaryOperatorExpressionTests {
     void testStructuralKey() {
         assertStructuralKey(
                 new AstUnaryOperatorExpression("$not", new AstFieldPathExpression("a")),
-                new StructuralKey("Unary", List.of("$not", new AstFieldPathExpression("a"))),
+                new StructuralKey("UnaryOperator", List.of("$not", new AstFieldPathExpression("a"))),
                 new AstUnaryOperatorExpression("$abs", new AstFieldPathExpression("a")),
                 new AstUnaryOperatorExpression("$not", new AstFieldPathExpression("b")));
     }

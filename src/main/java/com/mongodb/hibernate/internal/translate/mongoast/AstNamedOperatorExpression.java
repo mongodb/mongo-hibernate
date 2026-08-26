@@ -34,7 +34,7 @@ public record AstNamedOperatorExpression(String operator, SortedMap<String, AstE
 
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("NamedOp", List.of(operator, arguments));
+        return new StructuralKey("NamedOperator", List.of(operator, arguments));
     }
 
     @Override

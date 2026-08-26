@@ -27,7 +27,7 @@ public record AstLogicalOperatorExpression(AstLogicalOperator operator, List<? e
         implements AstExpression {
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("Logical", List.of(operator, operands));
+        return new StructuralKey("LogicalOperator", List.of(operator, operands));
     }
 
     @Override

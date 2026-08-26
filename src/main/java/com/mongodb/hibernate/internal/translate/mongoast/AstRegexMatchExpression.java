@@ -26,7 +26,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 public record AstRegexMatchExpression(AstExpression input, String regex, String options) implements AstExpression {
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("Regex", List.of(input, regex, options));
+        return new StructuralKey("RegexMatch", List.of(input, regex, options));
     }
 
     @Override

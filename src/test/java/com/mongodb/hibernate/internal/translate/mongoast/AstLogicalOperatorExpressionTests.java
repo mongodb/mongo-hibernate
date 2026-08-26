@@ -72,7 +72,7 @@ class AstLogicalOperatorExpressionTests {
     void testStructuralKey() {
         assertStructuralKey(
                 new AstLogicalOperatorExpression(AND, List.of(new AstFieldPathExpression("a"))),
-                new StructuralKey("Logical", List.of(AND, List.of(new AstFieldPathExpression("a")))),
+                new StructuralKey("LogicalOperator", List.of(AND, List.of(new AstFieldPathExpression("a")))),
                 new AstLogicalOperatorExpression(OR, List.of(new AstFieldPathExpression("a"))),
                 new AstLogicalOperatorExpression(AND, List.of(new AstFieldPathExpression("b"))),
                 new AstLogicalOperatorExpression(

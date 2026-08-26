@@ -49,7 +49,7 @@ class AstNamedOperatorExpressionTests {
         assertStructuralKey(
                 new AstNamedOperatorExpression(
                         "$op", new TreeMap<>(Map.of("k", (AstExpression) new AstFieldPathExpression("a")))),
-                new StructuralKey("NamedOp", List.of("$op", new TreeMap<>(Map.of("k", (AstExpression)
+                new StructuralKey("NamedOperator", List.of("$op", new TreeMap<>(Map.of("k", (AstExpression)
                         new AstFieldPathExpression("a"))))),
                 new AstNamedOperatorExpression(
                         "$other", new TreeMap<>(Map.of("k", (AstExpression) new AstFieldPathExpression("a")))),

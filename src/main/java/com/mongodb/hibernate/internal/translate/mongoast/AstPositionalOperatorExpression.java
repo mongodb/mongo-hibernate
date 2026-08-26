@@ -31,7 +31,7 @@ public record AstPositionalOperatorExpression(String operator, List<AstExpressio
 
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("PosOp", List.of(operator, arguments));
+        return new StructuralKey("PositionalOperator", List.of(operator, arguments));
     }
 
     @Override

@@ -29,7 +29,7 @@ public record AstLetBindingExpression(AstExpression in, SortedMap<String, AstExp
 
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("Let", List.of(in, vars));
+        return new StructuralKey("LetBinding", List.of(in, vars));
     }
 
     @Override

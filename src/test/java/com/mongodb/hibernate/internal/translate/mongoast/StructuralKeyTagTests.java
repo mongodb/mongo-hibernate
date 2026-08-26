@@ -94,6 +94,17 @@ class StructuralKeyTagTests {
     }
 
     @Test
+    void everyTagIsTheKindOfExpressionItNames() {
+        // The tag exists to tell one kind of expression from another, so deriving it from the name keeps it saying so.
+        for (AstExpression expression : oneOfEachKind()) {
+            var name = expression.getClass().getSimpleName();
+            var expected = name.substring("Ast".length(), name.length() - "Expression".length());
+
+            assertThat(expression.structuralKey().tag()).isEqualTo(expected);
+        }
+    }
+
+    @Test
     void noTwoKindsShareATag() {
         var tags = oneOfEachKind().stream()
                 .map(expression -> expression.structuralKey().tag())

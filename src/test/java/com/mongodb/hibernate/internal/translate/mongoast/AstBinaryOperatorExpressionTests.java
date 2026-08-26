@@ -87,7 +87,8 @@ class AstBinaryOperatorExpressionTests {
         assertStructuralKey(
                 new AstBinaryOperatorExpression(ADD, new AstFieldPathExpression("a"), new AstFieldPathExpression("b")),
                 new StructuralKey(
-                        "Binary", List.of("$add", new AstFieldPathExpression("a"), new AstFieldPathExpression("b"))),
+                        "BinaryOperator",
+                        List.of("$add", new AstFieldPathExpression("a"), new AstFieldPathExpression("b"))),
                 new AstBinaryOperatorExpression(
                         MULTIPLY,
                         new AstFieldPathExpression("a"),

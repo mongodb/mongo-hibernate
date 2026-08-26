@@ -31,7 +31,7 @@ public record AstUnaryOperatorExpression(String operator, AstExpression operand)
 
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("Unary", List.of(operator, operand));
+        return new StructuralKey("UnaryOperator", List.of(operator, operand));
     }
 
     @Override

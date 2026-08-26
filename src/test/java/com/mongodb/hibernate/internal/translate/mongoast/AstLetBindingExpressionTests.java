@@ -53,7 +53,7 @@ class AstLetBindingExpressionTests {
                 new AstLetBindingExpression(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
                         new AstFieldPathExpression("b")))),
                 new StructuralKey(
-                        "Let", List.of(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
+                        "LetBinding", List.of(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
                                 new AstFieldPathExpression("b"))))),
                 new AstLetBindingExpression(new AstFieldPathExpression("b"), new TreeMap<>(Map.of("v", (AstExpression)
                         new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))))),

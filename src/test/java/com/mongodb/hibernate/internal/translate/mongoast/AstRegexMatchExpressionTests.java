@@ -44,7 +44,7 @@ class AstRegexMatchExpressionTests {
     void testStructuralKey() {
         assertStructuralKey(
                 new AstRegexMatchExpression(new AstFieldPathExpression("a"), "r", "i"),
-                new StructuralKey("Regex", List.of(new AstFieldPathExpression("a"), "r", "i")),
+                new StructuralKey("RegexMatch", List.of(new AstFieldPathExpression("a"), "r", "i")),
                 new AstRegexMatchExpression(new AstFieldPathExpression("b"), "r", "i"),
                 new AstRegexMatchExpression(new AstFieldPathExpression("a"), "s", "i"),
                 new AstRegexMatchExpression(new AstFieldPathExpression("a"), "r", "m"));

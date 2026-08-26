@@ -38,7 +38,7 @@ public record AstBinaryOperatorExpression(String operator, AstExpression left, A
 
     @Override
     public StructuralKey structuralKey() {
-        return new StructuralKey("Binary", List.of(operator, left, right));
+        return new StructuralKey("BinaryOperator", List.of(operator, left, right));
     }
 
     @Override
