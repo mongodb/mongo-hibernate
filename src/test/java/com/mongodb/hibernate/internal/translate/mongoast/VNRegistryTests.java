@@ -187,4 +187,45 @@ class VNRegistryTests {
                 .isThrownBy(() -> registry.valueNumber(node))
                 .withMessageContaining("AstSwitchCase");
     }
+
+    /** Captures, so each call yields a distinct binder: a non-capturing lambda may be shared by the JVM. */
+    private static JdbcParameterBinder binder() {
+        var distinct = new Object();
+        return (statement, startPosition, jdbcParameterBindings, executionContext) -> distinct.hashCode();
+    }
+
+    @Test
+    void oneQueryParameterHasOneNumberAcrossItsOccurrences() {
+        // Hibernate allocates a JdbcParameter, and so a binder, per occurrence, so a GROUP BY key would not match its
+        // occurrences in SELECT or HAVING if the binder reached the value number.
+        AstExpression inGroupBy = new AstValueExpression(new AstParameterMarker(binder(), 7));
+        AstExpression inSelect = new AstValueExpression(new AstParameterMarker(binder(), 7));
+
+        assertThat(registry.valueNumber(inGroupBy)).isEqualTo(registry.valueNumber(inSelect));
+    }
+
+    @Test
+    void distinctQueryParametersHaveDistinctNumbers() {
+        AstExpression one = new AstValueExpression(new AstParameterMarker(binder(), 7));
+        AstExpression another = new AstValueExpression(new AstParameterMarker(binder(), 8));
+
+        assertThat(registry.valueNumber(one)).isNotEqualTo(registry.valueNumber(another));
+    }
+
+    @Test
+    void parametersWithoutIdsAreNotConflated() {
+        // Without an id there is nothing to identify a parameter by, so distinct binders must stay distinct.
+        AstExpression one = new AstValueExpression(new AstParameterMarker(binder(), null));
+        AstExpression another = new AstValueExpression(new AstParameterMarker(binder(), null));
+
+        assertThat(registry.valueNumber(one)).isNotEqualTo(registry.valueNumber(another));
+    }
+
+    @Test
+    void anArithmeticExpressionOverOneParameterHasOneNumber() {
+        AstExpression inGroupBy = add(field("a"), new AstValueExpression(new AstParameterMarker(binder(), 3)));
+        AstExpression inSelect = add(field("a"), new AstValueExpression(new AstParameterMarker(binder(), 3)));
+
+        assertThat(registry.valueNumber(inGroupBy)).isEqualTo(registry.valueNumber(inSelect));
+    }
 }

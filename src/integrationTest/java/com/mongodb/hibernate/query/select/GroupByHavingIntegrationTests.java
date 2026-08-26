@@ -736,6 +736,28 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
+        @SuppressWarnings("unchecked")
+        void groupByArithmeticParameterKeyWholeMatch() {
+            // Hibernate gives the GROUP BY and SELECT occurrences of :offset separate JdbcParameters; the key matches
+            // across them only because a marker identifies its parameter rather than its binder.
+            assertSelectionQuery(
+                    "select b.primitiveInt + :offset from Item as b GROUP BY b.primitiveInt + :offset",
+                    Object.class,
+                    query -> query.setParameter("offset", 10),
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 10]}}}},
+                        {"$project": {"#c_1": "$_id.k0"}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(11, 12, 13, 14),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
         void groupByArithmeticWithHaving() {
             assertSelectionQuery(
                     "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1 HAVING b.primitiveInt + 1 > 2",
