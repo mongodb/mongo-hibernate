@@ -68,7 +68,7 @@ class GroupBySubstitutionRuleTests {
 
     private AstRewriter rewriterWithKeys(Map<AstExpression, String> keys) {
         keys.forEach((expression, subKey) -> groupKeyVN.put(vn.valueNumber(expression), subKey));
-        return new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
+        return new AstRewriter(new GroupBySubstitutionRule(groupKeyVN, vn), null);
     }
 
     @Test

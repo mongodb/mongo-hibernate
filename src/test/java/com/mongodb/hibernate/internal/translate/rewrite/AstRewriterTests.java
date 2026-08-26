@@ -78,10 +78,18 @@ class AstRewriterTests {
         }
     }
 
-    /** Replaces any binary operator expression outright, which stops the walk from reaching its operands. */
-    private record ReplaceAnyAddition(String with) implements RewriteRule {
+    /** Replaces any binary operator expression outright, recording every node it was offered on the way. */
+    private static final class ReplaceAnyAddition implements RewriteRule {
+        private final String with;
+        private final List<String> seen = new ArrayList<>();
+
+        private ReplaceAnyAddition(String with) {
+            this.with = with;
+        }
+
         @Override
         public @Nullable AstExpression tryMatch(AstExpression node) {
+            seen.add(node.toString());
             return node instanceof AstBinaryOperatorExpression ? new AstFieldPathExpression(with) : null;
         }
     }
@@ -109,14 +117,14 @@ class AstRewriterTests {
 
     @Test
     void preRuleReplacesMatchedNode() {
-        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("x", "z"), null);
 
         assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(add(field("z"), lit(1)));
     }
 
     @Test
     void unmatchedTreeComesBackUnchanged() {
-        var rewriter = new AstRewriter(List.of(new RenameField("nothing", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("nothing", "z"), null);
         var input = add(field("x"), lit(1));
 
         assertThat(rewriter.rewrite(input)).isEqualTo(input);
@@ -124,26 +132,17 @@ class AstRewriterTests {
 
     @Test
     void preRuleMatchSkipsDescentIntoTheMatchedNode() {
-        var recorder = new Recorder();
-        // ReplaceAnyAddition matches the root, so the operands must never be offered to a later rule.
-        var rewriter = new AstRewriter(List.of(new ReplaceAnyAddition("replaced"), recorder), List.of());
+        // The rule matches the root, so it must never be offered the operands beneath it.
+        var rule = new ReplaceAnyAddition("replaced");
 
-        assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(field("replaced"));
-        assertThat(recorder.seen).isEmpty();
+        assertThat(new AstRewriter(rule, null).rewrite(add(field("x"), lit(1)))).isEqualTo(field("replaced"));
+        assertThat(rule.seen).containsExactly(add(field("x"), lit(1)).toString());
     }
 
     @Test
-    void firstMatchingPreRuleWins() {
-        var rewriter =
-                new AstRewriter(List.of(new RenameField("x", "first"), new RenameField("x", "second")), List.of());
-
-        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("first"));
-    }
-
-    @Test
-    void preRulesAreOfferedEveryNodeTopDown() {
+    void thePreRuleIsOfferedEveryNodeTopDown() {
         var recorder = new Recorder();
-        var rewriter = new AstRewriter(List.of(recorder), List.of());
+        var rewriter = new AstRewriter(recorder, null);
         rewriter.rewrite(add(field("x"), lit(1)));
 
         // Root first, then its operands.
@@ -153,29 +152,30 @@ class AstRewriterTests {
 
     @Test
     void postRuleRunsAfterChildrenAreRewritten() {
-        // The pre-rule renames the leaf; the post-rule then sees the already-renamed leaf.
-        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of(new AppendMarker("!")));
+        // The pre-rule renames the operand, so the marker the post-rule appends lands on the renamed one.
+        var rewriter = new AstRewriter(new RenameField("x", "z"), new AppendMarker("!"));
 
-        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("z"));
+        assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(add(field("z!"), lit(1)));
     }
 
     @Test
-    void postRulesChainEachSeeingThePreviousOutput() {
-        var rewriter = new AstRewriter(List.of(), List.of(new AppendMarker("-a"), new AppendMarker("-b")));
+    void postRuleSeesWhatThePreRuleReplaced() {
+        // A pre-rule match skips descent, not post-processing: the two are separate questions.
+        var rewriter = new AstRewriter(new RenameField("x", "z"), new AppendMarker("!"));
 
-        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("x-a-b"));
+        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("z!"));
     }
 
     @Test
     void postRuleAppliesWhereNoPreRuleMatched() {
-        var rewriter = new AstRewriter(List.of(), List.of(new AppendMarker("!")));
+        var rewriter = new AstRewriter(null, new AppendMarker("!"));
 
         assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(add(field("x!"), lit(1)));
     }
 
     @Test
     void descentReachesFilterAndStageHierarchies() {
-        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("x", "z"), null);
         AstStage input = new AstMatchStage(new AstExprFilter(add(field("x"), lit(1))));
 
         assertThat(rewriter.rewrite(input)).isEqualTo(new AstMatchStage(new AstExprFilter(add(field("z"), lit(1)))));
@@ -183,7 +183,7 @@ class AstRewriterTests {
 
     @Test
     void descentReachesAFilterNestedInAFilterOperation() {
-        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("x", "z"), null);
         AstFilter input = new AstFieldOperationFilter(
                 "tags", new AstElemMatchFilterOperation(new AstExprFilter(add(field("x"), lit(1)))));
 
@@ -194,7 +194,7 @@ class AstRewriterTests {
 
     @Test
     void descentReachesGroupStageAndLookupPipelines() {
-        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("x", "z"), null);
         AstStage group = new AstGroupStage(List.of(new AstGroupStageSpecification("k", field("x"))));
         AstStage lookup =
                 new AstLookupStageWithPipeline("c", List.of(new AstLetVariable("v", field("x"))), List.of(group), "as");
@@ -209,7 +209,7 @@ class AstRewriterTests {
 
     @Test
     void descentReachesTheUpdateHierarchy() {
-        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("x", "z"), null);
         var statement = new AstUpdateStatement(
                 new AstExprFilter(field("x")),
                 new AstPipelineUpdate(List.of(new AstComputedFieldUpdate("n", field("x")))),
@@ -225,7 +225,7 @@ class AstRewriterTests {
     @Test
     void descentReachesDocumentsAndFieldUpdates() {
         // A rule that declines everything, so the pipeline runs over these hierarchies without altering them.
-        var rewriter = new AstRewriter(List.of(new RenameField("absent", "z")), List.of());
+        var rewriter = new AstRewriter(new RenameField("absent", "z"), null);
         var element = new AstElement("n", new AstLiteral(new BsonInt32(1)));
         var document = new AstDocument(List.of(element));
         AstUpdate documentUpdate =

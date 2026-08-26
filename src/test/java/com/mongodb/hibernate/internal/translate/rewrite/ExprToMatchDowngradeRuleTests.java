@@ -25,14 +25,11 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import java.util.HashMap;
-import java.util.List;
 import org.bson.BsonInt32;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -145,27 +142,28 @@ class ExprToMatchDowngradeRuleTests {
         assertThat(rule.tryMatch(input)).isNull();
     }
 
-    @Test
-    void integratesAsPostRuleWithGroupBySubstitution() {
-        // Simulates the HAVING flow with expression-key GROUP BY:
-        //   raw: $expr: {$gt: [ {$add: [x, 1]}, 5 ]}   -- built before rewrite
-        //   after pre-rule (GroupBy VN match on x+1 → k0):  $expr: {$gt: [ _id.k0, 5 ]}
-        //   after post-rule (this downgrade):               { _id.k0: {$gt: 5} }
-        var vn = new VNRegistry();
-        var groupKeyVN = new HashMap<Integer, String>();
-        var xPlus1 = new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.ADD, field("x"), lit(1));
-        groupKeyVN.put(vn.valueNumber(xPlus1), "k0");
+    /** Stands in for any pre-rule that leaves a field path where an expression was. */
+    private record ReplaceWithFieldPath(AstExpression target, String path) implements RewriteRule {
+        @Override
+        public @Nullable AstExpression tryMatch(AstExpression node) {
+            return node.equals(target) ? new AstFieldPathExpression(path) : null;
+        }
+    }
 
-        var rewriter = new AstRewriter(
-                List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of(new ExprToMatchDowngradeRule()));
+    @Test
+    void downgradesWhatAPreRuleLeftAsAFieldPath() {
+        //   before:            {$expr: {$gt: [{$add: ["$x", 1]}, 5]}}
+        //   after the pre-rule: {$expr: {$gt: ["$p", 5]}}
+        //   after this rule:    {"p": {$gt: 5}}
+        var xPlus1 = new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.ADD, field("x"), lit(1));
+        var rewriter = new AstRewriter(new ReplaceWithFieldPath(xPlus1, "p"), new ExprToMatchDowngradeRule());
 
         var input =
                 new AstExprFilter(new AstBinaryOperatorExpression(AstComparisonExpressionOperator.GT, xPlus1, lit(5)));
-        var output = rewriter.rewrite(input);
 
-        assertThat(output)
+        assertThat(rewriter.rewrite(input))
                 .isEqualTo(new AstFieldOperationFilter(
-                        "_id.k0",
+                        "p",
                         new AstComparisonFilterOperation(
                                 AstComparisonFilterOperator.GT, new AstLiteral(new BsonInt32(5)))));
     }

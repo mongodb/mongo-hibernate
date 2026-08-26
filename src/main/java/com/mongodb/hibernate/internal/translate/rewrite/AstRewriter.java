@@ -34,27 +34,26 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSo
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterOperation;
-import java.util.List;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Single walker that traverses any {@link AstNode} tree — expressions, filters, and their interleaving — applying pre-
- * and post-rules per node type. Pre-rules fire top-down and short-circuit descent on match; post-rules fire bottom-up
- * after children are rewritten and chain (each sees the previous rule's output).
+ * Single walker over an {@link AstNode} tree, expressions and filters and their interleaving alike, offering each node
+ * to a rule on the way down and another on the way back up. The pre-rule sees a node before its children and a match
+ * replaces the node without descending into it; the post-rule sees a node after its children have been rewritten.
  *
- * <p>Rules are added per-type so a single walker can carry heterogeneous rewrites (e.g. GROUP BY expression
- * substitution and {@code $expr}-to-match filter downgrade) and apply them in one traversal.
+ * <p>Either may be absent. One walk carries both, so a rewrite that has to happen before descent and one that has to
+ * happen after cost a single traversal between them.
  */
 public final class AstRewriter implements AstNodeRewriter {
 
-    private final List<RewriteRule> preRules;
-    private final List<RewriteRule> postRules;
+    private final @Nullable RewriteRule preRule;
+    private final @Nullable RewriteRule postRule;
 
-    public AstRewriter(List<RewriteRule> preRules, List<RewriteRule> postRules) {
-        this.preRules = List.copyOf(preRules);
-        this.postRules = List.copyOf(postRules);
+    public AstRewriter(@Nullable RewriteRule preRule, @Nullable RewriteRule postRule) {
+        this.preRule = preRule;
+        this.postRule = postRule;
     }
 
     @Override
@@ -147,15 +146,12 @@ public final class AstRewriter implements AstNodeRewriter {
      */
     private <N extends AstNode> N drive(
             N node, Function<RewriteRule, Function<N, @Nullable N>> select, UnaryOperator<N> descend) {
-        for (RewriteRule rule : preRules) {
-            N hit = select.apply(rule).apply(node);
-            if (hit != null) {
-                return hit;
-            }
-        }
-        N rebuilt = descend.apply(node);
-        for (RewriteRule rule : postRules) {
-            N hit = select.apply(rule).apply(rebuilt);
+        N replaced = preRule == null ? null : select.apply(preRule).apply(node);
+        // A pre-rule match stands in for the node and its children, so the walk does not descend into it; the
+        // post-rule still sees what came out, matched or descended alike.
+        N rebuilt = replaced != null ? replaced : descend.apply(node);
+        if (postRule != null) {
+            N hit = select.apply(postRule).apply(rebuilt);
             if (hit != null) {
                 rebuilt = hit;
             }
