@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AstRegexMatchExpressionTests {
@@ -36,5 +38,15 @@ class AstRegexMatchExpressionTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstRegexMatchExpression(new AstFieldPathExpression("f"), "r", "i"));
+    }
+
+    @Test
+    void testStructuralKey() {
+        assertStructuralKey(
+                new AstRegexMatchExpression(new AstFieldPathExpression("a"), "r", "i"),
+                new StructuralKey("Regex", List.of(new AstFieldPathExpression("a"), "r", "i")),
+                new AstRegexMatchExpression(new AstFieldPathExpression("b"), "r", "i"),
+                new AstRegexMatchExpression(new AstFieldPathExpression("a"), "s", "i"),
+                new AstRegexMatchExpression(new AstFieldPathExpression("a"), "r", "m"));
     }
 }

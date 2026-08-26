@@ -51,7 +51,7 @@ public final class GroupBySubstitutionRule implements RewriteRule {
 
     @Override
     public @Nullable AstExpression tryMatch(AstExpression node) {
-        String subKey = groupKeyVN.get(node.valueNumber(vnRegistry));
+        String subKey = groupKeyVN.get(vnRegistry.valueNumber(node));
         if (subKey != null) {
             return new AstFieldPathExpression("_id." + subKey);
         }
@@ -108,6 +108,6 @@ public final class GroupBySubstitutionRule implements RewriteRule {
     }
 
     private @Nullable String lookupByFieldPath(String fieldPath) {
-        return groupKeyVN.get(new AstFieldPathExpression(fieldPath).valueNumber(vnRegistry));
+        return groupKeyVN.get(vnRegistry.valueNumber(new AstFieldPathExpression(fieldPath)));
     }
 }

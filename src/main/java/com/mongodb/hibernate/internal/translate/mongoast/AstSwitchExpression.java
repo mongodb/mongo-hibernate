@@ -35,16 +35,14 @@ public record AstSwitchExpression(List<AstSwitchCase> branches, AstExpression de
         implements AstExpression {
 
     @Override
-    public int valueNumber(VNRegistry vn) {
-        return vn.memoize(this, r -> {
-            List<Object> parts = new ArrayList<>();
-            for (var b : branches) {
-                parts.add(b.caseExpression().valueNumber(r));
-                parts.add(b.thenExpression().valueNumber(r));
-            }
-            parts.add(defaultExpression.valueNumber(r));
-            return r.intern("Switch", parts.toArray());
-        });
+    public StructuralKey structuralKey() {
+        List<Object> fields = new ArrayList<>();
+        for (var branch : branches) {
+            fields.add(branch.caseExpression());
+            fields.add(branch.thenExpression());
+        }
+        fields.add(defaultExpression);
+        return new StructuralKey("Switch", fields);
     }
 
     @Override

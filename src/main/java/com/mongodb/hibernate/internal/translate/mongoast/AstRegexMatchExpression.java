@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -24,9 +25,8 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public record AstRegexMatchExpression(AstExpression input, String regex, String options) implements AstExpression {
     @Override
-    public int valueNumber(VNRegistry vn) {
-        return vn.memoize(
-                this, vnRegistry -> vnRegistry.intern("Regex", input.valueNumber(vnRegistry), regex, options));
+    public StructuralKey structuralKey() {
+        return new StructuralKey("Regex", List.of(input, regex, options));
     }
 
     @Override

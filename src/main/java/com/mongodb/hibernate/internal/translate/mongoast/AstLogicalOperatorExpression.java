@@ -26,13 +26,8 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 public record AstLogicalOperatorExpression(AstLogicalOperator operator, List<? extends AstExpression> operands)
         implements AstExpression {
     @Override
-    public int valueNumber(VNRegistry vn) {
-        return vn.memoize(
-                this,
-                vnRegistry -> vnRegistry.intern(
-                        "Logical",
-                        operator,
-                        operands.stream().map(o -> o.valueNumber(vnRegistry)).toList()));
+    public StructuralKey structuralKey() {
+        return new StructuralKey("Logical", List.of(operator, operands));
     }
 
     @Override

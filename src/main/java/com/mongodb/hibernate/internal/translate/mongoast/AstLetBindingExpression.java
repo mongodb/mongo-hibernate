@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -29,16 +28,8 @@ public record AstLetBindingExpression(AstExpression in, SortedMap<String, AstExp
         implements AstExpression {
 
     @Override
-    public int valueNumber(VNRegistry vn) {
-        return vn.memoize(this, r -> {
-            List<Object> parts = new ArrayList<>();
-            parts.add(in.valueNumber(r));
-            for (var e : vars.entrySet()) {
-                parts.add(e.getKey());
-                parts.add(e.getValue().valueNumber(r));
-            }
-            return r.intern("Let", parts.toArray());
-        });
+    public StructuralKey structuralKey() {
+        return new StructuralKey("Let", List.of(in, vars));
     }
 
     @Override

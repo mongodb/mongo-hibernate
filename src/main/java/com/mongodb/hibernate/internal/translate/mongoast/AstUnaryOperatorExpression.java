@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -29,8 +30,8 @@ public record AstUnaryOperatorExpression(String operator, AstExpression operand)
     }
 
     @Override
-    public int valueNumber(VNRegistry vn) {
-        return vn.memoize(this, vnRegistry -> vnRegistry.intern("Unary", operator, operand.valueNumber(vnRegistry)));
+    public StructuralKey structuralKey() {
+        return new StructuralKey("Unary", List.of(operator, operand));
     }
 
     @Override

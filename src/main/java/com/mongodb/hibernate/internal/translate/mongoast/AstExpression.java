@@ -24,11 +24,8 @@ package com.mongodb.hibernate.internal.translate.mongoast;
  */
 @SuppressWarnings("MissingSummary")
 public interface AstExpression extends AstNode {
-    /**
-     * Returns a canonical value number for this expression's structure. Two structurally equal expressions return the
-     * same integer when interned through the same {@link VNRegistry}.
-     */
-    int valueNumber(VNRegistry vn);
+    /** Returns this expression's kind, its own data, and its child expressions. See {@link StructuralKey}. */
+    StructuralKey structuralKey();
 
     /**
      * {@inheritDoc}

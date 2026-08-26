@@ -16,9 +16,13 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator.ADD;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator.MULTIPLY;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
 
+import java.util.List;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -76,5 +80,25 @@ class AstBinaryOperatorExpressionTests {
     void testMapChildren() {
         assertMapsChildren(new AstBinaryOperatorExpression(
                 "$add", new AstFieldPathExpression("f"), new AstFieldPathExpression("f")));
+    }
+
+    @Test
+    void testStructuralKey() {
+        assertStructuralKey(
+                new AstBinaryOperatorExpression(ADD, new AstFieldPathExpression("a"), new AstFieldPathExpression("b")),
+                new StructuralKey(
+                        "Binary", List.of("$add", new AstFieldPathExpression("a"), new AstFieldPathExpression("b"))),
+                new AstBinaryOperatorExpression(
+                        MULTIPLY,
+                        new AstFieldPathExpression("a"),
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))),
+                new AstBinaryOperatorExpression(
+                        ADD,
+                        new AstFieldPathExpression("b"),
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))),
+                new AstBinaryOperatorExpression(
+                        ADD,
+                        new AstFieldPathExpression("a"),
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(2)))));
     }
 }

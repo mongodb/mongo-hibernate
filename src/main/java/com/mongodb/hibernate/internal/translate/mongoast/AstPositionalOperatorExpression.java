@@ -16,7 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -31,15 +30,8 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 public record AstPositionalOperatorExpression(String operator, List<AstExpression> arguments) implements AstExpression {
 
     @Override
-    public int valueNumber(VNRegistry vn) {
-        return vn.memoize(this, r -> {
-            List<Object> parts = new ArrayList<>();
-            parts.add(operator);
-            for (var arg : arguments) {
-                parts.add(arg.valueNumber(r));
-            }
-            return r.intern("PosOp", parts.toArray());
-        });
+    public StructuralKey structuralKey() {
+        return new StructuralKey("PosOp", List.of(operator, arguments));
     }
 
     @Override

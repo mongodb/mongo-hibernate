@@ -626,12 +626,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 var fieldPath = acceptAndYield(columnReference, FIELD_PATH);
                 var groupKey = fieldPath.replace('.', '#');
                 var fieldPathExpr = new AstFieldPathExpression(fieldPath);
-                ctx.registeredGroupKeyByVN.put(fieldPathExpr.valueNumber(ctx.vnRegistry), groupKey);
+                ctx.registeredGroupKeyByVN.put(ctx.vnRegistry.valueNumber(fieldPathExpr), groupKey);
                 specs.add(new AstGroupStageSpecification(groupKey, fieldPathExpr));
             } else {
                 var groupKey = "k" + i;
                 var expr = acceptAndYieldExpression(groupByClauseExpression);
-                ctx.registeredGroupKeyByVN.put(expr.valueNumber(ctx.vnRegistry), groupKey);
+                ctx.registeredGroupKeyByVN.put(ctx.vnRegistry.valueNumber(expr), groupKey);
                 specs.add(new AstGroupStageSpecification(groupKey, expr));
             }
         }

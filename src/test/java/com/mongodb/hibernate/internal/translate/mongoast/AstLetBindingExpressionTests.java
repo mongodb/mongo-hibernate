@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
 
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.bson.BsonInt32;
@@ -43,5 +45,21 @@ class AstLetBindingExpressionTests {
         assertMapsChildren(
                 new AstLetBindingExpression(new AstFieldPathExpression("f"), new TreeMap<>(Map.of("v", (AstExpression)
                         new AstFieldPathExpression("f")))));
+    }
+
+    @Test
+    void testStructuralKey() {
+        assertStructuralKey(
+                new AstLetBindingExpression(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
+                        new AstFieldPathExpression("b")))),
+                new StructuralKey(
+                        "Let", List.of(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
+                                new AstFieldPathExpression("b"))))),
+                new AstLetBindingExpression(new AstFieldPathExpression("b"), new TreeMap<>(Map.of("v", (AstExpression)
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))))),
+                new AstLetBindingExpression(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("w", (AstExpression)
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))))),
+                new AstLetBindingExpression(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
+                        new AstLiteralExpression(new AstLiteral(new BsonInt32(2)))))));
     }
 }

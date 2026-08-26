@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
 
+import java.util.List;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -35,5 +37,13 @@ class AstValueExpressionTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstValueExpression(new AstLiteral(new BsonInt32(1))));
+    }
+
+    @Test
+    void testStructuralKey() {
+        assertStructuralKey(
+                new AstValueExpression(new AstLiteral(new BsonInt32(1))),
+                new StructuralKey("Value", List.of(new AstLiteral(new BsonInt32(1)))),
+                new AstValueExpression(new AstLiteral(new BsonInt32(2))));
     }
 }

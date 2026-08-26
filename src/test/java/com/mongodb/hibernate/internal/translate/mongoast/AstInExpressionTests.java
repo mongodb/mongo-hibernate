@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
 
 import java.util.List;
 import org.bson.BsonInt32;
@@ -57,5 +58,24 @@ class AstInExpressionTests {
     void testMapChildren() {
         assertMapsChildren(
                 new AstInExpression(new AstFieldPathExpression("f"), List.of(new AstFieldPathExpression("f"))));
+    }
+
+    @Test
+    void testStructuralKey() {
+        assertStructuralKey(
+                new AstInExpression(new AstFieldPathExpression("a"), List.of(new AstFieldPathExpression("b"))),
+                new StructuralKey(
+                        "In", List.of(new AstFieldPathExpression("a"), List.of(new AstFieldPathExpression("b")))),
+                new AstInExpression(
+                        new AstFieldPathExpression("b"),
+                        List.of(new AstLiteralExpression(new AstLiteral(new BsonInt32(1))))),
+                new AstInExpression(
+                        new AstFieldPathExpression("a"),
+                        List.of(new AstLiteralExpression(new AstLiteral(new BsonInt32(2))))),
+                new AstInExpression(
+                        new AstFieldPathExpression("a"),
+                        List.of(
+                                new AstLiteralExpression(new AstLiteral(new BsonInt32(1))),
+                                new AstLiteralExpression(new AstLiteral(new BsonInt32(2))))));
     }
 }

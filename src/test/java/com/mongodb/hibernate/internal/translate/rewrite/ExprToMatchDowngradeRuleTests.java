@@ -147,7 +147,7 @@ class ExprToMatchDowngradeRuleTests {
         var vn = new VNRegistry();
         var groupKeyVN = new HashMap<Integer, String>();
         var xPlus1 = new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.ADD, field("x"), lit(1));
-        groupKeyVN.put(xPlus1.valueNumber(vn), "k0");
+        groupKeyVN.put(vn.valueNumber(xPlus1), "k0");
 
         var rewriter = new AstRewriter(
                 List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of(new ExprToMatchDowngradeRule()));

@@ -18,7 +18,9 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
 
+import java.util.List;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -52,5 +54,14 @@ class AstUnaryOperatorExpressionTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstUnaryOperatorExpression("$not", new AstFieldPathExpression("f")));
+    }
+
+    @Test
+    void testStructuralKey() {
+        assertStructuralKey(
+                new AstUnaryOperatorExpression("$not", new AstFieldPathExpression("a")),
+                new StructuralKey("Unary", List.of("$not", new AstFieldPathExpression("a"))),
+                new AstUnaryOperatorExpression("$abs", new AstFieldPathExpression("a")),
+                new AstUnaryOperatorExpression("$not", new AstFieldPathExpression("b")));
     }
 }
