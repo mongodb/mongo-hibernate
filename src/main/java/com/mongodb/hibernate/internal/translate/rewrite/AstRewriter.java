@@ -16,30 +16,28 @@
 
 package com.mongodb.hibernate.internal.translate.rewrite;
 
-import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
+import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstInExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLetBindingExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstLogicalOperatorExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstNamedOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
-import com.mongodb.hibernate.internal.translate.mongoast.AstPositionalOperatorExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstRegexMatchExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchCase;
-import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstUnaryOperatorExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStage;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageExpressionSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortStage;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
-import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
-import java.util.ArrayList;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilterOperation;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Single walker that traverses any {@link AstNode} tree — expressions, filters, and their interleaving — applying pre-
@@ -49,143 +47,119 @@ import java.util.TreeMap;
  * <p>Rules are added per-type so a single walker can carry heterogeneous rewrites (e.g. GROUP BY expression
  * substitution and {@code $expr}-to-match filter downgrade) and apply them in one traversal.
  */
-public final class AstRewriter {
+public final class AstRewriter implements AstNodeRewriter {
 
-    private final List<RewriteRule<AstNode>> preRules;
-    private final List<RewriteRule<AstNode>> postRules;
+    private final List<RewriteRule> preRules;
+    private final List<RewriteRule> postRules;
 
-    public AstRewriter(List<RewriteRule<AstNode>> preRules, List<RewriteRule<AstNode>> postRules) {
+    public AstRewriter(List<RewriteRule> preRules, List<RewriteRule> postRules) {
         this.preRules = List.copyOf(preRules);
         this.postRules = List.copyOf(postRules);
     }
 
+    @Override
     public AstExpression rewrite(AstExpression node) {
-        return (AstExpression) rewriteNode(node);
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
     }
 
+    @Override
     public AstFilter rewrite(AstFilter node) {
-        return (AstFilter) rewriteNode(node);
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
     }
 
-    public AstProjectStage rewrite(AstProjectStage node) {
-        return (AstProjectStage) rewriteNode(node);
+    @Override
+    public AstFilterOperation rewrite(AstFilterOperation node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
     }
 
-    public AstMatchStage rewrite(AstMatchStage node) {
-        return (AstMatchStage) rewriteNode(node);
+    @Override
+    public AstStage rewrite(AstStage node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
     }
 
-    public AstSortStage rewrite(AstSortStage node) {
-        return (AstSortStage) rewriteNode(node);
+    @Override
+    public AstSortField rewrite(AstSortField node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
     }
 
-    private AstNode rewriteNode(AstNode node) {
-        for (RewriteRule<AstNode> rule : preRules) {
-            AstNode hit = rule.tryMatch(node);
+    @Override
+    public AstProjectStageSpecification rewrite(AstProjectStageSpecification node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstGroupStageSpecification rewrite(AstGroupStageSpecification node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstLetVariable rewrite(AstLetVariable node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstSwitchCase rewrite(AstSwitchCase node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstValue rewrite(AstValue node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstElement rewrite(AstElement node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstDocument rewrite(AstDocument node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstFieldUpdate rewrite(AstFieldUpdate node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstComputedFieldUpdate rewrite(AstComputedFieldUpdate node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstUpdate rewrite(AstUpdate node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    @Override
+    public AstUpdateStatement rewrite(AstUpdateStatement node) {
+        return drive(node, rule -> rule::tryMatch, child -> child.mapChildren(this));
+    }
+
+    /**
+     * Runs the rule pipeline over one node: pre-rules top-down with the first match short-circuiting descent, then
+     * {@code descend}, then post-rules bottom-up, chaining.
+     *
+     * <p>{@code select} picks the {@link RewriteRule} overload for {@code N}; a rule that does not handle {@code N}
+     * inherits the default returning {@code null}. Keeping the rule methods per hierarchy is what lets this return
+     * {@code N} rather than {@code AstNode}, so no caller has to cast the result back.
+     */
+    private <N extends AstNode> N drive(
+            N node, Function<RewriteRule, Function<N, @Nullable N>> select, UnaryOperator<N> descend) {
+        for (RewriteRule rule : preRules) {
+            N hit = select.apply(rule).apply(node);
             if (hit != null) {
                 return hit;
             }
         }
-        AstNode rebuilt = descend(node);
-        for (RewriteRule<AstNode> rule : postRules) {
-            AstNode hit = rule.tryMatch(rebuilt);
+        N rebuilt = descend.apply(node);
+        for (RewriteRule rule : postRules) {
+            N hit = select.apply(rule).apply(rebuilt);
             if (hit != null) {
                 rebuilt = hit;
             }
         }
         return rebuilt;
-    }
-
-    private AstNode descend(AstNode node) {
-        if (node instanceof AstExpression expr) {
-            return descendExpression(expr);
-        }
-        if (node instanceof AstFilter filter) {
-            return descendFilter(filter);
-        }
-        if (node instanceof AstProjectStage ps) {
-            List<AstProjectStageSpecification> newSpecs =
-                    new ArrayList<>(ps.specifications().size());
-            for (AstProjectStageSpecification spec : ps.specifications()) {
-                if (spec instanceof AstProjectStageExpressionSpecification exprSpec) {
-                    var rewritten =
-                            new AstProjectStageExpressionSpecification(exprSpec.key(), rewrite(exprSpec.expression()));
-                    newSpecs.add((AstProjectStageSpecification) rewriteNode(rewritten));
-                } else {
-                    newSpecs.add((AstProjectStageSpecification) rewriteNode(spec));
-                }
-            }
-            return new AstProjectStage(newSpecs);
-        }
-        if (node instanceof AstMatchStage ms) {
-            return new AstMatchStage(rewrite(ms.filter()));
-        }
-        if (node instanceof AstSortStage ss) {
-            List<AstSortField> newFields = new ArrayList<>(ss.sortFields().size());
-            for (AstSortField sf : ss.sortFields()) {
-                newFields.add((AstSortField) rewriteNode(sf));
-            }
-            return new AstSortStage(newFields);
-        }
-        return node;
-    }
-
-    private AstExpression descendExpression(AstExpression node) {
-        if (node instanceof AstBinaryOperatorExpression b) {
-            return new AstBinaryOperatorExpression(b.operator(), rewrite(b.left()), rewrite(b.right()));
-        }
-        if (node instanceof AstUnaryOperatorExpression u) {
-            return new AstUnaryOperatorExpression(u.operator(), rewrite(u.operand()));
-        }
-        if (node instanceof AstLogicalOperatorExpression l) {
-            return new AstLogicalOperatorExpression(
-                    l.operator(), l.operands().stream().map(this::rewrite).toList());
-        }
-        if (node instanceof AstInExpression i) {
-            return new AstInExpression(
-                    rewrite(i.value()), i.options().stream().map(this::rewrite).toList());
-        }
-        if (node instanceof AstRegexMatchExpression r) {
-            return new AstRegexMatchExpression(rewrite(r.input()), r.regex(), r.options());
-        }
-        if (node instanceof AstSwitchExpression s) {
-            var newBranches = new ArrayList<AstSwitchCase>(s.branches().size());
-            for (AstSwitchCase b : s.branches()) {
-                newBranches.add(new AstSwitchCase(rewrite(b.caseExpression()), rewrite(b.thenExpression())));
-            }
-            return new AstSwitchExpression(newBranches, rewrite(s.defaultExpression()));
-        }
-        if (node instanceof AstLetBindingExpression let) {
-            var newVars = new TreeMap<String, AstExpression>();
-            for (var e : let.vars().entrySet()) {
-                newVars.put(e.getKey(), rewrite(e.getValue()));
-            }
-            return new AstLetBindingExpression(rewrite(let.in()), newVars);
-        }
-        if (node instanceof AstNamedOperatorExpression n) {
-            var newArgs = new TreeMap<String, AstExpression>();
-            for (var e : n.arguments().entrySet()) {
-                newArgs.put(e.getKey(), rewrite(e.getValue()));
-            }
-            return new AstNamedOperatorExpression(n.operator(), newArgs);
-        }
-        if (node instanceof AstPositionalOperatorExpression p) {
-            return new AstPositionalOperatorExpression(
-                    p.operator(), p.arguments().stream().map(this::rewrite).toList());
-        }
-        // Leaves: AstFieldPathExpression, AstLiteralExpression, AstValueExpression, AstVariableExpression
-        return node;
-    }
-
-    private AstFilter descendFilter(AstFilter node) {
-        if (node instanceof AstLogicalFilter lf) {
-            return new AstLogicalFilter(
-                    lf.operator(), lf.filters().stream().map(this::rewrite).toList());
-        }
-        if (node instanceof AstExprFilter ef) {
-            return new AstExprFilter(rewrite(ef.expression()));
-        }
-        // Leaves: AstEmptyFilter, AstFieldOperationFilter
-        return node;
     }
 }

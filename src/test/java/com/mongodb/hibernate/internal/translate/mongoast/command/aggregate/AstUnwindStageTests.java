@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import org.junit.jupiter.api.Test;
@@ -41,5 +42,10 @@ class AstUnwindStageTests {
                 {"$unwind": {"path": "$o1_0", "preserveNullAndEmptyArrays": true}}\
                 """;
         assertRendering(expectedJson, stage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstUnwindStage("p", false));
     }
 }

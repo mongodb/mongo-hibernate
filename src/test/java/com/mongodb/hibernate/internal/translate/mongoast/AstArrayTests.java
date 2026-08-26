@@ -16,11 +16,13 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertValueRendering;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.util.List;
 import org.bson.BsonBoolean;
+import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.junit.jupiter.api.Test;
 
@@ -34,5 +36,10 @@ class AstArrayTests {
                         """
                         {"": [true, null]}""",
                         new AstArray(List.of(new AstLiteral(BsonBoolean.TRUE), new AstLiteral(BsonNull.VALUE)))));
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstArray(List.of(new AstLiteral(new BsonInt32(1)))));
     }
 }

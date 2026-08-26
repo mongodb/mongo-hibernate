@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -33,6 +34,12 @@ public record AstUpdateCommand(String collection, List<AstUpdateStatement> updat
 
     public AstUpdateCommand {
         assertFalse(updates.isEmpty());
+    }
+
+    @Override
+    public AstUpdateCommand mapChildren(AstNodeRewriter rewriter) {
+        return new AstUpdateCommand(
+                collection, updates.stream().map(rewriter::rewrite).toList());
     }
 
     @Override

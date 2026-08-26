@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -28,6 +29,12 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  */
 @SuppressWarnings("MissingSummary")
 public record AstGroupStageSpecification(String key, AstExpression expression) implements AstNode {
+    /** Returns a copy of this specification with {@code rewriter} applied to its expression. */
+    @Override
+    public AstGroupStageSpecification mapChildren(AstNodeRewriter rewriter) {
+        return new AstGroupStageSpecification(key, rewriter.rewrite(expression));
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeName(key);

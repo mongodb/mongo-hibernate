@@ -16,9 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static java.util.Collections.singletonList;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AstProjectStageTests {
@@ -30,5 +32,10 @@ class AstProjectStageTests {
                            {"$project": {"title": true}}\
                            """;
         assertRendering(expectedJson, astProjectStage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstProjectStage(List.of(new AstProjectStageIncludeSpecification("f"))));
     }
 }

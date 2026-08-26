@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertValueRendering;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,6 +39,11 @@ public class AstParameterMarkerTests {
         var expr = new AstParameterMarker(binder, 0);
         assertValueRendering("""
                              {"": ?}""", List.of(binder), expr);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstParameterMarker(binder(), 0));
     }
 
     @Nested

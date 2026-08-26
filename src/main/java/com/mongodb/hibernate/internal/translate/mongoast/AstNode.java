@@ -24,4 +24,10 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public interface AstNode {
     void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer);
+
+    /**
+     * Returns a copy of this node with {@code rewriter} applied to each child node it holds, or {@code this} when there
+     * are none. Every node type must say which it is, so a tree walk cannot silently skip a subtree.
+     */
+    AstNode mapChildren(AstNodeRewriter rewriter);
 }

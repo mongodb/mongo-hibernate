@@ -16,10 +16,13 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstArray;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
+import java.util.List;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -35,5 +38,10 @@ class AstFieldOperationFilterTests {
                 {"fieldName": {"$eq": {"$numberInt": "1"}}}\
                 """;
         assertRendering(expectedJson, astFieldOperationFilter);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstFieldOperationFilter("p", new AstAllFilterOperation(new AstArray(List.of()))));
     }
 }

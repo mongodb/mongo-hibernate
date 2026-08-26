@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -25,6 +26,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 /** @hidden */
 @SuppressWarnings("MissingSummary")
 public record AstPipelineUpdate(List<AstComputedFieldUpdate> updates) implements AstUpdate {
+    @Override
+    public AstUpdate mapChildren(AstNodeRewriter rewriter) {
+        return new AstPipelineUpdate(updates.stream().map(rewriter::rewrite).toList());
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartArray();

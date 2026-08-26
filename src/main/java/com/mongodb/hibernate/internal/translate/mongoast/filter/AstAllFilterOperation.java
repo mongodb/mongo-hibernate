@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstArray;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstParameterMarker;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import java.util.function.Consumer;
@@ -34,6 +35,11 @@ public record AstAllFilterOperation(AstValue parameterMarkerOrArrayValue) implem
     public AstAllFilterOperation {
         assertTrue(parameterMarkerOrArrayValue instanceof AstParameterMarker
                 || parameterMarkerOrArrayValue instanceof AstArray);
+    }
+
+    @Override
+    public AstFilterOperation mapChildren(AstNodeRewriter rewriter) {
+        return new AstAllFilterOperation(rewriter.rewrite(parameterMarkerOrArrayValue));
     }
 
     @Override

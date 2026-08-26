@@ -36,6 +36,11 @@ public record AstLiteral(BsonValue literalValue) implements AstValue {
     public static final AstLiteral FALSE = new AstLiteral(BsonBoolean.FALSE);
 
     @Override
+    public AstValue mapChildren(AstNodeRewriter rewriter) {
+        return this;
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         BSON_VALUE_CODEC.encode(writer, literalValue, DEFAULT_CONTEXT);
     }

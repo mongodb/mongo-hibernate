@@ -16,30 +16,48 @@
 
 package com.mongodb.hibernate.internal.translate.rewrite;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.UPSERT;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
+import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
-import java.util.HashMap;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstDocumentUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLookupStageWithPipeline;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstMatchStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstStage;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstElemMatchFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
+import java.util.ArrayList;
 import java.util.List;
 import org.bson.BsonInt32;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+/**
+ * The rule pipeline itself: pre-rules top-down with the first match short-circuiting descent, then post-rules
+ * bottom-up, chaining. Rules here are deliberately trivial — what a real rule substitutes belongs to that rule's own
+ * tests, and how a node reaches its children belongs to its {@code mapChildren} test.
+ */
 class AstRewriterTests {
 
-    private static AstExpression x() {
-        return new AstFieldPathExpression("x");
-    }
-
-    private static AstExpression y() {
-        return new AstFieldPathExpression("y");
+    private static AstExpression field(String path) {
+        return new AstFieldPathExpression(path);
     }
 
     private static AstExpression lit(int i) {
@@ -50,73 +68,172 @@ class AstRewriterTests {
         return new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.ADD, l, r);
     }
 
-    @Test
-    void leafMatchSubstitutesLeaf() {
-        var vn = new VNRegistry();
-        var groupKeyVN = new HashMap<Integer, String>();
-        groupKeyVN.put(x().valueNumber(vn), "x");
+    /** Renames a field path, declining everything else, so descent is never short-circuited above it. */
+    private record RenameField(String from, String to) implements RewriteRule {
+        @Override
+        public @Nullable AstExpression tryMatch(AstExpression node) {
+            return node instanceof AstFieldPathExpression fp && fp.fieldPath().equals(from)
+                    ? new AstFieldPathExpression(to)
+                    : null;
+        }
+    }
 
-        var rewriter = new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
-        var input = add(x(), lit(1));
-        var output = rewriter.rewrite(input);
+    /** Replaces any binary operator expression outright, which stops the walk from reaching its operands. */
+    private record ReplaceAnyAddition(String with) implements RewriteRule {
+        @Override
+        public @Nullable AstExpression tryMatch(AstExpression node) {
+            return node instanceof AstBinaryOperatorExpression ? new AstFieldPathExpression(with) : null;
+        }
+    }
 
-        assertThat(output).isEqualTo(add(new AstFieldPathExpression("_id.x"), lit(1)));
+    /** Appends a marker so the order post-rules run in, and whether they chain, is visible in the result. */
+    private record AppendMarker(String marker) implements RewriteRule {
+        @Override
+        public @Nullable AstExpression tryMatch(AstExpression node) {
+            return node instanceof AstFieldPathExpression fp
+                    ? new AstFieldPathExpression(fp.fieldPath() + marker)
+                    : null;
+        }
+    }
+
+    /** Records every node handed to it and never matches, so a walk can be observed without being altered. */
+    private static final class Recorder implements RewriteRule {
+        private final List<String> seen = new ArrayList<>();
+
+        @Override
+        public @Nullable AstExpression tryMatch(AstExpression node) {
+            seen.add(node.toString());
+            return null;
+        }
     }
 
     @Test
-    void wholeMatchSubstitutesRootAndStops() {
-        var vn = new VNRegistry();
-        var groupKeyVN = new HashMap<Integer, String>();
-        groupKeyVN.put(add(x(), lit(1)).valueNumber(vn), "k0");
+    void preRuleReplacesMatchedNode() {
+        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
 
-        var rewriter = new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
-        var input = add(x(), lit(1));
-        var output = rewriter.rewrite(input);
-
-        assertThat(output).isEqualTo(new AstFieldPathExpression("_id.k0"));
+        assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(add(field("z"), lit(1)));
     }
 
     @Test
-    void parentMatchWinsOverChildMatch() {
-        var vn = new VNRegistry();
-        var groupKeyVN = new HashMap<Integer, String>();
-        // Both x and x+1 are group keys — parent wins
-        groupKeyVN.put(x().valueNumber(vn), "x");
-        groupKeyVN.put(add(x(), lit(1)).valueNumber(vn), "k1");
+    void unmatchedTreeComesBackUnchanged() {
+        var rewriter = new AstRewriter(List.of(new RenameField("nothing", "z")), List.of());
+        var input = add(field("x"), lit(1));
 
-        var rewriter = new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
-        var input = add(x(), lit(1));
-        var output = rewriter.rewrite(input);
-
-        // Parent match wins → _id.k1, not {$add: ["_id.x", 1]}
-        assertThat(output).isEqualTo(new AstFieldPathExpression("_id.k1"));
+        assertThat(rewriter.rewrite(input)).isEqualTo(input);
     }
 
     @Test
-    void noMatchThrows() {
-        var vn = new VNRegistry();
-        var groupKeyVN = new HashMap<Integer, String>();
-        groupKeyVN.put(y().valueNumber(vn), "y");
+    void preRuleMatchSkipsDescentIntoTheMatchedNode() {
+        var recorder = new Recorder();
+        // ReplaceAnyAddition matches the root, so the operands must never be offered to a later rule.
+        var rewriter = new AstRewriter(List.of(new ReplaceAnyAddition("replaced"), recorder), List.of());
 
-        var rewriter = new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
-        var input = add(x(), lit(1));
-
-        assertThatExceptionOfType(FeatureNotSupportedException.class).isThrownBy(() -> rewriter.rewrite(input));
+        assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(field("replaced"));
+        assertThat(recorder.seen).isEmpty();
     }
 
     @Test
-    void nestedCompositeWithLeafMatch() {
-        var vn = new VNRegistry();
-        var groupKeyVN = new HashMap<Integer, String>();
-        groupKeyVN.put(x().valueNumber(vn), "x");
+    void firstMatchingPreRuleWins() {
+        var rewriter =
+                new AstRewriter(List.of(new RenameField("x", "first"), new RenameField("x", "second")), List.of());
 
-        var rewriter = new AstRewriter(List.of(new GroupBySubstitutionRule(groupKeyVN, vn)), List.of());
-        // (x + 1) * 2
-        var input = new AstBinaryOperatorExpression(AstArithmeticExpressionOperator.MULTIPLY, add(x(), lit(1)), lit(2));
-        var output = rewriter.rewrite(input);
+        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("first"));
+    }
 
-        var expected = new AstBinaryOperatorExpression(
-                AstArithmeticExpressionOperator.MULTIPLY, add(new AstFieldPathExpression("_id.x"), lit(1)), lit(2));
-        assertThat(output).isEqualTo(expected);
+    @Test
+    void preRulesAreOfferedEveryNodeTopDown() {
+        var recorder = new Recorder();
+        var rewriter = new AstRewriter(List.of(recorder), List.of());
+        rewriter.rewrite(add(field("x"), lit(1)));
+
+        // Root first, then its operands.
+        assertThat(recorder.seen).hasSize(3);
+        assertThat(recorder.seen.get(0)).contains("AstBinaryOperatorExpression");
+    }
+
+    @Test
+    void postRuleRunsAfterChildrenAreRewritten() {
+        // The pre-rule renames the leaf; the post-rule then sees the already-renamed leaf.
+        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of(new AppendMarker("!")));
+
+        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("z"));
+    }
+
+    @Test
+    void postRulesChainEachSeeingThePreviousOutput() {
+        var rewriter = new AstRewriter(List.of(), List.of(new AppendMarker("-a"), new AppendMarker("-b")));
+
+        assertThat(rewriter.rewrite(field("x"))).isEqualTo(field("x-a-b"));
+    }
+
+    @Test
+    void postRuleAppliesWhereNoPreRuleMatched() {
+        var rewriter = new AstRewriter(List.of(), List.of(new AppendMarker("!")));
+
+        assertThat(rewriter.rewrite(add(field("x"), lit(1)))).isEqualTo(add(field("x!"), lit(1)));
+    }
+
+    @Test
+    void descentReachesFilterAndStageHierarchies() {
+        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        AstStage input = new AstMatchStage(new AstExprFilter(add(field("x"), lit(1))));
+
+        assertThat(rewriter.rewrite(input)).isEqualTo(new AstMatchStage(new AstExprFilter(add(field("z"), lit(1)))));
+    }
+
+    @Test
+    void descentReachesAFilterNestedInAFilterOperation() {
+        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        AstFilter input = new AstFieldOperationFilter(
+                "tags", new AstElemMatchFilterOperation(new AstExprFilter(add(field("x"), lit(1)))));
+
+        assertThat(rewriter.rewrite(input))
+                .isEqualTo(new AstFieldOperationFilter(
+                        "tags", new AstElemMatchFilterOperation(new AstExprFilter(add(field("z"), lit(1))))));
+    }
+
+    @Test
+    void descentReachesGroupStageAndLookupPipelines() {
+        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        AstStage group = new AstGroupStage(List.of(new AstGroupStageSpecification("k", field("x"))));
+        AstStage lookup =
+                new AstLookupStageWithPipeline("c", List.of(new AstLetVariable("v", field("x"))), List.of(group), "as");
+
+        assertThat(rewriter.rewrite(lookup))
+                .isEqualTo(new AstLookupStageWithPipeline(
+                        "c",
+                        List.of(new AstLetVariable("v", field("z"))),
+                        List.of(new AstGroupStage(List.of(new AstGroupStageSpecification("k", field("z"))))),
+                        "as"));
+    }
+
+    @Test
+    void descentReachesTheUpdateHierarchy() {
+        var rewriter = new AstRewriter(List.of(new RenameField("x", "z")), List.of());
+        var statement = new AstUpdateStatement(
+                new AstExprFilter(field("x")),
+                new AstPipelineUpdate(List.of(new AstComputedFieldUpdate("n", field("x")))),
+                UPSERT);
+
+        assertThat(rewriter.rewrite(statement))
+                .isEqualTo(new AstUpdateStatement(
+                        new AstExprFilter(field("z")),
+                        new AstPipelineUpdate(List.of(new AstComputedFieldUpdate("n", field("z")))),
+                        UPSERT));
+    }
+
+    @Test
+    void descentReachesDocumentsAndFieldUpdates() {
+        // A rule that declines everything, so the pipeline runs over these hierarchies without altering them.
+        var rewriter = new AstRewriter(List.of(new RenameField("absent", "z")), List.of());
+        var element = new AstElement("n", new AstLiteral(new BsonInt32(1)));
+        var document = new AstDocument(List.of(element));
+        AstUpdate documentUpdate =
+                new AstDocumentUpdate(List.of(new AstFieldUpdate("s", new AstLiteral(new BsonInt32(1)))), List.of());
+
+        // No rule matches these hierarchies today; the point is that their entry points are exercised at all.
+        assertThat(rewriter.rewrite(document)).isEqualTo(document);
+        assertThat(rewriter.rewrite(element)).isEqualTo(element);
+        assertThat(rewriter.rewrite(documentUpdate)).isEqualTo(documentUpdate);
     }
 }

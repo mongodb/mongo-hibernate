@@ -16,10 +16,12 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import org.bson.BsonInt32;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -35,5 +37,11 @@ class AstComparisonFilterOperationTests {
                            """
                 .formatted(operator.getOperatorName());
         assertRendering(expectedJson, operation);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.EQ, new AstLiteral(new BsonInt32(1))));
     }
 }

@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 
 import org.bson.BsonInt32;
@@ -36,5 +37,10 @@ class AstComputedFieldUpdateTests {
                 {"publishYear": {"$add": ["$publishYear", {"$numberInt": "1"}]}}\
                 """,
                 update);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstComputedFieldUpdate("n", new AstFieldPathExpression("f")));
     }
 }

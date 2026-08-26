@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
@@ -50,5 +51,10 @@ class AstExprFilterTests {
                 {"$expr": {"$gt": [{"$add": ["$x", {"$numberInt": "1"}]}, {"$numberInt": "5"}]}}\
                 """,
                 filter);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstExprFilter(new AstFieldPathExpression("f")));
     }
 }

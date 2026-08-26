@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.function.Consumer;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonWriter;
@@ -77,6 +78,11 @@ public record AstRegularExpressionFilterOperation(String pattern, String options
         }
         result.append("$");
         return result.toString();
+    }
+
+    @Override
+    public AstFilterOperation mapChildren(AstNodeRewriter rewriter) {
+        return this;
     }
 
     @Override

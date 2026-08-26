@@ -127,6 +127,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpres
 import com.mongodb.hibernate.internal.translate.rewrite.AstRewriter;
 import com.mongodb.hibernate.internal.translate.rewrite.ExprToMatchDowngradeRule;
 import com.mongodb.hibernate.internal.translate.rewrite.GroupBySubstitutionRule;
+import com.mongodb.hibernate.internal.translate.rewrite.RewriteRule;
 import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
@@ -580,8 +581,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (groupStage.isPresent()) {
             var ctx = assertNotNull(groupByContext);
             astRewriter = new AstRewriter(
-                    List.of(new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry)),
-                    List.of(new ExprToMatchDowngradeRule()));
+                    List.<RewriteRule>of(new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry)),
+                    List.<RewriteRule>of(new ExprToMatchDowngradeRule()));
         }
         groupStage.ifPresent(stages::add);
         createMatchStage(querySpec.getHavingClauseRestrictions())
@@ -595,7 +596,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 assertNotNull(queryOptionsLimit).createSkipLimitStagesAndJdbcParams(querySpec);
         stages.addAll(skipLimitStagesAndJdbcParams.stages());
 
-        var projectStage = createProjectStage(querySpec.getSelectClause());
+        AstStage projectStage = createProjectStage(querySpec.getSelectClause());
         if (astRewriter != null) {
             projectStage = astRewriter.rewrite(projectStage);
         }

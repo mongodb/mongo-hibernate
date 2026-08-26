@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
@@ -58,5 +59,11 @@ class AstGroupStageTests {
                 {"$group": {"_id": {"address#city": "$address.city"}}}\
                 """;
         assertRendering(expectedJson, astGroupStage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(
+                new AstGroupStage(List.of(new AstGroupStageSpecification("k", new AstFieldPathExpression("f")))));
     }
 }

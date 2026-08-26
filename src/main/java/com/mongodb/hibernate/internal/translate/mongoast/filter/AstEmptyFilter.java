@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -31,6 +32,11 @@ public final class AstEmptyFilter implements AstFilter {
     public static final AstEmptyFilter INSTANCE = new AstEmptyFilter();
 
     private AstEmptyFilter() {}
+
+    @Override
+    public AstFilter mapChildren(AstNodeRewriter rewriter) {
+        return this;
+    }
 
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {

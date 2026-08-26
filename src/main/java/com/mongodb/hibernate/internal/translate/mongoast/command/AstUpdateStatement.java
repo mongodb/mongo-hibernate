@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -40,6 +41,11 @@ public record AstUpdateStatement(AstFilter filter, AstUpdate update, Kind kind) 
         UPSERT,
         /** Updates every matching document, inserting nothing. */
         MULTI
+    }
+
+    @Override
+    public AstUpdateStatement mapChildren(AstNodeRewriter rewriter) {
+        return new AstUpdateStatement(rewriter.rewrite(filter), rewriter.rewrite(update), kind);
     }
 
     @Override

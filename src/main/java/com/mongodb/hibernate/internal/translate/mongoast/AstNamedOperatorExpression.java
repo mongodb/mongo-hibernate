@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -43,6 +44,13 @@ public record AstNamedOperatorExpression(String operator, SortedMap<String, AstE
             }
             return r.intern("NamedOp", parts.toArray());
         });
+    }
+
+    @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        var newArguments = new TreeMap<String, AstExpression>();
+        arguments.forEach((name, argument) -> newArguments.put(name, rewriter.rewrite(argument)));
+        return new AstNamedOperatorExpression(operator, newArguments);
     }
 
     @Override

@@ -16,9 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder.ASC;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -33,5 +35,10 @@ class AstSortFieldTests {
                 """
                 .formatted(sortOrder == ASC ? 1 : -1);
         assertElementRendering(expectedJson, sortField);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstSortField("p", AstSortOrder.ASC));
     }
 }

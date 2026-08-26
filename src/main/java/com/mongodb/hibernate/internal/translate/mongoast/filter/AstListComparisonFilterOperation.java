@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import java.util.List;
 import java.util.function.Consumer;
@@ -30,6 +31,12 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  */
 public record AstListComparisonFilterOperation(AstListComparisonFilterOperator operator, List<AstValue> values)
         implements AstFilterOperation {
+    @Override
+    public AstFilterOperation mapChildren(AstNodeRewriter rewriter) {
+        return new AstListComparisonFilterOperation(
+                operator, values.stream().map(rewriter::rewrite).toList());
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

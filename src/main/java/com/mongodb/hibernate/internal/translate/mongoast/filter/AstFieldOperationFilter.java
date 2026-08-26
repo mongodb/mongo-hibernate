@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -28,6 +29,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * @hidden
  */
 public record AstFieldOperationFilter(String fieldPath, AstFilterOperation filterOperation) implements AstFilter {
+    @Override
+    public AstFilter mapChildren(AstNodeRewriter rewriter) {
+        return new AstFieldOperationFilter(fieldPath, rewriter.rewrite(filterOperation));
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

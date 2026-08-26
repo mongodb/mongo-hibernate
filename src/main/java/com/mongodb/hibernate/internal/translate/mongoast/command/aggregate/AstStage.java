@@ -17,10 +17,19 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 
 /**
  * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation-pipeline/">Aggregation Stages</a>.
  *
  * @hidden
  */
-public interface AstStage extends AstNode {}
+public interface AstStage extends AstNode {
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Narrowed so a walker can rebuild a AstStage without casting.
+     */
+    @Override
+    AstStage mapChildren(AstNodeRewriter rewriter);
+}

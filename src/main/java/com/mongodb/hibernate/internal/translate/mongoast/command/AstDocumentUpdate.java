@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -38,6 +39,13 @@ public record AstDocumentUpdate(List<AstFieldUpdate> set, List<AstFieldUpdate> s
 
     public AstDocumentUpdate(List<AstFieldUpdate> set) {
         this(set, List.of());
+    }
+
+    @Override
+    public AstUpdate mapChildren(AstNodeRewriter rewriter) {
+        return new AstDocumentUpdate(
+                set.stream().map(rewriter::rewrite).toList(),
+                setOnInsert.stream().map(rewriter::rewrite).toList());
     }
 
     @Override

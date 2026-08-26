@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 
 import org.junit.jupiter.api.Test;
@@ -29,5 +30,10 @@ class AstProjectStageIncludeSpecificationTests {
                            {"name": true}\
                            """;
         assertElementRendering(expectedJson, projectStageIncludeSpecification);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstProjectStageIncludeSpecification("f"));
     }
 }

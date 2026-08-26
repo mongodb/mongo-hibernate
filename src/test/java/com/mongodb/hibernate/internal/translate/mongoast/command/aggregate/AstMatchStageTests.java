@@ -16,11 +16,14 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
@@ -37,5 +40,10 @@ class AstMatchStageTests {
                 {"$match": {"title": {"$eq": "Jane Eyre"}}}\
                 """;
         assertRendering(expectedJson, astMatchStage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstMatchStage(new AstExprFilter(new AstFieldPathExpression("f"))));
     }
 }

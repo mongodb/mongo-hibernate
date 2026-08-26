@@ -16,8 +16,10 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
+import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
 
@@ -30,5 +32,10 @@ class AstLiteralExpressionTests {
         assertExpressionRendering("""
                 {"": {"$literal": "$foo"}}\
                 """, expr);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstLiteralExpression(new AstLiteral(new BsonInt32(1))));
     }
 }

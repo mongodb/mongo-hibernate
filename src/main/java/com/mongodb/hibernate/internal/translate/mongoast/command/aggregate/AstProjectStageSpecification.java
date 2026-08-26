@@ -17,10 +17,19 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 
 /**
  * @see AstProjectStage
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public interface AstProjectStageSpecification extends AstNode {}
+public interface AstProjectStageSpecification extends AstNode {
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Narrowed so a walker can rebuild a AstProjectStageSpecification without casting.
+     */
+    @Override
+    AstProjectStageSpecification mapChildren(AstNodeRewriter rewriter);
+}

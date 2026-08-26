@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.List;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -32,6 +33,15 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  */
 public record AstLookupStageWithPipeline(String from, List<AstLetVariable> let, List<AstStage> pipeline, String as)
         implements AstStage {
+    @Override
+    public AstStage mapChildren(AstNodeRewriter rewriter) {
+        return new AstLookupStageWithPipeline(
+                from,
+                let.stream().map(rewriter::rewrite).toList(),
+                pipeline.stream().map(rewriter::rewrite).toList(),
+                as);
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

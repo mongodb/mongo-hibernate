@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import org.junit.jupiter.api.Test;
@@ -28,5 +29,10 @@ class AstVariableExpressionTests {
                 """
                 {"": "$$v0"}\
                 """, new AstVariableExpression("v0"));
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstVariableExpression("v"));
     }
 }

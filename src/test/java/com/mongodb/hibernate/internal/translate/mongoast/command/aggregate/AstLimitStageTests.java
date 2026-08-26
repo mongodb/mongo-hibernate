@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
@@ -34,5 +35,10 @@ class AstLimitStageTests {
                 {"$limit": {"$numberInt": "%d"}}\
                 """.formatted(limitValue);
         assertRendering(expectedJson, astLimitStage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstLimitStage(new AstLiteral(new BsonInt32(1))));
     }
 }

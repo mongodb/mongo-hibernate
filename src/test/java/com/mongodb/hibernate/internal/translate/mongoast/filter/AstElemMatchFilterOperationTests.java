@@ -16,9 +16,11 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
@@ -42,5 +44,10 @@ class AstElemMatchFilterOperationTests {
                 """
                 {"$elemMatch": {"sku": {"$eq": "WIDGET-1"}}}\
                 """, operation);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstElemMatchFilterOperation(new AstExprFilter(new AstFieldPathExpression("f"))));
     }
 }

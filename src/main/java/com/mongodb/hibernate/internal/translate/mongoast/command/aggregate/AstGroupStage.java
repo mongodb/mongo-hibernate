@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.Collection;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -46,6 +47,11 @@ public record AstGroupStage(Collection<? extends AstGroupStageSpecification> spe
 
     public AstGroupStage {
         assertFalse(specifications.isEmpty());
+    }
+
+    @Override
+    public AstStage mapChildren(AstNodeRewriter rewriter) {
+        return new AstGroupStage(specifications.stream().map(rewriter::rewrite).toList());
     }
 
     @Override

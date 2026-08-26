@@ -30,6 +30,11 @@ public record AstRegexMatchExpression(AstExpression input, String regex, String 
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstRegexMatchExpression(rewriter.rewrite(input), regex, options);
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$regexMatch");

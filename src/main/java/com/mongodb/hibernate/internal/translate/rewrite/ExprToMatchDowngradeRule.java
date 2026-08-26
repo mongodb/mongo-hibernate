@@ -21,13 +21,13 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpression
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Only pure comparison shapes are downgraded — arithmetic, logical, or accumulator operands are left as
  * {@code $expr}.
  */
-public final class ExprToMatchDowngradeRule implements RewriteRule<AstNode> {
+public final class ExprToMatchDowngradeRule implements RewriteRule {
 
     private static final Map<String, AstComparisonFilterOperator> NAME_TO_FILTER_OP = Map.of(
             AstComparisonExpressionOperator.EQ.getOperatorName(), AstComparisonFilterOperator.EQ,
@@ -59,7 +59,7 @@ public final class ExprToMatchDowngradeRule implements RewriteRule<AstNode> {
             AstComparisonFilterOperator.LTE, AstComparisonFilterOperator.GTE);
 
     @Override
-    public @Nullable AstNode tryMatch(AstNode node) {
+    public @Nullable AstFilter tryMatch(AstFilter node) {
         if (!(node instanceof AstExprFilter ef)) {
             return null;
         }

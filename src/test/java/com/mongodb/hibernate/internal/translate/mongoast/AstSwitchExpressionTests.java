@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import java.util.List;
@@ -64,5 +65,12 @@ class AstSwitchExpressionTests {
                 {"": {"$switch": {"branches": [{"case": {"$eq": ["$x", {"$numberInt": "1"}]}, "then": {"$numberInt": "10"}}, {"case": {"$eq": ["$x", {"$numberInt": "2"}]}, "then": {"$numberInt": "20"}}], "default": null}}}\
                 """,
                 expr);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstSwitchExpression(
+                List.of(new AstSwitchCase(new AstFieldPathExpression("f"), new AstFieldPathExpression("f"))),
+                new AstFieldPathExpression("f")));
     }
 }

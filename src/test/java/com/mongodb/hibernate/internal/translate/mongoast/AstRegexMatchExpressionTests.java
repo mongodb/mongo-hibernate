@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import org.junit.jupiter.api.Test;
@@ -30,5 +31,10 @@ class AstRegexMatchExpressionTests {
                 {"": {"$regexMatch": {"input": "$name", "regex": "^a.*$", "options": "s"}}}\
                 """,
                 expr);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstRegexMatchExpression(new AstFieldPathExpression("f"), "r", "i"));
     }
 }

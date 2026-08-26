@@ -37,6 +37,11 @@ public record AstLiteralExpression(AstValue value) implements AstExpression {
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstLiteralExpression(rewriter.rewrite(value));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$literal");

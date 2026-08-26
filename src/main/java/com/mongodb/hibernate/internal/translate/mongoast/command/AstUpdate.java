@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 
 /**
  * The value of an {@code update} command's {@code u} field: either a document-form update ({@link AstDocumentUpdate})
@@ -25,4 +26,13 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public sealed interface AstUpdate extends AstNode permits AstDocumentUpdate, AstPipelineUpdate {}
+public sealed interface AstUpdate extends AstNode permits AstDocumentUpdate, AstPipelineUpdate {
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Narrowed so a walker can rebuild a AstUpdate without casting.
+     */
+    @Override
+    AstUpdate mapChildren(AstNodeRewriter rewriter);
+}

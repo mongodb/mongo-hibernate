@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -30,6 +31,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  */
 @SuppressWarnings("MissingSummary")
 public record AstExprFilter(AstExpression expression) implements AstFilter {
+    @Override
+    public AstFilter mapChildren(AstNodeRewriter rewriter) {
+        return new AstExprFilter(rewriter.rewrite(expression));
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

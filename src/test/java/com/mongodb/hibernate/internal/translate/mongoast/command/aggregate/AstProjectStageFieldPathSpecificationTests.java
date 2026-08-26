@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 
 import org.junit.jupiter.api.Test;
@@ -28,5 +29,10 @@ class AstProjectStageFieldPathSpecificationTests {
         assertElementRendering("""
                 {"o1_0#total": "$o1_0.total"}\
                 """, spec);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstProjectStageFieldPathSpecification("f", "p"));
     }
 }

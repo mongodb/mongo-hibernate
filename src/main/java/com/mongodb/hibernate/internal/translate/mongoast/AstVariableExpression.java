@@ -34,6 +34,11 @@ public record AstVariableExpression(String name) implements AstExpression {
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return this;
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeString("$$" + name);
     }

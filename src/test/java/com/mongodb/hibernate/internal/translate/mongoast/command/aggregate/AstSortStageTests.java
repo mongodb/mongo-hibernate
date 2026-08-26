@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import java.util.List;
@@ -34,5 +35,10 @@ class AstSortStageTests {
                 {"$sort": {"field1": {"$numberInt": "1"}, "field2": {"$numberInt": "-1"}}}\
                 """;
         assertRendering(expectedJson, astSortStage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstSortStage(List.of(new AstSortField("p", AstSortOrder.ASC))));
     }
 }

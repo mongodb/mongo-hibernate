@@ -18,4 +18,13 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
-public interface AstValue extends AstNode {}
+public interface AstValue extends AstNode {
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Narrowed so a walker can rebuild a AstValue without casting.
+     */
+    @Override
+    AstValue mapChildren(AstNodeRewriter rewriter);
+}

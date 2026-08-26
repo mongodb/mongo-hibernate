@@ -28,6 +28,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  */
 public record AstDocument(Collection<? extends AstElement> elements) implements AstValue {
     @Override
+    public AstDocument mapChildren(AstNodeRewriter rewriter) {
+        return new AstDocument(elements.stream().map(rewriter::rewrite).toList());
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {

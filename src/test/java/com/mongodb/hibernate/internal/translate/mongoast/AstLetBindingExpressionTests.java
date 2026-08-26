@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import java.util.Map;
@@ -35,5 +36,12 @@ class AstLetBindingExpressionTests {
                 {"": {"$let": {"vars": {"x": {"$numberInt": "2"}}, "in": "$$x"}}}\
                 """,
                 let);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(
+                new AstLetBindingExpression(new AstFieldPathExpression("f"), new TreeMap<>(Map.of("v", (AstExpression)
+                        new AstFieldPathExpression("f")))));
     }
 }

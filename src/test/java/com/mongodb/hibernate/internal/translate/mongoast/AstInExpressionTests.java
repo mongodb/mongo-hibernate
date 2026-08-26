@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import java.util.List;
@@ -50,5 +51,11 @@ class AstInExpressionTests {
                 """
                 {"": {"$in": ["$name", [{"$literal": "$x"}, "a"]]}}\
                 """, expr);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(
+                new AstInExpression(new AstFieldPathExpression("f"), List.of(new AstFieldPathExpression("f"))));
     }
 }

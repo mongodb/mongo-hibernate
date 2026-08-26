@@ -17,13 +17,16 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator.LT;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstVariableExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import java.util.List;
+import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
 class AstLookupStageWithPipelineTests {
@@ -43,5 +46,14 @@ class AstLookupStageWithPipelineTests {
                 "pipeline": [{"$match": {"$expr": {"$lt": ["$$v0", "$total"]}}}], "as": "#o1_0"}}\
                 """,
                 stage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstLookupStageWithPipeline(
+                "f",
+                List.of(new AstLetVariable("v", new AstFieldPathExpression("f"))),
+                List.of(new AstSkipStage(new AstLiteral(new BsonInt32(1)))),
+                "a"));
     }
 }

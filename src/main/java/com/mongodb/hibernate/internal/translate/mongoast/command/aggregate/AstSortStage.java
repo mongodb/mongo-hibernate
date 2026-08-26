@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.Collection;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -32,6 +33,11 @@ public record AstSortStage(Collection<? extends AstSortField> sortFields) implem
 
     public AstSortStage {
         assertFalse(sortFields.isEmpty());
+    }
+
+    @Override
+    public AstStage mapChildren(AstNodeRewriter rewriter) {
+        return new AstSortStage(sortFields.stream().map(rewriter::rewrite).toList());
     }
 
     @Override

@@ -29,6 +29,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public record AstComputedFieldUpdate(String name, AstExpression value) implements AstNode {
     @Override
+    public AstComputedFieldUpdate mapChildren(AstNodeRewriter rewriter) {
+        return new AstComputedFieldUpdate(name, rewriter.rewrite(value));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeName(name);
         value.render(writer, binderConsumer);

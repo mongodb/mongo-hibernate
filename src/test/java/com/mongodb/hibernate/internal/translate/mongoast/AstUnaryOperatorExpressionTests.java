@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import org.bson.BsonInt32;
@@ -46,5 +47,10 @@ class AstUnaryOperatorExpressionTests {
                 {"": {"$toLong": {"$divide": ["$x", {"$numberInt": "2"}]}}}\
                 """,
                 toLong);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstUnaryOperatorExpression("$not", new AstFieldPathExpression("f")));
     }
 }

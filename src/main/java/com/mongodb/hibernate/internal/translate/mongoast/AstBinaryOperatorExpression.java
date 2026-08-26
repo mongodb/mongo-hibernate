@@ -44,6 +44,11 @@ public record AstBinaryOperatorExpression(String operator, AstExpression left, A
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstBinaryOperatorExpression(operator, rewriter.rewrite(left), rewriter.rewrite(right));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName(operator);

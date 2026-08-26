@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
@@ -35,5 +36,10 @@ class AstTypeFilterOperationTests {
                         """
                         {"$type": [{"$numberInt": "10"}, {"$numberInt": "16"}]}""",
                         new AstTypeFilterOperation(List.of(BsonType.NULL, BsonType.INT32))));
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstTypeFilterOperation(List.of(BsonType.STRING)));
     }
 }

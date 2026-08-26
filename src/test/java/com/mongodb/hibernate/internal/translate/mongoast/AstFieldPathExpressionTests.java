@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import org.junit.jupiter.api.Test;
@@ -36,5 +37,10 @@ class AstFieldPathExpressionTests {
                 {"": "$address.city"}\
                 """,
                 new AstFieldPathExpression("address.city"));
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstFieldPathExpression("f"));
     }
 }

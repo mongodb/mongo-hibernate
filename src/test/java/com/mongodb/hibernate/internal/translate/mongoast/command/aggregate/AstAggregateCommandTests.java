@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
@@ -40,5 +41,10 @@ class AstAggregateCommandTests {
                 {"aggregate": "books", "pipeline": [{"$match": {"_id": {"$eq": {"$numberInt": "1"}}}}, {"$project": {"title": true}}]}\
                 """;
         assertRendering(expectedJson, aggregateCommand);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstAggregateCommand("c", List.of(new AstSkipStage(new AstLiteral(new BsonInt32(1))))));
     }
 }

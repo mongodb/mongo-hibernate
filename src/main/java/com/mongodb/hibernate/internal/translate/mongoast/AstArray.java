@@ -25,6 +25,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public record AstArray(Collection<AstValue> elements) implements AstValue {
     @Override
+    public AstValue mapChildren(AstNodeRewriter rewriter) {
+        return new AstArray(elements.stream().map(rewriter::rewrite).toList());
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartArray();
         {

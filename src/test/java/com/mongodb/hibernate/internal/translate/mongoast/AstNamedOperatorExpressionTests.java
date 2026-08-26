@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import java.util.Map;
@@ -33,5 +34,11 @@ class AstNamedOperatorExpressionTests {
                 """
                 {"": {"$op": {"a": "$x", "b": "$y"}}}\
                 """, operation);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstNamedOperatorExpression(
+                "$op", new TreeMap<>(Map.of("a", (AstExpression) new AstFieldPathExpression("f")))));
     }
 }

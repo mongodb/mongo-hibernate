@@ -17,6 +17,7 @@
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -34,6 +35,11 @@ public enum AstSortOrder implements AstNode {
 
     AstSortOrder(int renderedValue) {
         this.renderedValue = renderedValue;
+    }
+
+    @Override
+    public AstSortOrder mapChildren(AstNodeRewriter rewriter) {
+        return this;
     }
 
     @Override

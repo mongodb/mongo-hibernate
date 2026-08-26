@@ -19,6 +19,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
@@ -38,6 +39,13 @@ public record AstLetBindingExpression(AstExpression in, SortedMap<String, AstExp
             }
             return r.intern("Let", parts.toArray());
         });
+    }
+
+    @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        var newVars = new TreeMap<String, AstExpression>();
+        vars.forEach((name, value) -> newVars.put(name, rewriter.rewrite(value)));
+        return new AstLetBindingExpression(rewriter.rewrite(in), newVars);
     }
 
     @Override

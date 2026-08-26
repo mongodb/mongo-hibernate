@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
@@ -54,5 +55,11 @@ class AstInsertCommandTests {
                 {"insert": "books", "documents": [{"title": "War and Peace", "year": {"$numberInt": "1867"}, "_id": ?}, {"title": "Crime and Punishment", "year": {"$numberInt": "1868"}, "_id": ?}]}\
                 """;
         assertRendering(expectedJson, insertCommand);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstInsertCommand(
+                "c", List.of(new AstDocument(List.of(new AstElement("n", new AstLiteral(new BsonInt32(1))))))));
     }
 }

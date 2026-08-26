@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.Collection;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -34,6 +35,12 @@ public record AstLogicalFilter(AstLogicalFilterOperator operator, Collection<? e
 
     public AstLogicalFilter {
         assertFalse(filters.isEmpty());
+    }
+
+    @Override
+    public AstFilter mapChildren(AstNodeRewriter rewriter) {
+        return new AstLogicalFilter(
+                operator, filters.stream().map(rewriter::rewrite).toList());
     }
 
     @Override

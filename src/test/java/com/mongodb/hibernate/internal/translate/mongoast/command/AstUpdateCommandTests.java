@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.MULTI;
 import static com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement.Kind.UPSERT;
@@ -29,6 +30,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValueExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import java.util.List;
 import org.bson.BsonInt32;
@@ -113,5 +115,15 @@ class AstUpdateCommandTests {
                 {"update": "items", "updates": [{"q": {"_id": {"$eq": {"$numberInt": "1"}}}, "u": {"$set": {"label": "a"}, "$setOnInsert": {"createdBy": "jeff"}}, "upsert": true, "multi": false}]}\
                 """;
         assertRendering(expectedJson, updateCommand);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstUpdateCommand(
+                "c",
+                List.of(new AstUpdateStatement(
+                        new AstExprFilter(new AstFieldPathExpression("f")),
+                        new AstPipelineUpdate(List.of()),
+                        UPSERT))));
     }
 }

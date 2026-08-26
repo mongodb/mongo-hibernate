@@ -32,6 +32,11 @@ public record AstParameterMarker(
         JdbcParameterBinder binder, @Nullable Integer parameterId) implements AstValue {
 
     @Override
+    public AstValue mapChildren(AstNodeRewriter rewriter) {
+        return this;
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeUndefined();
         binderConsumer.accept(binder);

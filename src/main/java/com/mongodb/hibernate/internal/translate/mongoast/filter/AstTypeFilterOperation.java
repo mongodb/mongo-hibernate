@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.Collection;
 import java.util.function.Consumer;
 import org.bson.BsonType;
@@ -32,6 +33,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 public record AstTypeFilterOperation(Collection<BsonType> types) implements AstFilterOperation {
     public AstTypeFilterOperation {
         assertFalse(types.isEmpty());
+    }
+
+    @Override
+    public AstFilterOperation mapChildren(AstNodeRewriter rewriter) {
+        return this;
     }
 
     @Override

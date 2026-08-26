@@ -43,6 +43,12 @@ public record AstPositionalOperatorExpression(String operator, List<AstExpressio
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstPositionalOperatorExpression(
+                operator, arguments.stream().map(rewriter::rewrite).toList());
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         {

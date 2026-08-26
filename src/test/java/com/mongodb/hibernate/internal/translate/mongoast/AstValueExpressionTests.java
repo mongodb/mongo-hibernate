@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
 
 import org.bson.BsonInt32;
@@ -29,5 +30,10 @@ class AstValueExpressionTests {
         assertExpressionRendering("""
                 {"": {"$numberInt": "5"}}\
                 """, expr);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstValueExpression(new AstLiteral(new BsonInt32(1))));
     }
 }

@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import org.junit.jupiter.api.Test;
@@ -31,5 +32,10 @@ class AstLookupStageTests {
                 {"$lookup": {"from": "orders", "localField": "_id", "foreignField": "customerId", "as": "o1_0"}}\
                 """,
                 stage);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstLookupStage("f", "l", "fo", "a"));
     }
 }

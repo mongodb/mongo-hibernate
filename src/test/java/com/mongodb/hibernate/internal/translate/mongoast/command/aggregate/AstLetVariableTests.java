@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertElementRendering;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
@@ -30,5 +31,10 @@ class AstLetVariableTests {
                 {"v0": "$_id"}\
                 """,
                 new AstLetVariable("v0", new AstFieldPathExpression("_id")));
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstLetVariable("v", new AstFieldPathExpression("f")));
     }
 }

@@ -34,6 +34,11 @@ public record AstUnaryOperatorExpression(String operator, AstExpression operand)
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstUnaryOperatorExpression(operator, rewriter.rewrite(operand));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName(operator);

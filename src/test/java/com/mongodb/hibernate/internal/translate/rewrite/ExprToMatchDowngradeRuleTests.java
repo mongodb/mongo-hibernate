@@ -34,6 +34,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.HashMap;
 import java.util.List;
 import org.bson.BsonInt32;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class ExprToMatchDowngradeRuleTests {
@@ -50,10 +51,8 @@ class ExprToMatchDowngradeRuleTests {
         return new AstExprFilter(new AstBinaryOperatorExpression(op, l, r));
     }
 
-    private static AstFilter downgrade(AstExprFilter node) {
-        var rule = new ExprToMatchDowngradeRule();
-        var out = rule.tryMatch(node);
-        return (AstFilter) out;
+    private static @Nullable AstFilter downgrade(AstExprFilter node) {
+        return new ExprToMatchDowngradeRule().tryMatch(node);
     }
 
     @Test

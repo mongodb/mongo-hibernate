@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import java.util.Collection;
 import java.util.function.Consumer;
@@ -28,6 +29,12 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * @hidden
  */
 public record AstAggregateCommand(String collection, Collection<? extends AstStage> stages) implements AstCommand {
+
+    @Override
+    public AstAggregateCommand mapChildren(AstNodeRewriter rewriter) {
+        return new AstAggregateCommand(
+                collection, stages.stream().map(rewriter::rewrite).toList());
+    }
 
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {

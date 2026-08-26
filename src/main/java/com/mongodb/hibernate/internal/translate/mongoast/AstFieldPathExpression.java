@@ -29,6 +29,11 @@ public record AstFieldPathExpression(String fieldPath) implements AstExpression 
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return this;
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeString("$" + fieldPath);
     }

@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -27,6 +28,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * @hidden
  */
 public record AstLimitStage(AstValue value) implements AstStage {
+    @Override
+    public AstStage mapChildren(AstNodeRewriter rewriter) {
+        return new AstLimitStage(rewriter.rewrite(value));
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

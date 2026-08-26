@@ -48,6 +48,12 @@ public record AstSwitchExpression(List<AstSwitchCase> branches, AstExpression de
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstSwitchExpression(
+                branches.stream().map(rewriter::rewrite).toList(), rewriter.rewrite(defaultExpression));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$switch");

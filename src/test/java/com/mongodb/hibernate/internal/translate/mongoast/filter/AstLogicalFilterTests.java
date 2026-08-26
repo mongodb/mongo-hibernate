@@ -16,13 +16,16 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator.EQ;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstLiteral;
 import java.util.List;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -44,5 +47,11 @@ class AstLogicalFilterTests {
                 """
                         .formatted(operator.getOperatorName());
         assertRendering(expectedJson, astLogicalFilter);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstLogicalFilter(
+                AstLogicalFilterOperator.AND, List.of(new AstExprFilter(new AstFieldPathExpression("f")))));
     }
 }

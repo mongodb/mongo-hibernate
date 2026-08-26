@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
 import org.junit.jupiter.api.Test;
@@ -25,5 +26,10 @@ class AstEmptyFilterTests {
     @Test
     void testRendering() {
         assertRendering("{}", AstEmptyFilter.INSTANCE);
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(AstEmptyFilter.INSTANCE);
     }
 }

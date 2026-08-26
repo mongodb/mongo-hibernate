@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.function.Consumer;
 import org.bson.BsonWriter;
@@ -27,6 +28,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * @hidden
  */
 public record AstDeleteCommand(String collection, AstFilter filter) implements AstCommand {
+    @Override
+    public AstDeleteCommand mapChildren(AstNodeRewriter rewriter) {
+        return new AstDeleteCommand(collection, rewriter.rewrite(filter));
+    }
+
     @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();

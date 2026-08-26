@@ -17,7 +17,16 @@
 package com.mongodb.hibernate.internal.translate.mongoast.filter;
 
 import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
+import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 
 /** @hidden */
 @SuppressWarnings("MissingSummary")
-public interface AstFilter extends AstNode {}
+public interface AstFilter extends AstNode {
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Narrowed so a walker can rebuild a AstFilter without casting.
+     */
+    @Override
+    AstFilter mapChildren(AstNodeRewriter rewriter);
+}

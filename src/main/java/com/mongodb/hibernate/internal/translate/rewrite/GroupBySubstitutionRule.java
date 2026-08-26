@@ -19,12 +19,13 @@ package com.mongodb.hibernate.internal.translate.rewrite;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.translate.mongoast.AstExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
-import com.mongodb.hibernate.internal.translate.mongoast.AstNode;
 import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -38,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  * {@link FeatureNotSupportedException} in that case rather than emit a post-{@code $group} pipeline that references a
  * non-existent field. Extend the whitelist here when accumulator support lands.
  */
-public final class GroupBySubstitutionRule implements RewriteRule<AstNode> {
+public final class GroupBySubstitutionRule implements RewriteRule {
 
     private final Map<Integer, String> groupKeyVN;
     private final VNRegistry vnRegistry;
@@ -49,46 +50,55 @@ public final class GroupBySubstitutionRule implements RewriteRule<AstNode> {
     }
 
     @Override
-    public @Nullable AstNode tryMatch(AstNode node) {
-        if (node instanceof AstExpression expr) {
-            String subKey = groupKeyVN.get(expr.valueNumber(vnRegistry));
-            if (subKey != null) {
-                return new AstFieldPathExpression("_id." + subKey);
-            }
-            if (expr instanceof AstFieldPathExpression fp) {
-                throw strayColumn(fp.fieldPath());
-            }
-            return null;
+    public @Nullable AstExpression tryMatch(AstExpression node) {
+        String subKey = groupKeyVN.get(node.valueNumber(vnRegistry));
+        if (subKey != null) {
+            return new AstFieldPathExpression("_id." + subKey);
         }
-        if (node instanceof AstFieldOperationFilter fof) {
-            String subKey = lookupByFieldPath(fof.fieldPath());
-            if (subKey == null) {
-                throw strayColumn(fof.fieldPath());
-            }
-            return new AstFieldOperationFilter("_id." + subKey, fof.filterOperation());
-        }
-        if (node instanceof AstSortField sf) {
-            String subKey = lookupByFieldPath(sf.path());
-            if (subKey == null) {
-                throw strayColumn(sf.path());
-            }
-            return new AstSortField("_id." + subKey, sf.order());
-        }
-        if (node instanceof AstProjectStageIncludeSpecification inc) {
-            String subKey = lookupByFieldPath(inc.field());
-            if (subKey == null) {
-                throw strayColumn(inc.field());
-            }
-            return new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey);
-        }
-        if (node instanceof AstProjectStageFieldPathSpecification fps) {
-            String subKey = lookupByFieldPath(fps.fieldPath());
-            if (subKey == null) {
-                throw strayColumn(fps.fieldPath());
-            }
-            return new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey);
+        if (node instanceof AstFieldPathExpression fp) {
+            throw strayColumn(fp.fieldPath());
         }
         return null;
+    }
+
+    @Override
+    public @Nullable AstFilter tryMatch(AstFilter node) {
+        if (node instanceof AstFieldOperationFilter fof) {
+            return new AstFieldOperationFilter(subKeyOrThrow(fof.fieldPath()), fof.filterOperation());
+        }
+        return null;
+    }
+
+    @Override
+    public AstSortField tryMatch(AstSortField node) {
+        return new AstSortField(subKeyOrThrow(node.path()), node.order());
+    }
+
+    @Override
+    public @Nullable AstProjectStageSpecification tryMatch(AstProjectStageSpecification node) {
+        if (node instanceof AstProjectStageIncludeSpecification inc) {
+            return idSpecification(inc.field());
+        }
+        if (node instanceof AstProjectStageFieldPathSpecification fps) {
+            return idSpecification(fps.fieldPath());
+        }
+        return null;
+    }
+
+    private AstProjectStageFieldPathSpecification idSpecification(String fieldPath) {
+        String subKey = lookupByFieldPath(fieldPath);
+        if (subKey == null) {
+            throw strayColumn(fieldPath);
+        }
+        return new AstProjectStageFieldPathSpecification("_id#" + subKey, "_id." + subKey);
+    }
+
+    private String subKeyOrThrow(String fieldPath) {
+        String subKey = lookupByFieldPath(fieldPath);
+        if (subKey == null) {
+            throw strayColumn(fieldPath);
+        }
+        return "_id." + subKey;
     }
 
     private static FeatureNotSupportedException strayColumn(String fieldPath) {

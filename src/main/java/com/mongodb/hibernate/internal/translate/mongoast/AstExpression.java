@@ -29,4 +29,12 @@ public interface AstExpression extends AstNode {
      * same integer when interned through the same {@link VNRegistry}.
      */
     int valueNumber(VNRegistry vn);
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Narrowed so a walker can rebuild a AstExpression without casting.
+     */
+    @Override
+    AstExpression mapChildren(AstNodeRewriter rewriter);
 }

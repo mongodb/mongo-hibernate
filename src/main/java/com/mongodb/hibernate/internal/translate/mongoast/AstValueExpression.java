@@ -38,6 +38,11 @@ public record AstValueExpression(AstValue value) implements AstExpression {
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstValueExpression(rewriter.rewrite(value));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         value.render(writer, binderConsumer);
     }

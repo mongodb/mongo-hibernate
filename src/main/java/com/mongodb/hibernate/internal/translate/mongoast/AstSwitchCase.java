@@ -31,6 +31,11 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public record AstSwitchCase(AstExpression caseExpression, AstExpression thenExpression) implements AstNode {
     @Override
+    public AstSwitchCase mapChildren(AstNodeRewriter rewriter) {
+        return new AstSwitchCase(rewriter.rewrite(caseExpression), rewriter.rewrite(thenExpression));
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("case");

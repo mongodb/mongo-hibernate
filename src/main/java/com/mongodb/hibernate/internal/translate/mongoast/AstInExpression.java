@@ -35,6 +35,12 @@ public record AstInExpression(AstExpression value, List<? extends AstExpression>
     }
 
     @Override
+    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+        return new AstInExpression(
+                rewriter.rewrite(value), options.stream().map(rewriter::rewrite).toList());
+    }
+
+    @Override
     public void render(BsonWriter writer, Consumer<JdbcParameterBinder> binderConsumer) {
         writer.writeStartDocument();
         writer.writeName("$in");
