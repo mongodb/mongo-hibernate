@@ -146,7 +146,6 @@ import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
-import org.hibernate.dialect.Replacer;
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.util.collections.Stack;
@@ -275,6 +274,7 @@ import org.jspecify.annotations.Nullable;
  */
 @SuppressWarnings("MissingSummary")
 public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+    private record DateFormatRule(String hql, Optional<String> mql) {}
 
     // '#' is blocked in mapped field names, so prefixing join aliases with it prevents $lookup from shadowing
     // a local field that happens to share the Hibernate-generated alias name (e.g. "o1_0").
@@ -282,6 +282,86 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Match a quoted SQL string with the contents of the string being in match group 1
     private static final Pattern SQL_STRING = Pattern.compile("^'((?:''|[^'])*)'$");
 
+    private static final List<DateFormatRule> DATE_FORMATS = List.of(
+            // era
+            new DateFormatRule("GG", Optional.empty()),
+            new DateFormatRule("G", Optional.empty()),
+
+            // year
+            new DateFormatRule("yyyy", Optional.of("%Y")),
+            new DateFormatRule("yyy", Optional.empty()),
+            new DateFormatRule("yy", Optional.empty()),
+            new DateFormatRule("y", Optional.empty()),
+
+            // month of year
+            new DateFormatRule("MMMM", Optional.of("%B")),
+            new DateFormatRule("MMM", Optional.of("%b")),
+            new DateFormatRule("MM", Optional.of("%m")),
+            new DateFormatRule("M", Optional.empty()),
+
+            // week of year (this looks like %U, but does not match Java's implmentation)
+            new DateFormatRule("ww", Optional.empty()),
+            new DateFormatRule("w", Optional.empty()),
+            // year for week
+            new DateFormatRule("YYYY", Optional.of("%G")),
+            new DateFormatRule("YYY", Optional.empty()),
+            new DateFormatRule("YY", Optional.empty()),
+            new DateFormatRule("Y", Optional.empty()),
+
+            // week of month
+            new DateFormatRule("W", Optional.empty()),
+
+            // day of week
+            new DateFormatRule("EEEE", Optional.empty()),
+            new DateFormatRule("EEE", Optional.empty()),
+            new DateFormatRule("ee", Optional.empty()),
+            // This looks like it matches %u, but Mongo and Java have different starts of the week
+            new DateFormatRule("e", Optional.empty()),
+
+            // day of month
+            new DateFormatRule("dd", Optional.of("%d")),
+            new DateFormatRule("d", Optional.empty()),
+
+            // day of year
+            new DateFormatRule("DDD", Optional.of("%j")),
+            new DateFormatRule("DD", Optional.empty()),
+            new DateFormatRule("D", Optional.empty()),
+
+            // am pm
+            new DateFormatRule("a", Optional.empty()),
+
+            // hour
+            new DateFormatRule("hh", Optional.empty()),
+            new DateFormatRule("HH", Optional.of("%H")),
+            new DateFormatRule("h", Optional.empty()),
+            new DateFormatRule("H", Optional.empty()),
+
+            // minute
+            new DateFormatRule("mm", Optional.of("%M")),
+            new DateFormatRule("m", Optional.empty()),
+
+            // second
+            new DateFormatRule("ss", Optional.of("%S")),
+            new DateFormatRule("s", Optional.empty()),
+
+            // fractional seconds
+            new DateFormatRule("SSSSSS", Optional.empty()),
+            new DateFormatRule("SSSSS", Optional.empty()),
+            new DateFormatRule("SSSS", Optional.empty()),
+            new DateFormatRule("SSS", Optional.of("%L")),
+            new DateFormatRule("SS", Optional.empty()),
+            new DateFormatRule("S", Optional.empty()),
+
+            // timezones
+            new DateFormatRule("zzz", Optional.empty()),
+            new DateFormatRule("zz", Optional.empty()),
+            new DateFormatRule("z", Optional.empty()),
+            new DateFormatRule("ZZZ", Optional.of("%z")),
+            new DateFormatRule("ZZ", Optional.of("%z")),
+            new DateFormatRule("Z", Optional.of("%z")),
+            new DateFormatRule("xxx", Optional.empty()),
+            new DateFormatRule("xx", Optional.of("%z")),
+            new DateFormatRule("x", Optional.empty()));
     private final SessionFactoryImplementor sessionFactory;
 
     private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
@@ -1410,86 +1490,36 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     @Override
     public void visitFormat(Format format) {
-        var f = new Replacer(format.getFormat(), "'", "\"")
-                // era
-                .replace("GG", "AD")
-                .replace("G", "AD")
+        var inputFormat = format.getFormat();
+        var inQuote = false;
+        var outputFormat = new StringBuilder();
 
-                // year
-                .replace("yyyy", "%Y")
-                .replace("yyy", "%Y")
-                .replace("yy", "%Y")
-                .replace("y", "%Y")
-
-                // month of year
-                .replace("MMMM", "%B")
-                .replace("MMM", "%b")
-                .replace("MM", "%m")
-                .replace("M", "%m")
-
-                // week of year
-                .replace("ww", "%U")
-                .replace("w", "%U")
-                // year for week
-                .replace("YYYY", "%G")
-                .replace("YYY", "%G")
-                .replace("YY", "%G")
-                .replace("Y", "%G")
-
-                // week of month
-                .replace("W", "W")
-
-                // day of week
-                .replace("EEEE", "%u")
-                .replace("EEE", "%u")
-                .replace("ee", "%u")
-                .replace("e", "%u")
-
-                // day of month
-                .replace("dd", "%d")
-                .replace("d", "%d")
-
-                // day of year
-                .replace("DDD", "%j")
-                .replace("DD", "%j")
-                .replace("D", "%j")
-
-                // am pm (not supported in Mongo; since we're forcing 24 hours, drop)
-                .replace("a", "")
-
-                // hour
-                .replace("hh", "%H")
-                .replace("HH", "%H")
-                .replace("h", "%H")
-                .replace("H", "%H")
-
-                // minute
-                .replace("mm", "%M")
-                .replace("m", "%M")
-
-                // second
-                .replace("ss", "%S")
-                .replace("s", "%S")
-
-                // fractional seconds
-                .replace("SSSSSS", "%L")
-                .replace("SSSSS", "%L")
-                .replace("SSSS", "%L")
-                .replace("SSS", "%L")
-                .replace("SS", "%L")
-                .replace("S", "%L")
-
-                // timezones
-                .replace("zzz", "%z")
-                .replace("zz", "%z")
-                .replace("z", "%z")
-                .replace("ZZZ", "%z")
-                .replace("ZZ", "%z")
-                .replace("Z", "%z")
-                .replace("xxx", "%z")
-                .replace("xx", "%z")
-                .replace("x", "%z");
-        this.yield(EXPRESSION, new AstLiteralExpression(new AstLiteral(new BsonString(f.result()))));
+        main:
+        while (!inputFormat.isEmpty()) {
+            if (inputFormat.startsWith("'")) {
+                inputFormat = inputFormat.substring(1);
+                inQuote = !inQuote;
+            } else if (inQuote) {
+                outputFormat.append(inputFormat.charAt(0));
+                if (inputFormat.charAt(0) == '%') {
+                    outputFormat.append('%');
+                }
+                inputFormat = inputFormat.substring(1);
+            } else {
+                for (var entry : DATE_FORMATS) {
+                    if (inputFormat.startsWith(entry.hql())) {
+                        inputFormat = inputFormat.substring(entry.hql().length());
+                        outputFormat.append(entry.mql()
+                                .orElseThrow(() ->
+                                        new FeatureNotSupportedException("Unsupported date format: " + entry.hql())));
+                        continue main;
+                    }
+                }
+                outputFormat.append(inputFormat.charAt(0));
+                inputFormat = inputFormat.substring(1);
+            }
+        }
+        this.yield(EXPRESSION, new AstLiteralExpression(new AstLiteral(new BsonString(outputFormat.toString()))));
     }
 
     @Override

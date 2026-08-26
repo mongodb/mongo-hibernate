@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.IsoFields;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -69,11 +70,31 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
     }
 
     @ParameterizedTest
-    @CsvSource({"yyyy-MM-dd HH:mm:ss,%Y-%m-%d %H:%M:%S"})
+    @CsvSource({
+        "yyyy-MM-dd HH:mm:ss,%Y-%m-%d %H:%M:%S",
+        "yyyy-MM-dd 'HH%H' HH:mm:ss,%Y-%m-%d HH%%H %H:%M:%S",
+        "DDD,%j",
+        "HH,%H",
+        "MM,%m",
+        "MMM,%b",
+        "MMMM,%B",
+        "SSS,%L",
+        "YYYY,%G",
+        "Z,%z",
+        "ZZ,%z",
+        "ZZZ,%z",
+        "dd,%d",
+        "mm,%M",
+        "ss,%S",
+        "xx,%z",
+        "yyyy,%Y",
+    })
     void testFormat(String hqlFormat, String mqlFormat) {
+        // Mongo uses fixed date names that match the US locale in Java. See
+        // `mongo/db/query/datetime/date_time_support.cpp`
         assertQueryResult(
-                "select format(before as '%s') from Item".formatted(hqlFormat),
-                ITEM.before.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(hqlFormat)),
+                "select format(before as '%s') from Item".formatted(hqlFormat.replace("'", "''")),
+                ITEM.before.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(hqlFormat, Locale.US)),
                 """
                 {
                   "aggregate": "items",
@@ -93,6 +114,34 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                 }
                 """
                         .formatted(ZoneId.systemDefault().getId(), mqlFormat));
+    }
+
+    @Test
+    void testFormatFunction() {
+        assertQueryResult(
+                "select format(before, '%Y-%m-%d %H:%M:%S') from Item",
+                ITEM.before
+                        .atZone(ZoneId.systemDefault())
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US)),
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$dateToString": {
+                            "date": "$before",
+                            "format": "%%Y-%%m-%%d %%H:%%M:%%S",
+                            "timezone": { "$literal": "%1$s" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
     }
 
     @Test
@@ -602,6 +651,21 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                     Integer.class,
                     FeatureNotSupportedException.class,
                     "Time unit timezone_minute not supported");
+        }
+
+        @ParameterizedTest
+        @ValueSource(
+                strings = {
+                    "D", "DD", "EEE", "EEEE", "G", "GG", "H", "M", "S", "SS", "SSSS", "SSSSS", "SSSSSS", "W", "Y", "YY",
+                    "YYY", "a", "d", "e", "ee", "h", "hh", "m", "s", "w", "ww", "x", "xxx", "y", "yy", "yyy",
+                    "z", "zz", "zzz"
+                })
+        void testFormatUnsupported(String format) {
+            assertSelectQueryFailure(
+                    "select format(before as '%s') from Item".formatted(format),
+                    String.class,
+                    FeatureNotSupportedException.class,
+                    "Unsupported date format: " + format);
         }
     }
 
