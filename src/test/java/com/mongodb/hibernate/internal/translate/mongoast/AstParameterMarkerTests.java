@@ -35,7 +35,7 @@ public class AstParameterMarkerTests {
     @Test
     void testRender() {
         var binder = binder();
-        var expr = new AstParameterMarker(binder, null);
+        var expr = new AstParameterMarker(binder, 0);
         assertValueRendering("""
                              {"": ?}""", List.of(binder), expr);
     }

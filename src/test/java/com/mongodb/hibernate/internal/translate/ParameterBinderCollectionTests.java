@@ -37,8 +37,8 @@ class ParameterBinderCollectionTests {
         var second = binder();
 
         var document = new AstDocument(List.of(
-                new AstElement("a", new AstParameterMarker(second, null)),
-                new AstElement("b", new AstParameterMarker(first, null))));
+                new AstElement("a", new AstParameterMarker(second, 0)),
+                new AstElement("b", new AstParameterMarker(first, 1))));
         assertValueRendering("""
                 {"": {"a": ?, "b": ?}}""", List.of(second, first), document);
     }
@@ -46,7 +46,7 @@ class ParameterBinderCollectionTests {
     @Test
     void testMarkerRenderedTwiceContributesTwoBinders() {
         var shared = binder();
-        var marker = new AstParameterMarker(shared, null);
+        var marker = new AstParameterMarker(shared, 0);
 
         var document = new AstDocument(List.of(new AstElement("a", marker), new AstElement("b", marker)));
         assertValueRendering("""
