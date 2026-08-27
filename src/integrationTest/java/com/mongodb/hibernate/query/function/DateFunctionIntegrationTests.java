@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.IsoFields;
@@ -49,7 +50,16 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(MongoExtension.class)
 public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests {
     private static final String COLLECTION_NAME = "items";
-    private static final Item ITEM = new Item(1, Instant.ofEpochMilli(123456789), Instant.ofEpochMilli(654321987));
+    private static final Item ITEM = new Item(
+            1,
+            Instant.ofEpochMilli(123456789),
+            Instant.ofEpochMilli(654321987),
+            ZonedDateTime.of(2019, 1, 1, 14, 12, 10, 0, ZoneId.systemDefault()).toInstant(),
+            ZonedDateTime.of(2019, 1, 5, 14, 12, 10, 0, ZoneId.systemDefault()).toInstant(),
+            ZonedDateTime.of(2019, 5, 31, 0, 0, 0, 0, ZoneId.systemDefault()).toInstant(),
+            ZonedDateTime.of(2019, 5, 30, 0, 0, 0, 0, ZoneId.systemDefault()).toInstant(),
+            ZonedDateTime.of(2019, 5, 27, 0, 0, 0, 0, ZoneId.systemDefault()).toInstant(),
+            ZonedDateTime.of(2019, 5, 1, 0, 0, 0, 0, ZoneId.systemDefault()).toInstant());
 
     /** Convert a Java (Monday = 1) to Mongo (Sunday = 1) day of the week */
     private static int javaDayOfWeekToMongo(int mondayIsOne) {
@@ -455,7 +465,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
     void testExtractWeekOfMonth() {
         assertQueryResult(
                 "select extract(week of month from after) from Item",
-                ITEM.before.atZone(ZoneId.systemDefault()).get(IsoFields.WEEK_OF_WEEK_BASED_YEAR),
+                ITEM.after.atZone(ZoneId.systemDefault()).get(ChronoField.ALIGNED_WEEK_OF_MONTH),
                 """
                 {
                   "aggregate": "items",
@@ -465,27 +475,34 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                         "#c_1": {
                           "$let": {
                             "in": {
-                              "$subtract": [
+                              "$add": [
                                 {
-                                  "$week": {
-                                    "date": "$$time",
-                                    "timezone": {
-                                      "$literal": "%1$s"
-                                    }
-                                  }
-                                },
-                                {
-                                  "$week": {
-                                    "$dateTrunc": {
-                                      "date": "$$time",
-                                      "timezone": {
-                                        "$literal": "%1$s"
-                                      },
-                                      "unit": {
-                                        "$literal": "month"
+                                  "$subtract": [
+                                    {
+                                      "$week": {
+                                        "date": "$$time",
+                                        "timezone": {
+                                          "$literal": "%1$s"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "$week": {
+                                        "$dateTrunc": {
+                                          "date": "$$time",
+                                          "timezone": {
+                                            "$literal": "%1$s"
+                                          },
+                                          "unit": {
+                                            "$literal": "month"
+                                          }
+                                        }
                                       }
                                     }
-                                  }
+                                  ]
+                                },
+                                {
+                                  "$literal": 1
                                 }
                               ]
                             },
@@ -649,6 +666,542 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                         .formatted(ZoneId.systemDefault().getId()));
     }
 
+    @Test
+    void testExtractWeekOfYear1FromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(week of year from newYears) from Item",
+                1,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$add": [
+                                {
+                                  "$toInt": {
+                                    "$ceil": {
+                                      "$divide": [
+                                        {
+                                          "$subtract": [
+                                            {
+                                              "$dayOfYear": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "$dayOfWeek": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "$literal": 7
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                {
+                                  "$literal": 1
+                                }
+                              ]
+                            },
+                            "vars": {
+                              "time": "$newYears"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractWeekOfYear2FromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(week of year from earlyJanuary) from Item",
+                1,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$add": [
+                                {
+                                  "$toInt": {
+                                    "$ceil": {
+                                      "$divide": [
+                                        {
+                                          "$subtract": [
+                                            {
+                                              "$dayOfYear": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "$dayOfWeek": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "$literal": 7
+                                        }
+                                      ]
+                                    }
+                                  }
+                                },
+                                {
+                                  "$literal": 1
+                                }
+                              ]
+                            },
+                            "vars": {
+                              "time": "$earlyJanuary"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractWeekOfMonthFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(week of month from startOfMay) from Item",
+                1,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$add": [
+                                {
+                                  "$subtract": [
+                                    {
+                                      "$week": {
+                                        "date": "$$time",
+                                        "timezone": {
+                                          "$literal": "%1$s"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "$week": {
+                                        "$dateTrunc": {
+                                          "date": "$$time",
+                                          "timezone": {
+                                            "$literal": "%1$s"
+                                          },
+                                          "unit": {
+                                            "$literal": "month"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "$literal": 1
+                                }
+                              ]
+                            },
+                            "vars": {
+                              "time": "$startOfMay"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractWeekFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(week from lateMay) from Item",
+                22,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$isoWeek": {
+                            "date": "$lateMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractDayOfYearFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(day of year from almostEndOfMay) from Item",
+                150,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$dayOfYear": {
+                            "date": "$almostEndOfMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractDayOfMonthFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(day of month from lateMay) from Item",
+                27,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$dayOfMonth": {
+                            "date": "$lateMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractDayFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(day from endOfMay) from Item",
+                31,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$dayOfMonth": {
+                            "date": "$endOfMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractMonthFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(month from endOfMay) from Item",
+                5,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$month": {
+                            "date": "$endOfMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractYearFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(year from endOfMay) from Item",
+                2019,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$year": {
+                            "date": "$endOfMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractQuarterFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(quarter from endOfMay) from Item",
+                2,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$toInt": {
+                            "$ceil": {
+                              "$divide": [
+                                {
+                                  "$month": {
+                                    "date": "$endOfMay",
+                                    "timezone": {
+                                      "$literal": "%1$s"
+                                    }
+                                  }
+                                },
+                                {
+                                  "$literal": 3
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractDayOfWeekFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(day of week from lateMay) from Item",
+                2,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$dayOfWeek": {
+                            "date": "$lateMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractDayOfWeek2FromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(day of week from endOfMay) from Item",
+                6,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$dayOfWeek": {
+                            "date": "$endOfMay",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractSecondFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(second from newYears) from Item",
+                10f,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$let": {
+                            "in": {
+                              "$add": [
+                                {
+                                  "$second": "$$time"
+                                },
+                                {
+                                  "$divide": [
+                                    {
+                                      "$millisecond": "$$time"
+                                    },
+                                    {
+                                      "$literal": 1000
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            "vars": {
+                              "time": "$newYears"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """);
+    }
+
+    @Test
+    void testExtractMinuteFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(minute from newYears) from Item",
+                12,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$minute": {
+                            "date": "$newYears",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
+    @Test
+    void testExtractHourFromHibernateTestSuite() {
+        assertQueryResult(
+                "select extract(hour from newYears) from Item",
+                14,
+                """
+                {
+                  "aggregate": "items",
+                  "pipeline": [
+                    {
+                      "$project": {
+                        "#c_1": {
+                          "$hour": {
+                            "date": "$newYears",
+                            "timezone": {
+                              "$literal": "%1$s"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
+    }
+
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
 
@@ -712,30 +1265,70 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
 
         Instant before;
         Instant after;
+        Instant newYears;
+        Instant earlyJanuary;
+        Instant endOfMay;
+        Instant almostEndOfMay;
+        Instant lateMay;
+        Instant startOfMay;
 
         Item() {}
 
-        Item(int id, Instant before, Instant after) {
+        Item(
+                int id,
+                Instant before,
+                Instant after,
+                Instant newYears,
+                Instant earlyJanuary,
+                Instant endOfMay,
+                Instant almostEndOfMay,
+                Instant lateMay,
+                Instant start_of_may) {
             this.id = id;
             this.before = before;
             this.after = after;
+            this.newYears = newYears;
+            this.earlyJanuary = earlyJanuary;
+            this.endOfMay = endOfMay;
+            this.almostEndOfMay = almostEndOfMay;
+            this.lateMay = lateMay;
+
+            startOfMay = start_of_may;
         }
 
         @Override
         public boolean equals(Object o) {
             if (o == null || getClass() != o.getClass()) return false;
             Item item = (Item) o;
-            return id == item.id && Objects.equals(before, item.before) && Objects.equals(after, item.after);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, before, after);
+            return id == item.id
+                    && Objects.equals(before, item.before)
+                    && Objects.equals(after, item.after)
+                    && Objects.equals(newYears, item.newYears)
+                    && Objects.equals(earlyJanuary, item.earlyJanuary)
+                    && Objects.equals(endOfMay, item.endOfMay)
+                    && Objects.equals(almostEndOfMay, item.almostEndOfMay)
+                    && Objects.equals(lateMay, item.lateMay)
+                    && Objects.equals(startOfMay, item.startOfMay);
         }
 
         @Override
         public String toString() {
-            return "Item{" + "id=" + id + ", s='" + before + '\'' + ", u='" + after + '\'' + '}';
+            return "Item{" + "id="
+                    + id + ", before="
+                    + before + ", after="
+                    + after + ", newYears="
+                    + newYears + ", earlyJanuary="
+                    + earlyJanuary + ", endOfMay="
+                    + endOfMay + ", almostEndOfMay="
+                    + almostEndOfMay + ", lateMay="
+                    + lateMay + ", startOfMay="
+                    + startOfMay + '}';
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(
+                    id, before, after, newYears, earlyJanuary, endOfMay, almostEndOfMay, lateMay, startOfMay);
         }
     }
 }

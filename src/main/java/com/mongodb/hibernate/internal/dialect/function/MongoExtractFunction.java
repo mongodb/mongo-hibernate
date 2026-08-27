@@ -229,21 +229,11 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                     case WEEK_OF_MONTH ->
                         new AstLetBindingExpression(
                                 new AstBinaryOperatorExpression(
-                                        AstArithmeticExpressionOperator.SUBTRACT,
-                                        new AstNamedOperatorExpression(
-                                                "$week",
-                                                new TreeMap<>(Map.of(
-                                                        "date",
-                                                        new AstVariableExpression("time"),
-                                                        "timezone",
-                                                        new AstLiteralExpression(new AstLiteral(
-                                                                new BsonString(
-                                                                        ZoneId.systemDefault()
-                                                                                .getId())))))),
-                                        new AstUnaryOperatorExpression(
-                                                "$week",
+                                        AstArithmeticExpressionOperator.ADD,
+                                        new AstBinaryOperatorExpression(
+                                                AstArithmeticExpressionOperator.SUBTRACT,
                                                 new AstNamedOperatorExpression(
-                                                        "$dateTrunc",
+                                                        "$week",
                                                         new TreeMap<>(Map.of(
                                                                 "date",
                                                                 new AstVariableExpression("time"),
@@ -252,10 +242,28 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                                         new AstLiteral(
                                                                                 new BsonString(
                                                                                         ZoneId.systemDefault()
-                                                                                                .getId()))),
-                                                                "unit",
-                                                                new AstLiteralExpression(
-                                                                        new AstLiteral(new BsonString("month")))))))),
+                                                                                                .getId())))))),
+                                                new AstUnaryOperatorExpression(
+                                                        "$week",
+                                                        new AstNamedOperatorExpression(
+                                                                "$dateTrunc",
+                                                                new TreeMap<>(
+                                                                        Map.of(
+                                                                                "date",
+                                                                                new AstVariableExpression("time"),
+                                                                                "timezone",
+                                                                                new AstLiteralExpression(
+                                                                                        new AstLiteral(
+                                                                                                new BsonString(
+                                                                                                        ZoneId
+                                                                                                                .systemDefault()
+                                                                                                                .getId()))),
+                                                                                "unit",
+                                                                                new AstLiteralExpression(
+                                                                                        new AstLiteral(
+                                                                                                new BsonString(
+                                                                                                        "month")))))))),
+                                        new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))),
                                 new TreeMap<>(Map.of("time", input)));
                     case YEAR ->
                         new AstNamedOperatorExpression(
