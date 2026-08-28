@@ -161,7 +161,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
         assertSelectQueryFailure(
                 "select format(before as 'ZZZZZZZ') from Item",
                 String.class,
-                IllegalArgumentException.class,
+                FeatureNotSupportedException.class,
                 "Format code ZZZZZZZ is ambiguous.");
     }
 

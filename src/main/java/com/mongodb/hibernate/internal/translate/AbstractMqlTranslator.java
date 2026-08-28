@@ -1560,9 +1560,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                                     + inputFormat.substring(inputIndex, inputIndex + length));
                         }
                         inputIndex += length - 1;
-
                     } else {
-                        throw new IllegalArgumentException("Format code %s is ambiguous."
+                        throw new FeatureNotSupportedException("Format code %s is ambiguous."
                                 .formatted(inputFormat.substring(inputIndex, inputIndex + length)));
                     }
                 } else {
