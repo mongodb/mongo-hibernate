@@ -91,33 +91,9 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                 ZoneId.systemDefault().getId()))),
                                         "unit",
                                         new AstLiteralExpression(new AstLiteral(new BsonString("day"))))));
-                    case DAY, DAY_OF_MONTH ->
-                        new AstNamedOperatorExpression(
-                                "$dayOfMonth",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
-                    case DAY_OF_WEEK ->
-                        new AstNamedOperatorExpression(
-                                "$dayOfWeek",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
-                    case DAY_OF_YEAR ->
-                        new AstNamedOperatorExpression(
-                                "$dayOfYear",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
+                    case DAY, DAY_OF_MONTH -> dateOperator("$dayOfMonth", input);
+                    case DAY_OF_WEEK -> dateOperator("$dayOfWeek", input);
+                    case DAY_OF_YEAR -> dateOperator("$dayOfYear", input);
                     case EPOCH ->
                         new AstUnaryOperatorExpression(
                                 "$toLong",
@@ -125,33 +101,9 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                         AstArithmeticExpressionOperator.DIVIDE,
                                         new AstUnaryOperatorExpression("$toLong", input),
                                         new AstLiteralExpression(new AstLiteral(new BsonInt32(1000)))));
-                    case HOUR ->
-                        new AstNamedOperatorExpression(
-                                "$hour",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
-                    case MINUTE ->
-                        new AstNamedOperatorExpression(
-                                "$minute",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
-                    case MONTH ->
-                        new AstNamedOperatorExpression(
-                                "$month",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
+                    case HOUR -> dateOperator("$hour", input);
+                    case MINUTE -> dateOperator("$minute", input);
+                    case MONTH -> dateOperator("$month", input);
                     case NANOSECOND ->
                         new AstLetBindingExpression(
                                 new AstUnaryOperatorExpression(
@@ -160,139 +112,50 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                 AstArithmeticExpressionOperator.ADD,
                                                 new AstBinaryOperatorExpression(
                                                         AstArithmeticExpressionOperator.MULTIPLY,
-                                                        new AstNamedOperatorExpression(
-                                                                "$millisecond",
-                                                                new TreeMap<>(
-                                                                        Map.of(
-                                                                                "date",
-                                                                                new AstVariableExpression("time"),
-                                                                                "timezone",
-                                                                                new AstLiteralExpression(
-                                                                                        new AstLiteral(
-                                                                                                new BsonString(
-                                                                                                        ZoneId
-                                                                                                                .systemDefault()
-                                                                                                                .getId())))))),
+                                                        dateOperator("$millisecond", new AstVariableExpression("time")),
                                                         new AstLiteralExpression(
                                                                 new AstLiteral(new BsonInt32(1_000_000)))),
                                                 new AstBinaryOperatorExpression(
                                                         AstArithmeticExpressionOperator.MULTIPLY,
-                                                        new AstNamedOperatorExpression(
-                                                                "$second",
-                                                                new TreeMap<>(
-                                                                        Map.of(
-                                                                                "date",
-                                                                                new AstVariableExpression("time"),
-                                                                                "timezone",
-                                                                                new AstLiteralExpression(
-                                                                                        new AstLiteral(
-                                                                                                new BsonString(
-                                                                                                        ZoneId
-                                                                                                                .systemDefault()
-                                                                                                                .getId())))))),
+                                                        dateOperator("$second", new AstVariableExpression("time")),
                                                         new AstLiteralExpression(
                                                                 new AstLiteral(new BsonInt32(1_000_000_000)))))),
                                 new TreeMap<>(Map.of("time", input)));
                     case NATIVE -> new AstUnaryOperatorExpression("$toDate", input);
-                    case QUARTER ->
-                        ceilingDivideAsInt(
-                                new AstNamedOperatorExpression(
-                                        "$month",
-                                        new TreeMap<>(Map.of(
-                                                "date",
-                                                input,
-                                                "timezone",
-                                                new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                        ZoneId.systemDefault().getId())))))),
-                                3);
+                    case QUARTER -> ceilingDivideAsInt(dateOperator("$month", input), 3);
                     case SECOND ->
                         new AstLetBindingExpression(
                                 new AstBinaryOperatorExpression(
                                         AstArithmeticExpressionOperator.ADD,
-                                        new AstUnaryOperatorExpression("$second", new AstVariableExpression("time")),
+                                        dateOperator("$second", new AstVariableExpression("time")),
                                         new AstBinaryOperatorExpression(
                                                 AstArithmeticExpressionOperator.DIVIDE,
-                                                new AstUnaryOperatorExpression(
-                                                        "$millisecond", new AstVariableExpression("time")),
+                                                dateOperator("$millisecond", new AstVariableExpression("time")),
                                                 new AstLiteralExpression(new AstLiteral(new BsonInt32(1000))))),
                                 new TreeMap<>(Map.of("time", input)));
-                    case WEEK_OF_YEAR -> weekOfYear(input);
-                    case WEEK ->
-                        new AstNamedOperatorExpression(
-                                "$isoWeek",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
-                    case WEEK_OF_MONTH ->
-                        new AstLetBindingExpression(
-                                new AstBinaryOperatorExpression(
-                                        AstArithmeticExpressionOperator.ADD,
-                                        new AstBinaryOperatorExpression(
-                                                AstArithmeticExpressionOperator.SUBTRACT,
-                                                new AstNamedOperatorExpression(
-                                                        "$week",
-                                                        new TreeMap<>(Map.of(
-                                                                "date",
-                                                                new AstVariableExpression("time"),
-                                                                "timezone",
-                                                                new AstLiteralExpression(
-                                                                        new AstLiteral(
-                                                                                new BsonString(
-                                                                                        ZoneId.systemDefault()
-                                                                                                .getId())))))),
-                                                new AstUnaryOperatorExpression(
-                                                        "$week",
-                                                        new AstNamedOperatorExpression(
-                                                                "$dateTrunc",
-                                                                new TreeMap<>(
-                                                                        Map.of(
-                                                                                "date",
-                                                                                new AstVariableExpression("time"),
-                                                                                "timezone",
-                                                                                new AstLiteralExpression(
-                                                                                        new AstLiteral(
-                                                                                                new BsonString(
-                                                                                                        ZoneId
-                                                                                                                .systemDefault()
-                                                                                                                .getId()))),
-                                                                                "unit",
-                                                                                new AstLiteralExpression(
-                                                                                        new AstLiteral(
-                                                                                                new BsonString(
-                                                                                                        "month")))))))),
-                                        new AstLiteralExpression(new AstLiteral(new BsonInt32(1)))),
-                                new TreeMap<>(Map.of("time", input)));
-                    case YEAR ->
-                        new AstNamedOperatorExpression(
-                                "$year",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))))));
+                    case WEEK_OF_YEAR -> sundayBasedWeek(input, "$dayOfYear");
+                    case WEEK -> dateOperator("$isoWeek", input);
+                    case WEEK_OF_MONTH -> sundayBasedWeek(input, "$dayOfMonth");
+                    case YEAR -> dateOperator("$year", input);
                     default -> throw new FeatureNotSupportedException("Time unit %s not supported".formatted(unit));
                 });
     }
 
     /**
-     * Hibernate defines {@link org.hibernate.query.common.TemporalUnit#WEEK_OF_YEAR} as a 1-origin count whose weeks
-     * start on Sunday, which {@code ExtractFunction} computes as {@code ceiling((dayOfYear - dayOfWeek)/7.0 + 1)} with
-     * Sunday as day one. MongoDB's {@code $week} is a different definition, 0-origin and without a week-year, and no
-     * constant adjustment relates the two: {@code $week + 1} agrees with the rule except in a year that begins on a
+     * Hibernate defines {@link org.hibernate.query.common.TemporalUnit#WEEK_OF_YEAR} nd {}as a 1-origin count whose
+     * weeks start on Sunday, which {@code ExtractFunction} computes as {@code ceiling((dayOfYear - dayOfWeek)/7.0 + 1)}
+     * with Sunday as day one. MongoDB's {@code $week} is a different definition, 0-origin and without a week-year, and
+     * no constant adjustment relates the two: {@code $week + 1} agrees with the rule except in a year that begins on a
      * Sunday, where {@code $week} has no week 0 and so already starts at 1. Transliterating the rule avoids that
      * special case.
      */
-    private static AstExpression weekOfYear(AstExpression input) {
+    private static AstExpression sundayBasedWeek(AstExpression input, String operator) {
         var time = new AstVariableExpression("time");
         return new AstLetBindingExpression(
                 addOne(ceilingDivideAsInt(
                         new AstBinaryOperatorExpression(
                                 AstArithmeticExpressionOperator.SUBTRACT,
-                                dateOperator("$dayOfYear", time),
+                                dateOperator(operator, time),
                                 dateOperator("$dayOfWeek", time)),
                         7)),
                 new TreeMap<>(Map.of("time", input)));

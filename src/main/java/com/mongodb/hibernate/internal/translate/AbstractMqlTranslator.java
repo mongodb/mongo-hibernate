@@ -274,7 +274,6 @@ import org.jspecify.annotations.Nullable;
  */
 @SuppressWarnings("MissingSummary")
 public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
-    private record DateFormatRule(String hql, Optional<String> mql) {}
 
     // '#' is blocked in mapped field names, so prefixing join aliases with it prevents $lookup from shadowing
     // a local field that happens to share the Hibernate-generated alias name (e.g. "o1_0").
@@ -282,86 +281,124 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Match a quoted SQL string with the contents of the string being in match group 1
     private static final Pattern SQL_STRING = Pattern.compile("^'((?:''|[^'])*)'$");
 
-    private static final List<DateFormatRule> DATE_FORMATS = List.of(
+    private static final Map<Character, Map<Integer, Optional<String>>> DATE_FORMATS = Map.ofEntries(
             // era
-            new DateFormatRule("GG", Optional.empty()),
-            new DateFormatRule("G", Optional.empty()),
-
+            Map.entry('G', Map.of(1, Optional.empty(), 2, Optional.empty())),
             // year
-            new DateFormatRule("yyyy", Optional.of("%Y")),
-            new DateFormatRule("yyy", Optional.empty()),
-            new DateFormatRule("yy", Optional.empty()),
-            new DateFormatRule("y", Optional.empty()),
+            Map.entry(
+                    'y',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.empty(),
+                            3, Optional.empty(),
+                            4, Optional.of("%Y"))),
 
             // month of year
-            new DateFormatRule("MMMM", Optional.of("%B")),
-            new DateFormatRule("MMM", Optional.of("%b")),
-            new DateFormatRule("MM", Optional.of("%m")),
-            new DateFormatRule("M", Optional.empty()),
+            Map.entry(
+                    'M', Map.of(4, Optional.of("%B"), 3, Optional.of("%b"), 2, Optional.of("%m"), 1, Optional.empty())),
 
-            // week of year (this looks like %U, but does not match Java's implmentation)
-            new DateFormatRule("ww", Optional.empty()),
-            new DateFormatRule("w", Optional.empty()),
+            // week of year (this looks like %U, but does not match Java's implementation)
+            Map.entry('w', Map.of(1, Optional.empty(), 2, Optional.of("%V"))),
+
             // year for week
-            new DateFormatRule("YYYY", Optional.of("%G")),
-            new DateFormatRule("YYY", Optional.empty()),
-            new DateFormatRule("YY", Optional.empty()),
-            new DateFormatRule("Y", Optional.empty()),
+            Map.entry(
+                    'Y',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.empty(),
+                            3, Optional.empty(),
+                            4, Optional.of("%G"))),
 
             // week of month
-            new DateFormatRule("W", Optional.empty()),
+            Map.entry('W', Map.of(1, Optional.empty())),
 
             // day of week
-            new DateFormatRule("EEEE", Optional.empty()),
-            new DateFormatRule("EEE", Optional.empty()),
-            new DateFormatRule("ee", Optional.empty()),
-            // This looks like it matches %u, but Mongo and Java have different starts of the week
-            new DateFormatRule("e", Optional.empty()),
+            Map.entry(
+                    'E',
+                    Map.of(
+                            3, Optional.empty(),
+                            4, Optional.empty())),
+            Map.entry(
+                    'e',
+                    Map.of(
+                            // This looks like it matches %u, but Mongo and Java have different starts of the week
+                            1, Optional.empty(),
+                            2, Optional.empty())),
 
             // day of month
-            new DateFormatRule("dd", Optional.of("%d")),
-            new DateFormatRule("d", Optional.empty()),
+            Map.entry(
+                    'd',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.of("%d"))),
 
             // day of year
-            new DateFormatRule("DDD", Optional.of("%j")),
-            new DateFormatRule("DD", Optional.empty()),
-            new DateFormatRule("D", Optional.empty()),
+            Map.entry(
+                    'D',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.empty(),
+                            3, Optional.of("%j"))),
 
             // am pm
-            new DateFormatRule("a", Optional.empty()),
+            Map.entry('a', Map.of(1, Optional.empty())),
 
             // hour
-            new DateFormatRule("hh", Optional.empty()),
-            new DateFormatRule("HH", Optional.of("%H")),
-            new DateFormatRule("h", Optional.empty()),
-            new DateFormatRule("H", Optional.empty()),
+            Map.entry(
+                    'h',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.empty())),
+            Map.entry(
+                    'H',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.of("%H"))),
 
             // minute
-            new DateFormatRule("mm", Optional.of("%M")),
-            new DateFormatRule("m", Optional.empty()),
+            Map.entry(
+                    'm',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.of("%M"))),
 
             // second
-            new DateFormatRule("ss", Optional.of("%S")),
-            new DateFormatRule("s", Optional.empty()),
+            Map.entry(
+                    's',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.of("%S"))),
 
             // fractional seconds
-            new DateFormatRule("SSSSSS", Optional.empty()),
-            new DateFormatRule("SSSSS", Optional.empty()),
-            new DateFormatRule("SSSS", Optional.empty()),
-            new DateFormatRule("SSS", Optional.of("%L")),
-            new DateFormatRule("SS", Optional.empty()),
-            new DateFormatRule("S", Optional.empty()),
+            Map.entry(
+                    'S',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.empty(),
+                            3, Optional.of("%L"),
+                            4, Optional.empty(),
+                            5, Optional.empty(),
+                            6, Optional.empty())),
 
             // timezones
-            new DateFormatRule("zzz", Optional.empty()),
-            new DateFormatRule("zz", Optional.empty()),
-            new DateFormatRule("z", Optional.empty()),
-            new DateFormatRule("ZZZ", Optional.of("%z")),
-            new DateFormatRule("ZZ", Optional.of("%z")),
-            new DateFormatRule("Z", Optional.of("%z")),
-            new DateFormatRule("xxx", Optional.empty()),
-            new DateFormatRule("xx", Optional.of("%z")),
-            new DateFormatRule("x", Optional.empty()));
+            Map.entry(
+                    'z',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.empty(),
+                            3, Optional.empty())),
+            Map.entry(
+                    'Z',
+                    Map.of(
+                            1, Optional.of("%z"),
+                            2, Optional.of("%z"),
+                            3, Optional.of("%z"))),
+            Map.entry(
+                    'x',
+                    Map.of(
+                            1, Optional.empty(),
+                            2, Optional.of("%z"),
+                            3, Optional.empty())));
     private final SessionFactoryImplementor sessionFactory;
 
     private final AstVisitorValueHolder astVisitorValueHolder = new AstVisitorValueHolder();
@@ -1493,30 +1530,44 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var inputFormat = format.getFormat();
         var inQuote = false;
         var outputFormat = new StringBuilder();
-
-        main:
-        while (!inputFormat.isEmpty()) {
-            if (inputFormat.startsWith("'")) {
-                inputFormat = inputFormat.substring(1);
+        for (var inputIndex = 0; inputIndex < inputFormat.length(); inputIndex++) {
+            if (inputFormat.charAt(inputIndex) == '\'') {
                 inQuote = !inQuote;
             } else if (inQuote) {
-                outputFormat.append(inputFormat.charAt(0));
-                if (inputFormat.charAt(0) == '%') {
+                outputFormat.append(inputFormat.charAt(inputIndex));
+                if (inputFormat.charAt(inputIndex) == '%') {
                     outputFormat.append('%');
                 }
-                inputFormat = inputFormat.substring(1);
             } else {
-                for (var entry : DATE_FORMATS) {
-                    if (inputFormat.startsWith(entry.hql())) {
-                        inputFormat = inputFormat.substring(entry.hql().length());
-                        outputFormat.append(entry.mql()
-                                .orElseThrow(() ->
-                                        new FeatureNotSupportedException("Unsupported date format: " + entry.hql())));
-                        continue main;
+                var ch = inputFormat.charAt(inputIndex);
+                if (Character.isLetter(ch)) {
+                    var dateFormats = DATE_FORMATS.get(ch);
+                    if (dateFormats == null) {
+                        throw new FeatureNotSupportedException("Unknown Hibernate format code: " + ch);
                     }
+                    var length = 1;
+                    while (inputIndex + length < inputFormat.length()
+                            && inputFormat.charAt(inputIndex + length) == ch) {
+                        length++;
+                    }
+                    if (dateFormats.containsKey(length)) {
+
+                        var code = dateFormats.get(length);
+                        if (code.isPresent()) {
+                            outputFormat.append(code.get());
+                        } else {
+                            throw new FeatureNotSupportedException("Unsupported date format: "
+                                    + inputFormat.substring(inputIndex, inputIndex + length));
+                        }
+                        inputIndex += length - 1;
+
+                    } else {
+                        throw new IllegalArgumentException("Format code %s is ambiguous."
+                                .formatted(inputFormat.substring(inputIndex, inputIndex + length)));
+                    }
+                } else {
+                    outputFormat.append(inputFormat.charAt(inputIndex));
                 }
-                outputFormat.append(inputFormat.charAt(0));
-                inputFormat = inputFormat.substring(1);
             }
         }
         this.yield(EXPRESSION, new AstLiteralExpression(new AstLiteral(new BsonString(outputFormat.toString()))));

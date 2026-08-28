@@ -84,6 +84,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
         "yyyy-MM-dd HH:mm:ss,%Y-%m-%d %H:%M:%S",
         "yyyy-MM-dd 'HH%H' HH:mm:ss,%Y-%m-%d HH%%H %H:%M:%S",
         "DDD,%j",
+        "DDD:,%j:",
         "HH,%H",
         "MM,%m",
         "MMM,%b",
@@ -96,6 +97,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
         "dd,%d",
         "mm,%M",
         "ss,%S",
+        "ww,%V",
         "xx,%z",
         "yyyy,%Y",
     })
@@ -155,6 +157,15 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
     }
 
     @Test
+    void testFormatConcatenateCode() {
+        assertSelectQueryFailure(
+                "select format(before as 'ZZZZZZZ') from Item",
+                String.class,
+                IllegalArgumentException.class,
+                "Format code ZZZZZZZ is ambiguous.");
+    }
+
+    @Test
     void testExtractSecond() {
         assertQueryResult(
                 "select extract(second from before) from Item",
@@ -171,12 +182,22 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             "in": {
                               "$add": [
                                 {
-                                  "$second": "$$time"
+                                  "$second": {
+                                    "date": "$$time",
+                                    "timezone": {
+                                      "$literal": "%1$s"
+                                    }
+                                  }
                                 },
                                 {
                                   "$divide": [
                                     {
-                                      "$millisecond": "$$time"
+                                      "$millisecond": {
+                                        "date": "$$time",
+                                        "timezone": {
+                                          "$literal": "%1$s"
+                                        }
+                                      }
                                     },
                                     {
                                       "$literal": 1000
@@ -194,7 +215,8 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                     }
                   ]
                 }
-                """);
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
     }
 
     @Test
@@ -477,29 +499,35 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             "in": {
                               "$add": [
                                 {
-                                  "$subtract": [
-                                    {
-                                      "$week": {
-                                        "date": "$$time",
-                                        "timezone": {
-                                          "$literal": "%1$s"
+                                  "$toInt": {
+                                    "$ceil": {
+                                      "$divide": [
+                                        {
+                                          "$subtract": [
+                                            {
+                                              "$dayOfMonth": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "$dayOfWeek": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "$literal": 7
                                         }
-                                      }
-                                    },
-                                    {
-                                      "$week": {
-                                        "$dateTrunc": {
-                                          "date": "$$time",
-                                          "timezone": {
-                                            "$literal": "%1$s"
-                                          },
-                                          "unit": {
-                                            "$literal": "month"
-                                          }
-                                        }
-                                      }
+                                      ]
                                     }
-                                  ]
+                                  }
                                 },
                                 {
                                   "$literal": 1
@@ -810,29 +838,35 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             "in": {
                               "$add": [
                                 {
-                                  "$subtract": [
-                                    {
-                                      "$week": {
-                                        "date": "$$time",
-                                        "timezone": {
-                                          "$literal": "%1$s"
+                                  "$toInt": {
+                                    "$ceil": {
+                                      "$divide": [
+                                        {
+                                          "$subtract": [
+                                            {
+                                              "$dayOfMonth": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "$dayOfWeek": {
+                                                "date": "$$time",
+                                                "timezone": {
+                                                  "$literal": "%1$s"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "$literal": 7
                                         }
-                                      }
-                                    },
-                                    {
-                                      "$week": {
-                                        "$dateTrunc": {
-                                          "date": "$$time",
-                                          "timezone": {
-                                            "$literal": "%1$s"
-                                          },
-                                          "unit": {
-                                            "$literal": "month"
-                                          }
-                                        }
-                                      }
+                                      ]
                                     }
-                                  ]
+                                  }
                                 },
                                 {
                                   "$literal": 1
@@ -1122,12 +1156,22 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                             "in": {
                               "$add": [
                                 {
-                                  "$second": "$$time"
+                                  "$second": {
+                                    "date": "$$time",
+                                    "timezone": {
+                                      "$literal": "%1$s"
+                                    }
+                                  }
                                 },
                                 {
                                   "$divide": [
                                     {
-                                      "$millisecond": "$$time"
+                                      "$millisecond": {
+                                        "date": "$$time",
+                                        "timezone": {
+                                          "$literal": "%1$s"
+                                        }
+                                      }
                                     },
                                     {
                                       "$literal": 1000
@@ -1145,7 +1189,9 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
                     }
                   ]
                 }
-                """);
+
+                """
+                        .formatted(ZoneId.systemDefault().getId()));
     }
 
     @Test
@@ -1245,8 +1291,7 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
         @ValueSource(
                 strings = {
                     "D", "DD", "EEE", "EEEE", "G", "GG", "H", "M", "S", "SS", "SSSS", "SSSSS", "SSSSSS", "W", "Y", "YY",
-                    "YYY", "a", "d", "e", "ee", "h", "hh", "m", "s", "w", "ww", "x", "xxx", "y", "yy", "yyy",
-                    "z", "zz", "zzz"
+                    "YYY", "a", "d", "e", "ee", "h", "hh", "m", "s", "w", "x", "xxx", "y", "yy", "yyy", "z", "zz", "zzz"
                 })
         void testFormatUnsupported(String format) {
             assertSelectQueryFailure(
