@@ -24,6 +24,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -1250,6 +1251,15 @@ public class DateFunctionIntegrationTests extends AbstractQueryIntegrationTests 
 
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
+
+        @Test
+        void testExtractDate() {
+            assertSelectQueryFailure(
+                    "select extract(date from before) from Item",
+                    LocalDate.class,
+                    FeatureNotSupportedException.class,
+                    "Time unit date not supported");
+        }
 
         @Test
         void testExtractTime() {

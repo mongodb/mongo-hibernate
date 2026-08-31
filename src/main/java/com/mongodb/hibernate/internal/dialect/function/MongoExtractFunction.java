@@ -80,17 +80,6 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
         translator.yield(
                 EXPRESSION,
                 switch (unit) {
-                    case DATE ->
-                        new AstNamedOperatorExpression(
-                                "$dateTrunc",
-                                new TreeMap<>(Map.of(
-                                        "date",
-                                        input,
-                                        "timezone",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString(
-                                                ZoneId.systemDefault().getId()))),
-                                        "unit",
-                                        new AstLiteralExpression(new AstLiteral(new BsonString("day"))))));
                     case DAY, DAY_OF_MONTH -> dateOperator("$dayOfMonth", input);
                     case DAY_OF_WEEK -> dateOperator("$dayOfWeek", input);
                     case DAY_OF_YEAR -> dateOperator("$dayOfYear", input);
@@ -121,7 +110,6 @@ public final class MongoExtractFunction extends AbstractSqmSelfRenderingFunction
                                                         new AstLiteralExpression(
                                                                 new AstLiteral(new BsonInt32(1_000_000_000)))))),
                                 new TreeMap<>(Map.of("time", input)));
-                    case NATIVE -> new AstUnaryOperatorExpression("$toDate", input);
                     case QUARTER -> ceilingDivideAsInt(dateOperator("$month", input), 3);
                     case SECOND ->
                         new AstLetBindingExpression(
