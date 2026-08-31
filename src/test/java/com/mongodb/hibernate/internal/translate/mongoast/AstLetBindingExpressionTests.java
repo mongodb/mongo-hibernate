@@ -42,9 +42,10 @@ class AstLetBindingExpressionTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(
-                new AstLetBindingExpression(new AstFieldPathExpression("a"), new TreeMap<>(Map.of("v", (AstExpression)
-                        new AstFieldPathExpression("b")))));
+        assertMapsChildren(new AstLetBindingExpression(
+                new AstFieldPathExpression("a"),
+                new TreeMap<>(Map.of(
+                        "v", (AstExpression) new AstFieldPathExpression("b"), "w", new AstFieldPathExpression("c")))));
     }
 
     @Test

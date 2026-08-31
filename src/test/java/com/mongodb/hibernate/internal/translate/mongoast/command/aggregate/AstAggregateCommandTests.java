@@ -45,6 +45,10 @@ class AstAggregateCommandTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(new AstAggregateCommand("c", List.of(new AstSkipStage(new AstLiteral(new BsonInt32(1))))));
+        assertMapsChildren(new AstAggregateCommand(
+                "c",
+                List.of(
+                        new AstSkipStage(new AstLiteral(new BsonInt32(1))),
+                        new AstSkipStage(new AstLiteral(new BsonInt32(2))))));
     }
 }

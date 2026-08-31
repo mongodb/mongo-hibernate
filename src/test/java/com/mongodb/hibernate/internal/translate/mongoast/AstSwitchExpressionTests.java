@@ -71,7 +71,9 @@ class AstSwitchExpressionTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstSwitchExpression(
-                List.of(new AstSwitchCase(new AstFieldPathExpression("f"), new AstFieldPathExpression("f"))),
+                List.of(
+                        new AstSwitchCase(new AstFieldPathExpression("a"), new AstFieldPathExpression("b")),
+                        new AstSwitchCase(new AstFieldPathExpression("c"), new AstFieldPathExpression("d"))),
                 new AstFieldPathExpression("f")));
     }
 

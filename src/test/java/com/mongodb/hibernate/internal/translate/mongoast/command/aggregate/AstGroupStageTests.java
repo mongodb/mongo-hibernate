@@ -63,7 +63,8 @@ class AstGroupStageTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(
-                new AstGroupStage(List.of(new AstGroupStageSpecification("k", new AstFieldPathExpression("f")))));
+        assertMapsChildren(new AstGroupStage(List.of(
+                new AstGroupStageSpecification("k", new AstFieldPathExpression("a")),
+                new AstGroupStageSpecification("l", new AstFieldPathExpression("b")))));
     }
 }

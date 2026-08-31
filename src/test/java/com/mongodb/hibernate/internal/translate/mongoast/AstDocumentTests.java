@@ -26,6 +26,8 @@ class AstDocumentTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(new AstDocument(List.of(new AstElement("n", new AstLiteral(new BsonInt32(1))))));
+        assertMapsChildren(new AstDocument(List.of(
+                new AstElement("n", new AstLiteral(new BsonInt32(1))),
+                new AstElement("m", new AstLiteral(new BsonInt32(2))))));
     }
 }

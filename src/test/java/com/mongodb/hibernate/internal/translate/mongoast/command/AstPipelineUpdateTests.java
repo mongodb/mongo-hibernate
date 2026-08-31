@@ -27,7 +27,8 @@ class AstPipelineUpdateTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(
-                new AstPipelineUpdate(List.of(new AstComputedFieldUpdate("n", new AstFieldPathExpression("f")))));
+        assertMapsChildren(new AstPipelineUpdate(List.of(
+                new AstComputedFieldUpdate("n", new AstFieldPathExpression("a")),
+                new AstComputedFieldUpdate("m", new AstFieldPathExpression("b")))));
     }
 }

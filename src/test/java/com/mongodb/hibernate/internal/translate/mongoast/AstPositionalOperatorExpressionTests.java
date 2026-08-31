@@ -36,8 +36,8 @@ class AstPositionalOperatorExpressionTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(
-                new AstPositionalOperatorExpression("$op", List.of((AstExpression) new AstFieldPathExpression("f"))));
+        assertMapsChildren(new AstPositionalOperatorExpression(
+                "$op", List.of((AstExpression) new AstFieldPathExpression("a"), new AstFieldPathExpression("b"))));
     }
 
     @Test

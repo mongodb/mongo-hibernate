@@ -39,6 +39,7 @@ class AstSortStageTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(new AstSortStage(List.of(new AstSortField("p", AstSortOrder.ASC))));
+        assertMapsChildren(new AstSortStage(
+                List.of(new AstSortField("p", AstSortOrder.ASC), new AstSortField("q", AstSortOrder.DESC))));
     }
 }

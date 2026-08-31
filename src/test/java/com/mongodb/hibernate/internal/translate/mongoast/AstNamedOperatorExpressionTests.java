@@ -41,7 +41,9 @@ class AstNamedOperatorExpressionTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstNamedOperatorExpression(
-                "$op", new TreeMap<>(Map.of("a", (AstExpression) new AstFieldPathExpression("f")))));
+                "$op",
+                new TreeMap<>(Map.of(
+                        "a", (AstExpression) new AstFieldPathExpression("x"), "b", new AstFieldPathExpression("y")))));
     }
 
     @Test

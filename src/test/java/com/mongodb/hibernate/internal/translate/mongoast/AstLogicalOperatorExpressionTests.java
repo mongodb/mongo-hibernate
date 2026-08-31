@@ -64,8 +64,8 @@ class AstLogicalOperatorExpressionTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(
-                new AstLogicalOperatorExpression(AstLogicalOperator.AND, List.of(new AstFieldPathExpression("f"))));
+        assertMapsChildren(new AstLogicalOperatorExpression(
+                AstLogicalOperator.AND, List.of(new AstFieldPathExpression("a"), new AstFieldPathExpression("b"))));
     }
 
     @Test

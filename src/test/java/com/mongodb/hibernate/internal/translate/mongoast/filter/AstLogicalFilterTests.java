@@ -52,6 +52,9 @@ class AstLogicalFilterTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstLogicalFilter(
-                AstLogicalFilterOperator.AND, List.of(new AstExprFilter(new AstFieldPathExpression("f")))));
+                AstLogicalFilterOperator.AND,
+                List.of(
+                        new AstExprFilter(new AstFieldPathExpression("a")),
+                        new AstExprFilter(new AstFieldPathExpression("b")))));
     }
 }

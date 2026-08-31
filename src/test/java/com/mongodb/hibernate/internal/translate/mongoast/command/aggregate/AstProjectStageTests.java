@@ -36,6 +36,7 @@ class AstProjectStageTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(new AstProjectStage(List.of(new AstProjectStageIncludeSpecification("f"))));
+        assertMapsChildren(new AstProjectStage(
+                List.of(new AstProjectStageIncludeSpecification("a"), new AstProjectStageIncludeSpecification("b"))));
     }
 }

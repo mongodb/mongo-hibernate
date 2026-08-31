@@ -60,6 +60,9 @@ class AstInsertCommandTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstInsertCommand(
-                "c", List.of(new AstDocument(List.of(new AstElement("n", new AstLiteral(new BsonInt32(1))))))));
+                "c",
+                List.of(
+                        new AstDocument(List.of(new AstElement("n", new AstLiteral(new BsonInt32(1))))),
+                        new AstDocument(List.of(new AstElement("m", new AstLiteral(new BsonInt32(2))))))));
     }
 }

@@ -46,6 +46,7 @@ class AstListComparisonFilterOperationTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstListComparisonFilterOperation(
-                AstListComparisonFilterOperator.IN, List.of((AstValue) new AstLiteral(new BsonInt32(1)))));
+                AstListComparisonFilterOperator.IN,
+                List.of((AstValue) new AstLiteral(new BsonInt32(1)), new AstLiteral(new BsonInt32(2)))));
     }
 }

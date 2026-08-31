@@ -121,9 +121,14 @@ class AstUpdateCommandTests {
     void testMapChildren() {
         assertMapsChildren(new AstUpdateCommand(
                 "c",
-                List.of(new AstUpdateStatement(
-                        new AstExprFilter(new AstFieldPathExpression("f")),
-                        new AstPipelineUpdate(List.of()),
-                        UPSERT))));
+                List.of(
+                        new AstUpdateStatement(
+                                new AstExprFilter(new AstFieldPathExpression("a")),
+                                new AstPipelineUpdate(List.of()),
+                                UPSERT),
+                        new AstUpdateStatement(
+                                new AstExprFilter(new AstFieldPathExpression("b")),
+                                new AstPipelineUpdate(List.of()),
+                                UPSERT))));
     }
 }

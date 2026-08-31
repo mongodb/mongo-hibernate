@@ -61,8 +61,9 @@ public final class AstMapChildrenAssertions {
      * Asserts that {@code node} hands each of its child nodes to the rewriter and rebuilds itself from the results, or
      * returns itself unchanged when it has no child nodes.
      *
-     * <p>Give {@code node} children that differ from one another. Rebuilding with two equal children transposed is not
-     * observable, so two equal children leave the slots they occupy unchecked.
+     * <p>Give {@code node} children that all differ from one another, and at least two of them in every collection and
+     * map it holds. A child put back in the wrong place shows up only in a subject shaped that way: two equal children
+     * are interchangeable, and a collection holding one child has no order left to get wrong.
      */
     public static void assertMapsChildren(AstNode node) {
         List<AstNode> children = childrenOf(node);

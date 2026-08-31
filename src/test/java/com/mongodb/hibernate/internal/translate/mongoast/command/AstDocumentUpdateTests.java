@@ -29,7 +29,11 @@ class AstDocumentUpdateTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstDocumentUpdate(
-                List.of(new AstFieldUpdate("s", new AstLiteral(new BsonInt32(1)))),
-                List.of(new AstFieldUpdate("i", new AstLiteral(new BsonInt32(2))))));
+                List.of(
+                        new AstFieldUpdate("s", new AstLiteral(new BsonInt32(1))),
+                        new AstFieldUpdate("t", new AstLiteral(new BsonInt32(2)))),
+                List.of(
+                        new AstFieldUpdate("i", new AstLiteral(new BsonInt32(3))),
+                        new AstFieldUpdate("j", new AstLiteral(new BsonInt32(4))))));
     }
 }

@@ -52,8 +52,12 @@ class AstLookupStageWithPipelineTests {
     void testMapChildren() {
         assertMapsChildren(new AstLookupStageWithPipeline(
                 "f",
-                List.of(new AstLetVariable("v", new AstFieldPathExpression("f"))),
-                List.of(new AstSkipStage(new AstLiteral(new BsonInt32(1)))),
+                List.of(
+                        new AstLetVariable("v", new AstFieldPathExpression("a")),
+                        new AstLetVariable("w", new AstFieldPathExpression("b"))),
+                List.of(
+                        new AstSkipStage(new AstLiteral(new BsonInt32(1))),
+                        new AstSkipStage(new AstLiteral(new BsonInt32(2)))),
                 "a"));
     }
 }

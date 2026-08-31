@@ -56,8 +56,9 @@ class AstInExpressionTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(
-                new AstInExpression(new AstFieldPathExpression("a"), List.of(new AstFieldPathExpression("b"))));
+        assertMapsChildren(new AstInExpression(
+                new AstFieldPathExpression("a"),
+                List.of(new AstFieldPathExpression("b"), new AstFieldPathExpression("c"))));
     }
 
     @Test

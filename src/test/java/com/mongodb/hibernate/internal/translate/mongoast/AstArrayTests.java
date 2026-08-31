@@ -40,6 +40,6 @@ class AstArrayTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(new AstArray(List.of(new AstLiteral(new BsonInt32(1)))));
+        assertMapsChildren(new AstArray(List.of(new AstLiteral(new BsonInt32(1)), new AstLiteral(new BsonInt32(2)))));
     }
 }
