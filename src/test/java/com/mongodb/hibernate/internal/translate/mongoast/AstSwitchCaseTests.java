@@ -24,6 +24,6 @@ class AstSwitchCaseTests {
 
     @Test
     void testMapChildren() {
-        assertMapsChildren(new AstSwitchCase(new AstFieldPathExpression("f"), new AstFieldPathExpression("f")));
+        assertMapsChildren(new AstSwitchCase(new AstFieldPathExpression("a"), new AstFieldPathExpression("b")));
     }
 }

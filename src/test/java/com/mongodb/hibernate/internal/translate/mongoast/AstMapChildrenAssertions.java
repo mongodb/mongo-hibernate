@@ -40,6 +40,7 @@ import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.bson.BsonInt32;
@@ -59,25 +60,32 @@ public final class AstMapChildrenAssertions {
     /**
      * Asserts that {@code node} hands each of its child nodes to the rewriter and rebuilds itself from the results, or
      * returns itself unchanged when it has no child nodes.
+     *
+     * <p>Give {@code node} children that differ from one another. Rebuilding with two equal children transposed is not
+     * observable, so two equal children leave the slots they occupy unchecked.
      */
     public static void assertMapsChildren(AstNode node) {
         List<AstNode> children = childrenOf(node);
         var rewriter = new RecordingRewriter();
         AstNode result = node.mapChildren(rewriter);
 
+        assertEquals(node.getClass(), result.getClass(), "mapChildren must rebuild a node of the same kind");
         assertEquals(
                 sorted(children), sorted(rewriter.visited), "mapChildren must hand every child node to the rewriter");
         if (children.isEmpty()) {
             assertSame(node, result, "a node with no child nodes must return itself from mapChildren");
         } else {
             assertEquals(
-                    sorted(rewriter.produced),
-                    sorted(childrenOf(result)),
-                    "mapChildren must rebuild the node from what the rewriter returned");
+                    children.stream().map(rewriter.replacements::get).toList(),
+                    childrenOf(result),
+                    "mapChildren must put what the rewriter returned for a child back in that child's place");
         }
     }
 
-    /** Ordered by rendering, so a node is free to visit its children in whatever order suits it. */
+    /**
+     * Ordered by rendering, so that whether every child was handed over can be asked without fixing the order they are
+     * handed over in.
+     */
     private static List<String> sorted(List<AstNode> nodes) {
         return nodes.stream().map(Object::toString).sorted().toList();
     }
@@ -126,100 +134,111 @@ public final class AstMapChildrenAssertions {
     /**
      * Records what it is handed and returns a distinct replacement of the same hierarchy, so a {@code mapChildren} that
      * discards the rewriter's result is caught as well as one that never calls it.
+     *
+     * <p>A replacement is a function of the child it replaces rather than of the order the children arrive in, so what
+     * came back for a given child can be looked up and checked against the place it ended up.
      */
     @NullMarked
     private static final class RecordingRewriter implements AstNodeRewriter {
 
         private final List<AstNode> visited = new ArrayList<>();
-        private final List<AstNode> produced = new ArrayList<>();
-        private int counter;
+        private final Map<AstNode, AstNode> replacements = new HashMap<>();
+        private final Map<AstNode, Integer> indexes = new HashMap<>();
 
         private <N extends AstNode> N record(AstNode visitedNode, N replacement) {
             visited.add(visitedNode);
-            produced.add(replacement);
-            counter++;
+            replacements.put(visitedNode, replacement);
             return replacement;
         }
 
-        private String name() {
-            return "rewritten" + counter;
+        private int index(AstNode node) {
+            return indexes.computeIfAbsent(node, ignored -> indexes.size());
+        }
+
+        private String name(AstNode node) {
+            return "rewritten" + index(node);
         }
 
         @Override
         public AstExpression rewrite(AstExpression node) {
-            return record(node, new AstFieldPathExpression(name()));
+            return record(node, new AstFieldPathExpression(name(node)));
         }
 
         @Override
         public AstFilter rewrite(AstFilter node) {
-            return record(node, new AstExprFilter(new AstFieldPathExpression(name())));
+            return record(node, new AstExprFilter(new AstFieldPathExpression(name(node))));
         }
 
         @Override
         public AstFilterOperation rewrite(AstFilterOperation node) {
-            return record(node, new AstAllFilterOperation(new AstArray(List.of())));
+            return record(
+                    node, new AstAllFilterOperation(new AstArray(List.of(new AstLiteral(new BsonInt32(index(node)))))));
         }
 
         @Override
         public AstStage rewrite(AstStage node) {
-            return record(node, new AstSkipStage(new AstLiteral(new BsonInt32(counter))));
+            return record(node, new AstSkipStage(new AstLiteral(new BsonInt32(index(node)))));
         }
 
         @Override
         public AstSortField rewrite(AstSortField node) {
-            return record(node, new AstSortField(name(), AstSortOrder.ASC));
+            return record(node, new AstSortField(name(node), AstSortOrder.ASC));
         }
 
         @Override
         public AstProjectStageSpecification rewrite(AstProjectStageSpecification node) {
-            return record(node, new AstProjectStageIncludeSpecification(name()));
+            return record(node, new AstProjectStageIncludeSpecification(name(node)));
         }
 
         @Override
         public AstGroupStageSpecification rewrite(AstGroupStageSpecification node) {
-            return record(node, new AstGroupStageSpecification(name(), new AstFieldPathExpression(name())));
+            return record(node, new AstGroupStageSpecification(name(node), new AstFieldPathExpression(name(node))));
         }
 
         @Override
         public AstLetVariable rewrite(AstLetVariable node) {
-            return record(node, new AstLetVariable(name(), new AstFieldPathExpression(name())));
+            return record(node, new AstLetVariable(name(node), new AstFieldPathExpression(name(node))));
         }
 
         @Override
         public AstSwitchCase rewrite(AstSwitchCase node) {
             return record(
-                    node, new AstSwitchCase(new AstFieldPathExpression(name()), new AstFieldPathExpression(name())));
+                    node,
+                    new AstSwitchCase(new AstFieldPathExpression(name(node)), new AstFieldPathExpression(name(node))));
         }
 
         @Override
         public AstValue rewrite(AstValue node) {
             // An array rather than a literal, because AstAllFilterOperation accepts only an array or parameter marker.
-            return record(node, new AstArray(List.of(new AstLiteral(new BsonInt32(counter)))));
+            return record(node, new AstArray(List.of(new AstLiteral(new BsonInt32(index(node))))));
         }
 
         @Override
         public AstElement rewrite(AstElement node) {
-            return record(node, new AstElement(name(), new AstLiteral(new BsonInt32(counter))));
+            return record(node, new AstElement(name(node), new AstLiteral(new BsonInt32(index(node)))));
         }
 
         @Override
         public AstDocument rewrite(AstDocument node) {
-            return record(node, new AstDocument(List.of(new AstElement(name(), new AstLiteral(new BsonInt32(0))))));
+            return record(node, new AstDocument(List.of(new AstElement(name(node), new AstLiteral(new BsonInt32(0))))));
         }
 
         @Override
         public AstFieldUpdate rewrite(AstFieldUpdate node) {
-            return record(node, new AstFieldUpdate(name(), new AstLiteral(new BsonInt32(counter))));
+            return record(node, new AstFieldUpdate(name(node), new AstLiteral(new BsonInt32(index(node)))));
         }
 
         @Override
         public AstComputedFieldUpdate rewrite(AstComputedFieldUpdate node) {
-            return record(node, new AstComputedFieldUpdate(name(), new AstFieldPathExpression(name())));
+            return record(node, new AstComputedFieldUpdate(name(node), new AstFieldPathExpression(name(node))));
         }
 
         @Override
         public AstUpdate rewrite(AstUpdate node) {
-            return record(node, new AstPipelineUpdate(List.of()));
+            return record(
+                    node,
+                    new AstPipelineUpdate(
+                            List.of(new AstComputedFieldUpdate(name(node), new AstFieldPathExpression(name(node))))));
         }
 
         @Override
@@ -227,7 +246,7 @@ public final class AstMapChildrenAssertions {
             return record(
                     node,
                     new AstUpdateStatement(
-                            new AstExprFilter(new AstFieldPathExpression(name())),
+                            new AstExprFilter(new AstFieldPathExpression(name(node))),
                             new AstPipelineUpdate(List.of()),
                             UPSERT));
         }

@@ -79,7 +79,7 @@ class AstBinaryOperatorExpressionTests {
     @Test
     void testMapChildren() {
         assertMapsChildren(new AstBinaryOperatorExpression(
-                "$add", new AstFieldPathExpression("f"), new AstFieldPathExpression("f")));
+                "$add", new AstFieldPathExpression("a"), new AstFieldPathExpression("b")));
     }
 
     @Test
