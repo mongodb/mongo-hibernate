@@ -1203,6 +1203,263 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
 
     @Nested
     @DomainModel(annotatedClasses = {Item.class})
+    class Accumulators extends AbstractQueryIntegrationTests {
+
+        @Test
+        void sumInSelectOnly() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, sum(b.primitiveInt) from Item as b GROUP BY b.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "sum_0": { "$sum": { "$toLong": "$primitiveInt" } }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$sum_0"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(
+                                    new Object[] {1, 4L}, new Object[] {2, 4L}, new Object[] {3, 3L}, new Object[] {
+                                        4, 4L
+                                    }),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumDedupAcrossHavingAndSelect() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, sum(b.primitiveInt) from Item as b"
+                            + " GROUP BY b.primitiveInt HAVING sum(b.primitiveInt) > 3",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "sum_0": { "$sum": { "$toLong": "$primitiveInt" } }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "sum_0": { "$gt": 3 }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$sum_0"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(
+                                    new Object[] {1, 4L}, new Object[] {2, 4L}, new Object[] {4, 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumWithExpressionKey() {
+            assertSelectionQuery(
+                    "select b.primitiveInt + 1, sum(b.primitiveInt) from Item as b" + " GROUP BY b.primitiveInt + 1",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": { "$add": ["$primitiveInt", 1] }
+                            },
+                            "sum_0": { "$sum": { "$toLong": "$primitiveInt" } }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "#c_2": "$sum_0"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(
+                                    new Object[] {2, 4L}, new Object[] {3, 4L}, new Object[] {4, 3L}, new Object[] {
+                                        5, 4L
+                                    }),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumOfExpressionArgument() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, sum(b.primitiveInt + 1) from Item as b" + " GROUP BY b.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "sum_0": { "$sum": { "$toLong": { "$add": ["$primitiveInt", 1] } } }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$sum_0"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(
+                                    new Object[] {1, 8L}, new Object[] {2, 6L}, new Object[] {3, 4L}, new Object[] {
+                                        4, 5L
+                                    }),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumOfNestedFunction() {
+            assertSelectionQuery(
+                    "select b.string, sum(length(concat(b.string, 'x'))) from Item as b" + " GROUP BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "sum_0": { "$sum": { "$toLong": { "$strLenCP": { "$concat": [{ "$toString": "$string" }, { "$toString": "x" }] } } } }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": "$sum_0"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(
+                                    new Object[] {"a", 8L}, new Object[] {"b", 4L}, new Object[] {"c", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumOnlyInHaving() {
+            assertSelectionQuery(
+                    "select b.primitiveInt from Item as b" + " GROUP BY b.primitiveInt HAVING sum(b.primitiveInt) > 3",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "sum_0": { "$sum": { "$toLong": "$primitiveInt" } }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "sum_0": { "$gt": 3 }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(1, 2, 4),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void differentSumsInSelectAndHaving() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, sum(b.primitiveInt) from Item as b"
+                            + " GROUP BY b.primitiveInt HAVING sum(b.primitiveInt + 1) > 5",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "sum_0": { "$sum": { "$toLong": "$primitiveInt" } },
+                            "sum_1": { "$sum": { "$toLong": { "$add": ["$primitiveInt", 1] } } }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "sum_1": { "$gt": 5 }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$sum_0"
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(new Object[] {1, 4L}, new Object[] {2, 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumWithoutGroupByThrows() {
+            assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
+                                    "select sum(b.primitiveInt) from Item as b", Object.class)
+                            .getResultList()))
+                    .isInstanceOf(FeatureNotSupportedException.class);
+        }
+    }
+
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
     class StrayColumnDetection extends AbstractQueryIntegrationTests {
 
         static Stream<Arguments> strayColumnQueries() {

@@ -38,6 +38,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -68,7 +69,7 @@ class GroupBySubstitutionRuleTests {
 
     private AstRewriter rewriterWithKeys(Map<AstExpression, String> keys) {
         keys.forEach((expression, subKey) -> groupKeyVN.put(vn.valueNumber(expression), subKey));
-        return new AstRewriter(new GroupBySubstitutionRule(groupKeyVN, vn), null);
+        return new AstRewriter(new GroupBySubstitutionRule(groupKeyVN, vn, Set.of()), null);
     }
 
     @Test

@@ -44,6 +44,7 @@ class StructuralKeyTagTests {
     private static List<AstExpression> oneOfEachKind() {
         return List.of(
                 field(),
+                new AstAccumulatorExpression("$sum", field()),
                 new AstVariableExpression("v"),
                 new AstLiteralExpression(new AstLiteral(new BsonInt32(1))),
                 new AstValueExpression(new AstLiteral(new BsonInt32(1))),
