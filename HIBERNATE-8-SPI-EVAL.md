@@ -10,7 +10,7 @@ It is an evaluation branch, not production work.
 The extension compiles against `org.hibernate.orm:hibernate-platform:8.0.0-SNAPSHOT`
 and all root-module tests pass: 450 unit tests and 871 integration tests.
 The upstream snapshot must be published to local mavenLocal from a checkout
-of the PR head (currently commit 49d00fa783):
+of the PR head (currently commit ce522a4168):
 
     cd <hibernate-orm checkout>
     ./gradlew :hibernate-core:publishToMavenLocal :hibernate-testing:publishToMavenLocal \
@@ -79,15 +79,15 @@ Two known limitations:
 
 `./gradlew validateDialectProviderBoundaries` against this branch's jar
 (using the plugin from the PR, with classification metadata generated from
-the PR checkout): 67 errors and 8 warnings.
+the PR checkout): 53 errors and 6 warnings.
 
-The 67 errors (`MISSING_IMPLEMENT_ROLE`, 23 declarations) are the deliberate
+The 53 errors (`MISSING_IMPLEMENT_ROLE`, 19 declarations) are the deliberate
 output of the interface-surfacing series: every internal dependency that
 could be expressed against an spi interface was converted, so the report
 names exactly the contracts that need classification. Per the generated
-classification metadata, the 23 declarations fall into two categories.
+classification metadata, the 19 declarations fall into two categories.
 
-Classified SPI, `USE` role only (16 declarations). The category is right;
+Classified SPI, `USE` role only (12 declarations). The category is right;
 implementing them simply needs the `IMPLEMENT` role:
 
 - `org.hibernate.service.spi.ServiceInitiator`
@@ -99,10 +99,6 @@ implementing them simply needs the `IMPLEMENT` role:
 - `org.hibernate.engine.jdbc.connections.spi.ConnectionProvider`
 - `org.hibernate.engine.jdbc.connections.spi.DatabaseConnectionInfo`
 - `org.hibernate.metamodel.spi.ValueAccess`
-- `org.hibernate.sql.ast.spi.SqlAstNode`
-- `org.hibernate.sql.ast.spi.query.expression.Expression`
-- `org.hibernate.sql.ast.spi.query.expression.JdbcParameter`
-- `org.hibernate.sql.exec.spi.JdbcParameterBinder`
 - `org.hibernate.sql.spi.mutation.SelfExecutingUpdateOperation`
 - `org.hibernate.sql.spi.mutation.jdbc.JdbcValueDescriptor`
 - `org.hibernate.sql.spi.mutation.MutationOperation`
@@ -128,6 +124,15 @@ Hibernate's own `ConnectionProvider` (SPI, `USE`) extending `Service`
 (API) is a cross-category edge of the kind their
 `FORBIDDEN_CATEGORY_DEPENDENCY` validation is meant to catch, which is
 further evidence the API classifications are unintended.
+
+Two upstream changes landed after this list was first compiled.
+`JdbcParameterFactory` (`queryLimit`, `queryOffset`, `custom`) replaced
+our own offset and limit parameter implementations, removing the four
+parameter-surface declarations above. And the boundary analyzer now
+accepts a provider-owned SPI declaration (a type in a provider `spi`
+package) composing Hibernate API, which cleared the `Service`
+implementation on our `cfg.spi` `MongoConfigurationContributor`; the
+remaining `Service` finding is the one in an internal package.
 
 The six remaining warning declarations have no local route; they are
 runtime types Hibernate instantiates and hands to the extension:
@@ -155,11 +160,10 @@ runtime types Hibernate instantiates and hands to the extension:
    reclassification of the 7 API-classified ones (the defaulting rule for
    unannotated public types in plain packages, or deliberate
    reclassification of the classic extension points among them).
-2. A `JdbcParameterFactory`: `limitParameter`/`offsetParameter` for the
-   offset and limit parameters, plus a general
-   `parameter(ColumnReference, ParameterUsage)` whose product exposes usage.
-   That removes the last self-built parameters and all
-   `ColumnValueParameter` references.
+2. Landed: `JdbcParameterFactory` (`queryLimit`, `queryOffset`, `custom`)
+   and `ColumnValueParameter` declaring its JDBC-parameter methods as its
+   provider-facing contract. Our parameter classes and interface casts are
+   gone.
 3. A way to distinguish the three inheritance strategies on the entity
    mapping contract. Today the extension uses the concrete persisters only
    to pick which unsupported-feature error to throw when an entity spans
@@ -190,11 +194,7 @@ runtime types Hibernate instantiates and hands to the extension:
    `hasSchema()`/`hasCatalog()`. As it stands the interface is
    unimplementable by a provider without findings, because those two
    members are both `@Internal` and abstract.
-6. Two structural findings: `ColumnValueParameter` sits in the spi
-   `sql.ast.spi.model` package but extends the internal
-   `AbstractJdbcParameter` without redeclaring `accept`,
-   `getParameterBinder`, `getParameterId`, or `getJdbcMapping`, forcing
-   interface casts on every provider; and `Dialect#contributeDefaultProperties`
+6. One structural finding remains: `Dialect#contributeDefaultProperties`
    cannot influence `hibernate.flush.queue.type` because a service initiator
    consumes that setting before Dialect defaults merge.
 7. The graph-based flush queue regression: entity deletes execute one
