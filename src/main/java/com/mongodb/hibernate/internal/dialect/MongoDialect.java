@@ -87,7 +87,6 @@ import org.hibernate.mapping.Index;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
 import org.hibernate.metamodel.mapping.JdbcMapping;
-import org.hibernate.metamodel.mapping.SqlExpressible;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.produce.function.FunctionParameterType;
 import org.hibernate.service.ServiceRegistry;
@@ -518,9 +517,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
 
             @Override
             public JdbcMapping getJdbcMapping() {
-                // read through the spi interface: getJdbcMapping() is declared on AbstractJdbcParameter,
-                // which ColumnValueParameter extends
-                return ((SqlExpressible) parameter).getJdbcMapping();
+                return parameter.getJdbcMapping();
             }
         }
 

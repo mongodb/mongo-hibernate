@@ -131,7 +131,6 @@ import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
@@ -154,7 +153,6 @@ import org.hibernate.dialect.sql.ast.spi.SqlAstTranslatorFactory;
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
-import org.hibernate.metamodel.mapping.JdbcMappingContainer;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
@@ -169,7 +167,6 @@ import org.hibernate.query.sqm.tree.spi.expression.Conversion;
 import org.hibernate.spi.Stack;
 import org.hibernate.sql.ast.spi.AbstractSqlAstWalker;
 import org.hibernate.sql.ast.spi.SqlAstNode;
-import org.hibernate.sql.ast.spi.SqlAstWalker;
 import org.hibernate.sql.ast.spi.Statement;
 import org.hibernate.sql.ast.spi.model.AbstractRestrictedTableMutation;
 import org.hibernate.sql.ast.spi.model.ColumnValueBinding;
@@ -207,6 +204,7 @@ import org.hibernate.sql.ast.spi.query.expression.ExtractUnit;
 import org.hibernate.sql.ast.spi.query.expression.Format;
 import org.hibernate.sql.ast.spi.query.expression.JdbcLiteral;
 import org.hibernate.sql.ast.spi.query.expression.JdbcParameter;
+import org.hibernate.sql.ast.spi.query.expression.JdbcParameterFactory;
 import org.hibernate.sql.ast.spi.query.expression.Literal;
 import org.hibernate.sql.ast.spi.query.expression.ModifiedSubQueryExpression;
 import org.hibernate.sql.ast.spi.query.expression.NestedColumnReference;
@@ -261,15 +259,12 @@ import org.hibernate.sql.ast.spi.query.update.UpdateStatement;
 import org.hibernate.sql.ast.spi.translation.Clause;
 import org.hibernate.sql.ast.spi.translation.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
-import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
-import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.model.LegacyMutationTarget;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.spi.SqlAppender;
 import org.hibernate.sql.spi.mutation.MutationOperation;
-import org.hibernate.type.BasicType;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.jspecify.annotations.Nullable;
@@ -804,7 +799,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> extends Abs
             if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
                 var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
                 // We check if limit's firstRow/maxRows is set,
-                // but ignore the actual values when creating OffsetJdbcParameter/LimitJdbcParameter.
+                // but ignore the actual values when creating the offset and limit parameters.
                 // Hibernate ORM reuses the translation result for the same HQL/SQL queries
                 // with different values passed to setFirstResult/setMaxResults. Therefore, we cannot include the
                 // values available when translating in the translation result. The only thing we pay attention to is
@@ -812,10 +807,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> extends Abs
                 // setFirstResult/setMaxResults being present
                 // must be different from those with the limits being absent. Hibernate ORM also caches them separately.
                 if (limit.getFirstRow() != null) {
-                    offsetParameter = new OffsetJdbcParameter(basicIntegerType);
+                    offsetParameter = JdbcParameterFactory.queryOffset(basicIntegerType);
                 }
                 if (limit.getMaxRows() != null) {
-                    limitParameter = new LimitJdbcParameter(basicIntegerType);
+                    limitParameter = JdbcParameterFactory.queryLimit(basicIntegerType);
                 }
                 skipExpression = offsetParameter;
                 limitExpression = limitParameter;
@@ -1393,9 +1388,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> extends Abs
             if (aggregate == null) {
                 updates.add(createFieldUpdate(valueBinding));
             } else if (collapsedAggregates.add(aggregate.getSelectionExpression())) {
-                // typed as the spi interface: ColumnValueParameter's binder and id accessors are declared
-                // on the internal AbstractJdbcParameter it extends
-                JdbcParameter parameter =
+                var parameter =
                         new ColumnValueParameter(new ColumnReference(mutatingTable, aggregate), ParameterUsage.SET);
                 updates.add(new AstFieldUpdate(
                         aggregate.getSelectionExpression(),
@@ -2591,94 +2584,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> extends Abs
         var suffix = ((qualifier != null ? qualifier + "_" : "") + outer.getColumnExpression())
                 .replaceAll("[^a-zA-Z0-9_]", "_");
         return "v" + letVariableCounter++ + "_" + suffix;
-    }
-
-    private static final class OffsetJdbcParameter implements JdbcParameter, JdbcParameterBinder {
-
-        private final BasicType<Integer> type;
-
-        OffsetJdbcParameter(BasicType<Integer> type) {
-            this.type = type;
-        }
-
-        @Override
-        public JdbcParameterBinder getParameterBinder() {
-            return this;
-        }
-
-        @Override
-        public @Nullable Integer getParameterId() {
-            return null;
-        }
-
-        @Override
-        public @Nullable JdbcMappingContainer getExpressionType() {
-            return type;
-        }
-
-        @Override
-        public void accept(SqlAstWalker sqlTreeWalker) {
-            sqlTreeWalker.visitParameter(this);
-        }
-
-        @Override
-        public void bindParameterValue(
-                PreparedStatement statement,
-                int startPosition,
-                JdbcParameterBindings jdbcParamBindings,
-                ExecutionContext executionContext)
-                throws SQLException {
-            type.getJdbcValueBinder()
-                    .bind(
-                            statement,
-                            executionContext.getQueryOptions().getLimit().getFirstRow(),
-                            startPosition,
-                            executionContext.getSession());
-        }
-    }
-
-    private static final class LimitJdbcParameter implements JdbcParameter, JdbcParameterBinder {
-
-        private final BasicType<Integer> type;
-
-        LimitJdbcParameter(BasicType<Integer> type) {
-            this.type = type;
-        }
-
-        @Override
-        public JdbcParameterBinder getParameterBinder() {
-            return this;
-        }
-
-        @Override
-        public @Nullable Integer getParameterId() {
-            return null;
-        }
-
-        @Override
-        public @Nullable JdbcMappingContainer getExpressionType() {
-            return type;
-        }
-
-        @Override
-        public void accept(SqlAstWalker sqlTreeWalker) {
-            sqlTreeWalker.visitParameter(this);
-        }
-
-        @Override
-        public void bindParameterValue(
-                PreparedStatement statement,
-                int startPosition,
-                JdbcParameterBindings jdbcParamBindings,
-                ExecutionContext executionContext)
-                throws SQLException {
-            type.getJdbcValueBinder()
-                    .bind(
-                            statement,
-                            executionContext.getQueryOptions().getLimit().getMaxRows(),
-                            startPosition,
-                            executionContext.getSession());
-        }
     }
 
     /**
