@@ -10,7 +10,7 @@ It is an evaluation branch, not production work.
 The extension compiles against `org.hibernate.orm:hibernate-platform:8.0.0-SNAPSHOT`
 and all root-module tests pass: 450 unit tests and 871 integration tests.
 The upstream snapshot must be published to local mavenLocal from a checkout
-of the PR head (currently commit ce522a4168):
+of the PR head (currently commit ff92857982):
 
     cd <hibernate-orm checkout>
     ./gradlew :hibernate-core:publishToMavenLocal :hibernate-testing:publishToMavenLocal \
@@ -69,25 +69,31 @@ Two known limitations:
 9. The no-op update (`TableUpdateNoSet`) detected through the spi
    `TableUpdate` accessors instead of the internal marker class.
 10. The struct flatten and assemble walks copied from `StructHelper` into
-    `MongoStructJdbcType` as private static methods,
+    `MongoStructJdbcType` as private static methods (later superseded by
+    entry 11),
     reduced to what the type uses: no attribute-order mapping, no
     polymorphic embeddables, and associations decomposed through the
     public `ModelPart` contract. The values holder implements the
     incubating `org.hibernate.metamodel.spi.ValueAccess`, the one finding the copy adds.
+11. The struct type reshaped onto `AggregateJdbcValues`, following the
+    `ExampleStructuredJdbcType` fixture: physical, driver-shaped component
+    values in, `toLogicalJdbcValues`/`toDomainValue` out, with the copied
+    walks deleted and one local bridge in `MongoArrayJdbcType` around the
+    two upstream bugs below.
 
 ## Provider-boundary report
 
 `./gradlew validateDialectProviderBoundaries` against this branch's jar
 (using the plugin from the PR, with classification metadata generated from
-the PR checkout): 53 errors and 6 warnings.
+the PR checkout): 51 errors and 8 warnings.
 
-The 53 errors (`MISSING_IMPLEMENT_ROLE`, 19 declarations) are the deliberate
+The 51 errors (`MISSING_IMPLEMENT_ROLE`, 18 declarations) are the deliberate
 output of the interface-surfacing series: every internal dependency that
 could be expressed against an spi interface was converted, so the report
 names exactly the contracts that need classification. Per the generated
-classification metadata, the 19 declarations fall into two categories.
+classification metadata, the 18 declarations fall into two categories.
 
-Classified SPI, `USE` role only (12 declarations). The category is right;
+Classified SPI, `USE` role only (11 declarations). The category is right;
 implementing them simply needs the `IMPLEMENT` role:
 
 - `org.hibernate.service.spi.ServiceInitiator`
@@ -98,7 +104,6 @@ implementing them simply needs the `IMPLEMENT` role:
 - `org.hibernate.boot.spi.AdditionalMappingContributor`
 - `org.hibernate.engine.jdbc.connections.spi.ConnectionProvider`
 - `org.hibernate.engine.jdbc.connections.spi.DatabaseConnectionInfo`
-- `org.hibernate.metamodel.spi.ValueAccess`
 - `org.hibernate.sql.spi.mutation.SelfExecutingUpdateOperation`
 - `org.hibernate.sql.spi.mutation.jdbc.JdbcValueDescriptor`
 - `org.hibernate.sql.spi.mutation.MutationOperation`
@@ -125,14 +130,18 @@ Hibernate's own `ConnectionProvider` (SPI, `USE`) extending `Service`
 `FORBIDDEN_CATEGORY_DEPENDENCY` validation is meant to catch, which is
 further evidence the API classifications are unintended.
 
-Two upstream changes landed after this list was first compiled.
+Three upstream changes landed after this list was first compiled.
 `JdbcParameterFactory` (`queryLimit`, `queryOffset`, `custom`) replaced
 our own offset and limit parameter implementations, removing the four
 parameter-surface declarations above. And the boundary analyzer now
 accepts a provider-owned SPI declaration (a type in a provider `spi`
 package) composing Hibernate API, which cleared the `Service`
 implementation on our `cfg.spi` `MongoConfigurationContributor`; the
-remaining `Service` finding is the one in an internal package.
+remaining `Service` finding is the one in an internal package. And
+`AggregateJdbcValues`/`AggregateJdbcValueOrder` plus the
+`ExampleStructuredJdbcType` provider fixture gave the struct type a
+supported round trip, which removed the `ValueAccess` declaration above
+along with the copied `StructHelper` walks (commit b5d3a22f).
 
 The six remaining warning declarations have no local route; they are
 runtime types Hibernate instantiates and hands to the extension:
@@ -194,7 +203,14 @@ runtime types Hibernate instantiates and hands to the extension:
    `hasSchema()`/`hasCatalog()`. As it stands the interface is
    unimplementable by a provider without findings, because those two
    members are both `@Internal` and abstract.
-6. One structural finding remains: `Dialect#contributeDefaultProperties`
+6. One bug in the reworked array handling, reproducible with a
+   relational driver and bridged locally in `MongoArrayJdbcType`:
+   `ArrayJdbcType#toJavaArray` feeds `AggregateJdbcType#extractJdbcValues`
+   output (logical values, per both the stock `StructJdbcType` and the
+   provider fixture contract) back into `StructHelper#getAttributeValues`
+   (physical values after the rework), wrapping array components a second
+   time.
+7. One structural finding remains: `Dialect#contributeDefaultProperties`
    cannot influence `hibernate.flush.queue.type` because a service initiator
    consumes that setting before Dialect defaults merge.
 7. The graph-based flush queue regression: entity deletes execute one
