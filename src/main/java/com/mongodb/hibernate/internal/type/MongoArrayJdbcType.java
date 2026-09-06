@@ -18,20 +18,15 @@ package com.mongodb.hibernate.internal.type;
 
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 
-import com.mongodb.hibernate.internal.jdbc.MongoArray;
 import java.io.Serial;
 import java.sql.JDBCType;
-import java.sql.SQLException;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.tool.schema.extract.spi.ColumnTypeInformation;
 import org.hibernate.type.SqlTypes;
-import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
-import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeConstructor;
 import org.hibernate.type.spi.TypeConfiguration;
-import org.jspecify.annotations.Nullable;
 
 /**
  * @hidden
@@ -54,24 +49,6 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
         var result = super.getJdbcTypeCode();
         assertTrue(result == JDBC_TYPE.getVendorTypeNumber());
         return result;
-    }
-
-    @Override
-    protected <X> @Nullable X getArray(
-            BasicExtractor<X> extractor, java.sql.@Nullable Array array, WrapperOptions options) throws SQLException {
-        if (array instanceof MongoArray mongoArray
-                && getElementJdbcType() instanceof MongoStructJdbcType structElementJdbcType) {
-            // ArrayJdbcType#toJavaArray feeds AggregateJdbcType#extractJdbcValues output back into the
-            // physical-value walk, wrapping array components a second time; convert the elements directly
-            var rawElements = (Object[]) mongoArray.getArray();
-            var domainElements = new Object[rawElements.length];
-            for (var i = 0; i < rawElements.length; i++) {
-                domainElements[i] =
-                        rawElements[i] == null ? null : structElementJdbcType.toDomain(rawElements[i], options);
-            }
-            return extractor.getJavaType().wrap(domainElements, options);
-        }
-        return super.getArray(extractor, array, options);
     }
 
     /**
