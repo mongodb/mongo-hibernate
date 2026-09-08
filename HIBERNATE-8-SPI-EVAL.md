@@ -7,10 +7,11 @@ It is an evaluation branch, not production work.
 
 ## Build and test state
 
-The extension compiles against `org.hibernate.orm:hibernate-platform:8.0.0-SNAPSHOT`
+The extension compiles against `org.hibernate.orm:hibernate-platform:8.1.0-SNAPSHOT`
 and all root-module tests pass: 450 unit tests and 871 integration tests.
 The upstream snapshot must be published to local mavenLocal from a checkout
-of the PR head (currently commit ff92857982):
+of the branch head (currently commit 45cf13ecc0 on PR 13302, versioned
+8.1.0-SNAPSHOT):
 
     cd <hibernate-orm checkout>
     ./gradlew :hibernate-core:publishToMavenLocal :hibernate-testing:publishToMavenLocal \
@@ -18,7 +19,9 @@ of the PR head (currently commit ff92857982):
         :hibernate-community-dialects:publishToMavenLocal -x :hibernate-community-dialects:javadoc
 
 Publishing `hibernate-community-dialects` requires skipping javadoc because the
-branch has three javadoc errors in that module.
+branch has three javadoc errors in that module. The 8.1 chain also depends on
+the `jakarta.persistence-api` 4.0.0 snapshot, resolved from the Sonatype
+snapshots repository (added to this branch's build files).
 
 Two known limitations:
 
@@ -78,16 +81,17 @@ Two known limitations:
 11. The struct type reshaped onto `AggregateJdbcValues`, following the
     `ExampleStructuredJdbcType` fixture: physical, driver-shaped component
     values in, `toLogicalJdbcValues`/`toDomainValue` out, with the copied
-    walks deleted and one local bridge in `MongoArrayJdbcType` around the
-    two upstream bugs below.
+    walks deleted. A temporary local bridge in `MongoArrayJdbcType` around
+    the upstream double-wrap bug was removed once the fix landed in
+    PR 13302.
 
 ## Provider-boundary report
 
 `./gradlew validateDialectProviderBoundaries` against this branch's jar
 (using the plugin from the PR, with classification metadata generated from
-the PR checkout): 51 errors and 8 warnings.
+the branch checkout): 50 errors and 8 warnings.
 
-The 51 errors (`MISSING_IMPLEMENT_ROLE`, 18 declarations) are the deliberate
+The 50 errors (`MISSING_IMPLEMENT_ROLE`, 18 declarations) are the deliberate
 output of the interface-surfacing series: every internal dependency that
 could be expressed against an spi interface was converted, so the report
 names exactly the contracts that need classification. Per the generated
@@ -203,15 +207,30 @@ runtime types Hibernate instantiates and hands to the extension:
    `hasSchema()`/`hasCatalog()`. As it stands the interface is
    unimplementable by a provider without findings, because those two
    members are both `@Internal` and abstract.
-6. One bug in the reworked array handling, reproducible with a
-   relational driver and bridged locally in `MongoArrayJdbcType`:
-   `ArrayJdbcType#toJavaArray` feeds `AggregateJdbcType#extractJdbcValues`
-   output (logical values, per both the stock `StructJdbcType` and the
-   provider fixture contract) back into `StructHelper#getAttributeValues`
-   (physical values after the rework), wrapping array components a second
-   time.
+6. Fixed by Steve in PR 13302: `StructHelper#wrapRawJdbcValue` is now
+   idempotent for array values, so `ArrayJdbcType#toJavaArray` no longer
+   double-wraps array components of structured elements. Our reproducer
+   test is absorbed into the PR (with a direct-Java-Time variant Steve
+   added), the fix was verified against our extension, and the local
+   bridge is removed (commit 3bfa38f9).
 7. One structural finding remains: `Dialect#contributeDefaultProperties`
    cannot influence `hibernate.flush.queue.type` because a service initiator
    consumes that setting before Dialect defaults merge.
+
+8. New regression in the 13302 delta: the nullability pass added
+   `assert instance != null` to `EntityDeleteAction#execute`, which
+   contradicts both the id-only constructor (a null instance is its
+   contract for removing an unloaded reference) and `execute`'s own
+   `postDeleteUnloaded` branch. Any
+   `session.remove(session.getReference(...))` fails under an
+   assertions-enabled JVM (Gradle test tasks default to `-ea`) on the
+   legacy queue. The assert should be dropped.
+9. PR 13302 flips `hibernate.type.java_time_use_direct_jdbc` to default
+   true and adds the `DirectJavaTimeJdbcSupport` supply point (the
+   Dialect default is `jdbc42`). Our suite is green with the flipped
+   default, but our boot guard forbids configuring the property, so the
+   only escape hatch for MongoDB users is gone; whether MongoDB should
+   supply a more precise `DirectJavaTimeJdbcSupport` than `jdbc42` is an
+   open product decision.
 7. The graph-based flush queue regression: entity deletes execute one
    statement per row instead of batching, observable to any driver.

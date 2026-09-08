@@ -25,11 +25,11 @@ plugins {
     alias(libs.plugins.errorprone)
     alias(libs.plugins.buildconfig)
     alias(libs.plugins.nexus.publish)
-    id("org.hibernate.orm.dialect-provider") version "8.0.0-SNAPSHOT"
+    id("org.hibernate.orm.dialect-provider") version "8.1.0-SNAPSHOT"
 }
 
 hibernateDialectProvider {
-    hibernateVersion = "8.0.0-SNAPSHOT"
+    hibernateVersion = "8.1.0-SNAPSHOT"
     // 8.0 has no published family metadata yet; use the locally generated document from the PR branch build
     classificationMetadataFile =
         file("/Users/jeff/git/m/hibernate-orm-ast80/documentation/target/orm/reports/classifications.json.gz")
@@ -41,6 +41,13 @@ hibernateDialectProvider {
 repositories {
     mavenLocal()
     mavenCentral()
+    // the Jakarta Persistence 4.0 API snapshot the 8.1 chain depends on
+    maven {
+        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+        content {
+            includeGroup("jakarta.persistence")
+        }
+    }
 }
 
 tasks.withType<Javadoc> {
