@@ -50,11 +50,11 @@ tasks.withType<Javadoc> {
         links =
             listOf(
                 "https://docs.oracle.com/en/java/javase/17/docs/api/",
-                "https://jakarta.ee/specifications/persistence/3.1/apidocs/",
+                "https://jakarta.ee/specifications/persistence/3.2/apidocs/",
                 "https://docs.hibernate.org/orm/7.4/javadocs/",
-                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/bson/",
-                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-core/",
-                "https://mongodb.github.io/mongo-java-driver/5.6/apidocs/driver-sync/",
+                "https://mongodb.github.io/mongo-java-driver/5.11/apidocs/bson/",
+                "https://mongodb.github.io/mongo-java-driver/5.11/apidocs/driver-core/",
+                "https://mongodb.github.io/mongo-java-driver/5.11/apidocs/driver-sync/",
                 "https://jspecify.dev/docs/api",
             )
         // specify the custom `@mongoCme` `javadoc` block tag
