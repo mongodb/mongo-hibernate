@@ -217,14 +217,17 @@ runtime types Hibernate instantiates and hands to the extension:
    cannot influence `hibernate.flush.queue.type` because a service initiator
    consumes that setting before Dialect defaults merge.
 
-8. New regression in the 13302 delta: the nullability pass added
+8. A main-line regression (from the nullability-annotations pass, present
+   in the 8.1 snapshot via main, not from PR 13302 itself): the pass added
    `assert instance != null` to `EntityDeleteAction#execute`, which
    contradicts both the id-only constructor (a null instance is its
    contract for removing an unloaded reference) and `execute`'s own
    `postDeleteUnloaded` branch. Any
    `session.remove(session.getReference(...))` fails under an
    assertions-enabled JVM (Gradle test tasks default to `-ea`) on the
-   legacy queue. The assert should be dropped.
+   legacy queue; main's default graph queue never runs that code, which
+   is why Hibernate's own suite does not catch it. The assert should be
+   dropped.
 9. PR 13302 flips `hibernate.type.java_time_use_direct_jdbc` to default
    true and adds the `DirectJavaTimeJdbcSupport` supply point (the
    Dialect default is `jdbc42`). Our suite is green with the flipped
