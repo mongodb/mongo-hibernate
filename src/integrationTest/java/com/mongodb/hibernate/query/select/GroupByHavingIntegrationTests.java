@@ -638,6 +638,33 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
+        void groupByCaseKeyWithAccumulator() {
+            assertSelectionQuery(
+                    "select case when b.primitiveInt > 2 then 1 else 0 end, count(*) from Item as b"
+                            + " GROUP BY case when b.primitiveInt > 2 then 1 else 0 end",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {"$switch": {"branches": [{"case": {"$gt": ["$primitiveInt", 2]}, "then": 1}], "default": 0}}
+                            },
+                            "#acc_0": {"$sum": {"$toLong": 1}}
+                          }
+                        },
+                        {"$project": {"#c_1": "$_id.k0", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactlyInAnyOrder(new Object[] {0, 2L}, new Object[] {1, 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
         void groupByArithmeticWholeMatch() {
             assertSelectionQuery(
                     "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1",
@@ -1199,6 +1226,336 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 """,
                 List.of(1, 2, 3, 4, 5, 6, 7, 8),
                 Set.of(COLLECTION_NAME));
+    }
+
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class Accumulators extends AbstractQueryIntegrationTests {
+
+        @Test
+        void countStar() {
+            assertSelectionQuery(
+                    "select b.string, count(*) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": 1}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 4L}, new Object[] {"b", 2L}, new Object[] {"c", 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countColumn() {
+            assertSelectionQuery(
+                    "select b.string, count(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": {"$switch": {"branches": [{"case": {"$eq": ["$primitiveInt", null]}, "then": 0}], "default": 1}}}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 4L}, new Object[] {"b", 2L}, new Object[] {"c", 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sum() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 4L}, new Object[] {"b", 4L}, new Object[] {"c", 7L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void avg() {
+            assertSelectionQuery(
+                    "select b.string, avg(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$avg": {"$toDouble": "$primitiveInt"}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1.0}, new Object[] {"b", 2.0}, new Object[] {"c", 3.5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void min() {
+            assertSelectionQuery(
+                    "select b.string, min(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$min": {"$toInt": "$primitiveInt"}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1}, new Object[] {"b", 2}, new Object[] {"c", 3}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void max() {
+            assertSelectionQuery(
+                    "select b.string, max(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$max": {"$toInt": "$primitiveInt"}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1}, new Object[] {"b", 2}, new Object[] {"c", 4}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void allAggregateFunctionsCombined() {
+            assertSelectionQuery(
+                    "select b.string, count(*), sum(b.primitiveInt), avg(b.primitiveInt), min(b.primitiveInt),"
+                            + " max(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": 1}}, "#acc_1": {"$sum": {"$toLong": "$primitiveInt"}}, "#acc_2": {"$avg": {"$toDouble": "$primitiveInt"}}, "#acc_3": {"$min": {"$toInt": "$primitiveInt"}}, "#acc_4": {"$max": {"$toInt": "$primitiveInt"}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "#c_3": "$#acc_1", "#c_4": "$#acc_2", "#c_5": "$#acc_3", "#c_6": "$#acc_4", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(
+                                    new Object[] {"a", 4L, 4L, 1.0, 1, 1},
+                                    new Object[] {"b", 2L, 4L, 2.0, 2, 2},
+                                    new Object[] {"c", 2L, 7L, 3.5, 3, 4}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateOfExpression() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt + 1) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": {"$add": ["$primitiveInt", 1]}}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 8L}, new Object[] {"b", 6L}, new Object[] {"c", 9L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void expressionWrappingAggregate() {
+            assertSelectionQuery(
+                    "select b.string, avg(b.primitiveInt) + 1 from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$avg": {"$toDouble": "$primitiveInt"}}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$add": ["$#acc_0", 1]}, "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2.0}, new Object[] {"b", 3.0}, new Object[] {"c", 4.5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateOnlyInHaving() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string HAVING sum(b.primitiveInt) > 4"
+                            + " ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}}},
+                        {"$match": {"#acc_0": {"$gt": 4}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    List.of("c"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sameAggregateInHavingAndSelectSharesOneAccumulator() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " HAVING sum(b.primitiveInt) > 4 ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}}},
+                        {"$match": {"#acc_0": {"$gt": 4}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {"c", 7L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void differentAggregatesInHavingAndSelect() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " HAVING count(*) > 2 ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}, "#acc_1": {"$sum": {"$toLong": 1}}}},
+                        {"$match": {"#acc_1": {"$gt": 2}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {"a", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void expressionWrappingAggregateInHaving() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string HAVING avg(b.primitiveInt) + 1 > 3"
+                            + " ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$avg": {"$toDouble": "$primitiveInt"}}}},
+                        {"$match": {"$expr": {"$gt": [{"$add": ["$#acc_0", 1]}, 3]}}},
+                        {"$sort": {"_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    List.of("c"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregate() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " ORDER BY sum(b.primitiveInt) DESC, b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}}},
+                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"c", 7L}, new Object[] {"a", 4L}, new Object[] {"b", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregateAbsentFromSelect() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string ORDER BY sum(b.primitiveInt) DESC, b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}}},
+                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    List.of("c", "a", "b"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateWithoutGroupByIsRejected() {
+            assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
+                                    "select sum(b.primitiveInt) from Item as b", Object.class)
+                            .getResultList()))
+                    .isInstanceOf(FeatureNotSupportedException.class);
+        }
+
+        @Test
+        void distinctWithinAggregateIsRejected() {
+            assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
+                                    "select b.string, count(distinct b.primitiveInt) from Item as b GROUP BY b.string",
+                                    Object[].class)
+                            .getResultList()))
+                    .isInstanceOf(FeatureNotSupportedException.class);
+        }
     }
 
     @Nested
