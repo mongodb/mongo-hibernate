@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present MongoDB, Inc.
+ * Copyright 2026-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,46 +21,34 @@ import static java.lang.String.format;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
-import org.hibernate.dialect.aggregate.AggregateSupportImpl;
-import org.hibernate.mapping.Column;
-import org.hibernate.metamodel.mapping.SqlTypedMapping;
-import org.hibernate.type.spi.TypeConfiguration;
+import org.hibernate.dialect.aggregate.spi.AggregateComponentAssignmentRequest;
+import org.hibernate.dialect.aggregate.spi.AggregateComponentReadRequest;
+import org.hibernate.dialect.aggregate.spi.StandardAggregateSupport;
 
 /**
  * @hidden
  * @mongoCme It is unclear whether this class must be thread-safe.
  */
 @SuppressWarnings("MissingSummary")
-public final class MongoAggregateSupport extends AggregateSupportImpl {
+public final class MongoAggregateSupport extends StandardAggregateSupport {
     public static final MongoAggregateSupport INSTANCE = new MongoAggregateSupport();
 
     private MongoAggregateSupport() {}
 
     @Override
-    public String aggregateComponentAssignmentExpression(
-            String aggregateParentAssignmentExpression,
-            String columnExpression,
-            int aggregateColumnTypeCode,
-            Column column) {
-        assertStructOrArrayType(aggregateColumnTypeCode);
-        return aggregateParentAssignmentExpression + "." + columnExpression;
+    public String aggregateComponentAssignmentExpression(AggregateComponentAssignmentRequest request) {
+        assertStructOrArrayType(request.aggregateColumnTypeCode());
+        return request.aggregateParentAssignmentExpression() + "." + request.columnExpression();
     }
 
     @Override
-    public String aggregateComponentCustomReadExpression(
-            String template,
-            String placeholder,
-            String aggregateParentReadExpression,
-            String columnExpression,
-            int aggregateColumnTypeCode,
-            SqlTypedMapping column,
-            TypeConfiguration typeConfiguration) {
-        assertStructOrArrayType(aggregateColumnTypeCode);
+    public String aggregateComponentCustomReadExpression(AggregateComponentReadRequest request) {
+        assertStructOrArrayType(request.aggregateColumnTypeCode());
         // `template` is non-empty when the field declares its own read fragment via @ColumnTransformer(read = ...).
         // (A @Formula component is rejected by Hibernate before reaching this method.) The MQL translator never renders
         // read expressions (visitColumnReference resolves field paths from getColumnExpression(), the assignment
         // expression), so such a request cannot be honored; reject it rather than silently dropping it.
-        if (!template.isEmpty()) {
+        if (!request.template().isEmpty()) {
             throw new FeatureNotSupportedException(
                     "Custom read expression on an aggregate embeddable field is not supported");
         }

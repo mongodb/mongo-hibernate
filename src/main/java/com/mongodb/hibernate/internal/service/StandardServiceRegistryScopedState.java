@@ -24,6 +24,7 @@ import static org.hibernate.cfg.AvailableSettings.DIALECT_RESOLVERS;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.hibernate.cfg.AvailableSettings.JAVA_TIME_USE_DIRECT_JDBC;
 import static org.hibernate.cfg.AvailableSettings.PREFERRED_INSTANT_JDBC_TYPE;
+import static org.hibernate.cfg.FlushSettings.FLUSH_QUEUE_TYPE;
 
 import com.mongodb.hibernate.cfg.spi.MongoConfigurationContributor;
 import com.mongodb.hibernate.internal.VisibleForTesting;
@@ -106,6 +107,11 @@ public final class StandardServiceRegistryScopedState implements Service {
                     // Hibernate's single-registered-provider auto-selection for non-MongoDB sessions).
                     serviceRegistryBuilder.applySetting(
                             AvailableSettings.CONNECTION_PROVIDER, MongoConnectionProvider.class.getName());
+                }
+                if (settings.get(FLUSH_QUEUE_TYPE) == null) {
+                    // Hibernate 8's default graph-based flush queue does not batch entity deletes
+                    // (hibernate-orm PR 13299); stay on the legacy queue until it does
+                    serviceRegistryBuilder.applySetting(FLUSH_QUEUE_TYPE, "legacy");
                 }
             }
             // The initiator is registered unconditionally so that checkMongoDialectIsPluggedIn provides

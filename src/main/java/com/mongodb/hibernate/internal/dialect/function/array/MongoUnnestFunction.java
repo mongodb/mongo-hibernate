@@ -22,10 +22,10 @@ import java.util.List;
 import org.hibernate.dialect.function.UnnestSetReturningFunctionTypeResolver;
 import org.hibernate.dialect.function.array.ArrayArgumentValidator;
 import org.hibernate.query.sqm.function.AbstractSqmSelfRenderingSetReturningFunctionDescriptor;
-import org.hibernate.query.sqm.tuple.internal.AnonymousTupleTableGroupProducer;
-import org.hibernate.sql.ast.SqlAstTranslator;
-import org.hibernate.sql.ast.spi.SqlAppender;
-import org.hibernate.sql.ast.tree.SqlAstNode;
+import org.hibernate.sql.ast.spi.SqlAstNode;
+import org.hibernate.sql.ast.spi.query.SetReturningFunctionType;
+import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
+import org.hibernate.sql.spi.SqlAppender;
 
 /**
  * Registers {@code unnest} as a set-returning function so Hibernate's HQL parser can resolve {@code FROM c.collection
@@ -51,7 +51,7 @@ public final class MongoUnnestFunction extends AbstractSqmSelfRenderingSetReturn
     public void render(
             SqlAppender sqlAppender,
             List<? extends SqlAstNode> sqlAstArguments,
-            AnonymousTupleTableGroupProducer tupleType,
+            SetReturningFunctionType tupleType,
             String tableIdentifierVariable,
             SqlAstTranslator<?> walker) {
         throw fail("render should never be called for MongoUnnestFunction");

@@ -18,9 +18,14 @@ package com.mongodb.hibernate.internal.dialect;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.mock;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import org.hibernate.dialect.aggregate.spi.AggregateComponentAssignmentRequest;
+import org.hibernate.dialect.aggregate.spi.AggregateComponentReadRequest;
+import org.hibernate.metamodel.mapping.SqlTypedMapping;
 import org.hibernate.type.SqlTypes;
+import org.hibernate.type.spi.TypeConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -32,10 +37,37 @@ class MongoAggregateSupportTests {
     // An aggregate SQL type code the dialect does not support (anything other than STRUCT / STRUCT_ARRAY).
     private static final int UNSUPPORTED_TYPE_CODE = SqlTypes.JSON;
 
+    // The dialect never reads the column mapping or the type configuration, but the requests require them non-null.
+    private static AggregateComponentAssignmentRequest assignmentRequest(
+            String aggregateParentAssignmentExpression, String columnExpression, int aggregateColumnTypeCode) {
+        return new AggregateComponentAssignmentRequest(
+                aggregateParentAssignmentExpression,
+                columnExpression,
+                aggregateColumnTypeCode,
+                mock(SqlTypedMapping.class),
+                mock(TypeConfiguration.class));
+    }
+
+    private static AggregateComponentReadRequest readRequest(
+            String template,
+            String aggregateParentReadExpression,
+            String columnExpression,
+            int aggregateColumnTypeCode) {
+        return new AggregateComponentReadRequest(
+                template,
+                "{@}.",
+                aggregateParentReadExpression,
+                columnExpression,
+                aggregateColumnTypeCode,
+                mock(SqlTypedMapping.class),
+                mock(TypeConfiguration.class));
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {SqlTypes.STRUCT, SqlTypes.STRUCT_ARRAY})
     void testAssignmentExpressionIsDotNotationPath(int aggregateColumnTypeCode) {
-        assertThat(SUPPORT.aggregateComponentAssignmentExpression("nested", "a", aggregateColumnTypeCode, null))
+        assertThat(SUPPORT.aggregateComponentAssignmentExpression(
+                        assignmentRequest("nested", "a", aggregateColumnTypeCode)))
                 .isEqualTo("nested.a");
     }
 
@@ -46,7 +78,7 @@ class MongoAggregateSupportTests {
         // struct component and the MQL translator never uses one. Returning "" makes Hibernate record a null custom
         // read (Column.setCustomRead runs it through nullIfEmpty), rather than a fabricated path. This asserts that.
         assertThat(SUPPORT.aggregateComponentCustomReadExpression(
-                        "", "", "nested", "a", aggregateColumnTypeCode, null, null))
+                        readRequest("", "nested", "a", aggregateColumnTypeCode)))
                 .isEmpty();
     }
 
@@ -57,7 +89,7 @@ class MongoAggregateSupportTests {
         // cannot honor it, so it must fail rather than silently drop it.
         assertThatExceptionOfType(FeatureNotSupportedException.class)
                 .isThrownBy(() -> SUPPORT.aggregateComponentCustomReadExpression(
-                        "a * 5", "{@}.", "nested", "a", aggregateColumnTypeCode, null, null));
+                        readRequest("a * 5", "nested", "a", aggregateColumnTypeCode)));
     }
 
     @ParameterizedTest
@@ -70,8 +102,8 @@ class MongoAggregateSupportTests {
     @Test
     void testAssignmentExpressionRejectsUnsupportedType() {
         assertThatExceptionOfType(FeatureNotSupportedException.class)
-                .isThrownBy(() ->
-                        SUPPORT.aggregateComponentAssignmentExpression("nested", "a", UNSUPPORTED_TYPE_CODE, null));
+                .isThrownBy(() -> SUPPORT.aggregateComponentAssignmentExpression(
+                        assignmentRequest("nested", "a", UNSUPPORTED_TYPE_CODE)));
     }
 
     @Test
@@ -84,6 +116,6 @@ class MongoAggregateSupportTests {
     void testReadExpressionRejectsUnsupportedType() {
         assertThatExceptionOfType(FeatureNotSupportedException.class)
                 .isThrownBy(() -> SUPPORT.aggregateComponentCustomReadExpression(
-                        "", "", "nested", "a", UNSUPPORTED_TYPE_CODE, null, null));
+                        readRequest("", "nested", "a", UNSUPPORTED_TYPE_CODE)));
     }
 }

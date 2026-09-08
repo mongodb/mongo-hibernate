@@ -16,53 +16,43 @@
 
 package com.mongodb.hibernate.internal.translate;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.MUTATION_RESULT;
-import static java.lang.String.format;
-import static java.util.Collections.emptyMap;
-import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstDeleteCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstInsertCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import java.util.ArrayList;
 import java.util.Set;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslationRequest;
 import org.hibernate.query.spi.QueryOptions;
-import org.hibernate.sql.ast.tree.MutationStatement;
-import org.hibernate.sql.exec.internal.JdbcOperationQueryDelete;
-import org.hibernate.sql.exec.internal.JdbcOperationQueryInsertImpl;
-import org.hibernate.sql.exec.internal.JdbcOperationQueryUpdate;
+import org.hibernate.sql.ast.spi.query.MutationStatement;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
+import org.hibernate.sql.exec.spi.JdbcOperations;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.jspecify.annotations.Nullable;
 
 /**
  * @mongoCme Does not have to be thread-safe because it is
- *     {@linkplain MongoTranslatorFactory#buildMutationTranslator(SessionFactoryImplementor, MutationStatement)
- *     single-use}.
+ *     {@linkplain MongoTranslatorFactory#buildTranslator(SqlAstTranslationRequest) single-use}.
  */
 final class MutationMqlTranslator extends AbstractMqlTranslator<JdbcOperationQueryMutation> {
 
+    private final SqlAstTranslationRequest.QueryMutation request;
     private final MutationStatement mutationStatement;
 
-    MutationMqlTranslator(SessionFactoryImplementor sessionFactory, MutationStatement mutationStatement) {
-        super(sessionFactory);
-        this.mutationStatement = mutationStatement;
+    MutationMqlTranslator(SqlAstTranslationRequest.QueryMutation request) {
+        super(request.sessionFactory());
+        this.request = request;
+        this.mutationStatement = request.statement();
     }
 
     @Override
     public JdbcOperationQueryMutation translate(
             @Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
 
-        logSqlAst(mutationStatement);
-
         applyQueryOptions(queryOptions);
 
         var result = acceptAndYield(mutationStatement, MUTATION_RESULT);
-        return result.createJdbcOperationQueryMutation();
+        return result.createJdbcOperationQueryMutation(request);
     }
 
     static final class Result {
@@ -74,20 +64,15 @@ final class MutationMqlTranslator extends AbstractMqlTranslator<JdbcOperationQue
             this.affectedTableNames = affectedTableNames;
         }
 
-        private JdbcOperationQueryMutation createJdbcOperationQueryMutation() {
+        private JdbcOperationQueryMutation createJdbcOperationQueryMutation(
+                SqlAstTranslationRequest.QueryMutation request) {
             var parameterBinders = new ArrayList<JdbcParameterBinder>();
             var mql = renderMongoAstNode(command, parameterBinders::add);
-            if (command instanceof AstInsertCommand) {
-                return new JdbcOperationQueryInsertImpl(mql, parameterBinders, affectedTableNames);
-            } else if (command instanceof AstUpdateCommand) {
-                return new JdbcOperationQueryUpdate(mql, parameterBinders, affectedTableNames, emptyMap());
-            } else if (command instanceof AstDeleteCommand) {
-                return new JdbcOperationQueryDelete(mql, parameterBinders, affectedTableNames, emptyMap());
-            } else {
-                throw fail(format(
-                        "Unexpected mutation command type: %s",
-                        command.getClass().getName()));
-            }
+            return JdbcOperations.queryMutation(request)
+                    .command(mql)
+                    .parameterBinders(parameterBinders)
+                    .affectedQuerySpaces(affectedTableNames)
+                    .build();
         }
     }
 }

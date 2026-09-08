@@ -25,16 +25,15 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import java.util.ArrayList;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.sql.ast.spi.model.TableMutation;
+import org.hibernate.sql.ast.spi.model.TableUpdate;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.model.ast.TableMutation;
-import org.hibernate.sql.model.internal.TableUpdateNoSet;
-import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
+import org.hibernate.sql.spi.mutation.jdbc.JdbcMutationOperation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * @mongoCme Does not have to be thread-safe because it is
- *     {@linkplain MongoTranslatorFactory#buildModelMutationTranslator(TableMutation, SessionFactoryImplementor)
+ * @mongoCme Does not have to be thread-safe because it is {@linkplain MongoTranslatorFactory#buildTranslator
  *     single-use}, as is {@link MongoTranslatorFactory#buildUpsertModelMutationTranslator}.
  */
 final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends AbstractMqlTranslator<O> {
@@ -61,7 +60,11 @@ final class ModelMutationMqlTranslator<O extends JdbcMutationOperation> extends 
         applyQueryOptions(queryOptions);
 
         Result result;
-        if ((TableMutation<?>) tableMutation instanceof TableUpdateNoSet) {
+        // a no-op update: TableUpdateBuilderStandard produces one exactly when there is nothing to write,
+        // so detect that through the spi accessors rather than the internal TableUpdateNoSet marker class
+        if (tableMutation instanceof TableUpdate<?> tableUpdate
+                && tableUpdate.getValueBindings().isEmpty()
+                && tableUpdate.getKeyBindings().isEmpty()) {
             result = Result.empty();
         } else {
             result = acceptAndYield(tableMutation, resultDescriptor);

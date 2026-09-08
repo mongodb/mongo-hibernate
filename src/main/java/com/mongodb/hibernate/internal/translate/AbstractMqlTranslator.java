@@ -55,7 +55,7 @@ import static com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegula
 import static java.lang.String.format;
 import static java.util.Comparator.comparing;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
-import static org.hibernate.sql.ast.tree.expression.SqlTupleContainer.getSqlTuple;
+import static org.hibernate.sql.ast.spi.query.expression.SqlTupleContainer.getSqlTuple;
 
 import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -131,7 +131,6 @@ import com.mongodb.hibernate.internal.type.ValueConversions;
 import jakarta.persistence.criteria.Nulls;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
@@ -150,124 +149,122 @@ import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.json.JsonWriter;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslatorFactory;
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
-import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
 import org.hibernate.persister.entity.SingleTableEntityPersister;
 import org.hibernate.persister.entity.UnionSubclassEntityPersister;
-import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.query.spi.Limit;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
-import org.hibernate.query.sqm.sql.internal.BasicValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
-import org.hibernate.query.sqm.tree.expression.Conversion;
-import org.hibernate.sql.ast.Clause;
-import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
-import org.hibernate.sql.ast.SqlAstTranslator;
-import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.sql.ast.spi.SqlAppender;
-import org.hibernate.sql.ast.spi.SqlSelection;
-import org.hibernate.sql.ast.tree.AbstractMutationStatement;
-import org.hibernate.sql.ast.tree.AbstractUpdateOrDeleteStatement;
-import org.hibernate.sql.ast.tree.SqlAstNode;
-import org.hibernate.sql.ast.tree.Statement;
-import org.hibernate.sql.ast.tree.cte.CteContainer;
-import org.hibernate.sql.ast.tree.delete.DeleteStatement;
-import org.hibernate.sql.ast.tree.expression.AggregateColumnWriteExpression;
-import org.hibernate.sql.ast.tree.expression.Any;
-import org.hibernate.sql.ast.tree.expression.BinaryArithmeticExpression;
-import org.hibernate.sql.ast.tree.expression.CaseSearchedExpression;
-import org.hibernate.sql.ast.tree.expression.CaseSimpleExpression;
-import org.hibernate.sql.ast.tree.expression.CastTarget;
-import org.hibernate.sql.ast.tree.expression.Collation;
-import org.hibernate.sql.ast.tree.expression.ColumnReference;
-import org.hibernate.sql.ast.tree.expression.Distinct;
-import org.hibernate.sql.ast.tree.expression.Duration;
-import org.hibernate.sql.ast.tree.expression.DurationUnit;
-import org.hibernate.sql.ast.tree.expression.EmbeddableTypeLiteral;
-import org.hibernate.sql.ast.tree.expression.EntityTypeLiteral;
-import org.hibernate.sql.ast.tree.expression.Every;
-import org.hibernate.sql.ast.tree.expression.Expression;
-import org.hibernate.sql.ast.tree.expression.ExtractUnit;
-import org.hibernate.sql.ast.tree.expression.Format;
-import org.hibernate.sql.ast.tree.expression.JdbcLiteral;
-import org.hibernate.sql.ast.tree.expression.JdbcParameter;
-import org.hibernate.sql.ast.tree.expression.Literal;
-import org.hibernate.sql.ast.tree.expression.ModifiedSubQueryExpression;
-import org.hibernate.sql.ast.tree.expression.NestedColumnReference;
-import org.hibernate.sql.ast.tree.expression.Over;
-import org.hibernate.sql.ast.tree.expression.Overflow;
-import org.hibernate.sql.ast.tree.expression.QueryLiteral;
-import org.hibernate.sql.ast.tree.expression.SelfRenderingExpression;
-import org.hibernate.sql.ast.tree.expression.SqlSelectionExpression;
-import org.hibernate.sql.ast.tree.expression.SqlTuple;
-import org.hibernate.sql.ast.tree.expression.Star;
-import org.hibernate.sql.ast.tree.expression.Summarization;
-import org.hibernate.sql.ast.tree.expression.TrimSpecification;
-import org.hibernate.sql.ast.tree.expression.UnaryOperation;
-import org.hibernate.sql.ast.tree.expression.UnparsedNumericLiteral;
-import org.hibernate.sql.ast.tree.from.FromClause;
-import org.hibernate.sql.ast.tree.from.FunctionTableReference;
-import org.hibernate.sql.ast.tree.from.NamedTableReference;
-import org.hibernate.sql.ast.tree.from.PluralTableGroup;
-import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
-import org.hibernate.sql.ast.tree.from.TableGroup;
-import org.hibernate.sql.ast.tree.from.TableGroupJoin;
-import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
-import org.hibernate.sql.ast.tree.from.UnionTableReference;
-import org.hibernate.sql.ast.tree.from.ValuesTableReference;
-import org.hibernate.sql.ast.tree.insert.InsertSelectStatement;
-import org.hibernate.sql.ast.tree.predicate.BetweenPredicate;
-import org.hibernate.sql.ast.tree.predicate.BooleanExpressionPredicate;
-import org.hibernate.sql.ast.tree.predicate.ComparisonPredicate;
-import org.hibernate.sql.ast.tree.predicate.ExistsPredicate;
-import org.hibernate.sql.ast.tree.predicate.FilterPredicate;
-import org.hibernate.sql.ast.tree.predicate.GroupedPredicate;
-import org.hibernate.sql.ast.tree.predicate.InArrayPredicate;
-import org.hibernate.sql.ast.tree.predicate.InListPredicate;
-import org.hibernate.sql.ast.tree.predicate.InSubQueryPredicate;
-import org.hibernate.sql.ast.tree.predicate.Junction;
-import org.hibernate.sql.ast.tree.predicate.LikePredicate;
-import org.hibernate.sql.ast.tree.predicate.NegatedPredicate;
-import org.hibernate.sql.ast.tree.predicate.NullnessPredicate;
-import org.hibernate.sql.ast.tree.predicate.Predicate;
-import org.hibernate.sql.ast.tree.predicate.SelfRenderingPredicate;
-import org.hibernate.sql.ast.tree.predicate.ThruthnessPredicate;
-import org.hibernate.sql.ast.tree.select.QueryGroup;
-import org.hibernate.sql.ast.tree.select.QueryPart;
-import org.hibernate.sql.ast.tree.select.QuerySpec;
-import org.hibernate.sql.ast.tree.select.SelectClause;
-import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.ast.tree.select.SortSpecification;
-import org.hibernate.sql.ast.tree.update.Assignment;
-import org.hibernate.sql.ast.tree.update.UpdateStatement;
-import org.hibernate.sql.exec.internal.AbstractJdbcParameter;
-import org.hibernate.sql.exec.spi.ExecutionContext;
+import org.hibernate.query.sqm.tree.spi.expression.Conversion;
+import org.hibernate.spi.Stack;
+import org.hibernate.sql.ast.spi.AbstractSqlAstWalker;
+import org.hibernate.sql.ast.spi.SqlAstNode;
+import org.hibernate.sql.ast.spi.Statement;
+import org.hibernate.sql.ast.spi.model.AbstractRestrictedTableMutation;
+import org.hibernate.sql.ast.spi.model.ColumnValueBinding;
+import org.hibernate.sql.ast.spi.model.ColumnValueParameter;
+import org.hibernate.sql.ast.spi.model.ColumnWriteFragment;
+import org.hibernate.sql.ast.spi.model.MutatingTableReference;
+import org.hibernate.sql.ast.spi.model.OptionalTableUpdate;
+import org.hibernate.sql.ast.spi.model.TableDeleteCustomSql;
+import org.hibernate.sql.ast.spi.model.TableDeleteStandard;
+import org.hibernate.sql.ast.spi.model.TableInsertCustomSql;
+import org.hibernate.sql.ast.spi.model.TableInsertStandard;
+import org.hibernate.sql.ast.spi.model.TableUpdateCustomSql;
+import org.hibernate.sql.ast.spi.model.TableUpdateStandard;
+import org.hibernate.sql.ast.spi.query.AbstractMutationStatement;
+import org.hibernate.sql.ast.spi.query.AbstractUpdateOrDeleteStatement;
+import org.hibernate.sql.ast.spi.query.SetReturningFunctionType;
+import org.hibernate.sql.ast.spi.query.cte.CteContainer;
+import org.hibernate.sql.ast.spi.query.delete.DeleteStatement;
+import org.hibernate.sql.ast.spi.query.expression.AggregateColumnWriteExpression;
+import org.hibernate.sql.ast.spi.query.expression.Any;
+import org.hibernate.sql.ast.spi.query.expression.BinaryArithmeticExpression;
+import org.hibernate.sql.ast.spi.query.expression.CaseSearchedExpression;
+import org.hibernate.sql.ast.spi.query.expression.CaseSimpleExpression;
+import org.hibernate.sql.ast.spi.query.expression.CastTarget;
+import org.hibernate.sql.ast.spi.query.expression.Collation;
+import org.hibernate.sql.ast.spi.query.expression.ColumnReference;
+import org.hibernate.sql.ast.spi.query.expression.Distinct;
+import org.hibernate.sql.ast.spi.query.expression.Duration;
+import org.hibernate.sql.ast.spi.query.expression.DurationUnit;
+import org.hibernate.sql.ast.spi.query.expression.EmbeddableTypeLiteral;
+import org.hibernate.sql.ast.spi.query.expression.EntityTypeLiteral;
+import org.hibernate.sql.ast.spi.query.expression.Every;
+import org.hibernate.sql.ast.spi.query.expression.Expression;
+import org.hibernate.sql.ast.spi.query.expression.ExtractUnit;
+import org.hibernate.sql.ast.spi.query.expression.Format;
+import org.hibernate.sql.ast.spi.query.expression.JdbcLiteral;
+import org.hibernate.sql.ast.spi.query.expression.JdbcParameter;
+import org.hibernate.sql.ast.spi.query.expression.JdbcParameterFactory;
+import org.hibernate.sql.ast.spi.query.expression.Literal;
+import org.hibernate.sql.ast.spi.query.expression.ModifiedSubQueryExpression;
+import org.hibernate.sql.ast.spi.query.expression.NestedColumnReference;
+import org.hibernate.sql.ast.spi.query.expression.Over;
+import org.hibernate.sql.ast.spi.query.expression.Overflow;
+import org.hibernate.sql.ast.spi.query.expression.QueryLiteral;
+import org.hibernate.sql.ast.spi.query.expression.SelfRenderingExpression;
+import org.hibernate.sql.ast.spi.query.expression.SqlSelectionExpression;
+import org.hibernate.sql.ast.spi.query.expression.SqlTuple;
+import org.hibernate.sql.ast.spi.query.expression.Star;
+import org.hibernate.sql.ast.spi.query.expression.Summarization;
+import org.hibernate.sql.ast.spi.query.expression.TrimSpecification;
+import org.hibernate.sql.ast.spi.query.expression.UnaryOperation;
+import org.hibernate.sql.ast.spi.query.expression.UnparsedNumericLiteral;
+import org.hibernate.sql.ast.spi.query.from.FromClause;
+import org.hibernate.sql.ast.spi.query.from.FunctionTableReference;
+import org.hibernate.sql.ast.spi.query.from.NamedTableReference;
+import org.hibernate.sql.ast.spi.query.from.PluralTableGroup;
+import org.hibernate.sql.ast.spi.query.from.QueryPartTableReference;
+import org.hibernate.sql.ast.spi.query.from.TableGroup;
+import org.hibernate.sql.ast.spi.query.from.TableGroupJoin;
+import org.hibernate.sql.ast.spi.query.from.TableReferenceJoin;
+import org.hibernate.sql.ast.spi.query.from.UnionTableReference;
+import org.hibernate.sql.ast.spi.query.from.ValuesTableReference;
+import org.hibernate.sql.ast.spi.query.insert.InsertSelectStatement;
+import org.hibernate.sql.ast.spi.query.predicate.BetweenPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.BooleanExpressionPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.ComparisonPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.ExistsPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.FilterPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.GroupedPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.InArrayPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.InListPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.InSubQueryPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.Junction;
+import org.hibernate.sql.ast.spi.query.predicate.LikePredicate;
+import org.hibernate.sql.ast.spi.query.predicate.NegatedPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.NullnessPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.Predicate;
+import org.hibernate.sql.ast.spi.query.predicate.SelfRenderingPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.SqlFragmentPredicate;
+import org.hibernate.sql.ast.spi.query.predicate.ThruthnessPredicate;
+import org.hibernate.sql.ast.spi.query.select.QueryGroup;
+import org.hibernate.sql.ast.spi.query.select.QueryPart;
+import org.hibernate.sql.ast.spi.query.select.QuerySpec;
+import org.hibernate.sql.ast.spi.query.select.SelectClause;
+import org.hibernate.sql.ast.spi.query.select.SelectStatement;
+import org.hibernate.sql.ast.spi.query.select.SortSpecification;
+import org.hibernate.sql.ast.spi.query.select.SqlSelection;
+import org.hibernate.sql.ast.spi.query.update.Assignment;
+import org.hibernate.sql.ast.spi.query.update.UpdateStatement;
+import org.hibernate.sql.ast.spi.translation.Clause;
+import org.hibernate.sql.ast.spi.translation.SqlAstNodeRenderingMode;
+import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
-import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.model.MutationOperation;
-import org.hibernate.sql.model.ast.AbstractRestrictedTableMutation;
-import org.hibernate.sql.model.ast.ColumnValueBinding;
-import org.hibernate.sql.model.ast.ColumnValueParameter;
-import org.hibernate.sql.model.ast.ColumnWriteFragment;
-import org.hibernate.sql.model.ast.MutatingTableReference;
-import org.hibernate.sql.model.internal.OptionalTableUpdate;
-import org.hibernate.sql.model.internal.TableDeleteCustomSql;
-import org.hibernate.sql.model.internal.TableDeleteStandard;
-import org.hibernate.sql.model.internal.TableInsertCustomSql;
-import org.hibernate.sql.model.internal.TableInsertStandard;
-import org.hibernate.sql.model.internal.TableUpdateCustomSql;
-import org.hibernate.sql.model.internal.TableUpdateStandard;
+import org.hibernate.sql.model.LegacyMutationTarget;
 import org.hibernate.sql.results.graph.DomainResult;
-import org.hibernate.type.BasicType;
+import org.hibernate.sql.spi.SqlAppender;
+import org.hibernate.sql.spi.mutation.MutationOperation;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.jspecify.annotations.Nullable;
@@ -278,7 +275,8 @@ import org.jspecify.annotations.Nullable;
  *     {@linkplain SqlAstTranslatorFactory single-use}.
  */
 @SuppressWarnings("MissingSummary")
-public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements SqlAstTranslator<T> {
+public abstract class AbstractMqlTranslator<T extends JdbcOperation> extends AbstractSqlAstWalker
+        implements SqlAstTranslator<T> {
 
     // '#' is blocked in mapped field names, so prefixing join aliases with it prevents $lookup from shadowing
     // a local field that happens to share the Hibernate-generated alias name (e.g. "o1_0").
@@ -474,8 +472,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     @Override
     public void renderNamedSetReturningFunction(
             String functionName,
-            java.util.List<? extends SqlAstNode> sqlAstArguments,
-            org.hibernate.query.sqm.tuple.internal.AnonymousTupleTableGroupProducer tupleType,
+            List<? extends SqlAstNode> sqlAstArguments,
+            SetReturningFunctionType tupleType,
             String tableIdentifierVariable,
             SqlAstNodeRenderingMode argumentRenderingMode) {
         throw new FeatureNotSupportedException();
@@ -593,7 +591,13 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             }
             case 1 -> {
                 if (columnWriteFragment.getFragment().equals("?")) {
-                    columnWriteFragment.getParameters().iterator().next().accept(this);
+                    // visit through the spi interface: ColumnValueParameter extends the internal
+                    // AbstractJdbcParameter, and invoking accept() on its declared type would depend on it
+                    ((JdbcParameter) columnWriteFragment
+                                    .getParameters()
+                                    .iterator()
+                                    .next())
+                            .accept(this);
                 } else {
                     throw new FeatureNotSupportedException("@ColumnTransformer expressions are not supported");
                 }
@@ -795,7 +799,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             if (queryPart.isRoot() && limit != null && !limit.isEmpty()) {
                 var basicIntegerType = sessionFactory.getTypeConfiguration().getBasicTypeForJavaType(Integer.class);
                 // We check if limit's firstRow/maxRows is set,
-                // but ignore the actual values when creating OffsetJdbcParameter/LimitJdbcParameter.
+                // but ignore the actual values when creating the offset and limit parameters.
                 // Hibernate ORM reuses the translation result for the same HQL/SQL queries
                 // with different values passed to setFirstResult/setMaxResults. Therefore, we cannot include the
                 // values available when translating in the translation result. The only thing we pay attention to is
@@ -803,10 +807,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 // setFirstResult/setMaxResults being present
                 // must be different from those with the limits being absent. Hibernate ORM also caches them separately.
                 if (limit.getFirstRow() != null) {
-                    offsetParameter = new OffsetJdbcParameter(basicIntegerType);
+                    offsetParameter = JdbcParameterFactory.queryOffset(basicIntegerType);
                 }
                 if (limit.getMaxRows() != null) {
-                    limitParameter = new LimitJdbcParameter(basicIntegerType);
+                    limitParameter = JdbcParameterFactory.queryLimit(basicIntegerType);
                 }
                 skipExpression = offsetParameter;
                 limitExpression = limitParameter;
@@ -1135,13 +1139,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private static @Nullable ColumnReference extractColumnReference(Expression expression) {
-        if (expression instanceof ColumnReference cr) {
-            return cr;
-        }
-        if (expression instanceof BasicValuedPathInterpretation<?> bvpi) {
-            return bvpi.getColumnReference();
-        }
-        return null;
+        return expression.getColumnReference();
     }
 
     @Override
@@ -1402,15 +1400,20 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private static List<SelectableMapping> aggregateMappings(OptionalTableUpdate optionalTableUpdate) {
         var aggregates = new ArrayList<SelectableMapping>();
-        optionalTableUpdate.getMutationTarget().getTargetPart().forEachAttributeMapping(attributeMapping -> {
-            if (attributeMapping instanceof EmbeddedAttributeMapping embeddedAttributeMapping) {
-                var aggregate =
-                        embeddedAttributeMapping.getEmbeddableTypeDescriptor().getAggregateMapping();
-                if (aggregate != null) {
-                    aggregates.add(aggregate);
-                }
-            }
-        });
+        ((LegacyMutationTarget) optionalTableUpdate.getMutationTarget())
+                .getTargetPart()
+                .visitSubParts(
+                        attributeMapping -> {
+                            if (attributeMapping instanceof EmbeddableValuedModelPart embeddableValuedModelPart) {
+                                var aggregate = embeddableValuedModelPart
+                                        .getEmbeddableTypeDescriptor()
+                                        .getAggregateMapping();
+                                if (aggregate != null) {
+                                    aggregates.add(aggregate);
+                                }
+                            }
+                        },
+                        null);
         return aggregates;
     }
 
@@ -2051,11 +2054,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (args.size() != 1) {
             return Optional.empty();
         }
-        var arg = args.get(0);
-        if (!(arg instanceof BasicValuedPathInterpretation<?> bvpi)) {
+        if (!(args.get(0) instanceof Expression arg)) {
             return Optional.empty();
         }
-        var columnReference = bvpi.getColumnReference();
+        var columnReference = arg.getColumnReference();
         if (columnReference == null) {
             return Optional.empty();
         }
@@ -2223,9 +2225,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (queryOptions.getTimeout() != null) {
             throw new FeatureNotSupportedException("'timeout' inQueryOptions is not supported");
         }
-        if (queryOptions.getFlushMode() != null) {
-            throw new FeatureNotSupportedException("'flushMode' in QueryOptions is not supported");
-        }
         if (Boolean.TRUE.equals(queryOptions.isReadOnly())) {
             throw new FeatureNotSupportedException("'readOnly' in QueryOptions is not supported");
         }
@@ -2288,9 +2287,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private static boolean isFieldPathExpression(Expression expression) {
-        return expression instanceof ColumnReference
-                || expression instanceof BasicValuedPathInterpretation
-                || expression instanceof SqlSelectionExpression;
+        return expression.getColumnReference() != null || expression instanceof SqlSelectionExpression;
     }
 
     private static boolean isValueExpression(Expression expression) {
@@ -2587,54 +2584,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var suffix = ((qualifier != null ? qualifier + "_" : "") + outer.getColumnExpression())
                 .replaceAll("[^a-zA-Z0-9_]", "_");
         return "v" + letVariableCounter++ + "_" + suffix;
-    }
-
-    private static final class OffsetJdbcParameter extends AbstractJdbcParameter {
-
-        OffsetJdbcParameter(BasicType<Integer> type) {
-            super(type);
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public void bindParameterValue(
-                PreparedStatement statement,
-                int startPosition,
-                JdbcParameterBindings jdbcParamBindings,
-                ExecutionContext executionContext)
-                throws SQLException {
-            getJdbcMapping()
-                    .getJdbcValueBinder()
-                    .bind(
-                            statement,
-                            executionContext.getQueryOptions().getLimit().getFirstRow(),
-                            startPosition,
-                            executionContext.getSession());
-        }
-    }
-
-    private static final class LimitJdbcParameter extends AbstractJdbcParameter {
-
-        LimitJdbcParameter(BasicType<Integer> type) {
-            super(type);
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public void bindParameterValue(
-                PreparedStatement statement,
-                int startPosition,
-                JdbcParameterBindings jdbcParamBindings,
-                ExecutionContext executionContext)
-                throws SQLException {
-            getJdbcMapping()
-                    .getJdbcValueBinder()
-                    .bind(
-                            statement,
-                            executionContext.getQueryOptions().getLimit().getMaxRows(),
-                            startPosition,
-                            executionContext.getSession());
-        }
     }
 
     /**

@@ -35,17 +35,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.bson.BsonDocument;
 import org.hibernate.Session;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslationRequest;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslatorFactory;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.query.common.FetchClauseType;
-import org.hibernate.sql.ast.SqlAstTranslator;
-import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.sql.ast.tree.MutationStatement;
-import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
-import org.hibernate.sql.exec.spi.JdbcSelect;
-import org.hibernate.sql.model.ast.TableMutation;
-import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
+import org.hibernate.sql.ast.spi.Statement;
+import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
+import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.stat.QueryStatistics;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
@@ -635,26 +631,20 @@ class LimitOffsetFetchClauseIntegrationTests extends AbstractQueryIntegrationTes
         public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
             return new SqlAstTranslatorFactory() {
                 @Override
-                public SqlAstTranslator<JdbcSelect> buildSelectTranslator(
-                        SessionFactoryImplementor sessionFactory, SelectStatement statement) {
-                    selectTranslatingCounter.incrementAndGet();
-                    return TranslatingCacheTestingDialect.super
-                            .getSqlAstTranslatorFactory()
-                            .buildSelectTranslator(sessionFactory, statement);
-                }
-
-                @Override
-                public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
-                        SessionFactoryImplementor sessionFactory, MutationStatement statement) {
-                    throw new IllegalStateException("mutation translator not expected");
-                }
-
-                @Override
-                public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
-                        TableMutation<O> mutation, SessionFactoryImplementor sessionFactory) {
-                    return TranslatingCacheTestingDialect.super
-                            .getSqlAstTranslatorFactory()
-                            .buildModelMutationTranslator(mutation, sessionFactory);
+                public <S extends Statement, O extends JdbcOperation> SqlAstTranslator<O> buildTranslator(
+                        SqlAstTranslationRequest<S, O> request) {
+                    if (request instanceof SqlAstTranslationRequest.Select) {
+                        selectTranslatingCounter.incrementAndGet();
+                        return TranslatingCacheTestingDialect.super
+                                .getSqlAstTranslatorFactory()
+                                .buildTranslator(request);
+                    } else if (request instanceof SqlAstTranslationRequest.QueryMutation) {
+                        throw new IllegalStateException("mutation translator not expected");
+                    } else {
+                        return TranslatingCacheTestingDialect.super
+                                .getSqlAstTranslatorFactory()
+                                .buildTranslator(request);
+                    }
                 }
             };
         }

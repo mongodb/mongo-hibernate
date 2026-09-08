@@ -37,14 +37,14 @@ import org.hibernate.dialect.function.array.AbstractArrayContainsFunction;
 import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
-import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
-import org.hibernate.sql.ast.SqlAstTranslator;
-import org.hibernate.sql.ast.spi.SqlAppender;
-import org.hibernate.sql.ast.tree.SqlAstNode;
-import org.hibernate.sql.ast.tree.expression.Expression;
-import org.hibernate.sql.ast.tree.expression.FunctionExpression;
-import org.hibernate.sql.ast.tree.expression.Literal;
-import org.hibernate.sql.ast.tree.expression.SqlTuple;
+import org.hibernate.sql.ast.spi.SqlAstNode;
+import org.hibernate.sql.ast.spi.query.PathInterpretation;
+import org.hibernate.sql.ast.spi.query.expression.Expression;
+import org.hibernate.sql.ast.spi.query.expression.FunctionExpression;
+import org.hibernate.sql.ast.spi.query.expression.Literal;
+import org.hibernate.sql.ast.spi.query.expression.SqlTuple;
+import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
+import org.hibernate.sql.spi.SqlAppender;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.spi.TypeConfiguration;
 
@@ -145,7 +145,7 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
 
     static void checkNotHqlPathExpression(String functionName, int parameterIndex, Expression parameterExpression)
             throws FunctionArgumentException {
-        if (parameterExpression instanceof SqmPathInterpretation) {
+        if (parameterExpression instanceof PathInterpretation<?>) {
             // The error wording is taken partially from
             // `org.hibernate.dialect.function.array.ArrayIncludesArgumentValidator`.
             throw new FunctionArgumentException(format(

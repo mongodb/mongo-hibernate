@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import org.hibernate.sql.ast.tree.expression.Expression;
+import org.hibernate.sql.ast.spi.query.expression.Expression;
 
 /** @hidden */
 @SuppressWarnings({"MissingSummary", "UnusedTypeParameter"})

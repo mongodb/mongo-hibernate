@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.Set;
 import org.hibernate.dialect.function.array.ArrayConstructorFunction;
 import org.hibernate.metamodel.model.domain.ReturnableType;
-import org.hibernate.sql.ast.SqlAstTranslator;
-import org.hibernate.sql.ast.spi.SqlAppender;
-import org.hibernate.sql.ast.tree.SqlAstNode;
+import org.hibernate.sql.ast.spi.SqlAstNode;
+import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
+import org.hibernate.sql.spi.SqlAppender;
 
 /**
  * Implements <a

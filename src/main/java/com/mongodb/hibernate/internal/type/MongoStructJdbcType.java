@@ -25,9 +25,6 @@ import static com.mongodb.hibernate.internal.type.ValueConversions.isNull;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toArrayDomainValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toBsonValue;
 import static com.mongodb.hibernate.internal.type.ValueConversions.toDomainValue;
-import static org.hibernate.type.descriptor.jdbc.StructHelper.getAttributeValues;
-import static org.hibernate.type.descriptor.jdbc.StructHelper.getJdbcValues;
-import static org.hibernate.type.descriptor.jdbc.StructHelper.instantiate;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import java.io.IOException;
@@ -35,13 +32,11 @@ import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
 import java.io.Serial;
 import java.sql.CallableStatement;
-import java.sql.Connection;
 import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Struct;
 import org.bson.BsonDocument;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -54,6 +49,7 @@ import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.StructuredJdbcType;
+import org.hibernate.type.descriptor.jdbc.spi.AggregateJdbcValues;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -126,11 +122,11 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
             return null;
         }
         var embeddableMappingType = getEmbeddableMappingType();
-        // `StructHelper` flattens the domain value to one JDBC value per column, applying each column's
-        // `ValueBinder` on the way, which is the unwrap this method needs, and yielding the `BsonDocument` a nested
-        // `@Struct` binds to. The order mapping is null because this type writes fields by selectable name rather
-        // than by physical position.
-        var jdbcValues = getJdbcValues(embeddableMappingType, null, domainValue, options);
+        // `AggregateJdbcValues.fromDomainValue` turns the domain value into one JDBC value per column,
+        // applying each column's `ValueBinder` on the way, which is the unwrap this method needs, and yielding
+        // the `BsonDocument` a nested `@Struct` binds to. Fields are written by selectable name rather than by
+        // physical position.
+        var jdbcValues = AggregateJdbcValues.fromDomainValue(embeddableMappingType, domainValue, options);
         var result = new BsonDocument();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
         for (var columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
@@ -150,10 +146,9 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
     }
 
     /**
-     * @return The {@linkplain Struct#getAttributes() struct attributes}. Though, the way we support {@link Struct} in
-     *     {@link MongoStructJdbcType} does not involve Hibernate ORM ever {@linkplain Connection#createStruct(String,
-     *     Object[]) creating} one. If we extended {@link org.hibernate.dialect.StructJdbcType}, this could have been
-     *     different.
+     * @return The struct attribute values, one per column, taken from the {@link BsonDocument} fields directly.
+     *     Hibernate ORM never creates a {@link java.sql.Struct} for this type, so there is no
+     *     {@linkplain java.sql.Struct#getAttributes() attribute array} to read.
      */
     @Override
     public Object @Nullable [] extractJdbcValues(@Nullable Object rawJdbcValue, WrapperOptions options)
@@ -162,44 +157,50 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
             return null;
         }
         var bsonDocument = assertInstanceOf(assertNotNull(rawJdbcValue), BsonDocument.class);
+        return AggregateJdbcValues.toLogicalJdbcValues(
+                getEmbeddableMappingType(), physicalValues(bsonDocument, options), options);
+    }
+
+    Object toDomain(Object rawJdbcValue, WrapperOptions options) throws SQLException {
+        var bsonDocument = assertInstanceOf(assertNotNull(rawJdbcValue), BsonDocument.class);
+        return AggregateJdbcValues.toDomainValue(
+                getEmbeddableMappingType(), physicalValues(bsonDocument, options), options);
+    }
+
+    /**
+     * The physical, driver-shaped component values of the {@link BsonDocument}: a nested struct's own document in its
+     * position, a {@link com.mongodb.hibernate.internal.jdbc.MongoArray} for an array component, and the JDBC-level
+     * value the binder would have written for anything else.
+     */
+    private Object[] physicalValues(BsonDocument bsonDocument, WrapperOptions options) throws SQLException {
         var embeddableMappingType = getEmbeddableMappingType();
         var jdbcValueCount = embeddableMappingType.getJdbcValueCount();
-        var result = new Object[jdbcValueCount];
+        var physicalValues = new Object[jdbcValueCount];
         for (var columnIndex = 0; columnIndex < jdbcValueCount; columnIndex++) {
             var jdbcValueSelectable = embeddableMappingType.getJdbcValueSelectable(columnIndex);
             assertFalse(jdbcValueSelectable.isFormula());
             var fieldName = jdbcValueSelectable.getSelectableName();
             var value = bsonDocument.get(fieldName);
+            if (isNull(value)) {
+                continue;
+            }
             var jdbcMapping = jdbcValueSelectable.getJdbcMapping();
             var jdbcTypeCode = jdbcMapping.getJdbcType().getJdbcTypeCode();
-            Object domainValue;
-            if (isNull(value)) {
-                domainValue = null;
-            } else if (jdbcTypeCode == getJdbcTypeCode()) {
-                var structValueExtractor = assertInstanceOf(jdbcMapping.getJdbcValueExtractor(), Extractor.class);
-                domainValue = structValueExtractor.getJdbcType().extractJdbcValues(value, options);
+            if (jdbcTypeCode == getJdbcTypeCode()) {
+                physicalValues[columnIndex] = value;
             } else if (jdbcTypeCode == MongoArrayJdbcType.JDBC_TYPE.getVendorTypeNumber()) {
-                var arrayJdbcType = assertInstanceOf(jdbcMapping.getJdbcType(), MongoArrayJdbcType.class);
-                BasicExtractor<?> jdbcValueExtractor =
-                        assertInstanceOf(jdbcMapping.getJdbcValueExtractor(), BasicExtractor.class);
-                domainValue =
-                        arrayJdbcType.getArray(jdbcValueExtractor, toArrayDomainValue(assertNotNull(value)), options);
+                physicalValues[columnIndex] = toArrayDomainValue(assertNotNull(value));
             } else {
-                // The inverse of `createBindValue`: read the JDBC-level value the binder would have written, then
-                // wrap it back into the domain type. A `JdbcType` reporting no preferred Java type binds the domain
-                // value unchanged, so it is read back unchanged.
+                // the JDBC-level value the binder would have written. A `JdbcType` reporting no preferred Java
+                // type binds the domain value unchanged, so it is read back unchanged.
                 var preferredJavaTypeClass = jdbcMapping.getJdbcType().getPreferredJavaTypeClass(options);
                 var mappedJavaType = jdbcMapping.getMappedJavaType();
-                if (preferredJavaTypeClass == null) {
-                    domainValue = toDomainValue(assertNotNull(value), mappedJavaType.getJavaTypeClass());
-                } else {
-                    domainValue =
-                            mappedJavaType.wrap(toDomainValue(assertNotNull(value), preferredJavaTypeClass), options);
-                }
+                physicalValues[columnIndex] = preferredJavaTypeClass == null
+                        ? toDomainValue(assertNotNull(value), mappedJavaType.getJavaTypeClass())
+                        : mappedJavaType.wrap(toDomainValue(assertNotNull(value), preferredJavaTypeClass), options);
             }
-            result[columnIndex] = domainValue;
         }
-        return result;
+        return physicalValues;
     }
 
     @Override
@@ -265,16 +266,17 @@ public final class MongoStructJdbcType implements StructuredJdbcType {
         @Override
         protected @Nullable X doExtract(ResultSet rs, int paramIndex, WrapperOptions options) throws SQLException {
             var bsonDocument = rs.getObject(paramIndex, BsonDocument.class);
-            var jdbcValues = getJdbcType().extractJdbcValues(bsonDocument, options);
+            if (isNull(bsonDocument)) {
+                return null;
+            }
             var classX = getJavaType().getJavaTypeClass();
             Object result;
-            if (classX.equals(Object[].class) || jdbcValues == null) {
-                result = jdbcValues;
+            if (classX.equals(Object[].class)) {
+                result = getJdbcType().extractJdbcValues(bsonDocument, options);
             } else {
                 var embeddableMappingType = getEmbeddableMappingType();
                 assertTrue(classX.equals(embeddableMappingType.getJavaType().getJavaTypeClass()));
-                result = instantiate(
-                        embeddableMappingType, getAttributeValues(embeddableMappingType, jdbcValues, options));
+                result = getJdbcType().toDomain(bsonDocument, options);
             }
             return classX.cast(result);
         }

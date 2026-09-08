@@ -17,49 +17,43 @@
 package com.mongodb.hibernate.internal.translate;
 
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.SELECT_RESULT;
-import static java.lang.Integer.MAX_VALUE;
-import static java.util.Collections.emptyMap;
-import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
-import static org.hibernate.sql.exec.spi.JdbcLockStrategy.NONE;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstCommand;
 import java.util.ArrayList;
 import java.util.Set;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslationRequest;
 import org.hibernate.query.spi.QueryOptions;
-import org.hibernate.sql.ast.tree.Statement;
-import org.hibernate.sql.ast.tree.expression.JdbcParameter;
-import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.internal.JdbcOperationQuerySelect;
+import org.hibernate.sql.ast.spi.Statement;
+import org.hibernate.sql.ast.spi.query.expression.JdbcParameter;
+import org.hibernate.sql.ast.spi.query.select.SelectStatement;
+import org.hibernate.sql.exec.spi.JdbcOperations;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcSelect;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.jspecify.annotations.Nullable;
 
 /**
  * @mongoCme Does not have to be thread-safe because it is
- *     {@linkplain MongoTranslatorFactory#buildSelectTranslator(SessionFactoryImplementor, SelectStatement) single-use}.
+ *     {@linkplain MongoTranslatorFactory#buildTranslator(SqlAstTranslationRequest) single-use}.
  */
 final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcSelect> {
 
+    private final SqlAstTranslationRequest.Select request;
     private final SelectStatement selectStatement;
 
-    SelectMqlTranslator(SessionFactoryImplementor sessionFactory, SelectStatement selectStatement) {
-        super(sessionFactory);
-        this.selectStatement = selectStatement;
+    SelectMqlTranslator(SqlAstTranslationRequest.Select request) {
+        super(request.sessionFactory());
+        this.request = request;
+        this.selectStatement = request.statement();
     }
 
     @Override
-    public JdbcOperationQuerySelect translate(
-            @Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
-
-        logSqlAst(selectStatement);
+    public JdbcSelect translate(@Nullable JdbcParameterBindings jdbcParameterBindings, QueryOptions queryOptions) {
 
         applyQueryOptions(queryOptions);
 
         var result = acceptAndYield((Statement) selectStatement, SELECT_RESULT);
-        return result.createJdbcOperationQuerySelect(selectStatement, getSessionFactory());
+        return result.createJdbcSelect(this.request);
     }
 
     static final class Result {
@@ -79,27 +73,18 @@ final class SelectMqlTranslator extends AbstractMqlTranslator<JdbcSelect> {
             this.limitParameter = limitParameter;
         }
 
-        private JdbcOperationQuerySelect createJdbcOperationQuerySelect(
-                SelectStatement selectStatement, SessionFactoryImplementor sessionFactory) {
-            var jdbcValuesMappingProducerProvider =
-                    sessionFactory.getServiceRegistry().requireService(JdbcValuesMappingProducerProvider.class);
-            var jdbcValuesMappingProducer =
-                    jdbcValuesMappingProducerProvider.buildMappingProducer(selectStatement, sessionFactory);
+        private JdbcSelect createJdbcSelect(SqlAstTranslationRequest.Select request) {
             var parameterBinders = new ArrayList<JdbcParameterBinder>();
             var mql = renderMongoAstNode(command, parameterBinders::add);
-            return new JdbcOperationQuerySelect(
-                    mql,
-                    parameterBinders,
-                    jdbcValuesMappingProducer,
-                    affectedTableNames,
-                    0,
-                    MAX_VALUE,
-                    emptyMap(),
-                    NONE,
-                    // The following parameters are provided for query plan cache purposes.
-                    // Not setting them could result in reusing the wrong query plan and subsequently the wrong MQL.
-                    offsetParameter,
-                    limitParameter);
+            // The offset and limit parameters are provided for query plan cache purposes.
+            // Not setting them could result in reusing the wrong query plan and subsequently the wrong MQL.
+            return JdbcOperations.select(request)
+                    .command(mql)
+                    .parameterBinders(parameterBinders)
+                    .affectedQuerySpaces(affectedTableNames)
+                    .offsetParameter(offsetParameter)
+                    .limitParameter(limitParameter)
+                    .build();
         }
     }
 }

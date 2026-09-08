@@ -14,6 +14,20 @@
  * limitations under the License.
  */
 
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "org.hibernate.orm.dialect-provider") {
+                useModule("org.hibernate.orm:hibernate-dialect-provider-tooling:8.1.0-SNAPSHOT")
+            }
+        }
+    }
+}
+
 rootProject.name = "mongo-hibernate"
 
 include("mongodb-hibernate-spring-boot-autoconfigure")

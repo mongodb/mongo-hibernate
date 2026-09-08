@@ -58,7 +58,6 @@ import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
-import org.hibernate.query.QueryProducer;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.Setting;
@@ -251,7 +250,7 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
     /**
      * See <a
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-entity-query">Entity
-     * queries</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
+     * queries</a>, {@link org.hibernate.Session#createNativeQuery(String, Class)}.
      *
      * @see Unsupported#testEntityWithAggregateEmbeddableValue()
      */
@@ -318,7 +317,7 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
     /**
      * See <a
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-scalar-query">Scalar
-     * queries</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
+     * queries</a>, {@link org.hibernate.Session#createNativeQuery(String, Class)}.
      */
     @Test
     void testScalar() {
@@ -399,7 +398,7 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
     /**
      * See <a
      * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-dto-query">
-     * Returning DTOs (Data Transfer Objects)</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
+     * Returning DTOs (Data Transfer Objects)</a>, {@link org.hibernate.Session#createNativeQuery(String, Class)}.
      */
     @Nested
     class Dto implements MongoServiceRegistryProducer {

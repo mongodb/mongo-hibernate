@@ -78,7 +78,6 @@ import org.hibernate.mapping.SimpleValue;
 import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.UniqueKey;
 import org.hibernate.type.BasicPluralType;
-import org.hibernate.type.ComponentType;
 
 /**
  * @hidden
@@ -381,8 +380,8 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 forbidUnsupportedTypes(
                         persistentClass, pluralType.getElementType().getJavaType(), true, propertyPath);
             }
-        } else if (type instanceof ComponentType) {
-            checkComponentPropertyTypes(persistentClass, assertInstanceOf(value, Component.class), propertyPath);
+        } else if (value instanceof Component component) {
+            checkComponentPropertyTypes(persistentClass, component, propertyPath);
         } else {
             forbidUnsupportedTypes(persistentClass, type.getReturnedClass(), false, propertyPath);
         }

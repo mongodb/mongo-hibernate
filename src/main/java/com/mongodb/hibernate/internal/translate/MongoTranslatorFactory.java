@@ -16,16 +16,15 @@
 
 package com.mongodb.hibernate.internal.translate;
 
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslationRequest;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslatorFactory;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.sql.ast.SqlAstTranslator;
-import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.sql.ast.tree.MutationStatement;
-import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
-import org.hibernate.sql.exec.spi.JdbcSelect;
-import org.hibernate.sql.model.ast.TableMutation;
-import org.hibernate.sql.model.internal.OptionalTableUpdate;
-import org.hibernate.sql.model.jdbc.JdbcMutationOperation;
+import org.hibernate.sql.ast.spi.Statement;
+import org.hibernate.sql.ast.spi.model.OptionalTableUpdate;
+import org.hibernate.sql.ast.spi.model.TableMutation;
+import org.hibernate.sql.ast.spi.translation.SqlAstTranslator;
+import org.hibernate.sql.exec.spi.JdbcOperation;
+import org.hibernate.sql.spi.mutation.jdbc.JdbcMutationOperation;
 
 /**
  * @hidden
@@ -38,27 +37,29 @@ public final class MongoTranslatorFactory implements SqlAstTranslatorFactory {
     private MongoTranslatorFactory() {}
 
     @Override
-    public SqlAstTranslator<JdbcSelect> buildSelectTranslator(
-            SessionFactoryImplementor sessionFactoryImplementor, SelectStatement selectStatement) {
-        return new SelectMqlTranslator(sessionFactoryImplementor, selectStatement);
-    }
-
-    @Override
-    public SqlAstTranslator<? extends JdbcOperationQueryMutation> buildMutationTranslator(
-            SessionFactoryImplementor sessionFactoryImplementor, MutationStatement mutationStatement) {
-        return new MutationMqlTranslator(sessionFactoryImplementor, mutationStatement);
-    }
-
-    @Override
-    public <O extends JdbcMutationOperation> SqlAstTranslator<O> buildModelMutationTranslator(
-            TableMutation<O> tableMutation, SessionFactoryImplementor sessionFactoryImplementor) {
-        return new ModelMutationMqlTranslator<>(tableMutation, sessionFactoryImplementor);
+    @SuppressWarnings("unchecked")
+    public <S extends Statement, O extends JdbcOperation> SqlAstTranslator<O> buildTranslator(
+            SqlAstTranslationRequest<S, O> request) {
+        if (request instanceof SqlAstTranslationRequest.Select selectRequest) {
+            return (SqlAstTranslator<O>) (SqlAstTranslator<?>) new SelectMqlTranslator(selectRequest);
+        } else if (request instanceof SqlAstTranslationRequest.QueryMutation mutationRequest) {
+            return (SqlAstTranslator<O>) (SqlAstTranslator<?>) new MutationMqlTranslator(mutationRequest);
+        } else if (request instanceof SqlAstTranslationRequest.ModelMutation<?> modelMutationRequest) {
+            // A model mutation's semantic statement is a TableMutation<?> while its translator renders a
+            // constituent JdbcMutationOperation, so the narrowing is safe at runtime.
+            var tableMutation =
+                    (TableMutation<JdbcMutationOperation>) (TableMutation<?>) modelMutationRequest.statement();
+            return (SqlAstTranslator<O>) (SqlAstTranslator<?>)
+                    new ModelMutationMqlTranslator<>(tableMutation, modelMutationRequest.sessionFactory());
+        } else {
+            throw new IllegalArgumentException("Unsupported translation request: " + request);
+        }
     }
 
     /**
      * For {@code StatelessSession.upsert}: translates the same {@link OptionalTableUpdate} node that
-     * {@link #buildModelMutationTranslator} translates as a plain update, requesting the upsert form via the value
-     * descriptor instead.
+     * {@link #buildTranslator} translates as a plain update, requesting the upsert form via the value descriptor
+     * instead.
      */
     public SqlAstTranslator<JdbcMutationOperation> buildUpsertModelMutationTranslator(
             OptionalTableUpdate optionalTableUpdate, SessionFactoryImplementor sessionFactoryImplementor) {

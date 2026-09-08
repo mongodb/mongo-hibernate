@@ -51,8 +51,10 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -66,31 +68,41 @@ import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.aggregate.AggregateSupport;
+import org.hibernate.dialect.aggregate.spi.AggregateSupport;
+import org.hibernate.dialect.array.spi.ArraySupport;
+import org.hibernate.dialect.sql.ast.spi.OptionalTableUpdateOperationRequest;
+import org.hibernate.dialect.sql.ast.spi.SqlAstTranslatorFactory;
+import org.hibernate.dialect.temporaltype.spi.TemporalFormatSupport;
+import org.hibernate.dialect.type.spi.StandardDdlTypes;
+import org.hibernate.dialect.unique.spi.UniqueDelegate;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
-import org.hibernate.engine.jdbc.mutation.internal.MutationQueryOptions;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.engine.jdbc.mutation.ParameterUsage;
+import org.hibernate.engine.jdbc.mutation.group.UnknownParameterException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
+import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Index;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
-import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.sqm.produce.function.FunctionParameterType;
 import org.hibernate.service.ServiceRegistry;
-import org.hibernate.sql.ast.SqlAstTranslatorFactory;
-import org.hibernate.sql.ast.spi.SqlAppender;
-import org.hibernate.sql.model.MutationOperation;
-import org.hibernate.sql.model.ValuesAnalysis;
-import org.hibernate.sql.model.internal.OptionalTableUpdate;
-import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
+import org.hibernate.sql.ast.spi.model.ColumnValueParameter;
+import org.hibernate.sql.ast.spi.model.OptionalTableUpdate;
+import org.hibernate.sql.spi.mutation.MutationOperation;
+import org.hibernate.sql.spi.mutation.MutationTarget;
+import org.hibernate.sql.spi.mutation.MutationType;
+import org.hibernate.sql.spi.mutation.SelfExecutingUpdateOperation;
+import org.hibernate.sql.spi.mutation.TableMapping;
+import org.hibernate.sql.spi.mutation.ValuesAnalysis;
+import org.hibernate.sql.spi.mutation.jdbc.JdbcValueDescriptor;
 import org.hibernate.tool.schema.spi.Exporter;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
-import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -116,6 +128,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
      */
     @Deprecated
     public MongoDialect() {
+        super(MINIMUM_DBMS_VERSION);
         throw new RuntimeException(format(
                 "Could not instantiate [%s], see the earlier exceptions to find out why",
                 MongoDialect.class.getName()));
@@ -127,17 +140,15 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     }
 
     @Override
-    protected void checkVersion() {
-        var version = getVersion();
-        if (version == null) {
-            return;
-        }
+    public DatabaseVersion determineDatabaseVersion(DialectResolutionInfo info) {
+        var version = info.makeCopyOrDefault(getMinimumSupportedVersion());
         var minimumVersion = getMinimumSupportedVersion();
         if (version.isBefore(minimumVersion)) {
             throw new RuntimeException(format(
                     "The minimum supported version of %s is %s, but you are using %s",
                     MONGO_DBMS_NAME, minimumVersion, version));
         }
+        return version;
     }
 
     @Override
@@ -146,8 +157,8 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     }
 
     @Override
-    public void contribute(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
-        super.contribute(typeContributions, serviceRegistry);
+    public void contributeTypes(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
+        super.contributeTypes(typeContributions, serviceRegistry);
         contributeObjectIdType(typeContributions);
         typeContributions.contributeJdbcTypeConstructor(MongoArrayJdbcType.Constructor.INSTANCE);
         typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
@@ -161,7 +172,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         typeContributions
                 .getTypeConfiguration()
                 .getDdlTypeRegistry()
-                .addDescriptorIfAbsent(new DdlTypeImpl(
+                .addDescriptorIfAbsent(StandardDdlTypes.simple(
                         objectIdTypeCode,
                         format(
                                 "unused from %s.contributeObjectIdType for SQL type code [%d]",
@@ -201,9 +212,13 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     }
 
     @Override
-    public boolean supportsStandardArrays() {
-        return true;
+    public ArraySupport getArraySupport() {
+        return ARRAY_SUPPORT;
     }
+
+    private static final ArraySupport ARRAY_SUPPORT = ArraySupport.builder()
+            .capabilities(ArraySupport.Capability.STANDARD_ARRAY)
+            .build();
 
     // Hibernate 7's `AggregateComponentSecondPass` rejects `@Struct` mappings unless this returns `true`.
     // MQL supports embedded documents as user-defined struct types via `MongoStructJdbcType`.
@@ -399,10 +414,9 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
      *     build time and shared across sessions, so it must be thread-safe.
      */
     @Override
-    public MutationOperation createOptionalTableUpdateOperation(
-            EntityMutationTarget mutationTarget,
-            OptionalTableUpdate optionalTableUpdate,
-            SessionFactoryImplementor factory) {
+    public MutationOperation createOptionalTableUpdateOperation(OptionalTableUpdateOperationRequest request) {
+        var optionalTableUpdate = request.update();
+        var mutationTarget = request.mutationTarget();
         // This runs at SessionFactory build time for every entity, so nothing here may throw:
         // rejections are deferred to performMutation, which runs only when upsert is called.
         // In particular, an optional (e.g. @SecondaryTable) mutating table would otherwise make
@@ -411,7 +425,6 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             return rejectingUpsertOperation(
                     mutationTarget,
                     optionalTableUpdate,
-                    factory,
                     "TODO-HIBERNATE-69 https://jira.mongodb.org/browse/HIBERNATE-69");
         }
         if (optionalTableUpdate.getValueBindings().isEmpty()) {
@@ -420,7 +433,6 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             return rejectingUpsertOperation(
                     mutationTarget,
                     optionalTableUpdate,
-                    factory,
                     format(
                             "%s does not support upserting an entity whose only persistent attribute is its identifier",
                             MONGO_DBMS_NAME));
@@ -429,7 +441,6 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             return rejectingUpsertOperation(
                     mutationTarget,
                     optionalTableUpdate,
-                    factory,
                     "TODO-HIBERNATE-216 https://jira.mongodb.org/browse/HIBERNATE-216");
         }
         for (var valueBinding : optionalTableUpdate.getValueBindings()) {
@@ -437,7 +448,6 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                 return rejectingUpsertOperation(
                         mutationTarget,
                         optionalTableUpdate,
-                        factory,
                         format(
                                 "%s does not support upserting a column that is updatable but not insertable: [%s]",
                                 MONGO_DBMS_NAME,
@@ -445,29 +455,97 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
             }
         }
         return MongoTranslatorFactory.INSTANCE
-                .buildUpsertModelMutationTranslator(optionalTableUpdate, factory)
-                .translate(null, MutationQueryOptions.INSTANCE);
+                .buildUpsertModelMutationTranslator(optionalTableUpdate, request.sessionFactory())
+                .translate(null, QueryOptions.NONE);
     }
 
-    private static OptionalTableUpdateOperation rejectingUpsertOperation(
-            EntityMutationTarget mutationTarget,
-            OptionalTableUpdate optionalTableUpdate,
-            SessionFactoryImplementor factory,
-            String message) {
-        return new OptionalTableUpdateOperation(mutationTarget, optionalTableUpdate, factory) {
-            @Override
-            public void performMutation(
-                    JdbcValueBindings jdbcValueBindings,
-                    ValuesAnalysis valuesAnalysis,
-                    SharedSessionContractImplementor session) {
-                throw new FeatureNotSupportedException(message);
+    private static MutationOperation rejectingUpsertOperation(
+            MutationTarget mutationTarget, OptionalTableUpdate optionalTableUpdate, String message) {
+        return new RejectingUpsertOperation(mutationTarget, optionalTableUpdate, message);
+    }
+
+    private static final class RejectingUpsertOperation implements SelfExecutingUpdateOperation {
+        private final MutationTarget mutationTarget;
+        private final TableMapping tableMapping;
+        private final String message;
+        private final List<JdbcValueDescriptor> jdbcValueDescriptors;
+
+        RejectingUpsertOperation(
+                MutationTarget mutationTarget, OptionalTableUpdate optionalTableUpdate, String message) {
+            this.mutationTarget = mutationTarget;
+            this.tableMapping = optionalTableUpdate.getMutatingTable().getTableMapping();
+            this.message = message;
+            var parameters = optionalTableUpdate.getParameters();
+            this.jdbcValueDescriptors = new ArrayList<>(parameters.size());
+            for (var parameter : parameters) {
+                jdbcValueDescriptors.add(new ParameterValueDescriptor(parameter, jdbcValueDescriptors.size() + 1));
             }
-        };
+        }
+
+        @Override
+        public MutationType getMutationType() {
+            return MutationType.UPDATE;
+        }
+
+        @Override
+        public MutationTarget getMutationTarget() {
+            return mutationTarget;
+        }
+
+        @Override
+        public TableMapping getTableDetails() {
+            return tableMapping;
+        }
+
+        private record ParameterValueDescriptor(ColumnValueParameter parameter, int jdbcPosition)
+                implements JdbcValueDescriptor {
+
+            @Override
+            public String getColumnName() {
+                return parameter.getColumnReference().getColumnExpression();
+            }
+
+            @Override
+            public ParameterUsage getUsage() {
+                return parameter.getUsage();
+            }
+
+            @Override
+            public int getJdbcPosition() {
+                return jdbcPosition;
+            }
+
+            @Override
+            public JdbcMapping getJdbcMapping() {
+                return parameter.getJdbcMapping();
+            }
+        }
+
+        @Override
+        public JdbcValueDescriptor findValueDescriptor(String columnName, ParameterUsage usage) {
+            for (var descriptor : jdbcValueDescriptors) {
+                if (descriptor.getColumnName().equals(columnName) && descriptor.getUsage() == usage) {
+                    return descriptor;
+                }
+            }
+            throw new UnknownParameterException(
+                    getMutationType(), getMutationTarget(), tableMapping.getTableName(), columnName, usage);
+        }
+
+        @Override
+        public void performMutation(
+                JdbcValueBindings jdbcValueBindings,
+                ValuesAnalysis valuesAnalysis,
+                SharedSessionContractImplementor session) {
+            throw new FeatureNotSupportedException(message);
+        }
     }
 
     @Override
-    public void appendDatetimeFormat(SqlAppender appender, String format) {
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
+    public TemporalFormatSupport getTemporalFormatSupport() {
+        return (appender, format) -> {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-88 https://jira.mongodb.org/browse/HIBERNATE-88");
+        };
     }
 
     /** @mongoCme The {@link SQLExceptionConversionDelegate} returned from this method must be thread-safe. */
@@ -536,8 +614,12 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     }
 
     @Override
-    public Exporter<UniqueKey> getUniqueKeyExporter() {
-        return new MongoIndexExporter<>(true) {
+    public UniqueDelegate getUniqueDelegate() {
+        return MONGO_UNIQUE_DELEGATE;
+    }
+
+    private static final UniqueDelegate MONGO_UNIQUE_DELEGATE = new UniqueDelegate() {
+        private final Exporter<UniqueKey> exporter = new MongoIndexExporter<>(true) {
             @Override
             protected Table tableForExportable(UniqueKey exportable) {
                 return exportable.getTable();
@@ -560,5 +642,27 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
                 return exportable.getOptions();
             }
         };
-    }
+
+        @Override
+        public String getColumnDefinitionUniquenessFragment(Column column, SqlStringGenerationContext context) {
+            return "";
+        }
+
+        @Override
+        public String getTableCreationUniqueConstraintsFragment(Table table, SqlStringGenerationContext context) {
+            return "";
+        }
+
+        @Override
+        public String getAlterTableToAddUniqueKeyCommand(
+                UniqueKey uniqueKey, Metadata metadata, SqlStringGenerationContext context) {
+            return String.join(";", exporter.getSqlCreateStrings(uniqueKey, metadata, context));
+        }
+
+        @Override
+        public String getAlterTableToDropUniqueKeyCommand(
+                UniqueKey uniqueKey, Metadata metadata, SqlStringGenerationContext context) {
+            return String.join(";", exporter.getSqlDropStrings(uniqueKey, metadata, context));
+        }
+    };
 }

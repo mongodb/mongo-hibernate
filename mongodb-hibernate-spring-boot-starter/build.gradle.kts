@@ -19,7 +19,16 @@ plugins {
     id("mongo-hibernate-publish")
 }
 
-repositories { mavenCentral() }
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+        content {
+            includeGroup("jakarta.persistence")
+        }
+    }
+}
 
 // No source code, just dependency aggregation following the Spring Boot starter convention:
 // https://docs.spring.io/spring-boot/reference/features/developing-auto-configuration.html#features.developing-auto-configuration.custom-starter

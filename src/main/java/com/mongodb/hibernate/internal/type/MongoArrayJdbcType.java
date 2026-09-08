@@ -20,17 +20,13 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 
 import java.io.Serial;
 import java.sql.JDBCType;
-import java.sql.SQLException;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.tool.schema.extract.spi.ColumnTypeInformation;
 import org.hibernate.type.SqlTypes;
-import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
-import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeConstructor;
 import org.hibernate.type.spi.TypeConfiguration;
-import org.jspecify.annotations.Nullable;
 
 /**
  * @hidden
@@ -53,13 +49,6 @@ public final class MongoArrayJdbcType extends ArrayJdbcType {
         var result = super.getJdbcTypeCode();
         assertTrue(result == JDBC_TYPE.getVendorTypeNumber());
         return result;
-    }
-
-    /** This method is overridden to make it accessible from our code. */
-    @Override
-    protected <X> @Nullable X getArray(
-            BasicExtractor<X> extractor, java.sql.@Nullable Array array, WrapperOptions options) throws SQLException {
-        return super.getArray(extractor, array, options);
     }
 
     /**
