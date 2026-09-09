@@ -1548,6 +1548,27 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     .isInstanceOf(FeatureNotSupportedException.class);
         }
 
+        static Stream<Arguments> statisticalAggregateQueries() {
+            return Stream.of("stddev_pop", "stddev_samp", "var_pop", "var_samp", "stddev", "variance")
+                    .flatMap(function -> Stream.of(
+                            Arguments.of(
+                                    function,
+                                    "select b.string, " + function
+                                            + "(b.primitiveInt) from Item as b GROUP BY b.string"),
+                            Arguments.of(function, "select " + function + "(b.primitiveInt) from Item as b")));
+        }
+
+        /**
+         * HQL's statistical aggregates are not translated yet. They are rejected by name rather than by falling through
+         * the generic unsupported-function path, so the message names the ticket that tracks them; see <a
+         * href="https://jira.mongodb.org/browse/HIBERNATE-257">HIBERNATE-257</a>.
+         */
+        @ParameterizedTest(name = "[{index}] {0}: {1}")
+        @MethodSource("statisticalAggregateQueries")
+        void statisticalAggregateIsRejected(String function, String hql) {
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-257");
+        }
+
         @Test
         void distinctWithinAggregateIsRejected() {
             assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(

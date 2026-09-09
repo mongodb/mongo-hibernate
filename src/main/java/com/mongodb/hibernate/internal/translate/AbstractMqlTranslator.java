@@ -1789,6 +1789,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private static final String ACCUMULATOR_FIELD_PREFIX = "#acc_";
 
     /**
+     * HQL's statistical aggregate functions, which we do not translate yet.
+     *
+     * <p>Hibernate does not model these as {@link AggregateFunctionExpression}s the way it does {@code sum} and
+     * friends, so they reach {@link #tryRegisterAccumulator} as ordinary self-rendering functions and would otherwise
+     * fall through to the generic unsupported-function error.
+     */
+    private static final Set<String> STATISTICAL_AGGREGATE_FUNCTION_NAMES =
+            Set.of("stddev", "stddev_pop", "stddev_samp", "variance", "var_pop", "var_samp");
+
+    /**
      * Recognizes an aggregate function in SELECT, HAVING or ORDER BY under a GROUP BY, registers it as an accumulator
      * on the GROUP BY context, and returns a reference to the {@code $group} output field holding its value — the form
      * in which every later stage of the pipeline refers to it.
@@ -1803,6 +1813,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * unsupported-feature error.
      */
     private @Nullable AstFieldPathExpression tryRegisterAccumulator(SelfRenderingFunctionSqlAstExpression<?> function) {
+        // Checked before anything else so that the diagnostic is the same with or without a GROUP BY clause: the
+        // function itself is the blocker either way.
+        if (STATISTICAL_AGGREGATE_FUNCTION_NAMES.contains(
+                function.getFunctionName().toLowerCase(Locale.ROOT))) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-257 https://jira.mongodb.org/browse/HIBERNATE-257");
+        }
         var ctx = groupByContext;
         if (ctx == null || !(function instanceof AggregateFunctionExpression aggregate)) {
             return null;
