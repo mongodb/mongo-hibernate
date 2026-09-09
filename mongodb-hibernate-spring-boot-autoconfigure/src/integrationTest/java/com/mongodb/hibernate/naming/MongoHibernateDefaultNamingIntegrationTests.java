@@ -43,7 +43,7 @@ class MongoHibernateDefaultNamingIntegrationTests {
 
     @AfterEach
     void cleanUp() {
-        repository.deleteAll();
+        NamingTestSupport.dropBooksCollection(connectionString);
     }
 
     @Test

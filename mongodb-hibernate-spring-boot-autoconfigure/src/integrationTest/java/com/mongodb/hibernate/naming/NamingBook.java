@@ -25,8 +25,10 @@ import org.bson.types.ObjectId;
 // snake_case physical naming strategies; only the unannotated multi-word field `publishYear` varies
 // (publishYear vs publish_year), which is what the naming tests assert.
 @Entity
-@Table(name = "namingbook")
+@Table(name = NamingBook.COLLECTION_NAME)
 public class NamingBook {
+
+    public static final String COLLECTION_NAME = "namingbook";
 
     @Id
     public ObjectId id;

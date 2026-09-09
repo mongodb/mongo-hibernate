@@ -175,6 +175,8 @@ functions:
         files:
           - src/build/test-results/test/TEST-*.xml
           - src/build/test-results/integrationTest/TEST-*.xml
+          - src/*/build/test-results/test/TEST-*.xml
+          - src/*/build/test-results/integrationTest/TEST-*.xml
 
   cleanup:
     - command: subprocess.exec
