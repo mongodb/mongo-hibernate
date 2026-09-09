@@ -68,11 +68,11 @@ class AstGroupStageTests {
         var astGroupStage = new AstGroupStage(
                 List.of(new AstGroupStageSpecification("country", new AstFieldPathExpression("country"))),
                 List.of(
-                        new AstGroupStageSpecification(
+                        new AstGroupStageAccumulatorSpecification(
                                 "#acc_0",
                                 new AstAccumulatorExpression(
                                         AstAccumulatorOperator.SUM, new AstFieldPathExpression("sales"))),
-                        new AstGroupStageSpecification(
+                        new AstGroupStageAccumulatorSpecification(
                                 "#acc_1",
                                 new AstAccumulatorExpression(
                                         AstAccumulatorOperator.MAX, new AstFieldPathExpression("sales")))));
@@ -94,11 +94,11 @@ class AstGroupStageTests {
                         new AstGroupStageSpecification("k", new AstFieldPathExpression("a")),
                         new AstGroupStageSpecification("l", new AstFieldPathExpression("b"))),
                 List.of(
-                        new AstGroupStageSpecification(
+                        new AstGroupStageAccumulatorSpecification(
                                 "#acc_0",
                                 new AstAccumulatorExpression(
                                         AstAccumulatorOperator.SUM, new AstFieldPathExpression("c"))),
-                        new AstGroupStageSpecification(
+                        new AstGroupStageAccumulatorSpecification(
                                 "#acc_1",
                                 new AstAccumulatorExpression(
                                         AstAccumulatorOperator.AVG, new AstFieldPathExpression("d"))))));

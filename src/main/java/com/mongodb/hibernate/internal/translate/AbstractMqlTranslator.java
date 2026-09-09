@@ -98,6 +98,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
@@ -440,7 +441,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
          * makes the same aggregate function appearing in both SELECT and HAVING resolve to one {@code $group} field.
          * Ordered so that {@code $group} renders them in registration order, keeping the pipeline deterministic.
          */
-        final LinkedHashMap<Integer, AstGroupStageSpecification> registeredAccumulatorsByVN = new LinkedHashMap<>();
+        final LinkedHashMap<Integer, AstGroupStageAccumulatorSpecification> registeredAccumulatorsByVN =
+                new LinkedHashMap<>();
 
         /** The names of the registered accumulators, for {@link GroupBySubstitutionRule}'s whitelist. */
         final Set<String> accumulatorFieldNames = new HashSet<>();
@@ -1928,7 +1930,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             return registered.key();
         }
         var fieldName = ACCUMULATOR_FIELD_PREFIX + ctx.registeredAccumulatorsByVN.size();
-        ctx.registeredAccumulatorsByVN.put(valueNumber, new AstGroupStageSpecification(fieldName, accumulator));
+        ctx.registeredAccumulatorsByVN.put(
+                valueNumber, new AstGroupStageAccumulatorSpecification(fieldName, accumulator));
         ctx.accumulatorFieldNames.add(fieldName);
         return fieldName;
     }

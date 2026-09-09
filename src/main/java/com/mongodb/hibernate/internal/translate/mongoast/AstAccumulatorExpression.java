@@ -43,8 +43,9 @@ public record AstAccumulatorExpression(AstAccumulatorOperator operator, AstExpre
         return new StructuralKey("Accumulator", List.of(operator, argument));
     }
 
+    /** Narrowed so that a specification holding an accumulator can rebuild itself without casting. */
     @Override
-    public AstExpression mapChildren(AstNodeRewriter rewriter) {
+    public AstAccumulatorExpression mapChildren(AstNodeRewriter rewriter) {
         return new AstAccumulatorExpression(operator, rewriter.rewrite(argument));
     }
 

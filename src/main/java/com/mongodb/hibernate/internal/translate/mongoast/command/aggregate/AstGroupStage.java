@@ -44,12 +44,14 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * </pre>
  *
  * @param specifications the {@code _id} sub-key specifications, one per GROUP BY key; must be non-empty
- * @param accumulatorSpecifications the accumulator specifications, rendered as siblings of {@code _id}; may be empty
+ * @param accumulatorSpecifications the accumulator specifications, rendered as siblings of {@code _id}; may be empty.
+ *     Typed separately from {@code specifications} so the two slots cannot be confused; see
+ *     {@link AstGroupStageAccumulatorSpecification}.
  * @hidden
  */
 public record AstGroupStage(
         Collection<? extends AstGroupStageSpecification> specifications,
-        Collection<? extends AstGroupStageSpecification> accumulatorSpecifications)
+        Collection<? extends AstGroupStageAccumulatorSpecification> accumulatorSpecifications)
         implements AstStage {
 
     public AstGroupStage {
