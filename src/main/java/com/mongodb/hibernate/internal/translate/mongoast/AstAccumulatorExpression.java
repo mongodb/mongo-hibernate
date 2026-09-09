@@ -22,13 +22,13 @@ import org.bson.BsonWriter;
 import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 
 /**
- * A MongoDB {@code $group}-stage accumulator applied to a single argument, e.g. {@code {$sum: <expr>}}. Rendered in
- * value position so it can appear as the right-hand side of an
- * {@link com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification} in the
- * accumulator slot of an {@link com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage}.
+ * A MongoDB {@code $group}-stage accumulator applied to a single argument, e.g. {@code {$sum: <expr>}}.
  *
- * <p>An accumulator is only meaningful as the top-level operator of such a specification: MongoDB does not allow one to
- * be nested inside an ordinary aggregation expression. The translator never builds one anywhere else.
+ * <p>Only meaningful as the accumulator of an
+ * {@link com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification},
+ * which is the only place the translator builds one. MongoDB requires an accumulator to be the outermost operator of a
+ * {@code $group} field and rejects one nested inside an ordinary aggregation expression: {@code {"$toLong": {"$count":
+ * {}}}} fails with {@code unknown group operator '$toLong'}.
  *
  * @param operator the accumulator to apply
  * @param argument the single expression the accumulator is applied to
