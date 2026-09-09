@@ -1541,6 +1541,108 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
+        void orderByAggregateAlias() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) as total from Item as b GROUP BY b.string"
+                            + " ORDER BY total DESC, b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {"string": "$string"},
+                            "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}
+                          }
+                        },
+                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "total": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"c", 7L}, new Object[] {"a", 4L}, new Object[] {"b", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregateOrdinal() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY 2 DESC, 1",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {"string": "$string"},
+                            "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}
+                          }
+                        },
+                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
+                        {"$project": {"_id#string": "$_id.string", "#c_2": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"c", 7L}, new Object[] {"a", 4L}, new Object[] {"b", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * An alias naming an aggregate that is already in SELECT must resolve to the accumulator SELECT registered, not
+         * add a second one.
+         */
+        @Test
+        void orderByAggregateAliasSharesTheSelectAccumulator() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) as total from Item as b GROUP BY b.string"
+                            + " HAVING sum(b.primitiveInt) > 4 ORDER BY total",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {"string": "$string"},
+                            "#acc_0": {"$sum": {"$toLong": "$primitiveInt"}}
+                          }
+                        },
+                        {"$match": {"#acc_0": {"$gt": 4}}},
+                        {"$sort": {"#acc_0": 1}},
+                        {"$project": {"_id#string": "$_id.string", "total": "$#acc_0", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {"c", 7L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * Ordering by an expression is unsupported however it is named, but it must now fail with a ticket rather than
+         * with the message-less exception an unresolved alias used to produce.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @MethodSource("orderByExpressionQueries")
+        void orderByExpressionIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-251");
+        }
+
+        static Stream<String> orderByExpressionQueries() {
+            return Stream.of(
+                    // written out
+                    "select b.string, avg(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " ORDER BY avg(b.primitiveInt) + 1",
+                    // by alias
+                    "select b.string, avg(b.primitiveInt) + 1 as a from Item as b GROUP BY b.string ORDER BY a",
+                    // by ordinal
+                    "select b.string, avg(b.primitiveInt) + 1 from Item as b GROUP BY b.string ORDER BY 2");
+        }
+
+        @Test
         void aggregateWithoutGroupByIsRejected() {
             assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
                                     "select sum(b.primitiveInt) from Item as b", Object.class)
@@ -1576,6 +1678,109 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                                     Object[].class)
                             .getResultList()))
                     .isInstanceOf(FeatureNotSupportedException.class);
+        }
+    }
+
+    /**
+     * SQL's {@code COUNT(x)} counts only the rows where {@code x} is not null, which is the whole reason the translator
+     * emits a {@code $switch} rather than a bare {@code $sum: 1}. The shared dataset has no nulls, so this nest brings
+     * its own.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class CountNullSemantics extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                List.of(
+                                // primitiveInt 1: two non-null strings and one null
+                                new Item(1, 1, "x", true, new ItemStruct(1)),
+                                new Item(2, 1, null, true, new ItemStruct(1)),
+                                new Item(3, 1, "y", true, new ItemStruct(1)),
+                                // primitiveInt 2: every string null, so count(string) must be 0 while count(*) is 2
+                                new Item(4, 2, null, false, new ItemStruct(2)),
+                                new Item(5, 2, null, false, new ItemStruct(2)))
+                        .forEach(session::persist);
+            });
+        }
+
+        @Test
+        void countOfNullableColumnExcludesNulls() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, count(*), count(b.string) from Item as b"
+                            + " GROUP BY b.primitiveInt ORDER BY b.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {"primitiveInt": "$primitiveInt"},
+                            "#acc_0": {"$sum": {"$toLong": 1}},
+                            "#acc_1": {
+                              "$sum": {
+                                "$toLong": {
+                                  "$switch": {
+                                    "branches": [{"case": {"$eq": ["$string", null]}, "then": 0}],
+                                    "default": 1
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {"$sort": {"_id.primitiveInt": 1}},
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$#acc_0",
+                            "#c_3": "$#acc_1",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {1, 3L, 2L}, new Object[] {2, 2L, 0L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /** A HAVING on a non-null count filters on the counted rows, not on the group size. */
+        @Test
+        void havingOnCountOfNullableColumn() {
+            assertSelectionQuery(
+                    "select b.primitiveInt from Item as b GROUP BY b.primitiveInt HAVING count(b.string) > 0",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {"primitiveInt": "$primitiveInt"},
+                            "#acc_0": {
+                              "$sum": {
+                                "$toLong": {
+                                  "$switch": {
+                                    "branches": [{"case": {"$eq": ["$string", null]}, "then": 0}],
+                                    "default": 1
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {"$match": {"#acc_0": {"$gt": 0}}},
+                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
+                      ]
+                    }
+                    """,
+                    List.of(1),
+                    Set.of(COLLECTION_NAME));
         }
     }
 

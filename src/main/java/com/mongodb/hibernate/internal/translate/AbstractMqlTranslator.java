@@ -1286,10 +1286,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstSortField createAstSortField(Expression sortExpression, AstSortOrder astSortOrder) {
-        if (!isFieldPathExpression(sortExpression)) {
+        var resolved = resolveSelectedExpression(sortExpression);
+        if (!isFieldPathExpression(resolved)) {
             // An aggregate function is orderable under a GROUP BY: it resolves to the accumulator field $group
             // computes, shared with SELECT/HAVING when they name the same function, so nothing is recomputed here.
-            if (sortExpression instanceof SelfRenderingFunctionSqlAstExpression<?> function) {
+            if (resolved instanceof SelfRenderingFunctionSqlAstExpression<?> function) {
                 var accumulatorReference = tryRegisterAccumulator(function);
                 if (accumulatorReference != null) {
                     return new AstSortField(accumulatorReference.fieldPath(), astSortOrder);
@@ -1302,8 +1303,27 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                             ? "TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251"
                             : "TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
         }
-        var fieldPath = acceptAndYield(sortExpression, FIELD_PATH);
+        var fieldPath = acceptAndYield(resolved, FIELD_PATH);
         return new AstSortField(fieldPath, astSortOrder);
+    }
+
+    /**
+     * Unwraps an ORDER BY item that names a select item by alias or by ordinal, which Hibernate ORM models as a
+     * {@link SqlSelectionExpression} around the selected expression, to that expression.
+     *
+     * <p>This has to happen before the sort target is classified, because {@link #isFieldPathExpression} treats the
+     * wrapper itself as a field path. Left wrapped, {@code ORDER BY total} over {@code sum(x) as total} would take the
+     * field-path branch, where the aggregate is visited with {@code FIELD_PATH} expected instead of {@code EXPRESSION},
+     * so it would never be offered to {@link #tryRegisterAccumulator} and would fail without a diagnostic. Unwrapping
+     * changes nothing for an alias or ordinal that names a plain column: the wrapper's only behaviour is to delegate to
+     * the same expression.
+     */
+    private static Expression resolveSelectedExpression(Expression expression) {
+        var resolved = expression;
+        while (resolved instanceof SqlSelectionExpression selection) {
+            resolved = selection.getSelection().getExpression();
+        }
+        return resolved;
     }
 
     @Override

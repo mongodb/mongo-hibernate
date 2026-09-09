@@ -19,6 +19,8 @@ package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
 import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertRendering;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstFieldPathExpression;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -62,7 +64,48 @@ class AstGroupStageTests {
     }
 
     @Test
+    void testRenderingWithAccumulators() {
+        var astGroupStage = new AstGroupStage(
+                List.of(new AstGroupStageSpecification("country", new AstFieldPathExpression("country"))),
+                List.of(
+                        new AstGroupStageSpecification(
+                                "#acc_0",
+                                new AstAccumulatorExpression(
+                                        AstAccumulatorOperator.SUM, new AstFieldPathExpression("sales"))),
+                        new AstGroupStageSpecification(
+                                "#acc_1",
+                                new AstAccumulatorExpression(
+                                        AstAccumulatorOperator.MAX, new AstFieldPathExpression("sales")))));
+
+        // The accumulators are siblings of `_id`, not members of it.
+        var expectedJson =
+                """
+                {"$group": {"_id": {"country": "$country"}, "#acc_0": {"$sum": "$sales"}, "#acc_1": {"$max": "$sales"}}}\
+                """;
+        assertRendering(expectedJson, astGroupStage);
+    }
+
+    @Test
     void testMapChildren() {
+        // Both collections need at least two differing children, so that a child put back in the wrong place, or in
+        // the wrong collection, is detectable.
+        assertMapsChildren(new AstGroupStage(
+                List.of(
+                        new AstGroupStageSpecification("k", new AstFieldPathExpression("a")),
+                        new AstGroupStageSpecification("l", new AstFieldPathExpression("b"))),
+                List.of(
+                        new AstGroupStageSpecification(
+                                "#acc_0",
+                                new AstAccumulatorExpression(
+                                        AstAccumulatorOperator.SUM, new AstFieldPathExpression("c"))),
+                        new AstGroupStageSpecification(
+                                "#acc_1",
+                                new AstAccumulatorExpression(
+                                        AstAccumulatorOperator.AVG, new AstFieldPathExpression("d"))))));
+    }
+
+    @Test
+    void testMapChildrenWithoutAccumulators() {
         assertMapsChildren(new AstGroupStage(List.of(
                 new AstGroupStageSpecification("k", new AstFieldPathExpression("a")),
                 new AstGroupStageSpecification("l", new AstFieldPathExpression("b")))));
