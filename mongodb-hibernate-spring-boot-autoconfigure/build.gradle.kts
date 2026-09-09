@@ -23,12 +23,6 @@ plugins {
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
-        content {
-            includeGroup("jakarta.persistence")
-        }
-    }
 }
 
 // This module ships no module-info.java. Like Spring Boot's own autoconfigure jars (which are

@@ -7,11 +7,12 @@ It is an evaluation branch, not production work.
 
 ## Build and test state
 
-The extension compiles against `org.hibernate.orm:hibernate-platform:8.1.0-SNAPSHOT`
+The extension compiles against `org.hibernate.orm:hibernate-platform:8.0.0-SNAPSHOT`
 and all root-module tests pass: 450 unit tests and 871 integration tests.
 The upstream snapshot must be published to local mavenLocal from a checkout
-of the branch head (currently commit 45cf13ecc0 on PR 13302, versioned
-8.1.0-SNAPSHOT):
+of the merged 8.0 plus the double-wrap fix (fork branch
+`tojavaarray-double-wrap`, commit 5f7c5f1f07; the fix is being backported
+to the 8.0 branch via PR 13302):
 
     cd <hibernate-orm checkout>
     ./gradlew :hibernate-core:publishToMavenLocal :hibernate-testing:publishToMavenLocal \
@@ -19,9 +20,7 @@ of the branch head (currently commit 45cf13ecc0 on PR 13302, versioned
         :hibernate-community-dialects:publishToMavenLocal -x :hibernate-community-dialects:javadoc
 
 Publishing `hibernate-community-dialects` requires skipping javadoc because the
-branch has three javadoc errors in that module. The 8.1 chain also depends on
-the `jakarta.persistence-api` 4.0.0 snapshot, resolved from the Sonatype
-snapshots repository (added to this branch's build files).
+branch has three javadoc errors in that module.
 
 Two known limitations:
 
@@ -207,7 +206,7 @@ runtime types Hibernate instantiates and hands to the extension:
    `hasSchema()`/`hasCatalog()`. As it stands the interface is
    unimplementable by a provider without findings, because those two
    members are both `@Internal` and abstract.
-6. Fixed by Steve in PR 13302: `StructHelper#wrapRawJdbcValue` is now
+6. Fixed by Steve in PR 13302 (being backported to 8.0): `StructHelper#wrapRawJdbcValue` is now
    idempotent for array values, so `ArrayJdbcType#toJavaArray` no longer
    double-wraps array components of structured elements. Our reproducer
    test is absorbed into the PR (with a direct-Java-Time variant Steve
@@ -228,12 +227,12 @@ runtime types Hibernate instantiates and hands to the extension:
    legacy queue; main's default graph queue never runs that code, which
    is why Hibernate's own suite does not catch it. The assert should be
    dropped.
-9. PR 13302 flips `hibernate.type.java_time_use_direct_jdbc` to default
-   true and adds the `DirectJavaTimeJdbcSupport` supply point (the
-   Dialect default is `jdbc42`). Our suite is green with the flipped
-   default, but our boot guard forbids configuring the property, so the
-   only escape hatch for MongoDB users is gone; whether MongoDB should
-   supply a more precise `DirectJavaTimeJdbcSupport` than `jdbc42` is an
-   open product decision.
+9. PR 13302 (an 8.1 change) flips `hibernate.type.java_time_use_direct_jdbc`
+   to default true and adds the `DirectJavaTimeJdbcSupport` supply point
+   (the Dialect default is `jdbc42`). Our suite was green with the flipped
+   default in an 8.1-SNAPSHOT trial, but our boot guard forbids configuring
+   the property, so MongoDB users would lose the escape hatch; whether
+   MongoDB should supply a more precise `DirectJavaTimeJdbcSupport` than
+   `jdbc42` is an open product decision for when 8.1 is relevant.
 7. The graph-based flush queue regression: entity deletes execute one
    statement per row instead of batching, observable to any driver.

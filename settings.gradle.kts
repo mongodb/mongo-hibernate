@@ -22,7 +22,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == "org.hibernate.orm.dialect-provider") {
-                useModule("org.hibernate.orm:hibernate-dialect-provider-tooling:8.1.0-SNAPSHOT")
+                useModule("org.hibernate.orm:hibernate-dialect-provider-tooling:8.0.0-SNAPSHOT")
             }
         }
     }

@@ -22,12 +22,6 @@ plugins {
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
-        content {
-            includeGroup("jakarta.persistence")
-        }
-    }
 }
 
 // No source code, just dependency aggregation following the Spring Boot starter convention:
