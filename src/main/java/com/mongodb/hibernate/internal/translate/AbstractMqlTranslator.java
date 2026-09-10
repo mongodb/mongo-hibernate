@@ -444,7 +444,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
          * <p>Insertion-ordered on purpose: {@code $group} renders these in registration order, so the emitted pipeline
          * is deterministic and can be asserted verbatim.
          */
-        final LinkedHashMap<Integer, AstGroupStageAccumulatorSpecification> registeredAccumulatorsByVN = new LinkedHashMap<>();
+        final LinkedHashMap<Integer, AstGroupStageAccumulatorSpecification> registeredAccumulatorsByVN =
+                new LinkedHashMap<>();
 
         /** The names of the registered accumulators, for {@link GroupBySubstitutionRule}'s whitelist. */
         final Set<String> accumulatorFieldNames = new HashSet<>();
