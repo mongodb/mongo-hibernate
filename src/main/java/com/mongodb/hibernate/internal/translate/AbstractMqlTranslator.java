@@ -1864,19 +1864,26 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 function.getFunctionName().toLowerCase(Locale.ROOT))) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-257 https://jira.mongodb.org/browse/HIBERNATE-257");
         }
-        var ctx = groupByContext;
-        if (ctx == null || !(function instanceof AggregateFunctionExpression aggregate)) {
+        if (!(function instanceof AggregateFunctionExpression aggregate)) {
+            // Not an aggregate at all, so the caller's function-as-operand error is the accurate one.
             return null;
         }
-        // HQL's FILTER (WHERE ...) restricts which rows an aggregate sees, which no `$group` accumulator can express
-        // directly. Refused rather than translated; there is no arity check alongside it because Hibernate ORM
-        // validates the argument count of these functions itself, before translation.
+        var ctx = groupByContext;
+        if (ctx == null) {
+            // An aggregate with no GROUP BY groups the whole collection, which `$group` expresses with a null `_id`;
+            // not implemented yet, so it is refused here rather than reported as an unsupported function.
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-262 https://jira.mongodb.org/browse/HIBERNATE-262");
+        }
+        // HQL's FILTER (WHERE ...) restricts which rows an aggregate sees. A `$group` accumulator has no filter of
+        // its own, but the same effect is reachable by making the argument yield nothing for the excluded rows, since
+        // every accumulator ignores nulls; not implemented yet. There is no arity check alongside this, because
+        // Hibernate ORM validates the argument count of these functions itself, before translation.
         if (aggregate.getFilter() != null) {
-            return null;
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-260 https://jira.mongodb.org/browse/HIBERNATE-260");
         }
         var argument = function.getArguments().get(0);
         if (argument instanceof Distinct) {
-            throw new FeatureNotSupportedException("DISTINCT within an aggregate function is not supported");
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-259 https://jira.mongodb.org/browse/HIBERNATE-259");
         }
         var accumulator =
                 switch (function.getFunctionName().toLowerCase(Locale.ROOT)) {
@@ -1889,11 +1896,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         new AstAccumulatorExpression(AstAccumulatorOperator.MIN, acceptAndYieldArgument(argument));
                     case "max" ->
                         new AstAccumulatorExpression(AstAccumulatorOperator.MAX, acceptAndYieldArgument(argument));
-                    default -> null;
+                    // HQL's `some` is a synonym of `any`, and arrives under that name. Both are translatable ---
+                    // `$max`/`$min` over the predicate's boolean value would do it --- but are not implemented.
+                    case "every", "any" ->
+                        throw new FeatureNotSupportedException(
+                                "TODO-HIBERNATE-261 https://jira.mongodb.org/browse/HIBERNATE-261");
+                    // Anything else Hibernate ORM models as an aggregate function: nothing is promised for these,
+                    // so the message names the function rather than a ticket.
+                    default ->
+                        throw new FeatureNotSupportedException(
+                                "Aggregate function is not supported: " + function.getFunctionName());
                 };
-        if (accumulator == null) {
-            return null;
-        }
         // The BSON type the accumulator produces is not always the one Hibernate ORM inferred for the function and
         // will read the column back as: `$sum` over `int` fields yields an int, while HQL's `sum()` over them is a
         // `Long`. The conversion is recorded against the accumulator's field and applied in `$project`, the only

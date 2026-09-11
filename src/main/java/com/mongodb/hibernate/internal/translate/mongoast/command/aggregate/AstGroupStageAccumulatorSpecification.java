@@ -28,13 +28,16 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * "$sales"}}.
  *
  * <p>Distinct from {@link AstGroupStageSpecification}, which holds an arbitrary
- * {@link com.mongodb.hibernate.internal.translate.mongoast.AstExpression} for an {@code _id} sub-key, because the two
- * slots of a {@code $group} stage accept opposite things and MongoDB does not reject both mistakes the same way. A
- * non-accumulator among the siblings of {@code _id} fails loudly ({@code Location40234: The field '...' must be an
- * accumulator object}), but an accumulator inside {@code _id} is silently accepted and means something else entirely
- * --- {@code $sum} there is the aggregation expression rather than the accumulator, so the query groups by a different
- * value and returns wrong results with no error. Requiring an {@link AstAccumulatorExpression} here makes both
- * unrepresentable.
+ * {@link com.mongodb.hibernate.internal.translate.mongoast.AstExpression} for an {@code _id} sub-key. Requiring an
+ * {@link AstAccumulatorExpression} here keeps the two collections of {@link AstGroupStage} from being interchangeable,
+ * and stops a non-accumulator reaching the accumulator slot, which MongoDB rejects with {@code Location40234: The field
+ * '...' must be an accumulator object}.
+ *
+ * <p>It does not prevent the opposite mistake: an {@link AstAccumulatorExpression} is an
+ * {@link com.mongodb.hibernate.internal.translate.mongoast.AstExpression}, so it remains assignable to an {@code _id}
+ * sub-key. That case is worth knowing about because MongoDB accepts it --- {@code $sum} inside {@code _id} is the
+ * aggregation expression rather than the accumulator, so the query groups by a different value and returns wrong
+ * results with no error. Nothing in the translator constructs it.
  *
  * @param key the {@code $group} output field name
  * @param accumulator the accumulator producing that field's value

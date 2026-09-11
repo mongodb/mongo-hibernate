@@ -46,6 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
 @DomainModel(
@@ -152,8 +153,19 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -204,9 +216,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.itemStruct#primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -640,22 +667,42 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
-        void groupByCaseKeyWithAccumulator() {
+        void groupByCaseKey() {
             assertSelectionQuery(
-                    "select case when b.primitiveInt > 2 then 1 else 0 end, count(*) from Item as b"
+                    "select case when b.primitiveInt > 2 then 1 else 0 end from Item as b"
                             + " GROUP BY case when b.primitiveInt > 2 then 1 else 0 end",
-                    Object[].class,
+                    Object.class,
                     """
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$switch": {"branches": [{"case": {"$gt": ["$primitiveInt", 2]}, "then": 1}], "default": 0}}}, "#acc_0": {"$sum": 1}}},
-                        {"$project": {"#c_1": "$_id.k0", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {"$gt": ["$primitiveInt", 2]},
+                                      "then": 1
+                                    }
+                                  ],
+                                  "default": 0
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
-                    results -> assertThat((Iterable<Object[]>) results)
-                            .containsExactlyInAnyOrder(new Object[] {0, 2L}, new Object[] {1, 2L}),
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(0, 1),
                     Set.of(COLLECTION_NAME));
         }
 
@@ -668,8 +715,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -686,8 +749,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$add": ["$_id.primitiveInt", 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$add": [
+                                "$_id.primitiveInt",
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -704,8 +783,29 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": {"$multiply": ["$_id.k0", 2]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$multiply": [
+                                "$_id.k0",
+                                2
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -722,11 +822,25 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {
-                          "primitiveInt": "$primitiveInt",
-                          "k1": {"$add": ["$primitiveInt", 1]}
-                        }}},
-                        {"$project": {"#c_1": "$_id.k1", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt",
+                              "k1": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k1",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -743,8 +857,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$multiply": [-1, "$primitiveInt"]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$multiply": [
+                                  -1,
+                                  "$primitiveInt"
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -761,11 +891,26 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {
-                          "primitiveInt": "$primitiveInt",
-                          "k1": {"$add": ["$primitiveInt", 1]}
-                        }}},
-                        {"$project": {"#c_1": "$_id.k1", "_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt",
+                              "k1": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k1",
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -788,8 +933,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 10]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  10
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -809,9 +970,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$match": {"_id.k0": {"$gt": 2}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "_id.k0": {
+                              "$gt": 2
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -829,12 +1012,40 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$match": {"$and": [
-                          {"_id.k0": {"$gt": 2}},
-                          {"_id.k0": {"$lt": 5}}
-                        ]}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$and": [
+                              {
+                                "_id.k0": {
+                                  "$gt": 2
+                                }
+                              },
+                              {
+                                "_id.k0": {
+                                  "$lt": 5
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -854,11 +1065,34 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$switch": {
-                          "branches": [{"case": {"$gt": ["$_id.primitiveInt", 2]}, "then": 1}],
-                          "default": 0
-                        }}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {
+                                    "case": {
+                                      "$gt": [
+                                        "$_id.primitiveInt",
+                                        2
+                                      ]
+                                    },
+                                    "then": 1
+                                  }
+                                ],
+                                "default": 0
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -880,14 +1114,44 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$switch": {
-                          "branches": [{"case": {"$and": [
-                            {"$gt": ["$_id.primitiveInt", 1]},
-                            {"$lt": ["$_id.primitiveInt", 4]}
-                          ]}, "then": 1}],
-                          "default": 0
-                        }}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {
+                                    "case": {
+                                      "$and": [
+                                        {
+                                          "$gt": [
+                                            "$_id.primitiveInt",
+                                            1
+                                          ]
+                                        },
+                                        {
+                                          "$lt": [
+                                            "$_id.primitiveInt",
+                                            4
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "then": 1
+                                  }
+                                ],
+                                "default": 0
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -907,8 +1171,21 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -928,8 +1205,26 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": {"$add": ["$_id.k0", 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$add": [
+                                "$_id.k0",
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -948,8 +1243,23 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$toUpper": {"$toLower": "$string"}}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$toUpper": {
+                                  "$toLower": "$string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -969,8 +1279,23 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$toLower": "$string"}}}},
-                        {"$project": {"#c_1": {"$toUpper": "$_id.k0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$toLower": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$toUpper": "$_id.k0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -990,8 +1315,27 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": "$_id.k0", "#c_2": {"$add": ["$_id.k0", 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "#c_2": {
+                              "$add": [
+                                "$_id.k0",
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1014,9 +1358,28 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$match": {"_id.k0": {"$gt": 0}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "_id.k0": {
+                              "$gt": 0
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1037,11 +1400,36 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": {"$switch": {
-                          "branches": [{"case": {"$gt": ["$_id.k0", 0]}, "then": 1}],
-                          "default": 0
-                        }}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {
+                                    "case": {
+                                      "$gt": [
+                                        "$_id.k0",
+                                        0
+                                      ]
+                                    },
+                                    "then": 1
+                                  }
+                                ],
+                                "default": 0
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1062,11 +1450,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": {"$concat": [
-                          {"$toString": "$string"},
-                          {"$toString": "$string"}
-                        ]}}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": {
+                                  "$concat": [
+                                    {
+                                      "$toString": "$string"
+                                    },
+                                    {
+                                      "$toString": "$string"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1087,11 +1494,23 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {
-                          "primitiveInt": "$primitiveInt",
-                          "k1": {"$toUpper": "$string"}
-                        }}},
-                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "#c_2": "$_id.k1", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt",
+                              "k1": {
+                                "$toUpper": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$_id.k1",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1153,10 +1572,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$match": {"_id.itemStruct#primitiveInt": {"$gt": 1}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$match": {
+                        "_id.itemStruct#primitiveInt": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.itemStruct#primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1173,10 +1613,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$match": {"primitiveInt": {"$gt": 1}}},
-                    {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                    {"$sort": {"_id.primitiveInt": 1}},
-                    {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
+                    {
+                      "$match": {
+                        "primitiveInt": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$group": {
+                        "_id": {
+                          "primitiveInt": "$primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#primitiveInt": "$_id.primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1193,10 +1654,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$match": {"itemStruct.primitiveInt": {"$gt": 1}}},
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$match": {
+                        "itemStruct.primitiveInt": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.itemStruct#primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1213,9 +1695,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"_id": "$_id"}}},
-                    {"$sort": {"_id._id": 1}},
-                    {"$project": {"_id#_id": "$_id._id", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "_id": "$_id"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id._id": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#_id": "$_id._id",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1236,9 +1733,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": 1}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1256,9 +1774,45 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$switch": {"branches": [{"case": {"$eq": ["$primitiveInt", null]}, "then": 0}], "default": 1}}}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {
+                                        "$eq": [
+                                          "$primitiveInt",
+                                          null
+                                        ]
+                                      },
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1276,9 +1830,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1296,9 +1871,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$avg": "$primitiveInt"}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toDouble": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$avg": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toDouble": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1316,9 +1912,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$min": "$primitiveInt"}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toInt": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$min": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toInt": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1336,9 +1953,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$max": "$primitiveInt"}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toInt": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$max": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toInt": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1357,9 +1995,54 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": 1}, "#acc_1": {"$sum": "$primitiveInt"}, "#acc_2": {"$avg": "$primitiveInt"}, "#acc_3": {"$min": "$primitiveInt"}, "#acc_4": {"$max": "$primitiveInt"}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "#c_3": {"$toLong": "$#acc_1"}, "#c_4": {"$toDouble": "$#acc_2"}, "#c_5": {"$toInt": "$#acc_3"}, "#c_6": {"$toInt": "$#acc_4"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            },
+                            "#acc_1": {
+                              "$sum": "$primitiveInt"
+                            },
+                            "#acc_2": {
+                              "$avg": "$primitiveInt"
+                            },
+                            "#acc_3": {
+                              "$min": "$primitiveInt"
+                            },
+                            "#acc_4": {
+                              "$max": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "#c_3": {
+                              "$toLong": "$#acc_1"
+                            },
+                            "#c_4": {
+                              "$toDouble": "$#acc_2"
+                            },
+                            "#c_5": {
+                              "$toInt": "$#acc_3"
+                            },
+                            "#c_6": {
+                              "$toInt": "$#acc_4"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1380,9 +2063,35 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1400,9 +2109,35 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$avg": "$primitiveInt"}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$add": [{"$toDouble": "$#acc_0"}, 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$avg": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$add": [
+                                {
+                                  "$toDouble": "$#acc_0"
+                                },
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1421,10 +2156,34 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$match": {"#acc_0": {"$gt": 4}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 4
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1442,10 +2201,37 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$match": {"#acc_0": {"$gt": 4}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 4
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1463,10 +2249,40 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}, "#acc_1": {"$sum": 1}}},
-                        {"$match": {"#acc_1": {"$gt": 2}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            },
+                            "#acc_1": {
+                              "$sum": 1
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_1": {
+                              "$gt": 2
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1484,10 +2300,42 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$avg": "$primitiveInt"}}},
-                        {"$match": {"$expr": {"$gt": [{"$add": ["$#acc_0", 1]}, 3]}}},
-                        {"$sort": {"_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$avg": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$expr": {
+                              "$gt": [
+                                {
+                                  "$add": [
+                                    "$#acc_0",
+                                    1
+                                  ]
+                                },
+                                3
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1505,9 +2353,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1525,9 +2395,28 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1545,9 +2434,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "total": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "total": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1565,9 +2476,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$sort": {"#acc_0": -1, "_id.string": 1}},
-                        {"$project": {"_id#string": "$_id.string", "#c_2": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1590,10 +2523,37 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"string": "$string"}, "#acc_0": {"$sum": "$primitiveInt"}}},
-                        {"$match": {"#acc_0": {"$gt": 4}}},
-                        {"$sort": {"#acc_0": 1}},
-                        {"$project": {"_id#string": "$_id.string", "total": {"$toLong": "$#acc_0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 4
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "total": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1642,12 +2602,25 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     hql, Object[].class, FeatureNotSupportedException.class, "not allowed in GROUP BY");
         }
 
+        /** Grouping the whole collection is a `$group` with a null `_id`; not implemented yet. */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
+        void aggregateWithoutGroupByIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select " + function + "(b.primitiveInt) from Item as b",
+                    Object.class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-262");
+        }
+
+        /** {@code count(*)} takes the same path, through a {@code Star} argument rather than a column. */
         @Test
-        void aggregateWithoutGroupByIsRejected() {
-            assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
-                                    "select sum(b.primitiveInt) from Item as b", Object.class)
-                            .getResultList()))
-                    .isInstanceOf(FeatureNotSupportedException.class);
+        void countStarWithoutGroupByIsRejected() {
+            assertSelectQueryFailure(
+                    "select count(*) from Item as b",
+                    Object.class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-262");
         }
 
         static Stream<Arguments> statisticalAggregateQueries() {
@@ -1671,6 +2644,21 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
             assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-257");
         }
 
+        /**
+         * {@code every} and {@code any} are aggregate functions Hibernate ORM models the same way as the five we
+         * translate, so they reach the accumulator switch rather than the generic unsupported-function path.
+         * {@code some} is a synonym of {@code any} and arrives under that name.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(strings = {"every", "any", "some"})
+        void booleanAggregateIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select b.string, " + function + "(b.primitiveBoolean) from Item as b GROUP BY b.string",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-261");
+        }
+
         static Stream<String> aggregateWithFilterQueries() {
             return Stream.of(
                     "select b.string, sum(b.primitiveInt) filter (where b.primitiveInt > 1) from Item as b"
@@ -1680,28 +2668,22 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             + " GROUP BY b.string");
         }
 
-        /**
-         * HQL's {@code FILTER (WHERE ...)} restricts which rows an aggregate sees, which no {@code $group} accumulator
-         * expresses directly, so it is refused. Only the exception type is asserted: the message currently comes from
-         * the generic unsupported-function path, which names a ticket about a different shape, and should be given one
-         * of its own.
-         */
+        /** HQL's {@code FILTER (WHERE ...)} restricts which rows an aggregate sees; not translated yet. */
         @ParameterizedTest(name = "[{index}] {0}")
         @MethodSource("aggregateWithFilterQueries")
         void aggregateWithFilterIsRejected(String hql) {
-            assertThatThrownBy(() -> getSessionFactoryScope()
-                            .inTransaction(session -> session.createSelectionQuery(hql, Object[].class)
-                                    .getResultList()))
-                    .isInstanceOf(FeatureNotSupportedException.class);
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-260");
         }
 
-        @Test
-        void distinctWithinAggregateIsRejected() {
-            assertThatThrownBy(() -> getSessionFactoryScope().inTransaction(session -> session.createSelectionQuery(
-                                    "select b.string, count(distinct b.primitiveInt) from Item as b GROUP BY b.string",
-                                    Object[].class)
-                            .getResultList()))
-                    .isInstanceOf(FeatureNotSupportedException.class);
+        /** Hibernate ORM accepts {@code distinct} on every aggregate we translate, not only on {@code count}. */
+        @ParameterizedTest(name = "[{index}] {0}(distinct ...)")
+        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
+        void distinctWithinAggregateIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select b.string, " + function + "(distinct b.primitiveInt) from Item as b GROUP BY b.string",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-259");
         }
     }
 
@@ -1740,9 +2722,51 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}, "#acc_0": {"$sum": 1}, "#acc_1": {"$sum": {"$switch": {"branches": [{"case": {"$eq": ["$string", null]}, "then": 0}], "default": 1}}}}},
-                        {"$sort": {"_id.primitiveInt": 1}},
-                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "#c_2": {"$toLong": "$#acc_0"}, "#c_3": {"$toLong": "$#acc_1"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            },
+                            "#acc_1": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {
+                                        "$eq": [
+                                          "$string",
+                                          null
+                                        ]
+                                      },
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.primitiveInt": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "#c_3": {
+                              "$toLong": "$#acc_1"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1761,9 +2785,44 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}, "#acc_0": {"$sum": {"$switch": {"branches": [{"case": {"$eq": ["$string", null]}, "then": 0}], "default": 1}}}}},
-                        {"$match": {"#acc_0": {"$gt": 0}}},
-                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {
+                                        "$eq": [
+                                          "$string",
+                                          null
+                                        ]
+                                      },
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 0
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1815,9 +2874,48 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "books",
                       "pipeline": [
-                        {"$group": {"_id": {"title": "$title"}, "#acc_0": {"$sum": "$isbn13"}, "#acc_1": {"$sum": "$publishYear"}, "#acc_2": {"$sum": "$discount"}, "#acc_3": {"$sum": "$price"}}},
-                        {"$sort": {"_id.title": 1}},
-                        {"$project": {"_id#title": "$_id.title", "#c_2": {"$toLong": "$#acc_0"}, "#c_3": {"$toLong": "$#acc_1"}, "#c_4": {"$toDouble": "$#acc_2"}, "#c_5": {"$toDecimal": "$#acc_3"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "title": "$title"
+                            },
+                            "#acc_0": {
+                              "$sum": "$isbn13"
+                            },
+                            "#acc_1": {
+                              "$sum": "$publishYear"
+                            },
+                            "#acc_2": {
+                              "$sum": "$discount"
+                            },
+                            "#acc_3": {
+                              "$sum": "$price"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.title": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#title": "$_id.title",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "#c_3": {
+                              "$toLong": "$#acc_1"
+                            },
+                            "#c_4": {
+                              "$toDouble": "$#acc_2"
+                            },
+                            "#c_5": {
+                              "$toDecimal": "$#acc_3"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
