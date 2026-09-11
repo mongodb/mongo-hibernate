@@ -25,6 +25,7 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
+import com.mongodb.hibernate.query.Book;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -32,6 +33,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -44,6 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(MongoExtension.class)
 @DomainModel(
@@ -150,8 +153,19 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -202,9 +216,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.itemStruct#primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -638,6 +667,46 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
+        void groupByCaseKey() {
+            assertSelectionQuery(
+                    "select case when b.primitiveInt > 2 then 1 else 0 end from Item as b"
+                            + " GROUP BY case when b.primitiveInt > 2 then 1 else 0 end",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {"$gt": ["$primitiveInt", 2]},
+                                      "then": 1
+                                    }
+                                  ],
+                                  "default": 0
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(0, 1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
         void groupByArithmeticWholeMatch() {
             assertSelectionQuery(
                     "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1",
@@ -646,8 +715,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -664,8 +749,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$add": ["$_id.primitiveInt", 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$add": [
+                                "$_id.primitiveInt",
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -682,8 +783,29 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$project": {"#c_1": {"$multiply": ["$_id.k0", 2]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$multiply": [
+                                "$_id.k0",
+                                2
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -700,11 +822,25 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {
-                          "primitiveInt": "$primitiveInt",
-                          "k1": {"$add": ["$primitiveInt", 1]}
-                        }}},
-                        {"$project": {"#c_1": "$_id.k1", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt",
+                              "k1": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k1",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -721,8 +857,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$multiply": [-1, "$primitiveInt"]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$multiply": [
+                                  -1,
+                                  "$primitiveInt"
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -739,11 +891,26 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {
-                          "primitiveInt": "$primitiveInt",
-                          "k1": {"$add": ["$primitiveInt", 1]}
-                        }}},
-                        {"$project": {"#c_1": "$_id.k1", "_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt",
+                              "k1": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k1",
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -766,8 +933,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 10]}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  10
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -787,9 +970,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$match": {"_id.k0": {"$gt": 2}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "_id.k0": {
+                              "$gt": 2
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -807,12 +1012,40 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$add": ["$primitiveInt", 1]}}}},
-                        {"$match": {"$and": [
-                          {"_id.k0": {"$gt": 2}},
-                          {"_id.k0": {"$lt": 5}}
-                        ]}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$and": [
+                              {
+                                "_id.k0": {
+                                  "$gt": 2
+                                }
+                              },
+                              {
+                                "_id.k0": {
+                                  "$lt": 5
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -832,11 +1065,34 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$switch": {
-                          "branches": [{"case": {"$gt": ["$_id.primitiveInt", 2]}, "then": 1}],
-                          "default": 0
-                        }}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {
+                                    "case": {
+                                      "$gt": [
+                                        "$_id.primitiveInt",
+                                        2
+                                      ]
+                                    },
+                                    "then": 1
+                                  }
+                                ],
+                                "default": 0
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -858,14 +1114,44 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                        {"$project": {"#c_1": {"$switch": {
-                          "branches": [{"case": {"$and": [
-                            {"$gt": ["$_id.primitiveInt", 1]},
-                            {"$lt": ["$_id.primitiveInt", 4]}
-                          ]}, "then": 1}],
-                          "default": 0
-                        }}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {
+                                    "case": {
+                                      "$and": [
+                                        {
+                                          "$gt": [
+                                            "$_id.primitiveInt",
+                                            1
+                                          ]
+                                        },
+                                        {
+                                          "$lt": [
+                                            "$_id.primitiveInt",
+                                            4
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "then": 1
+                                  }
+                                ],
+                                "default": 0
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -885,8 +1171,21 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -906,8 +1205,26 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": {"$add": ["$_id.k0", 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$add": [
+                                "$_id.k0",
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -926,8 +1243,23 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$toUpper": {"$toLower": "$string"}}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$toUpper": {
+                                  "$toLower": "$string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -947,8 +1279,23 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$toLower": "$string"}}}},
-                        {"$project": {"#c_1": {"$toUpper": "$_id.k0"}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$toLower": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$toUpper": "$_id.k0"
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -968,8 +1315,27 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": "$_id.k0", "#c_2": {"$add": ["$_id.k0", 1]}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "#c_2": {
+                              "$add": [
+                                "$_id.k0",
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -992,9 +1358,28 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$match": {"_id.k0": {"$gt": 0}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "_id.k0": {
+                              "$gt": 0
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1015,11 +1400,36 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": "$string"}}}},
-                        {"$project": {"#c_1": {"$switch": {
-                          "branches": [{"case": {"$gt": ["$_id.k0", 0]}, "then": 1}],
-                          "default": 0
-                        }}, "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$switch": {
+                                "branches": [
+                                  {
+                                    "case": {
+                                      "$gt": [
+                                        "$_id.k0",
+                                        0
+                                      ]
+                                    },
+                                    "then": 1
+                                  }
+                                ],
+                                "default": 0
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1040,11 +1450,30 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {"k0": {"$strLenCP": {"$concat": [
-                          {"$toString": "$string"},
-                          {"$toString": "$string"}
-                        ]}}}}},
-                        {"$project": {"#c_1": "$_id.k0", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$strLenCP": {
+                                  "$concat": [
+                                    {
+                                      "$toString": "$string"
+                                    },
+                                    {
+                                      "$toString": "$string"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1065,11 +1494,23 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     {
                       "aggregate": "Item",
                       "pipeline": [
-                        {"$group": {"_id": {
-                          "primitiveInt": "$primitiveInt",
-                          "k1": {"$toUpper": "$string"}
-                        }}},
-                        {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "#c_2": "$_id.k1", "_id": 0}}
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt",
+                              "k1": {
+                                "$toUpper": "$string"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$_id.k1",
+                            "_id": 0
+                          }
+                        }
                       ]
                     }
                     """,
@@ -1131,10 +1572,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$match": {"_id.itemStruct#primitiveInt": {"$gt": 1}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$match": {
+                        "_id.itemStruct#primitiveInt": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.itemStruct#primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1151,10 +1613,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$match": {"primitiveInt": {"$gt": 1}}},
-                    {"$group": {"_id": {"primitiveInt": "$primitiveInt"}}},
-                    {"$sort": {"_id.primitiveInt": 1}},
-                    {"$project": {"_id#primitiveInt": "$_id.primitiveInt", "_id": 0}}
+                    {
+                      "$match": {
+                        "primitiveInt": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$group": {
+                        "_id": {
+                          "primitiveInt": "$primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#primitiveInt": "$_id.primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1171,10 +1654,31 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$match": {"itemStruct.primitiveInt": {"$gt": 1}}},
-                    {"$group": {"_id": {"itemStruct#primitiveInt": "$itemStruct.primitiveInt"}}},
-                    {"$sort": {"_id.itemStruct#primitiveInt": 1}},
-                    {"$project": {"_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt", "_id": 0}}
+                    {
+                      "$match": {
+                        "itemStruct.primitiveInt": {
+                          "$gt": 1
+                        }
+                      }
+                    },
+                    {
+                      "$group": {
+                        "_id": {
+                          "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id.itemStruct#primitiveInt": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
@@ -1191,14 +1695,1236 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                 {
                   "aggregate": "Item",
                   "pipeline": [
-                    {"$group": {"_id": {"_id": "$_id"}}},
-                    {"$sort": {"_id._id": 1}},
-                    {"$project": {"_id#_id": "$_id._id", "_id": 0}}
+                    {
+                      "$group": {
+                        "_id": {
+                          "_id": "$_id"
+                        }
+                      }
+                    },
+                    {
+                      "$sort": {
+                        "_id._id": 1
+                      }
+                    },
+                    {
+                      "$project": {
+                        "_id#_id": "$_id._id",
+                        "_id": 0
+                      }
+                    }
                   ]
                 }
                 """,
                 List.of(1, 2, 3, 4, 5, 6, 7, 8),
                 Set.of(COLLECTION_NAME));
+    }
+
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class Accumulators extends AbstractQueryIntegrationTests {
+
+        @Test
+        void countStar() {
+            assertSelectionQuery(
+                    "select b.string, count(*) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 4L}, new Object[] {"b", 2L}, new Object[] {"c", 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countColumn() {
+            assertSelectionQuery(
+                    "select b.string, count(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {
+                                        "$eq": [
+                                          "$primitiveInt",
+                                          null
+                                        ]
+                                      },
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 4L}, new Object[] {"b", 2L}, new Object[] {"c", 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sum() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 4L}, new Object[] {"b", 4L}, new Object[] {"c", 7L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void avg() {
+            assertSelectionQuery(
+                    "select b.string, avg(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$avg": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toDouble": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1.0}, new Object[] {"b", 2.0}, new Object[] {"c", 3.5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void min() {
+            assertSelectionQuery(
+                    "select b.string, min(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$min": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toInt": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1}, new Object[] {"b", 2}, new Object[] {"c", 3}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void max() {
+            assertSelectionQuery(
+                    "select b.string, max(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$max": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toInt": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1}, new Object[] {"b", 2}, new Object[] {"c", 4}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void allAggregateFunctionsCombined() {
+            assertSelectionQuery(
+                    "select b.string, count(*), sum(b.primitiveInt), avg(b.primitiveInt), min(b.primitiveInt),"
+                            + " max(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            },
+                            "#acc_1": {
+                              "$sum": "$primitiveInt"
+                            },
+                            "#acc_2": {
+                              "$avg": "$primitiveInt"
+                            },
+                            "#acc_3": {
+                              "$min": "$primitiveInt"
+                            },
+                            "#acc_4": {
+                              "$max": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "#c_3": {
+                              "$toLong": "$#acc_1"
+                            },
+                            "#c_4": {
+                              "$toDouble": "$#acc_2"
+                            },
+                            "#c_5": {
+                              "$toInt": "$#acc_3"
+                            },
+                            "#c_6": {
+                              "$toInt": "$#acc_4"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(
+                                    new Object[] {"a", 4L, 4L, 1.0, 1, 1},
+                                    new Object[] {"b", 2L, 4L, 2.0, 2, 2},
+                                    new Object[] {"c", 2L, 7L, 3.5, 3, 4}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateOfExpression() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt + 1) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 8L}, new Object[] {"b", 6L}, new Object[] {"c", 9L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void expressionWrappingAggregate() {
+            assertSelectionQuery(
+                    "select b.string, avg(b.primitiveInt) + 1 from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$avg": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$add": [
+                                {
+                                  "$toDouble": "$#acc_0"
+                                },
+                                1
+                              ]
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2.0}, new Object[] {"b", 3.0}, new Object[] {"c", 4.5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateOnlyInHaving() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string HAVING sum(b.primitiveInt) > 4"
+                            + " ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 4
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of("c"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sameAggregateInHavingAndSelectSharesOneAccumulator() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " HAVING sum(b.primitiveInt) > 4 ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 4
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {"c", 7L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void differentAggregatesInHavingAndSelect() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " HAVING count(*) > 2 ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            },
+                            "#acc_1": {
+                              "$sum": 1
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_1": {
+                              "$gt": 2
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {"a", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void expressionWrappingAggregateInHaving() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string HAVING avg(b.primitiveInt) + 1 > 3"
+                            + " ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$avg": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$expr": {
+                              "$gt": [
+                                {
+                                  "$add": [
+                                    "$#acc_0",
+                                    1
+                                  ]
+                                },
+                                3
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of("c"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregate() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " ORDER BY sum(b.primitiveInt) DESC, b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"c", 7L}, new Object[] {"a", 4L}, new Object[] {"b", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregateAbsentFromSelect() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string ORDER BY sum(b.primitiveInt) DESC, b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of("c", "a", "b"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregateAlias() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) as total from Item as b GROUP BY b.string"
+                            + " ORDER BY total DESC, b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "total": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"c", 7L}, new Object[] {"a", 4L}, new Object[] {"b", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAggregateOrdinal() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) from Item as b GROUP BY b.string ORDER BY 2 DESC, 1",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"c", 7L}, new Object[] {"a", 4L}, new Object[] {"b", 4L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * An alias naming an aggregate that is already in SELECT must resolve to the accumulator SELECT registered, not
+         * add a second one.
+         */
+        @Test
+        void orderByAggregateAliasSharesTheSelectAccumulator() {
+            assertSelectionQuery(
+                    "select b.string, sum(b.primitiveInt) as total from Item as b GROUP BY b.string"
+                            + " HAVING sum(b.primitiveInt) > 4 ORDER BY total",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 4
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "total": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {"c", 7L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * Ordering by an expression is unsupported however it is named, but it must now fail with a ticket rather than
+         * with the message-less exception an unresolved alias used to produce.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @MethodSource("orderByExpressionQueries")
+        void orderByExpressionIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-251");
+        }
+
+        static Stream<String> orderByExpressionQueries() {
+            return Stream.of(
+                    // written out
+                    "select b.string, avg(b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " ORDER BY avg(b.primitiveInt) + 1",
+                    // by alias
+                    "select b.string, avg(b.primitiveInt) + 1 as a from Item as b GROUP BY b.string ORDER BY a",
+                    // by ordinal
+                    "select b.string, avg(b.primitiveInt) + 1 from Item as b GROUP BY b.string ORDER BY 2");
+        }
+
+        static Stream<String> aggregateInGroupByQueries() {
+            return Stream.of(
+                    "select sum(b.primitiveInt) from Item as b GROUP BY sum(b.primitiveInt)",
+                    "select b.string, count(*) from Item as b GROUP BY b.string, count(*)",
+                    "select b.string from Item as b GROUP BY sum(b.primitiveInt)");
+        }
+
+        /**
+         * SQL does not allow an aggregate function in GROUP BY, but Hibernate ORM passes one through. Translating it
+         * would make the {@code _id} sub-key reference the accumulator's own {@code $group} output field, which does
+         * not exist among the stage's input documents, so every document would land in one group under a null key with
+         * no error.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @MethodSource("aggregateInGroupByQueries")
+        void aggregateInGroupByIsRejected(String hql) {
+            assertSelectQueryFailure(
+                    hql, Object[].class, FeatureNotSupportedException.class, "not allowed in GROUP BY");
+        }
+
+        /** Grouping the whole collection is a `$group` with a null `_id`; not implemented yet. */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
+        void aggregateWithoutGroupByIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select " + function + "(b.primitiveInt) from Item as b",
+                    Object.class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-262");
+        }
+
+        /** {@code count(*)} takes the same path, through a {@code Star} argument rather than a column. */
+        @Test
+        void countStarWithoutGroupByIsRejected() {
+            assertSelectQueryFailure(
+                    "select count(*) from Item as b",
+                    Object.class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-262");
+        }
+
+        static Stream<Arguments> statisticalAggregateQueries() {
+            return Stream.of("stddev_pop", "stddev_samp", "var_pop", "var_samp", "stddev", "variance")
+                    .flatMap(function -> Stream.of(
+                            Arguments.of(
+                                    function,
+                                    "select b.string, " + function
+                                            + "(b.primitiveInt) from Item as b GROUP BY b.string"),
+                            Arguments.of(function, "select " + function + "(b.primitiveInt) from Item as b")));
+        }
+
+        /**
+         * HQL's statistical aggregates are not translated yet. They are rejected by name rather than by falling through
+         * the generic unsupported-function path, so the message names the ticket that tracks them; see <a
+         * href="https://jira.mongodb.org/browse/HIBERNATE-257">HIBERNATE-257</a>.
+         */
+        @ParameterizedTest(name = "[{index}] {0}: {1}")
+        @MethodSource("statisticalAggregateQueries")
+        void statisticalAggregateIsRejected(String function, String hql) {
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-257");
+        }
+
+        /**
+         * {@code every} and {@code any} are aggregate functions Hibernate ORM models the same way as the five we
+         * translate, so they reach the accumulator switch rather than the generic unsupported-function path.
+         * {@code some} is a synonym of {@code any} and arrives under that name.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(strings = {"every", "any", "some"})
+        void booleanAggregateIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select b.string, " + function + "(b.primitiveBoolean) from Item as b GROUP BY b.string",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-261");
+        }
+
+        static Stream<String> aggregateWithFilterQueries() {
+            return Stream.of(
+                    "select b.string, sum(b.primitiveInt) filter (where b.primitiveInt > 1) from Item as b"
+                            + " GROUP BY b.string",
+                    "select b.string, count(*) filter (where b.primitiveInt > 1) from Item as b GROUP BY b.string",
+                    "select b.string, avg(b.primitiveInt) filter (where b.primitiveInt > 1) from Item as b"
+                            + " GROUP BY b.string");
+        }
+
+        /** HQL's {@code FILTER (WHERE ...)} restricts which rows an aggregate sees; not translated yet. */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @MethodSource("aggregateWithFilterQueries")
+        void aggregateWithFilterIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-260");
+        }
+
+        /** Hibernate ORM accepts {@code distinct} on every aggregate we translate, not only on {@code count}. */
+        @ParameterizedTest(name = "[{index}] {0}(distinct ...)")
+        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
+        void distinctWithinAggregateIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select b.string, " + function + "(distinct b.primitiveInt) from Item as b GROUP BY b.string",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-259");
+        }
+    }
+
+    /**
+     * SQL's {@code COUNT(x)} counts only the rows where {@code x} is not null, which is the whole reason the translator
+     * emits a {@code $switch} rather than a bare {@code $sum: 1}. The shared dataset has no nulls, so this nest brings
+     * its own.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class CountNullSemantics extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                List.of(
+                                // primitiveInt 1: two non-null strings and one null
+                                new Item(1, 1, "x", true, new ItemStruct(1)),
+                                new Item(2, 1, null, true, new ItemStruct(1)),
+                                new Item(3, 1, "y", true, new ItemStruct(1)),
+                                // primitiveInt 2: every string null, so count(string) must be 0 while count(*) is 2
+                                new Item(4, 2, null, false, new ItemStruct(2)),
+                                new Item(5, 2, null, false, new ItemStruct(2)))
+                        .forEach(session::persist);
+            });
+        }
+
+        @Test
+        void countOfNullableColumnExcludesNulls() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, count(*), count(b.string) from Item as b"
+                            + " GROUP BY b.primitiveInt ORDER BY b.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            },
+                            "#acc_1": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {
+                                        "$eq": [
+                                          "$string",
+                                          null
+                                        ]
+                                      },
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.primitiveInt": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "#c_3": {
+                              "$toLong": "$#acc_1"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {1, 3L, 2L}, new Object[] {2, 2L, 0L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /** A HAVING on a non-null count filters on the counted rows, not on the group size. */
+        @Test
+        void havingOnCountOfNullableColumn() {
+            assertSelectionQuery(
+                    "select b.primitiveInt from Item as b GROUP BY b.primitiveInt HAVING count(b.string) > 0",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {
+                                        "$eq": [
+                                          "$string",
+                                          null
+                                        ]
+                                      },
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "#acc_0": {
+                              "$gt": 0
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(1),
+                    Set.of(COLLECTION_NAME));
+        }
+    }
+
+    /**
+     * {@code $sum} yields {@code int32 0} for a group it finds nothing to add, without evaluating its argument. A
+     * conversion applied to that argument therefore never runs, and reading the {@code int32} back as the type
+     * Hibernate ORM inferred throws. {@code Item} has no nullable numeric column, so this uses {@code Book}.
+     *
+     * <p>The value returned for such a group is {@code 0} rather than SQL's {@code NULL}, because that is what
+     * {@code $sum} produces; the conversion only fixes its width.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class, Book.class})
+    class SumOverGroupWithNoValues extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                session.createMutationQuery("delete from Book").executeUpdate();
+                var withValues = new Book(1, "hasValues", 2001, false);
+                withValues.isbn13 = 10L;
+                withValues.discount = 1.5;
+                withValues.price = new BigDecimal("1.50");
+                session.persist(withValues);
+                // Every aggregated column null, in both rows of the group.
+                for (var id : List.of(2, 3)) {
+                    var allNull = new Book(id, "allNull", null, false);
+                    allNull.isbn13 = null;
+                    allNull.discount = null;
+                    allNull.price = null;
+                    session.persist(allNull);
+                }
+            });
+        }
+
+        @Test
+        void sumOverAGroupWithNoValues() {
+            assertSelectionQuery(
+                    "select b.title, sum(b.isbn13), sum(b.publishYear), sum(b.discount), sum(b.price) from Book as b"
+                            + " GROUP BY b.title ORDER BY b.title",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "title": "$title"
+                            },
+                            "#acc_0": {
+                              "$sum": "$isbn13"
+                            },
+                            "#acc_1": {
+                              "$sum": "$publishYear"
+                            },
+                            "#acc_2": {
+                              "$sum": "$discount"
+                            },
+                            "#acc_3": {
+                              "$sum": "$price"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.title": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#title": "$_id.title",
+                            "#c_2": {
+                              "$toLong": "$#acc_0"
+                            },
+                            "#c_3": {
+                              "$toLong": "$#acc_1"
+                            },
+                            "#c_4": {
+                              "$toDouble": "$#acc_2"
+                            },
+                            "#c_5": {
+                              "$toDecimal": "$#acc_3"
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(
+                                    new Object[] {"allNull", 0L, 0L, 0.0d, new BigDecimal("0")},
+                                    new Object[] {"hasValues", 10L, 2001L, 1.5d, new BigDecimal("1.50")}),
+                    Set.of("books"));
+        }
     }
 
     @Nested

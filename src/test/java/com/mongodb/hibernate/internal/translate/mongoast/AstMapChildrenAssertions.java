@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstPipelineUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
@@ -189,6 +190,23 @@ public final class AstMapChildrenAssertions {
         @Override
         public AstProjectStageSpecification rewrite(AstProjectStageSpecification node) {
             return record(node, new AstProjectStageIncludeSpecification(name(node)));
+        }
+
+        @Override
+        public AstGroupStageAccumulatorSpecification rewrite(AstGroupStageAccumulatorSpecification node) {
+            return record(
+                    node,
+                    new AstGroupStageAccumulatorSpecification(
+                            name(node),
+                            new AstAccumulatorExpression(
+                                    AstAccumulatorOperator.SUM, new AstFieldPathExpression(name(node)))));
+        }
+
+        @Override
+        public AstAccumulatorExpression rewrite(AstAccumulatorExpression node) {
+            return record(
+                    node,
+                    new AstAccumulatorExpression(AstAccumulatorOperator.MAX, new AstFieldPathExpression(name(node))));
         }
 
         @Override
