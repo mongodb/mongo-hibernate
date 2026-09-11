@@ -16,7 +16,9 @@
 
 package com.mongodb.hibernate.internal.dialect;
 
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.SEQUENCE_COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.orMissing;
 import static com.mongodb.hibernate.internal.dialect.function.FunctionParameterDefinition.required;
 import static com.mongodb.hibernate.internal.dialect.function.MongoExpressionPositionalFunction.swap;
@@ -53,10 +55,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.hibernate.JDBCException;
 import org.hibernate.boot.Metadata;
@@ -67,6 +72,7 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
+import org.hibernate.dialect.sequence.SequenceSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
@@ -86,6 +92,7 @@ import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
 import org.hibernate.sql.model.jdbc.OptionalTableUpdateOperation;
+import org.hibernate.tool.schema.extract.spi.SequenceInformationExtractor;
 import org.hibernate.tool.schema.spi.Exporter;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
@@ -198,6 +205,29 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     @Override
     public AggregateSupport getAggregateSupport() {
         return MongoAggregateSupport.INSTANCE;
+    }
+
+    @Override
+    public SequenceSupport getSequenceSupport() {
+        return MongoSequenceSupport.INSTANCE;
+    }
+
+    /**
+     * Projects only the two fields {@link MongoSequenceInformationExtractor} reads, out of every document in
+     * {@value MongoConstants#SEQUENCE_COLLECTION_NAME}.
+     */
+    @Override
+    public String getQuerySequencesString() {
+        var projectStage = new BsonDocument(ID_FIELD_NAME, new BsonInt32(1))
+                .append(MongoSequenceSupport.INCREMENT_FIELD_NAME, new BsonInt32(1));
+        return new BsonDocument("aggregate", new BsonString(SEQUENCE_COLLECTION_NAME))
+                .append("pipeline", new BsonArray(List.of(new BsonDocument("$project", projectStage))))
+                .toJson(MongoConstants.EXTENDED_JSON_WRITER_SETTINGS);
+    }
+
+    @Override
+    public SequenceInformationExtractor getSequenceInformationExtractor() {
+        return MongoSequenceInformationExtractor.INSTANCE;
     }
 
     @Override

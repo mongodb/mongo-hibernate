@@ -21,15 +21,25 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertInstanceOf;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertNotNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
+import static com.mongodb.hibernate.internal.MongoConstants.SEQUENCE_COLLECTION_NAME;
+import static com.mongodb.hibernate.internal.boot.NameChecks.forbidDot;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
+import com.mongodb.hibernate.annotations.ObjectIdGenerator;
 import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
+import com.mongodb.hibernate.internal.MongoConstants;
 import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.TableGenerator;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -57,6 +67,8 @@ import org.bson.types.MinKey;
 import org.bson.types.Symbol;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.GeneratedColumn;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.IdGeneratorType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.Struct;
 import org.hibernate.boot.Metadata;
@@ -72,11 +84,13 @@ import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.UniqueKey;
+import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
@@ -152,11 +166,13 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             forbidDerivedIdentity(persistentClass);
             forbidJdbcTypeCodeAnnotation(persistentClass);
             forbidColumnFragmentAnnotations(persistentClass);
+            forbidUnsupportedIdentifierGeneration(persistentClass, metadata);
             setIdentifierColumnName(persistentClass);
             materializeUniqueColumns(persistentClass);
         });
         forbidCatalog(metadata, buildingContext);
         forbidDottedTableQualifiers(metadata);
+        forbidReservedCollectionName(metadata);
     }
 
     /**
@@ -210,12 +226,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 catalog));
     }
 
-    /**
-     * A schema folds into the collection name as {@code schema.name}, so the '.' is the extension's own separator. A
-     * '.' written by the user makes the resolved name ambiguous: {@code @Table(schema = "a", name = "b")} and
-     * {@code @Table(name = "a.b")} would resolve to the same collection, and nothing downstream could tell the two
-     * qualifiers apart.
-     */
+    /** @see NameChecks#forbidDot(String, String) */
     private static void forbidDottedTableQualifiers(InFlightMetadataCollector metadata) {
         for (var namespace : metadata.getDatabase().getNamespaces()) {
             var schema = namespace.getName().schema();
@@ -228,13 +239,22 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         }
     }
 
-    private static void forbidDot(String name, String kind) {
-        if (name.contains(".")) {
-            throw new FeatureNotSupportedException(format(
-                    "The character [.] in a %s name is not supported, but is present in [%s]. A schema folds into the"
-                            + " collection name as [schema.name], so a '.' written by the user would make the resolved"
-                            + " collection name ambiguous.",
-                    kind, name));
+    /**
+     * {@value MongoConstants#SEQUENCE_COLLECTION_NAME} is fixed and not configurable, so mapping an entity onto it is
+     * the user's only way to collide with the sequence counters it holds.
+     */
+    private static void forbidReservedCollectionName(InFlightMetadataCollector metadata) {
+        for (var namespace : metadata.getDatabase().getNamespaces()) {
+            var schema = namespace.getName().schema();
+            for (var table : namespace.getTables()) {
+                var resolved = schema == null ? table.getName() : schema.getText() + "." + table.getName();
+                if (resolved.equals(SEQUENCE_COLLECTION_NAME)) {
+                    throw new FeatureNotSupportedException(format(
+                            "An entity is mapped to the collection [%s], which is reserved for Hibernate sequence"
+                                    + " counters.",
+                            SEQUENCE_COLLECTION_NAME));
+                }
+            }
         }
     }
 
@@ -363,8 +383,191 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 false,
                 ClassElementChecker.forbid(Generated.class),
                 ClassElementChecker.forbid(GeneratedColumn.class),
-                ClassElementChecker.forbid(GeneratedValue.class),
                 ClassElementChecker.CURRENT_TIMESTAMP_WITH_DB_SOURCE);
+    }
+
+    private static final Set<String> IDENTITY_FLAVORED_LEGACY_GENERATOR_NAMES = Set.of("identity");
+    private static final Set<String> TABLE_FLAVORED_LEGACY_GENERATOR_NAMES = Set.of("table", "enhanced-table");
+    private static final Set<String> UUID_FLAVORED_LEGACY_GENERATOR_NAMES = Set.of("uuid", "uuid.hex", "uuid2", "guid");
+
+    /**
+     * The names {@code GeneratorStrategies.mapLegacyNamedGenerator} maps to something other than a sequence.
+     * {@code sequence} and {@code enhanced-sequence} are absent because they are supported, and so is {@code native},
+     * which resolves through {@code Dialect#getNativeIdentifierGeneratorStrategy} to {@code sequence} for a dialect
+     * without identity columns.
+     */
+    private static final Set<String> NON_SEQUENCE_LEGACY_GENERATOR_NAMES = Set.of(
+            "assigned",
+            "foreign",
+            "select",
+            "increment",
+            "identity",
+            "table",
+            "enhanced-table",
+            "uuid",
+            "uuid.hex",
+            "uuid2",
+            "guid");
+
+    /**
+     * Only sequence-backed generation is supported, and only for the identifier types Hibernate ORM reads with
+     * {@code ResultSet#getLong}.
+     *
+     * <p>{@code generatedValue.strategy()} is not what determines the generator Hibernate actually resolves: an unnamed
+     * {@code AUTO} generator can be captured by a localized {@link TableGenerator}, and a named generator can map
+     * through {@code GeneratorStrategies.mapLegacyNamedGenerator} to identity, table, increment or UUID generation
+     * regardless of what {@code strategy()} says. Since the resolved generator is not introspectable
+     * ({@link SimpleValue#getCustomIdGeneratorCreator()} is an opaque lambda), the annotation shapes that could produce
+     * one of those generators are forbidden directly rather than relying on {@code strategy()}.
+     */
+    private static void forbidUnsupportedIdentifierGeneration(
+            PersistentClass persistentClass, InFlightMetadataCollector metadata) {
+        var identifier = persistentClass.getIdentifier();
+        if (!(identifier instanceof SimpleValue simpleValue)) {
+            return;
+        }
+        var memberDetails = simpleValue.getMemberDetails();
+        if (memberDetails == null) {
+            return;
+        }
+        // getDirectAnnotationUsage returns null when the annotation is absent, though it is declared without
+        // @Nullable, so an IDE reports this check as always false. Removing it would run the switch below on every
+        // entity, including the ones with no @GeneratedValue at all.
+        var generatedValue = memberDetails.getDirectAnnotationUsage(GeneratedValue.class);
+        if (generatedValue == null) {
+            return;
+        }
+        forbidUnintrospectableGenerator(persistentClass, memberDetails, generatedValue, metadata);
+        switch (generatedValue.strategy()) {
+            case AUTO, SEQUENCE -> forbidUnsupportedGeneratedIdentifierType(persistentClass, identifier);
+            case IDENTITY -> throw identityGenerationNotSupported(persistentClass);
+            case TABLE -> throw tableGenerationNotSupported(persistentClass);
+            case UUID -> throw uuidGenerationNotSupported(persistentClass);
+        }
+    }
+
+    /**
+     * Rejects the annotation combinations that resolve, via Hibernate's own generator lookup, to a generator other than
+     * a MongoDB-backed sequence: a {@link TableGenerator} or {@link GenericGenerator} localized on the identifier
+     * member or its entity class, a meta-annotation annotated with {@link IdGeneratorType}, and a non-blank
+     * {@code generator()} that names none of {@code @SequenceGenerator} localized on the member/class or declared
+     * globally in the metadata.
+     */
+    @SuppressWarnings("removal") // org.hibernate.annotations.GenericGenerator is deprecated but still resolvable
+    private static void forbidUnintrospectableGenerator(
+            PersistentClass persistentClass,
+            MemberDetails idMember,
+            GeneratedValue generatedValue,
+            InFlightMetadataCollector metadata) {
+        var classDetails = metadata.getClassDetailsRegistry().getClassDetails(persistentClass.getClassName());
+        var modelsContext = metadata.getBootstrapContext().getModelsContext();
+
+        if (idMember.hasDirectAnnotationUsage(TableGenerator.class)
+                || classDetails.hasDirectAnnotationUsage(TableGenerator.class)) {
+            throw tableGenerationNotSupported(persistentClass);
+        }
+        if (idMember.hasDirectAnnotationUsage(GenericGenerator.class)
+                || classDetails.hasDirectAnnotationUsage(GenericGenerator.class)) {
+            throw unsupportedGenerator(
+                    persistentClass, format("a [@%s] identifier generator", GenericGenerator.class.getSimpleName()));
+        }
+        if (!idMember.getMetaAnnotated(IdGeneratorType.class, modelsContext).isEmpty()
+                || !classDetails
+                        .getMetaAnnotated(IdGeneratorType.class, modelsContext)
+                        .isEmpty()) {
+            throw unsupportedGenerator(
+                    persistentClass,
+                    format(
+                            "a custom identifier generator (meta-annotated with [@%s])",
+                            IdGeneratorType.class.getSimpleName()));
+        }
+
+        var generatorName = generatedValue.generator();
+        if (!generatorName.isBlank() && namesANonSequenceGenerator(generatorName, metadata)) {
+            throw nonSequenceGenerator(persistentClass, generatorName);
+        }
+    }
+
+    /**
+     * Any name that is neither a legacy non-sequence name nor a globally registered {@link GenericGenerator} either
+     * matches a declared {@link SequenceGenerator} or becomes an implicit sequence, and both are supported. A declared
+     * {@link SequenceGenerator} is not looked up here because generator names are global: an entity may name one
+     * declared on a different entity.
+     */
+    private static boolean namesANonSequenceGenerator(String generatorName, InFlightMetadataCollector metadata) {
+        return NON_SEQUENCE_LEGACY_GENERATOR_NAMES.contains(generatorName)
+                || metadata.getGlobalRegistrations()
+                        .getGenericGeneratorRegistrations()
+                        .containsKey(generatorName);
+    }
+
+    private static FeatureNotSupportedException nonSequenceGenerator(
+            PersistentClass persistentClass, String generatorName) {
+        if (IDENTITY_FLAVORED_LEGACY_GENERATOR_NAMES.contains(generatorName)) {
+            return identityGenerationNotSupported(persistentClass);
+        }
+        if (TABLE_FLAVORED_LEGACY_GENERATOR_NAMES.contains(generatorName)) {
+            return tableGenerationNotSupported(persistentClass);
+        }
+        if (UUID_FLAVORED_LEGACY_GENERATOR_NAMES.contains(generatorName)) {
+            return uuidGenerationNotSupported(persistentClass);
+        }
+        return unsupportedGenerator(persistentClass, format("the identifier generator named [%s]", generatorName));
+    }
+
+    private static FeatureNotSupportedException unsupportedGenerator(PersistentClass persistentClass, String what) {
+        return new FeatureNotSupportedException(format(
+                "%s: %s is not supported; the only supported identifier generation is sequence-backed"
+                        + " (@GeneratedValue with strategy AUTO or SEQUENCE, naming a @SequenceGenerator or no"
+                        + " generator name at all)",
+                persistentClass, what));
+    }
+
+    private static FeatureNotSupportedException identityGenerationNotSupported(PersistentClass persistentClass) {
+        return new FeatureNotSupportedException(format(
+                "%s: identifier generation strategy [%s] is not supported: %s has no auto-increment field and"
+                        + " no way to return a generated key from an insert. Use [%s], or [@%s] for a"
+                        + " database-chosen ObjectId identifier.",
+                persistentClass,
+                GenerationType.IDENTITY,
+                MONGO_DBMS_NAME,
+                GenerationType.SEQUENCE,
+                ObjectIdGenerator.class.getSimpleName()));
+    }
+
+    private static FeatureNotSupportedException tableGenerationNotSupported(PersistentClass persistentClass) {
+        return new FeatureNotSupportedException(format(
+                "%s: identifier generation strategy [%s] is not supported; use [%s]."
+                        + " TODO-HIBERNATE-252 https://jira.mongodb.org/browse/HIBERNATE-252",
+                persistentClass, GenerationType.TABLE, GenerationType.SEQUENCE));
+    }
+
+    private static FeatureNotSupportedException uuidGenerationNotSupported(PersistentClass persistentClass) {
+        return new FeatureNotSupportedException(format(
+                "%s: identifier generation strategy [%s] is not supported."
+                        + " TODO-HIBERNATE-121 https://jira.mongodb.org/browse/HIBERNATE-121",
+                persistentClass, GenerationType.UUID));
+    }
+
+    private static void forbidUnsupportedGeneratedIdentifierType(PersistentClass persistentClass, KeyValue identifier) {
+        var identifierType = identifier.getType().getReturnedClass();
+        if (isSupportedGeneratedIdentifierType(identifierType)) {
+            return;
+        }
+        if (identifierType == BigInteger.class || identifierType == BigDecimal.class) {
+            throw new FeatureNotSupportedException(format(
+                    "%s: a generated identifier of type [%s] is not supported."
+                            + " TODO-HIBERNATE-253 https://jira.mongodb.org/browse/HIBERNATE-253",
+                    persistentClass, identifierType.getTypeName()));
+        }
+        throw new FeatureNotSupportedException(format(
+                "%s: a generated identifier of type [%s] is not supported;"
+                        + " supported types are [short], [int] and [long] and their boxed forms",
+                persistentClass, identifierType.getTypeName()));
+    }
+
+    private static boolean isSupportedGeneratedIdentifierType(Class<?> identifierType) {
+        return identifierType == Short.class || identifierType == Integer.class || identifierType == Long.class;
     }
 
     private static void checkPropertyType(

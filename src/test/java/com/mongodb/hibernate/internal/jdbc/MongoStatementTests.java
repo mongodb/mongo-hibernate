@@ -18,6 +18,8 @@ package com.mongodb.hibernate.internal.jdbc;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -185,8 +187,13 @@ class MongoStatementTests {
 
         @Test
         void testExecute() throws SQLException {
-            assertThrows(SQLFeatureNotSupportedException.class, () -> mongoStatement.execute(EXAMPLE_UPDATE_MQL));
+            doReturn(BulkWriteResult.acknowledged(0, 1, 0, 0, emptyList(), emptyList()))
+                    .when(mongoCollection)
+                    .bulkWrite(eq(clientSession), anyList());
+
+            mongoStatement.execute(EXAMPLE_UPDATE_MQL);
             assertTrue(lastOpenResultSet.isClosed());
+            verify(mongoCollection).bulkWrite(eq(clientSession), anyList());
         }
     }
 
@@ -218,6 +225,75 @@ class MongoStatementTests {
                 () -> failureAsserter.accept(
                         "{title: ['array literal']}", "Unsupported value in '$project' specification"),
                 () -> successAsserter.accept("{title: {fieldName: 'document literal'}}", List.of("title")));
+    }
+
+    @Test
+    void findAndModifyIsRejectedByExecuteUpdate() {
+        var command = BsonDocument.parse(
+                """
+                {
+                  "findAndModify": "hibernate_sequences",
+                  "query": {"_id": "books_SEQ"}
+                }""");
+        assertThatThrownBy(() -> MongoStatement.checkSupportedUpdateCommand(command))
+                .isInstanceOf(SQLFeatureNotSupportedException.class)
+                .hasMessage("Unsupported command for executeUpdate: findAndModify");
+    }
+
+    /**
+     * {@code findAndModify} exists in the adapter to allocate sequence values, which must not join the caller's
+     * transaction, so a command that does not opt out is refused rather than run transactionally. The refusal precedes
+     * any collection access, which is why this needs no stubbing.
+     */
+    @Test
+    void findAndModifyWithoutOptingOutOfTheTransactionIsRejected() {
+        var command = BsonDocument.parse(
+                """
+                {
+                  "findAndModify": "hibernate_sequences",
+                  "query": {"_id": "books_SEQ"},
+                  "update": [{"$set": {"next_value": {"$add": ["$next_value", 1]}}}],
+                  "new": false,
+                  "fields": {"_id": 0, "next_value": 1}
+                }""");
+        assertThatThrownBy(() -> mongoStatement.executeQuery(command))
+                .isInstanceOf(SQLFeatureNotSupportedException.class)
+                .hasMessageContaining("nonTransactional");
+    }
+
+    @Test
+    void findAndModifyIsAcceptedByExecuteQuery() {
+        var command = BsonDocument.parse(
+                """
+                {
+                  "findAndModify": "hibernate_sequences",
+                  "query": {"_id": "books_SEQ"}
+                }""");
+        assertThatCode(() -> MongoStatement.checkSupportedQueryCommand(command)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void executeRoutesWriteCommandsAwayFromAdminCommands() throws SQLException {
+        var seed =
+                """
+                {
+                  "update": "hibernate_sequences",
+                  "updates": [
+                    {
+                      "q": {"_id": "books_SEQ"},
+                      "u": {"$setOnInsert": {"next_value": {"$numberLong": "1"}}},
+                      "upsert": true
+                    }
+                  ]
+                }""";
+        doReturn(mongoCollection).when(mongoDatabase).getCollection(anyString(), eq(BsonDocument.class));
+        doReturn(BulkWriteResult.acknowledged(0, 0, 0, 0, emptyList(), emptyList()))
+                .when(mongoCollection)
+                .bulkWrite(eq(clientSession), anyList());
+
+        mongoStatement.execute(seed);
+
+        verify(mongoCollection).bulkWrite(eq(clientSession), anyList());
     }
 
     @Nested

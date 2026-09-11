@@ -24,12 +24,19 @@ than forwarding it verbatim.
 
 - Queries and mutations: the translators build a `mongoast` tree, which is serialized to Extended JSON
   and carried as the statement string, then executed by `MongoStatement` / `MongoPreparedStatement`.
-- Schema DDL: an `Exporter` produces the same kind of string, which `MongoStatement.execute(String)`
-  decodes into a typed command object before calling the driver.
+- Schema DDL: an `Exporter` produces the same kind of string. `MongoStatement.execute(String)` parses it,
+  routes a write command name to `executeUpdate(BsonDocument)`, and otherwise decodes it as an
+  `AdminCommand`.
 
 Two consequences worth internalizing. A statement string that looks like valid MQL is not proof the
 feature works --- something still has to parse it on the far side. And "the server accepted it" is a
 weaker claim than "the emitted command matches the mapping", because a dropped detail throws nothing.
+
+A command can also carry a field that is not MongoDB's at all: `nonTransactional` is a JDBC-adapter
+field that `MongoStatement` reads and acts on --- when `true`, it runs the command without a
+`ClientSession` and without starting a transaction --- and must never forward to the driver. A new
+command that forwards a document verbatim (rather than being decoded field by field, the way
+`findAndModify` and the write commands are) needs to strip it first.
 
 ## Translation goes through the visitor
 
@@ -184,7 +191,9 @@ That absence determines which mappings can be honoured. Hibernate models some co
 exportable --- `@Index` and `@Table(uniqueConstraints = ...)` --- and leaves others to be inlined into
 table DDL by the table exporter, `@Column(unique = true)` among them. Only the first group reaches an
 exporter here, so anything in the second group has to be handled off the exporter path to have any
-effect at all.
+effect at all. A Hibernate sequence is the other exportable this layer honours: `MongoDialect` returns
+`MongoSequenceSupport` from `getSequenceSupport()`, and `StandardSequenceExporter` calls it to render
+the create/drop commands for the counter collection backing `@GeneratedValue`.
 
 Export runs at `SessionFactory` build time, driven by
 `jakarta.persistence.schema-generation.database.action` --- so it is exercised by building a factory,

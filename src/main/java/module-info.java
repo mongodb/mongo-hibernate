@@ -15,10 +15,12 @@
  */
 
 import com.mongodb.hibernate.internal.boot.MongoAdditionalMappingContributor;
+import com.mongodb.hibernate.internal.boot.MongoSequenceIntegrator;
 import com.mongodb.hibernate.internal.service.MongoNamedStrategyContributor;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
 import org.hibernate.boot.registry.selector.spi.NamedStrategyContributor;
 import org.hibernate.boot.spi.AdditionalMappingContributor;
+import org.hibernate.integrator.spi.Integrator;
 import org.hibernate.service.spi.ServiceContributor;
 
 /**
@@ -136,6 +138,8 @@ module com.mongodb.hibernate {
             MongoNamedStrategyContributor;
     provides AdditionalMappingContributor with
             MongoAdditionalMappingContributor;
+    provides Integrator with
+            MongoSequenceIntegrator;
 
     opens com.mongodb.hibernate.internal.dialect to
             org.hibernate.orm.core;

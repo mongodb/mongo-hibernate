@@ -50,6 +50,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Tuple;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -782,6 +783,28 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     @Nested
     class Unsupported implements MongoServiceRegistryProducer {
+        /**
+         * {@code findAndModify} reaches the JDBC adapter from a native query, but the adapter accepts only the fields
+         * it generates for sequence allocation.
+         */
+        @Test
+        void testFindAndModifyWithUnsupportedField() {
+            getSessionFactoryScope().inSession(session -> {
+                var mql =
+                        """
+                        {
+                          "findAndModify": "hibernate_sequences",
+                          "query": {},
+                          "update": [],
+                          "sort": {"_id": 1}
+                        }""";
+                assertThatThrownBy(() ->
+                                session.createNativeQuery(mql, Object.class).getResultList())
+                        .hasRootCauseInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessageContaining("sort");
+            });
+        }
+
         /**
          * We do not support this due to what seem to be a Hibernate ORM bug: <a
          * href="https://hibernate.atlassian.net/browse/HHH-19866">Entity native query incorrectly handles
