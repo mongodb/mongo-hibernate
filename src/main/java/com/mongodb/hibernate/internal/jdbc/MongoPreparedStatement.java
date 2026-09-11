@@ -25,6 +25,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
+import com.mongodb.hibernate.internal.type.UuidJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
@@ -38,6 +39,7 @@ import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -166,6 +168,8 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             value = assertInstanceOf(x, BsonDocument.class);
         } else if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
             value = toBsonValue(assertInstanceOf(x, ObjectId.class));
+        } else if (targetSqlType == UuidJdbcType.HIBERNATE_SQL_TYPE) {
+            value = toBsonValue(assertInstanceOf(x, UUID.class));
         } else if (targetSqlType == JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber()
                 && x instanceof Instant instant) {
             value = toBsonValue(instant);

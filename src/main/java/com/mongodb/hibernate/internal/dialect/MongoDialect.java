@@ -48,6 +48,7 @@ import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
+import com.mongodb.hibernate.internal.type.UuidJdbcType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
@@ -159,6 +160,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         typeContributions.contributeJdbcTypeConstructor(MongoArrayJdbcType.Constructor.INSTANCE);
         typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
         contributeInstantType(typeContributions);
+        contributeUuidType(typeContributions);
     }
 
     private void contributeObjectIdType(TypeContributions typeContributions) {
@@ -185,6 +187,20 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     private static void contributeInstantType(TypeContributions typeContributions) {
         var jdbcTypeRegistry = typeContributions.getTypeConfiguration().getJdbcTypeRegistry();
         jdbcTypeRegistry.addDescriptor(SqlTypes.TIMESTAMP_UTC, TimestampUtcAsInstantJdbcType.INSTANCE);
+    }
+
+    private void contributeUuidType(TypeContributions typeContributions) {
+        typeContributions.contributeJdbcType(UuidJdbcType.INSTANCE);
+        var uuidTypeCode = UuidJdbcType.HIBERNATE_SQL_TYPE;
+        typeContributions
+                .getTypeConfiguration()
+                .getDdlTypeRegistry()
+                .addDescriptorIfAbsent(new DdlTypeImpl(
+                        uuidTypeCode,
+                        format(
+                                "unused from %s.contributeUuidType for SQL type code [%d]",
+                                MongoDialect.class.getSimpleName(), uuidTypeCode),
+                        this));
     }
 
     @Override

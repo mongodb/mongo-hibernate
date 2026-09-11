@@ -48,6 +48,7 @@ import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 import org.bson.types.ObjectId;
@@ -193,6 +194,8 @@ final class MongoResultSet implements ResultSetAdapter {
             value = getValue(columnIndex, ValueConversions::toBsonDocumentDomainValue);
         } else if (type.equals(ObjectId.class)) {
             value = getValue(columnIndex, ValueConversions::toObjectIdDomainValue);
+        } else if (type.equals(UUID.class)) {
+            value = getValue(columnIndex, ValueConversions::toUuidDomainValue);
         } else if (type.equals(Instant.class)) {
             value = getValue(columnIndex, ValueConversions::toInstantDomainValue);
         } else {
