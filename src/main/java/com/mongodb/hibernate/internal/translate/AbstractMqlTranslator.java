@@ -127,7 +127,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.filter.AstListCompariso
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstRegularExpressionFilterOperation;
-import com.mongodb.hibernate.internal.translate.rewrite.AccumulatorResultCastRule;
 import com.mongodb.hibernate.internal.translate.rewrite.AstRewriter;
 import com.mongodb.hibernate.internal.translate.rewrite.ExprToMatchDowngradeRule;
 import com.mongodb.hibernate.internal.translate.rewrite.GroupBySubstitutionRule;
@@ -449,12 +448,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
         /** The names of the registered accumulators, for {@link GroupBySubstitutionRule}'s whitelist. */
         final Set<String> accumulatorFieldNames = new HashSet<>();
-
-        /**
-         * The conversion each accumulator's value needs to read back as the type Hibernate ORM inferred for the
-         * aggregate function, for {@link AccumulatorResultCastRule}. Holds only the accumulators that need one.
-         */
-        final Map<String, AstConversionExpressionOperator> accumulatorResultCasts = new HashMap<>();
     }
 
     // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
@@ -738,12 +731,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             havingStage = havingStage.map(astRewriter::rewrite);
             sortStage = sortStage.map(astRewriter::rewrite);
             projectStage = astRewriter.rewrite(projectStage);
-            // A second pass, over `$project` alone: the accumulator references have to survive the substitution rule
-            // above as bare field paths before they can be wrapped in their result conversion.
-            if (!ctx.accumulatorResultCasts.isEmpty()) {
-                projectStage = new AstRewriter(new AccumulatorResultCastRule(ctx.accumulatorResultCasts), null)
-                        .rewrite(projectStage);
-            }
         }
 
         havingStage.ifPresent(stages::add);
@@ -1907,11 +1894,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         throw new FeatureNotSupportedException(
                                 "Aggregate function is not supported: " + function.getFunctionName());
                 };
-        // The BSON type the accumulator produces is not always the one Hibernate ORM inferred for the function and
-        // will read the column back as: `$sum` over `int` fields yields an int, while HQL's `sum()` over them is a
-        // `Long`. The conversion is recorded against the accumulator's field and applied in `$project`, the only
-        // position where the type matters; see AccumulatorResultCastRule for why it cannot live inside `$group`.
-        return new AstFieldPathExpression(registerAccumulator(ctx, accumulator, resultTypeCast(function)));
+        // No conversion is emitted for the accumulator's value. The BSON type it produces is not always the one
+        // Hibernate ORM inferred -- `$sum` over `int` fields yields an int, while HQL's `sum()` over them is a
+        // `Long` -- but ValueConversions accepts any numeric type that represents the value exactly, which is also
+        // what a `$group` over an empty group requires: `$sum` returns an `int32` there whatever the column type.
+        return new AstFieldPathExpression(registerAccumulator(ctx, accumulator));
     }
 
     private AstExpression acceptAndYieldArgument(SqlAstNode argument) {
@@ -1936,26 +1923,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 List.of(new AstSwitchCase(isNull, new AstValueExpression(new AstLiteral(new BsonInt32(0))))), one);
     }
 
-    /** The conversion producing the BSON type of {@code expression}'s inferred result type, or {@code null}. */
-    private static @Nullable AstConversionExpressionOperator resultTypeCast(Expression expression) {
-        var expressionType = expression.getExpressionType();
-        if (expressionType == null || expressionType.getJdbcTypeCount() != 1) {
-            return null;
-        }
-        return switch (expressionType.getSingleJdbcMapping().getJdbcType().getDdlTypeCode()) {
-            case SqlTypes.TINYINT, SqlTypes.SMALLINT, SqlTypes.INTEGER -> AstConversionExpressionOperator.TO_INT;
-            case SqlTypes.BIGINT -> AstConversionExpressionOperator.TO_LONG;
-            case SqlTypes.REAL, SqlTypes.FLOAT, SqlTypes.DOUBLE -> AstConversionExpressionOperator.TO_DOUBLE;
-            case SqlTypes.DECIMAL, SqlTypes.NUMERIC -> AstConversionExpressionOperator.TO_DECIMAL;
-            default -> null;
-        };
-    }
-
     /** Returns the {@code $group} output field name of {@code accumulator}, registering it if it is new. */
-    private static String registerAccumulator(
-            GroupByContext ctx,
-            AstAccumulatorExpression accumulator,
-            @Nullable AstConversionExpressionOperator resultCast) {
+    private static String registerAccumulator(GroupByContext ctx, AstAccumulatorExpression accumulator) {
         var valueNumber = ctx.vnRegistry.valueNumber(accumulator);
         var registered = ctx.registeredAccumulatorsByVN.get(valueNumber);
         if (registered != null) {
@@ -1965,9 +1934,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         ctx.registeredAccumulatorsByVN.put(
                 valueNumber, new AstGroupStageAccumulatorSpecification(fieldName, accumulator));
         ctx.accumulatorFieldNames.add(fieldName);
-        if (resultCast != null) {
-            ctx.accumulatorResultCasts.put(fieldName, resultCast);
-        }
         return fieldName;
     }
 

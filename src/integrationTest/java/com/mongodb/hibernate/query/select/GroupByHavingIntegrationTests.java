@@ -1751,9 +1751,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -1807,9 +1805,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -1848,9 +1844,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -1889,9 +1883,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toDouble": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -1930,9 +1922,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toInt": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -1971,9 +1961,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toInt": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2025,21 +2013,11 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
-                            "#c_3": {
-                              "$toLong": "$#acc_1"
-                            },
-                            "#c_4": {
-                              "$toDouble": "$#acc_2"
-                            },
-                            "#c_5": {
-                              "$toInt": "$#acc_3"
-                            },
-                            "#c_6": {
-                              "$toInt": "$#acc_4"
-                            },
+                            "#c_2": "$#acc_0",
+                            "#c_3": "$#acc_1",
+                            "#c_4": "$#acc_2",
+                            "#c_5": "$#acc_3",
+                            "#c_6": "$#acc_4",
                             "_id": 0
                           }
                         }
@@ -2086,9 +2064,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2129,9 +2105,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             "_id#string": "$_id.string",
                             "#c_2": {
                               "$add": [
-                                {
-                                  "$toDouble": "$#acc_0"
-                                },
+                                "$#acc_0",
                                 1
                               ]
                             },
@@ -2226,9 +2200,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2277,9 +2249,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2372,9 +2342,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2453,9 +2421,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "total": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "total": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2495,9 +2461,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "#c_2": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2548,9 +2512,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#string": "$_id.string",
-                            "total": {
-                              "$toLong": "$#acc_0"
-                            },
+                            "total": "$#acc_0",
                             "_id": 0
                           }
                         }
@@ -2758,12 +2720,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#primitiveInt": "$_id.primitiveInt",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
-                            "#c_3": {
-                              "$toLong": "$#acc_1"
-                            },
+                            "#c_2": "$#acc_0",
+                            "#c_3": "$#acc_1",
                             "_id": 0
                           }
                         }
@@ -2864,6 +2822,67 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
             });
         }
 
+        /**
+         * {@code avg} is a {@code Double} in HQL whatever the column is, but {@code $avg} over a {@code BigDecimal}
+         * column returns a {@code decimal128}; {@code min}/{@code max} return an element, so they keep the column's own
+         * type and yield {@code null} for a group with nothing to compare.
+         */
+        @Test
+        void avgAndExtremesOverGroupsWithAndWithoutValues() {
+            assertSelectionQuery(
+                    "select b.title, avg(b.price), min(b.price), max(b.isbn13) from Book as b"
+                            + " GROUP BY b.title ORDER BY b.title",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "books",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "title": "$title"
+                            },
+                            "#acc_0": {
+                              "$avg": "$price"
+                            },
+                            "#acc_1": {
+                              "$min": "$price"
+                            },
+                            "#acc_2": {
+                              "$max": "$isbn13"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.title": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#title": "$_id.title",
+                            "#c_2": "$#acc_0",
+                            "#c_3": "$#acc_1",
+                            "#c_4": "$#acc_2",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(
+                                    new Object[] {"allNull", null, null, null},
+                                    new Object[] {"hasValues", 1.5d, new BigDecimal("1.50"), 10L}),
+                    Set.of("books"));
+        }
+
+        /**
+         * sum(b.isbn13) isbn13 is long but the sum of a group with no values is int32 0 <br>
+         * sum(b.publishYear) publishYear is int but the sum of a group with no values is int32 0 <br>
+         * sum(b.discount) discount is double but the sum of a group with no values is int32 <br>
+         * sum(b.price) price is BigDecimal but the sum of a group with no values is int32 0
+         */
         @Test
         void sumOverAGroupWithNoValues() {
             assertSelectionQuery(
@@ -2901,18 +2920,10 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                         {
                           "$project": {
                             "_id#title": "$_id.title",
-                            "#c_2": {
-                              "$toLong": "$#acc_0"
-                            },
-                            "#c_3": {
-                              "$toLong": "$#acc_1"
-                            },
-                            "#c_4": {
-                              "$toDouble": "$#acc_2"
-                            },
-                            "#c_5": {
-                              "$toDecimal": "$#acc_3"
-                            },
+                            "#c_2": "$#acc_0",
+                            "#c_3": "$#acc_1",
+                            "#c_4": "$#acc_2",
+                            "#c_5": "$#acc_3",
                             "_id": 0
                           }
                         }
