@@ -27,15 +27,10 @@ public enum AstAccumulatorOperator {
     /**
      * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/sum/">{@code $sum}</a>.
      *
-     * <p>HQL {@code count()} is also expressed with this operator, as {@code {"$sum": {"$toLong": <0 or 1>}}}, rather
-     * than with MQL's own <a
-     * href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/count-accumulator/">{@code $count}</a>
-     * accumulator, for two reasons. {@code $count} takes no argument, so it cannot express {@code COUNT(x)}, which
-     * counts only the documents where {@code x} is not null. And it returns an {@code int}, while HQL types
-     * {@code count()} as a {@code Long}, so the result needs a widening cast that cannot be applied here: an
-     * accumulator has to be the outermost operator of a {@code $group} specification, and the server rejects
-     * {@code {"$toLong": {"$count": {}}}} with {@code unknown group operator '$toLong'}. Casting the argument of
-     * {@code $sum} instead keeps one code path for every aggregate function.
+     * <p>HQL's {@code count()} is expressed with this operator rather than MQL's own <a
+     * href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/count-accumulator/">{@code $count}</a>,
+     * which takes no argument and so cannot express {@code COUNT(x)} --- the count of only the documents where
+     * {@code x} is not null.
      */
     SUM("$sum"),
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/avg/">{@code $avg}</a>. */

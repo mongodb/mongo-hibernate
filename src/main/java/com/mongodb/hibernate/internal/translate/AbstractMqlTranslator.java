@@ -1894,10 +1894,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         throw new FeatureNotSupportedException(
                                 "Aggregate function is not supported: " + function.getFunctionName());
                 };
-        // No conversion is emitted for the accumulator's value. The BSON type it produces is not always the one
-        // Hibernate ORM inferred -- `$sum` over `int` fields yields an int, while HQL's `sum()` over them is a
-        // `Long` -- but ValueConversions accepts any numeric type that represents the value exactly, which is also
-        // what a `$group` over an empty group requires: `$sum` returns an `int32` there whatever the column type.
         return new AstFieldPathExpression(registerAccumulator(ctx, accumulator));
     }
 

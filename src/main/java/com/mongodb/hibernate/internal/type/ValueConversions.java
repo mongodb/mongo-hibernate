@@ -57,6 +57,18 @@ import org.jspecify.annotations.Nullable;
  * implementation uses under the hood and rarely exposes, and domain values we usually use when setting parameter values
  * on our {@link PreparedStatement}, or retrieving column values from a {@link ResultSet}.
  *
+ * <h2>Numeric reads</h2>
+ *
+ * JDBC expects a numeric getter to convert between numeric types: <a
+ * href="https://docs.oracle.com/javase/1.5.0/docs/guide/jdbc/getstart/mapping.html">Table 8.6, "Conversions by
+ * {@code ResultSet.getXXX} Methods"</a> marks every numeric getter as able to retrieve every numeric type, with only
+ * the natural pairing marked as recommended. {@link #toLongDomainValue}, {@link #toDoubleDomainValue} and
+ * {@link #toBigDecimalDomainValue} accordingly accept any BSON numeric type.
+ *
+ * <p>They are stricter than that expectation in two places. {@link #toLongDomainValue} throws on a {@code double} or
+ * {@code decimal128} with a fractional part rather than truncating it, for example {@code 3.1415} is refused while
+ * {@code 3.0} converts.
+ *
  * @hidden
  */
 public final class ValueConversions {
@@ -248,15 +260,8 @@ public final class ValueConversions {
     }
 
     /**
-     * Numeric reads accept any BSON numeric type, this method converts it using the same rules as the driver's own
-     * codecs apply, see {@code org.bson.internal.NumberCodecHelper}.
-     *
-     * <p>A collection is schemaless and a {@code $group} accumulator takes its result type from the data it saw, for
-     * example {@code $sum} over a group with nothing to add returns an {@code int32} whatever the mapped column type
-     * is, and promotes to the widest type present otherwise. So a column Hibernate mapped as {@code Long} legitimately
-     * arrives as an {@code int32}. JDBC expects this too. See <a
-     * href="https://docs.oracle.com/javase/1.5.0/docs/guide/jdbc/getstart/mapping.html">8.9.6 Conversions by
-     * ResultSet.getXXX Methods</a>. Specification marks every numeric getter as able to retrieve every numeric type
+     * Converts to an integral type, refusing a value the target cannot represent exactly, as the driver's own codecs
+     * do; see {@code org.bson.internal.NumberCodecHelper}.
      */
     private static <T> T exactIntegralValue(BsonValue value, Function<BigDecimal, T> narrow) {
         var decimal = decimalValueOf(asNumber(value));
