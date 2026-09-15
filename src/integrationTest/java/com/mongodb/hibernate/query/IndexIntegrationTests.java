@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.query;
 
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
+import static com.mongodb.hibernate.junit.MongoRegistry.SCHEMA_GENERATION_BASE_SETTINGS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -26,6 +26,7 @@ import com.mongodb.hibernate.junit.CommandHistory;
 import com.mongodb.hibernate.junit.InjectCommandHistory;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoRegistry;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -33,6 +34,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -45,8 +47,6 @@ import org.bson.BsonString;
 import org.hibernate.AnnotationException;
 import org.hibernate.Session;
 import org.hibernate.annotations.NaturalId;
-import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -77,11 +77,6 @@ class IndexIntegrationTests {
     private static final String NATURAL_ID_UNIQUE_NAME = "UKgi1t3vwxloa7hbk51dl31r2a8";
     private static final String UNNAMED_INDEX_NAME = "IDX6eej5imjx4n2hikl5yyt8d14u";
     private static final String UNNAMED_UNIQUE_NAME = "UK4ut95qgekorog9ebigpnhjwa2";
-    private static final Map<String, Object> BASE_SETTINGS = Map.of(
-            "jakarta.persistence.schema-generation.database.action",
-            "create-drop",
-            "hibernate.hbm2ddl.halt_on_error",
-            "true");
 
     @InjectCommandHistory
     private CommandHistory commandHistory;
@@ -138,44 +133,22 @@ class IndexIntegrationTests {
                 .toList();
     }
 
-    /**
-     * Boots a {@code SessionFactory} for {@code entityClass} with {@code create-drop}, runs {@code body} while it is
-     * still open so the collection can be inspected before the drop half runs, and returns the commands sent.
-     *
-     * <p>The registry is built by hand rather than through Hibernate's testing framework, so it applies the contributor
-     * itself. That is what points the {@code SessionFactory} at this class's own database, the one that
-     * {@link InjectMongoCollection} reads, and what installs that database's command listener.
-     *
-     * <p>What one schema export produced: the commands sent, and whatever {@code observer} looked at while it was open.
-     */
-    private record Export<T>(List<BsonDocument> commands, T observed) {}
+    private <T> MongoRegistry.Run<T> inRegistry(Class<?> entityClass, Function<Session, T> action) {
+        return inRegistry(entityClass, Map.of(), action);
+    }
+
+    private <T> MongoRegistry.Run<T> inRegistry(
+            Class<?> entityClass, Map<String, Object> additionalSettings, Function<Session, T> action) {
+        var settings = new HashMap<>(SCHEMA_GENERATION_BASE_SETTINGS);
+        settings.putAll(additionalSettings);
+        return MongoRegistry.inRegistry(commandHistory, IndexIntegrationTests.class, settings, action, entityClass);
+    }
 
     /** Every index on the collection and which of them are unique, captured together. */
     private record Indexes(Map<String, List<String>> keys, List<String> unique) {}
 
     private static Indexes indexesAndUniqueness(MongoCollection<BsonDocument> collection) {
         return new Indexes(indexesOf(collection), uniqueIndexesOf(collection));
-    }
-
-    private <T> Export<T> inRegistry(
-            Class<?> entityClass, Map<String, Object> additionalSettings, Function<Session, T> observer) {
-        try (var registry = new StandardServiceRegistryBuilder()
-                .applySettings(BASE_SETTINGS)
-                .applySettings(additionalSettings)
-                .applySetting(
-                        MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
-                        MongoExtension.configurationContributorForClass(IndexIntegrationTests.class))
-                .build()) {
-            T observed;
-            try (var sessionFactory = new MetadataSources()
-                            .addAnnotatedClass(entityClass)
-                            .buildMetadata(registry)
-                            .buildSessionFactory();
-                    var session = sessionFactory.openSession()) {
-                observed = observer.apply(session);
-            }
-            return new Export<>(commandHistory.getCommands(), observed);
-        }
     }
 
     /**
@@ -222,7 +195,7 @@ class IndexIntegrationTests {
     /** {@code @Index} with the direction left out and spelled out, over one field and over several. */
     @Test
     void ascendingIndexes() {
-        var export = inRegistry(Ascending.class, Map.of(), session -> indexesAndUniqueness(ascendingCollection));
+        var export = inRegistry(Ascending.class, session -> indexesAndUniqueness(ascendingCollection));
 
         assertThat(createIndexesCommands(export.commands()))
                 .containsExactlyInAnyOrder(
@@ -243,7 +216,7 @@ class IndexIntegrationTests {
     /** {@code @Index} carrying {@code desc}, alone and mixed with {@code asc} in a compound key. */
     @Test
     void descendingIndexes() {
-        var export = inRegistry(Descending.class, Map.of(), session -> indexesAndUniqueness(descendingCollection));
+        var export = inRegistry(Descending.class, session -> indexesAndUniqueness(descendingCollection));
 
         assertThat(createIndexesCommands(export.commands()))
                 .containsExactlyInAnyOrder(
@@ -265,7 +238,7 @@ class IndexIntegrationTests {
      */
     @Test
     void uniqueConstraints() {
-        var export = inRegistry(Constrained.class, Map.of(), session -> indexesAndUniqueness(constrainedCollection));
+        var export = inRegistry(Constrained.class, session -> indexesAndUniqueness(constrainedCollection));
 
         assertThat(createIndexesCommands(export.commands()))
                 .containsExactlyInAnyOrder(
@@ -288,8 +261,7 @@ class IndexIntegrationTests {
      */
     @Test
     void uniqueDescendingIndexes() {
-        var export = inRegistry(
-                UniqueDescending.class, Map.of(), session -> indexesAndUniqueness(uniqueDescendingCollection));
+        var export = inRegistry(UniqueDescending.class, session -> indexesAndUniqueness(uniqueDescendingCollection));
 
         assertThat(createIndexesCommands(export.commands()))
                 .containsExactlyInAnyOrder(
@@ -312,7 +284,7 @@ class IndexIntegrationTests {
      */
     @Test
     void columnLevelUnique() {
-        var export = inRegistry(ColumnUnique.class, Map.of(), session -> indexesAndUniqueness(columnUniqueCollection));
+        var export = inRegistry(ColumnUnique.class, session -> indexesAndUniqueness(columnUniqueCollection));
 
         assertThat(createIndexesCommands(export.commands()))
                 .containsExactlyInAnyOrder(createIndexes("column_unique", COLUMN_UNIQUE_NAME, true, "shelfCode:1"));
@@ -326,7 +298,7 @@ class IndexIntegrationTests {
     /** An unnamed declaration takes its name from Hibernate's implicit naming strategy, never from the extension. */
     @Test
     void unnamedDeclarationsAreNamedByHibernate() {
-        assertThat(inRegistry(Unnamed.class, Map.of(), session -> indexesOf(unnamedCollection))
+        assertThat(inRegistry(Unnamed.class, session -> indexesOf(unnamedCollection))
                         .observed())
                 .containsOnly(
                         Map.entry(UNNAMED_INDEX_NAME, List.of("title:1")),
@@ -343,7 +315,7 @@ class IndexIntegrationTests {
      */
     @Test
     void indexesFollowTheQualifiedCollectionName() {
-        var export = inRegistry(Qualified.class, Map.of(), session -> indexesOf(qualifiedCollection));
+        var export = inRegistry(Qualified.class, session -> indexesOf(qualifiedCollection));
 
         assertThat(createIndexesCommands(export.commands()))
                 .containsExactly(createIndexes("lib.tomes", "idx_title", false, "title:1"));
@@ -353,7 +325,7 @@ class IndexIntegrationTests {
     /** {@code create-drop} creates the collection when the {@code SessionFactory} opens and drops it when it closes. */
     @Test
     void createDropLifecycle() {
-        var commands = inRegistry(Ascending.class, Map.of(), session -> null).commands();
+        var commands = inRegistry(Ascending.class, session -> null).commands();
         assertThat(commands.stream()
                         .filter(command -> command.containsKey("create"))
                         .map(command -> command.getString("create").getValue()))
@@ -385,8 +357,7 @@ class IndexIntegrationTests {
 
     @Test
     void naturalIdCreatesUniqueKey() {
-        var commands =
-                inRegistry(NaturalIdEntity.class, Map.of(), session -> null).commands();
+        var commands = inRegistry(NaturalIdEntity.class, session -> null).commands();
         assertThat(createIndexesCommands(commands))
                 .containsExactlyInAnyOrder(createIndexes("natural_id", NATURAL_ID_UNIQUE_NAME, true, "isbn:1"));
     }
@@ -397,7 +368,7 @@ class IndexIntegrationTests {
         /** MongoDB has no equivalent of a trailing DDL fragment. */
         @Test
         void indexOptions() {
-            assertThatThrownBy(() -> inRegistry(WithOptions.class, Map.of(), session -> null))
+            assertThatThrownBy(() -> inRegistry(WithOptions.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage("Index idx_options on with_options has options, which is not supported");
         }
@@ -409,7 +380,7 @@ class IndexIntegrationTests {
          */
         @Test
         void formulaIndex() {
-            assertThatThrownBy(() -> inRegistry(WithFormulaIndex.class, Map.of(), session -> null))
+            assertThatThrownBy(() -> inRegistry(WithFormulaIndex.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage(
                             "Index idx_formula on with_formula_index uses a formula column, which is not supported");
@@ -418,7 +389,7 @@ class IndexIntegrationTests {
         /** The same, for the one mapping in which {@code Index.isUnique()} is ever true. */
         @Test
         void uniqueFormulaIndex() {
-            assertThatThrownBy(() -> inRegistry(WithUniqueFormulaIndex.class, Map.of(), session -> null))
+            assertThatThrownBy(() -> inRegistry(WithUniqueFormulaIndex.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage("Index idx_unique_formula on with_unique_formula_index uses a formula column, which is"
                             + " not supported");
@@ -443,7 +414,7 @@ class IndexIntegrationTests {
         /** {@code columnList} naming a column that is not mapped. */
         @Test
         void indexOnUnmappedColumn() {
-            assertThatThrownBy(() -> inRegistry(UnmappedIndexColumn.class, Map.of(), session -> null))
+            assertThatThrownBy(() -> inRegistry(UnmappedIndexColumn.class, session -> null))
                     .isInstanceOf(AnnotationException.class)
                     .hasMessage("Table 'unmapped_index' has no column named 'noSuchColumn'");
         }
@@ -451,7 +422,7 @@ class IndexIntegrationTests {
         /** {@code columnNames} naming a column that is not mapped. A different Hibernate code path from the above. */
         @Test
         void uniqueConstraintOnUnmappedColumn() {
-            assertThatThrownBy(() -> inRegistry(UnmappedConstraintColumn.class, Map.of(), session -> null))
+            assertThatThrownBy(() -> inRegistry(UnmappedConstraintColumn.class, session -> null))
                     .isInstanceOf(AnnotationException.class)
                     .hasMessage("Table 'unmapped_constraint' has no column named 'noSuchColumn'");
         }

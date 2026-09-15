@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.id;
 
-import static com.mongodb.hibernate.internal.MongoConstants.MONGO_CONFIGURATION_CONTRIBUTOR_KEY;
+import static com.mongodb.hibernate.junit.MongoRegistry.SCHEMA_GENERATION_BASE_SETTINGS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -27,6 +27,7 @@ import com.mongodb.hibernate.junit.CommandHistory;
 import com.mongodb.hibernate.junit.InjectCommandHistory;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoExtension;
+import com.mongodb.hibernate.junit.MongoRegistry;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,6 +38,7 @@ import jakarta.persistence.TableGenerator;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -50,9 +52,6 @@ import org.hibernate.MappingException;
 import org.hibernate.Session;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
-import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.service.ServiceRegistry;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -73,12 +72,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(MongoExtension.class)
 class SequenceGeneratedIdIntegrationTests {
 
-    private static final Map<String, Object> BASE_SETTINGS = Map.of(
-            "jakarta.persistence.schema-generation.database.action",
-            "create-drop",
-            "hibernate.hbm2ddl.halt_on_error",
-            "true");
-
     @InjectCommandHistory
     private CommandHistory commandHistory;
 
@@ -88,43 +81,19 @@ class SequenceGeneratedIdIntegrationTests {
     @InjectMongoCollection("books")
     private MongoCollection<BsonDocument> books;
 
-    /** What one booted {@code SessionFactory} produced: the commands sent, and whatever the body observed. */
-    private record Run<T>(List<BsonDocument> commands, T observed) {}
-
     /** The identifiers a persist-then-reload round trip observed, and the counter document at that point. */
     private record PersistedBook(long id, long reloadedId, BsonDocument sequenceDocument) {}
 
-    /**
-     * Boots a {@code SessionFactory} for {@code entityClasses} with {@code create-drop}, runs {@code body} while it is
-     * open, and returns the commands sent along with the {@code body}'s result.
-     *
-     * <p>The {@link ServiceRegistry}  is built programmatically so it can apply the contributor that points the {@code SessionFactory} at this
-     * class's own database and installs that database's command listener.
-     */
-    private <T> Run<T> inRegistry(Function<Session, T> body, Class<?>... entityClasses) {
-        return inRegistry(Map.of(), body, entityClasses);
+    private <T> MongoRegistry.Run<T> inRegistry(Class<?> entityClass, Function<Session, T> action) {
+        return inRegistry(entityClass, Map.of(), action);
     }
 
-    private <T> Run<T> inRegistry(
-            Map<String, Object> additionalSettings, Function<Session, T> body, Class<?>... entityClasses) {
-        try (var registry = new StandardServiceRegistryBuilder()
-                .applySettings(BASE_SETTINGS)
-                .applySettings(additionalSettings)
-                .applySetting(
-                        MONGO_CONFIGURATION_CONTRIBUTOR_KEY,
-                        MongoExtension.configurationContributorForClass(SequenceGeneratedIdIntegrationTests.class))
-                .build()) {
-            T observed;
-            var metadataSources = new MetadataSources();
-            for (var entityClass : entityClasses) {
-                metadataSources.addAnnotatedClass(entityClass);
-            }
-            try (var sessionFactory = metadataSources.buildMetadata(registry).buildSessionFactory();
-                    var session = sessionFactory.openSession()) {
-                observed = body.apply(session);
-            }
-            return new Run<>(commandHistory.getCommands(), observed);
-        }
+    private <T> MongoRegistry.Run<T> inRegistry(
+            Class<?> entityClass, Map<String, Object> additionalSettings, Function<Session, T> action) {
+        var settings = new HashMap<>(SCHEMA_GENERATION_BASE_SETTINGS);
+        settings.putAll(additionalSettings);
+        return MongoRegistry.inRegistry(
+                commandHistory, SequenceGeneratedIdIntegrationTests.class, settings, action, entityClass);
     }
 
     /** The commands sent whose name matches {@code commandName}. */
@@ -231,23 +200,21 @@ class SequenceGeneratedIdIntegrationTests {
 
     @Test
     void persistsAndReloadsWithAGeneratedIdentifier() {
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var book = new Book();
-                    book.title = "War and Peace";
-                    session.persist(book);
-                    session.getTransaction().commit();
-                    session.clear();
-                    var reloaded = session.find(Book.class, book.id);
-                    assertThat(reloaded.title).isEqualTo("War and Peace");
-                    // Read while the SessionFactory is still open: create-drop deletes this document when it closes.
-                    var sequenceDocument = sequences
-                            .find(BsonDocument.parse("{\"_id\": \"books_SEQ\"}"))
-                            .first();
-                    return new PersistedBook(book.id, reloaded.id, sequenceDocument);
-                },
-                Book.class);
+        var run = inRegistry(Book.class, session -> {
+            session.getTransaction().begin();
+            var book = new Book();
+            book.title = "War and Peace";
+            session.persist(book);
+            session.getTransaction().commit();
+            session.clear();
+            var reloaded = session.find(Book.class, book.id);
+            assertThat(reloaded.title).isEqualTo("War and Peace");
+            // Read while the SessionFactory is still open: create-drop deletes this document when it closes.
+            var sequenceDocument = sequences
+                    .find(BsonDocument.parse("{\"_id\": \"books_SEQ\"}"))
+                    .first();
+            return new PersistedBook(book.id, reloaded.id, sequenceDocument);
+        });
 
         assertThat(run.observed().id()).isEqualTo(1L);
         assertThat(run.observed().reloadedId()).isEqualTo(1L);
@@ -318,50 +285,44 @@ class SequenceGeneratedIdIntegrationTests {
 
     @Test
     void persistsWithAPrimitiveGeneratedIdentifier() {
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var pamphlet = new Pamphlet();
-                    pamphlet.title = "On Liberty";
-                    session.persist(pamphlet);
-                    session.getTransaction().commit();
-                    return pamphlet.id;
-                },
-                Pamphlet.class);
+        var run = inRegistry(Pamphlet.class, session -> {
+            session.getTransaction().begin();
+            var pamphlet = new Pamphlet();
+            pamphlet.title = "On Liberty";
+            session.persist(pamphlet);
+            session.getTransaction().commit();
+            return pamphlet.id;
+        });
 
         assertThat(run.observed()).isEqualTo(1L);
     }
 
     @Test
     void persistsWithAnIntegerGeneratedIdentifier() {
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var note = new Note();
-                    session.persist(note);
-                    session.getTransaction().commit();
-                    return note.id;
-                },
-                Note.class);
+        var run = inRegistry(Note.class, session -> {
+            session.getTransaction().begin();
+            var note = new Note();
+            session.persist(note);
+            session.getTransaction().commit();
+            return note.id;
+        });
 
         assertThat(run.observed()).isEqualTo(1);
     }
 
     @Test
     void allocationSizeOneAllocatesPerRow() {
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var ids = new ArrayList<Long>();
-                    for (var i = 0; i < 3; i++) {
-                        var ledger = new Ledger();
-                        session.persist(ledger);
-                        ids.add(ledger.id);
-                    }
-                    session.getTransaction().commit();
-                    return ids;
-                },
-                Ledger.class);
+        var run = inRegistry(Ledger.class, session -> {
+            session.getTransaction().begin();
+            var ids = new ArrayList<Long>();
+            for (var i = 0; i < 3; i++) {
+                var ledger = new Ledger();
+                session.persist(ledger);
+                ids.add(ledger.id);
+            }
+            session.getTransaction().commit();
+            return ids;
+        });
 
         assertThat(run.observed()).containsExactly(1L, 2L, 3L);
         assertThat(commandsNamed(run.commands(), "findAndModify")).hasSize(3);
@@ -369,20 +330,18 @@ class SequenceGeneratedIdIntegrationTests {
 
     @Test
     void pooledAllocationAmortizesTheRoundTrip() {
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var ids = new ArrayList<Long>();
-                    for (var i = 0; i < 51; i++) {
-                        var book = new Book();
-                        book.title = "Volume " + i;
-                        session.persist(book);
-                        ids.add(book.id);
-                    }
-                    session.getTransaction().commit();
-                    return ids;
-                },
-                Book.class);
+        var run = inRegistry(Book.class, session -> {
+            session.getTransaction().begin();
+            var ids = new ArrayList<Long>();
+            for (var i = 0; i < 51; i++) {
+                var book = new Book();
+                book.title = "Volume " + i;
+                session.persist(book);
+                ids.add(book.id);
+            }
+            session.getTransaction().commit();
+            return ids;
+        });
 
         assertThat(run.observed())
                 .isEqualTo(LongStream.rangeClosed(1, 51).boxed().toList());
@@ -397,21 +356,18 @@ class SequenceGeneratedIdIntegrationTests {
     @ParameterizedTest
     @ValueSource(strings = {"pooled-lo", "hilo", "legacy-hilo"})
     void optimizersYieldDistinctIncreasingIdentifiers(String optimizer) {
-        var run = inRegistry(
-                Map.of("hibernate.id.optimizer.pooled.preferred", optimizer),
-                session -> {
-                    session.getTransaction().begin();
-                    var ids = new ArrayList<Long>();
-                    for (var i = 0; i < 51; i++) {
-                        var book = new Book();
-                        book.title = "Volume " + i;
-                        session.persist(book);
-                        ids.add(book.id);
-                    }
-                    session.getTransaction().commit();
-                    return ids;
-                },
-                Book.class);
+        var run = inRegistry(Book.class, Map.of("hibernate.id.optimizer.pooled.preferred", optimizer), session -> {
+            session.getTransaction().begin();
+            var ids = new ArrayList<Long>();
+            for (var i = 0; i < 51; i++) {
+                var book = new Book();
+                book.title = "Volume " + i;
+                session.persist(book);
+                ids.add(book.id);
+            }
+            session.getTransaction().commit();
+            return ids;
+        });
 
         assertThat(run.observed()).doesNotHaveDuplicates().isSorted();
     }
@@ -423,7 +379,10 @@ class SequenceGeneratedIdIntegrationTests {
      */
     @Test
     void aGeneratorNamedOnAnotherEntityIsAccepted() {
-        var run = inRegistry(
+        var run = MongoRegistry.inRegistry(
+                commandHistory,
+                SequenceGeneratedIdIntegrationTests.class,
+                SCHEMA_GENERATION_BASE_SETTINGS,
                 session -> {
                     session.getTransaction().begin();
                     var consumer = new SharedSequenceConsumer();
@@ -441,19 +400,17 @@ class SequenceGeneratedIdIntegrationTests {
     void namedSequenceSeedsAtItsInitialValue() {
         record Result(long id, BsonDocument sequenceDocument) {}
 
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var invoice = new Invoice();
-                    session.persist(invoice);
-                    session.getTransaction().commit();
-                    // Read while the SessionFactory is still open: create-drop deletes this document when it closes.
-                    var sequenceDocument = sequences
-                            .find(BsonDocument.parse("{\"_id\": \"invoice_numbers\"}"))
-                            .first();
-                    return new Result(invoice.id, sequenceDocument);
-                },
-                Invoice.class);
+        var run = inRegistry(Invoice.class, session -> {
+            session.getTransaction().begin();
+            var invoice = new Invoice();
+            session.persist(invoice);
+            session.getTransaction().commit();
+            // Read while the SessionFactory is still open: create-drop deletes this document when it closes.
+            var sequenceDocument = sequences
+                    .find(BsonDocument.parse("{\"_id\": \"invoice_numbers\"}"))
+                    .first();
+            return new Result(invoice.id, sequenceDocument);
+        });
 
         assertThat(run.observed().id()).isEqualTo(1000L);
         assertThat(run.observed().sequenceDocument())
@@ -469,18 +426,16 @@ class SequenceGeneratedIdIntegrationTests {
 
     @Test
     void schemaQualifiedSequenceNameFoldsIntoTheCounterId() {
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var receipt = new Receipt();
-                    session.persist(receipt);
-                    session.getTransaction().commit();
-                    // Read while the SessionFactory is still open: create-drop deletes this document when it closes.
-                    return sequences
-                            .find(BsonDocument.parse("{\"_id\": \"billing.receipt_numbers\"}"))
-                            .first();
-                },
-                Receipt.class);
+        var run = inRegistry(Receipt.class, session -> {
+            session.getTransaction().begin();
+            var receipt = new Receipt();
+            session.persist(receipt);
+            session.getTransaction().commit();
+            // Read while the SessionFactory is still open: create-drop deletes this document when it closes.
+            return sequences
+                    .find(BsonDocument.parse("{\"_id\": \"billing.receipt_numbers\"}"))
+                    .first();
+        });
 
         assertThat(run.observed()).isNotNull();
     }
@@ -499,16 +454,14 @@ class SequenceGeneratedIdIntegrationTests {
         // The JPA action "create" (unlike "create-drop") does not drop before creating, so re-export is the only
         // thing under test here: no teardown-drop to muddy whether the counter merely survived being untouched.
         var run = inRegistry(
-                Map.of("jakarta.persistence.schema-generation.database.action", "create"),
-                session -> {
+                Book.class, Map.of("jakarta.persistence.schema-generation.database.action", "create"), session -> {
                     session.getTransaction().begin();
                     var book = new Book();
                     book.title = "After re-export";
                     session.persist(book);
                     session.getTransaction().commit();
                     return book.id;
-                },
-                Book.class);
+                });
 
         // The pooled optimizer reads the returned value as the upper bound of the block it just reserved, the same
         // as a native sequence would: the fresh optimizer's first identifier is next_value - increment + 1 = 452,
@@ -522,21 +475,19 @@ class SequenceGeneratedIdIntegrationTests {
 
         // Read while the SessionFactory is still open: create-drop drops the "books" collection and deletes the
         // sequence document when it closes, so the row count would then read zero whatever rollback did.
-        var run = inRegistry(
-                session -> {
-                    session.getTransaction().begin();
-                    var book = new Book();
-                    book.title = "Never committed";
-                    session.persist(book);
-                    session.getTransaction().rollback();
-                    var nextValue = sequences
-                            .find(BsonDocument.parse("{\"_id\": \"books_SEQ\"}"))
-                            .first()
-                            .getInt64("next_value")
-                            .getValue();
-                    return new Result(book.id, books.countDocuments(), nextValue);
-                },
-                Book.class);
+        var run = inRegistry(Book.class, session -> {
+            session.getTransaction().begin();
+            var book = new Book();
+            book.title = "Never committed";
+            session.persist(book);
+            session.getTransaction().rollback();
+            var nextValue = sequences
+                    .find(BsonDocument.parse("{\"_id\": \"books_SEQ\"}"))
+                    .first()
+                    .getInt64("next_value")
+                    .getValue();
+            return new Result(book.id, books.countDocuments(), nextValue);
+        });
 
         assertThat(run.observed().id()).isEqualTo(1L);
         assertThat(run.observed().bookCount()).isZero();
@@ -547,39 +498,37 @@ class SequenceGeneratedIdIntegrationTests {
     void concurrentAllocationYieldsDistinctIdentifiers() throws Exception {
         var threads = 8;
         var perThread = 20;
-        var run = inRegistry(
-                session -> {
-                    var sessionFactory = session.getSessionFactory();
-                    var ids = Collections.synchronizedList(new ArrayList<Long>());
-                    var executor = Executors.newFixedThreadPool(threads);
-                    try {
-                        var futures = new ArrayList<Future<?>>();
-                        for (var t = 0; t < threads; t++) {
-                            futures.add(executor.submit(() -> {
-                                try (var threadSession = sessionFactory.openSession()) {
-                                    for (var i = 0; i < perThread; i++) {
-                                        threadSession.getTransaction().begin();
-                                        var ledger = new Ledger();
-                                        threadSession.persist(ledger);
-                                        threadSession.getTransaction().commit();
-                                        ids.add(ledger.id);
-                                    }
-                                }
-                            }));
-                        }
-                        for (var future : futures) {
-                            try {
-                                future.get();
-                            } catch (Exception e) {
-                                throw new AssertionError("concurrent allocation failed", e);
+        var run = inRegistry(Ledger.class, session -> {
+            var sessionFactory = session.getSessionFactory();
+            var ids = Collections.synchronizedList(new ArrayList<Long>());
+            var executor = Executors.newFixedThreadPool(threads);
+            try {
+                var futures = new ArrayList<Future<?>>();
+                for (var t = 0; t < threads; t++) {
+                    futures.add(executor.submit(() -> {
+                        try (var threadSession = sessionFactory.openSession()) {
+                            for (var i = 0; i < perThread; i++) {
+                                threadSession.getTransaction().begin();
+                                var ledger = new Ledger();
+                                threadSession.persist(ledger);
+                                threadSession.getTransaction().commit();
+                                ids.add(ledger.id);
                             }
                         }
-                    } finally {
-                        executor.shutdown();
+                    }));
+                }
+                for (var future : futures) {
+                    try {
+                        future.get();
+                    } catch (Exception e) {
+                        throw new AssertionError("concurrent allocation failed", e);
                     }
-                    return ids;
-                },
-                Ledger.class);
+                }
+            } finally {
+                executor.shutdown();
+            }
+            return ids;
+        });
 
         assertThat(run.observed()).hasSize(threads * perThread).doesNotHaveDuplicates();
     }
@@ -601,6 +550,7 @@ class SequenceGeneratedIdIntegrationTests {
         sequences.insertOne(BsonDocument.parse(counterDocument));
 
         assertThatThrownBy(() -> inRegistry(
+                        Book.class,
                         Map.of("jakarta.persistence.schema-generation.database.action", "none"),
                         session -> {
                             session.getTransaction().begin();
@@ -609,8 +559,7 @@ class SequenceGeneratedIdIntegrationTests {
                             session.persist(book);
                             session.getTransaction().commit();
                             return null;
-                        },
-                        Book.class))
+                        }))
                 .hasStackTraceContaining(expectedMessage);
 
         assertThat(sequences
@@ -649,9 +598,9 @@ class SequenceGeneratedIdIntegrationTests {
                         {"_id": "books_SEQ", "next_value": {"$numberLong": "1"}, "increment": {"$numberLong": "1"}}"""));
 
         assertThatThrownBy(() -> inRegistry(
+                        Book.class,
                         Map.of("jakarta.persistence.schema-generation.database.action", "none"),
-                        session -> null,
-                        Book.class))
+                        session -> null))
                 .isInstanceOf(MappingException.class)
                 .hasMessage(
                         "The increment size of the [books_SEQ] sequence is set to [50] in the entity mapping but the"
@@ -661,6 +610,7 @@ class SequenceGeneratedIdIntegrationTests {
     @Test
     void allocationWithoutASeededCounterFails() {
         assertThatThrownBy(() -> inRegistry(
+                        Book.class,
                         Map.of("jakarta.persistence.schema-generation.database.action", "none"),
                         session -> {
                             session.getTransaction().begin();
@@ -669,8 +619,7 @@ class SequenceGeneratedIdIntegrationTests {
                             session.persist(book);
                             session.getTransaction().commit();
                             return null;
-                        },
-                        Book.class))
+                        }))
                 .rootCause()
                 .hasMessageContaining("findAndModify")
                 .hasMessageContaining("books_SEQ");
@@ -826,7 +775,7 @@ class SequenceGeneratedIdIntegrationTests {
 
         @Test
         void identityStrategyIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, IdentityItem.class))
+            assertThatThrownBy(() -> inRegistry(IdentityItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("IDENTITY")
                     .hasMessageContaining("SEQUENCE");
@@ -834,80 +783,80 @@ class SequenceGeneratedIdIntegrationTests {
 
         @Test
         void tableStrategyIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, TableItem.class))
+            assertThatThrownBy(() -> inRegistry(TableItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("TODO-HIBERNATE-252");
         }
 
         @Test
         void uuidStrategyIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, UuidItem.class))
+            assertThatThrownBy(() -> inRegistry(UuidItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("TODO-HIBERNATE-121");
         }
 
         @Test
         void bigIntegerIdentifierIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, BigIntegerItem.class))
+            assertThatThrownBy(() -> inRegistry(BigIntegerItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("TODO-HIBERNATE-253");
         }
 
         @Test
         void catalogQualifiedSequenceIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, CatalogQualifiedItem.class))
+            assertThatThrownBy(() -> inRegistry(CatalogQualifiedItem.class, session -> null))
                     .hasStackTraceContaining("qualified by the catalog [a]");
         }
 
         @Test
         void catalogAttributeOnSequenceIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, CatalogAttributeItem.class))
+            assertThatThrownBy(() -> inRegistry(CatalogAttributeItem.class, session -> null))
                     .hasStackTraceContaining("qualified by the catalog [cat]");
         }
 
         @Test
         void dottedSequenceSchemaIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, DottedSequenceSchemaItem.class))
+            assertThatThrownBy(() -> inRegistry(DottedSequenceSchemaItem.class, session -> null))
                     .hasStackTraceContaining("The character [.] in a sequence schema name is not supported");
         }
 
         @Test
         void dottedSequenceNameIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, QuotedDottedSequenceNameItem.class))
+            assertThatThrownBy(() -> inRegistry(QuotedDottedSequenceNameItem.class, session -> null))
                     .hasStackTraceContaining("The character [.] in a sequence name is not supported");
         }
 
         @Test
         void sequenceOptionsAreRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, OptionsItem.class))
+            assertThatThrownBy(() -> inRegistry(OptionsItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("cache 20");
         }
 
         @Test
         void entityMappedToTheSequenceCollectionIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, SequenceCollectionItem.class))
+            assertThatThrownBy(() -> inRegistry(SequenceCollectionItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("hibernate_sequences");
         }
 
         @Test
         void hiloViaGenericGeneratorAnnotationIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, HiloItem.class))
+            assertThatThrownBy(() -> inRegistry(HiloItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("GenericGenerator");
         }
 
         @Test
         void localizedTableGeneratorIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, TableGeneratorItem.class))
+            assertThatThrownBy(() -> inRegistry(TableGeneratorItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("TODO-HIBERNATE-252");
         }
 
         @Test
         void namedIdentityGeneratorIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, IdentityNamedGeneratorItem.class))
+            assertThatThrownBy(() -> inRegistry(IdentityNamedGeneratorItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("IDENTITY")
                     .hasMessageContaining("SEQUENCE");
@@ -915,25 +864,23 @@ class SequenceGeneratedIdIntegrationTests {
 
         @Test
         void namedIncrementGeneratorIsRejected() {
-            assertThatThrownBy(() -> inRegistry(session -> null, IncrementNamedGeneratorItem.class))
+            assertThatThrownBy(() -> inRegistry(IncrementNamedGeneratorItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("increment");
         }
 
         @Test
         void bulkInsertSelectIsRejected() {
-            assertThatThrownBy(() -> inRegistry(
-                            session -> {
-                                session.getTransaction().begin();
-                                try {
-                                    return session.createMutationQuery(
-                                                    "insert into Book (id, title) select b.id, b.title from Book b")
-                                            .executeUpdate();
-                                } finally {
-                                    session.getTransaction().rollback();
-                                }
-                            },
-                            Book.class))
+            assertThatThrownBy(() -> inRegistry(Book.class, session -> {
+                        session.getTransaction().begin();
+                        try {
+                            return session.createMutationQuery(
+                                            "insert into Book (id, title) select b.id, b.title from Book b")
+                                    .executeUpdate();
+                        } finally {
+                            session.getTransaction().rollback();
+                        }
+                    }))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("Insertion statement with source selection is not supported");
         }
