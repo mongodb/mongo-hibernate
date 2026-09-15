@@ -52,6 +52,7 @@ import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.service.ServiceRegistry;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -97,7 +98,7 @@ class SequenceGeneratedIdIntegrationTests {
      * Boots a {@code SessionFactory} for {@code entityClasses} with {@code create-drop}, runs {@code body} while it is
      * open, and returns the commands sent along with the {@code body}'s result.
      *
-     * <p>The registry is built programmatically so it can apply the contributor that points the {@code SessionFactory} at this
+     * <p>The {@link ServiceRegistry}  is built programmatically so it can apply the contributor that points the {@code SessionFactory} at this
      * class's own database and installs that database's command listener.
      */
     private <T> Run<T> inRegistry(Function<Session, T> body, Class<?>... entityClasses) {
