@@ -126,7 +126,6 @@ jobs:
           # create the version for a git tag. Pushing the tag immediately after the
           # commits races the repotracker: the tag webhook arrives first
           # as a workaround we sleep for 20 sec
-          # refer to this https://github.com/evergreen-ci/ui/blob/21aa726e4c96a8bd68ad0e4df5fb5eb6689dcfb7/packages/deploy-utils/src/postversion/script.ts#L30
           sleep 20
           git push origin "r$RELEASE_VERSION"
 
