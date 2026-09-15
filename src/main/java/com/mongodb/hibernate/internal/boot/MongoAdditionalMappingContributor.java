@@ -171,6 +171,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             materializeUniqueColumns(persistentClass);
         });
         forbidCatalog(metadata, buildingContext);
+        forbidDottedDefaultSchema(buildingContext);
         forbidDottedTableQualifiers(metadata);
         forbidReservedCollectionName(metadata);
     }
@@ -224,6 +225,23 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 "Catalog is not supported: [%s]. A MongoDB database is the analog of a SQL catalog; use a separate"
                         + " SessionFactory per database.",
                 catalog));
+    }
+
+    /**
+     * Like {@link #forbidCatalog}, {@code hibernate.default_schema} is applied only at SQL-render time (see
+     * {@link org.hibernate.boot.model.relational.SqlStringGenerationContext}), so it never surfaces in a namespace
+     * here, and is read from configuration instead.
+     */
+    private static void forbidDottedDefaultSchema(MetadataBuildingContext buildingContext) {
+        var defaultSchema = buildingContext
+                .getBootstrapContext()
+                .getServiceRegistry()
+                .requireService(ConfigurationService.class)
+                .getSettings()
+                .get(AvailableSettings.DEFAULT_SCHEMA);
+        if (defaultSchema != null) {
+            forbidDot(defaultSchema.toString(), "schema");
+        }
     }
 
     /** @see NameChecks#forbidDot(String, String) */
