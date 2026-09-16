@@ -501,7 +501,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         }
 
         var generatorName = generatedValue.generator();
-        if (!generatorName.isBlank() && namesANonSequenceGenerator(generatorName, metadata)) {
+        if (!generatorName.isBlank() && isNonSequenceGeneratorName(generatorName, metadata)) {
             throw nonSequenceGenerator(persistentClass, generatorName);
         }
     }
@@ -512,7 +512,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      * {@link SequenceGenerator} is not looked up here because generator names are global: an entity may name one
      * declared on a different entity.
      */
-    private static boolean namesANonSequenceGenerator(String generatorName, InFlightMetadataCollector metadata) {
+    private static boolean isNonSequenceGeneratorName(String generatorName, InFlightMetadataCollector metadata) {
         return NON_SEQUENCE_LEGACY_GENERATOR_NAMES.contains(generatorName)
                 || metadata.getGlobalRegistrations()
                         .getGenericGeneratorRegistrations()
