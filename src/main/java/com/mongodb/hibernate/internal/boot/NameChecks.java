@@ -20,6 +20,7 @@ import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 
+/** @hidden */
 @SuppressWarnings("MissingSummary")
 final class NameChecks {
 
