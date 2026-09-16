@@ -585,7 +585,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     }
 
     private static boolean isSupportedGeneratedIdentifierType(Class<?> identifierType) {
-        return identifierType == Short.class || identifierType == Integer.class || identifierType == Long.class;
+        return identifierType == Integer.class || identifierType == Long.class;
     }
 
     private static void checkPropertyType(
