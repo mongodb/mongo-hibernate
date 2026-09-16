@@ -122,6 +122,11 @@ jobs:
       - name: "Push release branch and tag"
         run: |
           git push origin "$RELEASE_BRANCH"
+          # Evergreen requires the mainline commit's version to exist before it can
+          # create the version for a git tag. Pushing the tag immediately after the
+          # commits races the repotracker: the tag webhook arrives first
+          # as a workaround we sleep for 20 sec
+          sleep 20
           git push origin "r$RELEASE_VERSION"
 
       - name: "Create draft release with generated changelog"
