@@ -90,7 +90,9 @@ import org.hibernate.mapping.Property;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.UniqueKey;
+import org.hibernate.models.spi.AnnotationTarget;
 import org.hibernate.models.spi.MemberDetails;
+import org.hibernate.models.spi.ModelsContext;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.ComponentType;
 
@@ -467,42 +469,45 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     /**
      * Rejects the annotation combinations that resolve, via Hibernate's own generator lookup, to a generator other than
      * a MongoDB-backed sequence: a {@link TableGenerator} or {@link GenericGenerator} localized on the identifier
-     * member or its entity class, a meta-annotation annotated with {@link IdGeneratorType}, and a non-blank
-     * {@code generator()} that names none of {@code @SequenceGenerator} localized on the member/class or declared
-     * globally in the metadata.
+     * member or on the entity class or one of its superclasses (a {@code @MappedSuperclass} can carry the generator), a
+     * meta-annotation annotated with {@link IdGeneratorType}, and a non-blank {@code generator()} that names none of
+     * {@code @SequenceGenerator} localized on the member/class or declared globally in the metadata.
      */
-    @SuppressWarnings("removal") // org.hibernate.annotations.GenericGenerator is deprecated but still resolvable
     private static void forbidUnintrospectableGenerator(
             PersistentClass persistentClass,
             MemberDetails idMember,
             GeneratedValue generatedValue,
             InFlightMetadataCollector metadata) {
-        var classDetails = metadata.getClassDetailsRegistry().getClassDetails(persistentClass.getClassName());
         var modelsContext = metadata.getBootstrapContext().getModelsContext();
 
-        if (idMember.hasDirectAnnotationUsage(TableGenerator.class)
-                || classDetails.hasDirectAnnotationUsage(TableGenerator.class)) {
+        forbidUnsupportedGeneratorAnnotations(idMember, persistentClass, modelsContext);
+        metadata.getClassDetailsRegistry()
+                .getClassDetails(persistentClass.getClassName())
+                .forSelfAndEachSuper(classDetails ->
+                        forbidUnsupportedGeneratorAnnotations(classDetails, persistentClass, modelsContext));
+
+        var generatorName = generatedValue.generator();
+        if (!generatorName.isBlank() && isNonSequenceGeneratorName(generatorName, metadata)) {
+            throw nonSequenceGenerator(persistentClass, generatorName);
+        }
+    }
+
+    @SuppressWarnings("removal") // org.hibernate.annotations.GenericGenerator is deprecated but still resolvable
+    private static void forbidUnsupportedGeneratorAnnotations(
+            AnnotationTarget target, PersistentClass persistentClass, ModelsContext modelsContext) {
+        if (target.hasDirectAnnotationUsage(TableGenerator.class)) {
             throw tableGenerationNotSupported(persistentClass);
         }
-        if (idMember.hasDirectAnnotationUsage(GenericGenerator.class)
-                || classDetails.hasDirectAnnotationUsage(GenericGenerator.class)) {
+        if (target.hasDirectAnnotationUsage(GenericGenerator.class)) {
             throw unsupportedGenerator(
                     persistentClass, format("a [@%s] identifier generator", GenericGenerator.class.getSimpleName()));
         }
-        if (!idMember.getMetaAnnotated(IdGeneratorType.class, modelsContext).isEmpty()
-                || !classDetails
-                        .getMetaAnnotated(IdGeneratorType.class, modelsContext)
-                        .isEmpty()) {
+        if (!target.getMetaAnnotated(IdGeneratorType.class, modelsContext).isEmpty()) {
             throw unsupportedGenerator(
                     persistentClass,
                     format(
                             "a custom identifier generator (meta-annotated with [@%s])",
                             IdGeneratorType.class.getSimpleName()));
-        }
-
-        var generatorName = generatedValue.generator();
-        if (!generatorName.isBlank() && isNonSequenceGeneratorName(generatorName, metadata)) {
-            throw nonSequenceGenerator(persistentClass, generatorName);
         }
     }
 

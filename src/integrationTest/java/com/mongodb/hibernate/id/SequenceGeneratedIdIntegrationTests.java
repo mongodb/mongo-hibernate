@@ -32,6 +32,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.TableGenerator;
@@ -196,6 +197,20 @@ class SequenceGeneratedIdIntegrationTests {
         @Id
         @GeneratedValue(generator = "noteSeq")
         Integer id;
+    }
+
+    @MappedSuperclass
+    @SequenceGenerator(name = "superSeq", allocationSize = 1)
+    abstract static class SequenceSuper {
+        @Id
+        @GeneratedValue(generator = "superSeq")
+        Long id;
+    }
+
+    @Entity(name = "SequenceSuperItem")
+    @Table(name = "sequenceSuperItems")
+    static class SequenceSuperItem extends SequenceSuper {
+        String title;
     }
 
     @Test
@@ -394,6 +409,20 @@ class SequenceGeneratedIdIntegrationTests {
                 SharedSequenceConsumer.class);
 
         assertThat(run.observed()).isEqualTo(1L);
+    }
+
+    @Test
+    void persistsWithASequenceDeclaredOnAMappedSuperclass() {
+        var run = inRegistry(SequenceSuperItem.class, session -> {
+            session.getTransaction().begin();
+            var item = new SequenceSuperItem();
+            session.persist(item);
+            session.getTransaction().commit();
+            return item.id;
+        });
+
+        assertThat(run.observed()).isEqualTo(1L);
+        assertThat(commandsNamed(run.commands(), "findAndModify")).hasSize(1);
     }
 
     @Test
@@ -757,6 +786,43 @@ class SequenceGeneratedIdIntegrationTests {
             Long id;
         }
 
+        @MappedSuperclass
+        @TableGenerator(name = "superTableGen", table = "super_table_gen")
+        abstract static class TableGeneratorSuper {
+            @Id
+            @GeneratedValue
+            Long id;
+        }
+
+        @Entity(name = "TableGeneratorSuperItem")
+        @Table(name = "tableGeneratorSuperItems")
+        static class TableGeneratorSuperItem extends TableGeneratorSuper {}
+
+        @SuppressWarnings("removal")
+        @MappedSuperclass
+        @GenericGenerator(name = "superHiloGen", strategy = "org.hibernate.id.enhanced.TableGenerator")
+        abstract static class GenericGeneratorSuper {
+            @Id
+            @GeneratedValue
+            Long id;
+        }
+
+        @Entity(name = "GenericGeneratorSuperItem")
+        @Table(name = "genericGeneratorSuperItems")
+        static class GenericGeneratorSuperItem extends GenericGeneratorSuper {}
+
+        @MappedSuperclass
+        abstract static class MemberTableGeneratorSuper {
+            @Id
+            @GeneratedValue
+            @TableGenerator(name = "superMemberTableGen", table = "super_member_table_gen")
+            Long id;
+        }
+
+        @Entity(name = "MemberTableGeneratorSuperItem")
+        @Table(name = "memberTableGeneratorSuperItems")
+        static class MemberTableGeneratorSuperItem extends MemberTableGeneratorSuper {}
+
         @Entity(name = "IdentityNamedGeneratorItem")
         @Table(name = "identityNamedGeneratorItems")
         static class IdentityNamedGeneratorItem {
@@ -850,6 +916,27 @@ class SequenceGeneratedIdIntegrationTests {
         @Test
         void localizedTableGeneratorIsRejected() {
             assertThatThrownBy(() -> inRegistry(TableGeneratorItem.class, session -> null))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("TODO-HIBERNATE-252");
+        }
+
+        @Test
+        void tableGeneratorOnMappedSuperclassIsRejected() {
+            assertThatThrownBy(() -> inRegistry(TableGeneratorSuperItem.class, session -> null))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("TODO-HIBERNATE-252");
+        }
+
+        @Test
+        void genericGeneratorOnMappedSuperclassIsRejected() {
+            assertThatThrownBy(() -> inRegistry(GenericGeneratorSuperItem.class, session -> null))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("GenericGenerator");
+        }
+
+        @Test
+        void tableGeneratorOnMappedSuperclassIdMemberIsRejected() {
+            assertThatThrownBy(() -> inRegistry(MemberTableGeneratorSuperItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("TODO-HIBERNATE-252");
         }
