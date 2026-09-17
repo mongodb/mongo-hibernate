@@ -530,7 +530,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     // Column bindings flattened by boot-time metadata into dotted-path columns names (a composite id's
     // "_id.<component>" siblings, an association's "<association>.<component>" foreign key siblings) gather
     // into nested sub-documents, components sorted by name. Boot bans '.' in user-defined column names,
-    // so every dotted-path colunm name here is extension-generated.
+    // so every dotted-path column name here is extension-generated.
     private static List<AstElement> nestDottedPathElements(List<AstElement> flatElements) {
         var nested = new LinkedHashMap<String, SortedSet<AstElement>>();
         var result = new ArrayList<AstElement>(flatElements.size());
