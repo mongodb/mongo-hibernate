@@ -29,8 +29,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
@@ -128,14 +126,6 @@ class GroupBySubstitutionRuleTests {
     }
 
     @Test
-    void sortFieldOverAKeyIsSubstituted() {
-        var rewriter = rewriterWithKeys(Map.of(x(), "x"));
-
-        assertThat(rewriter.rewrite(new AstSortField("x", AstSortOrder.ASC)))
-                .isEqualTo(new AstSortField("_id.x", AstSortOrder.ASC));
-    }
-
-    @Test
     void projectIncludeOfAKeyBecomesAFieldPathSpecification() {
         var rewriter = rewriterWithKeys(Map.of(x(), "x"));
 
@@ -149,15 +139,6 @@ class GroupBySubstitutionRuleTests {
 
         assertThatExceptionOfType(FeatureNotSupportedException.class)
                 .isThrownBy(() -> rewriter.rewrite(add(x(), lit(1))))
-                .withMessageContaining("column 'x'");
-    }
-
-    @Test
-    void straySortFieldThrows() {
-        var rewriter = rewriterWithKeys(Map.of(y(), "y"));
-
-        assertThatExceptionOfType(FeatureNotSupportedException.class)
-                .isThrownBy(() -> rewriter.rewrite(new AstSortField("x", AstSortOrder.ASC)))
                 .withMessageContaining("column 'x'");
     }
 
@@ -183,14 +164,6 @@ class GroupBySubstitutionRuleTests {
                 new AstComparisonFilterOperation(AstComparisonFilterOperator.GT, new AstLiteral(new BsonInt32(4))));
 
         assertThat(rewriter.rewrite(input)).isEqualTo(input);
-    }
-
-    @Test
-    void accumulatorSortFieldSurvives() {
-        var rewriter = rewriterWithKeysAndAccumulators(Map.of(x(), "x"), Set.of("#acc_0"));
-
-        assertThat(rewriter.rewrite(new AstSortField("#acc_0", AstSortOrder.DESC)))
-                .isEqualTo(new AstSortField("#acc_0", AstSortOrder.DESC));
     }
 
     @Test

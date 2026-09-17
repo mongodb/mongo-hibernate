@@ -23,7 +23,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.Map;
@@ -81,14 +80,6 @@ public final class GroupBySubstitutionRule implements RewriteRule {
             return new AstFieldOperationFilter(subKeyOrThrow(fof.fieldPath()), fof.filterOperation());
         }
         return null;
-    }
-
-    @Override
-    public @Nullable AstSortField tryMatch(AstSortField node) {
-        if (accumulatorFields.contains(node.path())) {
-            return null;
-        }
-        return new AstSortField(subKeyOrThrow(node.path()), node.order());
     }
 
     @Override
