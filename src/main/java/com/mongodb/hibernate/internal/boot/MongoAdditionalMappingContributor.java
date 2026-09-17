@@ -497,7 +497,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     /**
      * Refuses a {@code @JoinColumn} override on a ToOne association whose target entity has a composite
      * {@code @EmbeddedId}: the sub-document layout requires the {@code <association>.<component>} names, so the rename
-     * would silently discard the override's names.
+     * would discard the override's names.
      */
     private static void forbidJoinColumnOverrideOnCompositeForeignKey(
             InFlightMetadataCollector metadata, PersistentClass persistentClass) {
