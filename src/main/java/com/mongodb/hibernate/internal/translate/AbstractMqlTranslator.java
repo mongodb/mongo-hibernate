@@ -714,6 +714,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
         var groupIdSpecs = prepareGroupBy(querySpec);
 
+        if (groupIdSpecs != null) {
+            var ctx = assertNotNull(groupByContext);
+            // Built before the three clauses are translated, because `createAstSortField` resolves a sort key through
+            // it as it goes. The rule holds live references to the context's maps, so accumulators registered while
+            // translating SELECT and HAVING are still visible to the rewrites below.
+            astRewriter = new AstRewriter(
+                    new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry, ctx.accumulatorFieldNames),
+                    new ExprToMatchDowngradeRule());
+        }
+
         // SELECT, HAVING and ORDER BY are translated before `$group` is assembled, even though `$group` precedes all
         // three in the pipeline: an aggregate function in any of them registers an accumulator on the GROUP BY
         // context, and `$group` has to render every accumulator they introduced. Translation order is therefore not
@@ -725,12 +735,9 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (groupIdSpecs != null) {
             var ctx = assertNotNull(groupByContext);
             stages.add(new AstGroupStage(groupIdSpecs, List.copyOf(ctx.registeredAccumulatorsByVN.values())));
-            astRewriter = new AstRewriter(
-                    new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry, ctx.accumulatorFieldNames),
-                    new ExprToMatchDowngradeRule());
-            havingStage = havingStage.map(astRewriter::rewrite);
-            sortStage = sortStage.map(astRewriter::rewrite);
-            projectStage = astRewriter.rewrite(projectStage);
+            var rewriter = assertNotNull(astRewriter);
+            havingStage = havingStage.map(rewriter::rewrite);
+            projectStage = rewriter.rewrite(projectStage);
         }
 
         havingStage.ifPresent(stages::add);
@@ -1300,24 +1307,47 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private AstSortField createAstSortField(Expression sortExpression, AstSortOrder astSortOrder) {
         var resolved = resolveSelectedExpression(sortExpression);
-        if (!isFieldPathExpression(resolved)) {
-            // An aggregate function is orderable under a GROUP BY: it resolves to the accumulator field $group
-            // computes, shared with SELECT/HAVING when they name the same function, so nothing is recomputed here.
-            if (resolved instanceof SelfRenderingFunctionSqlAstExpression<?> function) {
-                var accumulatorReference = tryRegisterAccumulator(function);
-                if (accumulatorReference != null) {
-                    return new AstSortField(accumulatorReference.fieldPath(), astSortOrder);
-                }
-            }
-            // Under a GROUP BY, an expression $group has already computed is orderable in principle; with no GROUP BY
-            // nothing has computed it, which is the wider problem.
-            throw new FeatureNotSupportedException(
-                    groupByContext != null
-                            ? "TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251"
-                            : "TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
+        if (isFieldPathExpression(resolved)) {
+            var fieldPath = acceptAndYield(resolved, FIELD_PATH);
+            return new AstSortField(
+                    groupByContext == null ? fieldPath : resolveGroupedSortPath(new AstFieldPathExpression(fieldPath)),
+                    astSortOrder);
         }
-        var fieldPath = acceptAndYield(resolved, FIELD_PATH);
-        return new AstSortField(fieldPath, astSortOrder);
+        // An aggregate function is orderable under a GROUP BY: it resolves to the accumulator field $group
+        // computes, shared with SELECT/HAVING when they name the same function, so nothing is recomputed here.
+        if (resolved instanceof SelfRenderingFunctionSqlAstExpression<?> function) {
+            var accumulatorReference = tryRegisterAccumulator(function);
+            if (accumulatorReference != null) {
+                return new AstSortField(accumulatorReference.fieldPath(), astSortOrder);
+            }
+        }
+        if (groupByContext == null) {
+            // With no GROUP BY nothing has computed the expression, which is the wider problem.
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
+        }
+        return new AstSortField(resolveGroupedSortPath(acceptAndYieldExpression(resolved)), astSortOrder);
+    }
+
+    /**
+     * Resolves a translated sort key against the GROUP BY keys and returns the field {@code $sort} should name.
+     *
+     * <p>Sort keys go through the same {@link GroupBySubstitutionRule} as SELECT and HAVING, so a key that is a GROUP
+     * BY key --- a column or an arbitrary expression --- becomes a reference to the {@code _id} sub-key {@code $group}
+     * computed for it, and a key referencing a column that is neither grouped nor aggregated is reported as the same
+     * stray column it would be in the other two clauses. Unlike the other two positions, the substitution has to happen
+     * here rather than over the assembled stage: the rule sees field-path strings in a sort field and would have no
+     * expression to value-number.
+     *
+     * <p>{@code $sort} can only name a field, so a key that survives as anything other than a field path is not
+     * sortable. {@code ORDER BY avg(x) + 1} is the shape that reaches this: {@code $group} computed {@code avg(x)}, but
+     * not the arithmetic wrapped around it.
+     */
+    private String resolveGroupedSortPath(AstExpression sortKey) {
+        var rewritten = assertNotNull(astRewriter).rewrite(sortKey);
+        if (rewritten instanceof AstFieldPathExpression fieldPath) {
+            return fieldPath.fieldPath();
+        }
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251");
     }
 
     /**

@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 import org.hibernate.annotations.Struct;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -631,15 +632,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
     class Unsupported extends AbstractQueryIntegrationTests {
 
         @Test
-        void orderByAnExpressionKeyThrows() {
-            assertSelectQueryFailure(
-                    "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1 ORDER BY b.primitiveInt + 1",
-                    Object.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251");
-        }
-
-        @Test
         void selectDistinctWithGroupByThrows() {
             assertSelectQueryFailure(
                     "select DISTINCT b.primitiveInt from Item as b GROUP BY b.primitiveInt",
@@ -737,6 +729,265 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     }
                     """,
                     results -> assertThat((Iterable<Integer>) results).containsExactlyInAnyOrder(2, 3, 4, 5),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAnExpressionKey() {
+            assertSelectionQuery(
+                    "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1 ORDER BY b.primitiveInt + 1",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.k0": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(2, 3, 4, 5),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAnExpressionKeyByAlias() {
+            assertSelectionQuery(
+                    "select b.primitiveInt + 1 as k from Item as b GROUP BY b.primitiveInt + 1 ORDER BY k DESC",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.k0": -1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "k": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(5, 4, 3, 2),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        @DisplayName("Test orderBy workds with different expression than select expression")
+        void orderByAnExpressionKeyByOrdinal() {
+            assertSelectionQuery(
+                    "select b.primitiveInt + 1 from Item as b GROUP BY b.primitiveInt + 1 ORDER BY 1 DESC",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.k0": -1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(5, 4, 3, 2),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void orderByAnExpressionKeyAbsentFromSelect() {
+            assertSelectionQuery(
+                    "select count(*) from Item as b GROUP BY b.primitiveInt + 1 ORDER BY b.primitiveInt + 1 DESC",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.k0": -1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(1L, 1L, 1L, 1L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /** A CASE key, to show the substitution is by value number rather than by expression shape. */
+        @Test
+        void orderByACaseExpressionKey() {
+            assertSelectionQuery(
+                    "select case when b.primitiveInt > 2 then 1 else 0 end from Item as b"
+                            + " GROUP BY case when b.primitiveInt > 2 then 1 else 0 end"
+                            + " ORDER BY case when b.primitiveInt > 2 then 1 else 0 end DESC",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {"$gt": ["$primitiveInt", 2]},
+                                      "then": 1
+                                    }
+                                  ],
+                                  "default": 0
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.k0": -1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(1, 0),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * Ordering by an expression key alongside an aggregate: one names an `_id` sub-key, the other a `$group` field.
+         */
+        @Test
+        void orderByAnExpressionKeyAndAnAggregate() {
+            assertSelectionQuery(
+                    "select b.primitiveInt + 1, sum(b.primitiveInt) from Item as b GROUP BY b.primitiveInt + 1"
+                            + " ORDER BY sum(b.primitiveInt) DESC, b.primitiveInt + 1",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "k0": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            },
+                            "#acc_0": {
+                              "$sum": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "#acc_0": -1,
+                            "_id.k0": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$_id.k0",
+                            "#c_2": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(
+                                    new Object[] {5, 4L}, new Object[] {4, 3L}, new Object[] {3, 2L}, new Object[] {
+                                        2, 1L
+                                    }),
                     Set.of(COLLECTION_NAME));
         }
 
@@ -2954,6 +3205,9 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             "string"),
                     Arguments.of(
                             "select b.primitiveInt from Item as b GROUP BY b.primitiveInt ORDER BY b.string", "string"),
+                    Arguments.of(
+                            "select b.primitiveInt from Item as b GROUP BY b.primitiveInt ORDER BY b.string || 'x'",
+                            "string"),
                     Arguments.of("select upper(b.string) from Item as b GROUP BY b.primitiveInt", "string"),
                     Arguments.of(
                             "select case when b.string = 'a' then 1 else 0 end from Item as b GROUP BY b.primitiveInt",
