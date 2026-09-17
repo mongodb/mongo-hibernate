@@ -23,7 +23,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
@@ -57,7 +56,6 @@ import static java.util.Comparator.comparing;
 import static org.hibernate.query.common.FetchClauseType.ROWS_ONLY;
 import static org.hibernate.sql.ast.tree.expression.SqlTupleContainer.getSqlTuple;
 
-import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.ExpressionFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
@@ -147,6 +145,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -546,24 +545,25 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         astVisitorValueHolder.yield(valueDescriptor, value);
     }
 
-    // Column bindings for a composite id are flattened by boot-time metadata into sibling
-    // "_id.<component>" columns; gather them back into a single leading "_id" sub-document, with
-    // components ordered by name for a canonical shape, since the "_id" unique index is sensitive
-    // to BSON field order.
-    private static List<AstElement> assembleWithIdSubdocument(List<AstElement> flat) {
-        var idComponents = new TreeSet<>(comparing(AstElement::name));
-        var result = new ArrayList<AstElement>(flat.size());
-        for (var element : flat) {
-            if (EmbeddedIdColumnName.isComponent(element.name())) {
-                assertTrue(idComponents.add(
-                        new AstElement(EmbeddedIdColumnName.componentName(element.name()), element.value())));
-            } else {
+    // Column bindings flattened by boot-time metadata into dotted-path columns names (a composite id's
+    // "_id.<component>" siblings, an association's "<association>.<component>" foreign key siblings) gather
+    // into nested sub-documents, components sorted by name. Boot bans '.' in user-defined column names,
+    // so every dotted-path column name here is extension-generated.
+    private static List<AstElement> nestDottedPathElements(List<AstElement> flatElements) {
+        var nested = new LinkedHashMap<String, SortedSet<AstElement>>();
+        var result = new ArrayList<AstElement>(flatElements.size());
+        for (var element : flatElements) {
+            var dotIndex = element.name().indexOf('.');
+            if (dotIndex < 0) {
                 result.add(element);
+            } else {
+                var component = new AstElement(element.name().substring(dotIndex + 1), element.value());
+                var siblings = nested.computeIfAbsent(
+                        element.name().substring(0, dotIndex), k -> new TreeSet<>(comparing(AstElement::name)));
+                siblings.add(component);
             }
         }
-        if (!idComponents.isEmpty()) {
-            result.add(0, new AstElement(ID_FIELD_NAME, new AstDocument(idComponents)));
-        }
+        nested.forEach((prefix, siblings) -> result.add(new AstElement(prefix, new AstDocument(siblings))));
         return result;
     }
 
@@ -586,7 +586,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 MODEL_MUTATION_RESULT,
                 ModelMutationMqlTranslator.Result.create(new AstInsertCommand(
                         tableInsert.getMutatingTable().getTableName(),
-                        List.of(new AstDocument(assembleWithIdSubdocument(astElements))))));
+                        List.of(new AstDocument(nestDottedPathElements(astElements))))));
     }
 
     @Override
@@ -1538,7 +1538,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 }
             }
             assertTrue(fieldIndex == fieldNames.size());
-            documents.add(new AstDocument(assembleWithIdSubdocument(astElements)));
+            documents.add(new AstDocument(nestDottedPathElements(astElements)));
         }
 
         astVisitorValueHolder.yield(
@@ -2600,7 +2600,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         for (var tgj : tableGroup.getTableGroupJoins()) {
             var joinedGroup = tgj.getJoinedGroup();
 
-            // Uninitialized groups are FK-only path navigation; virtual groups are synthetic joins
+            // Uninitialized groups are foreign key-only path navigation; virtual groups are synthetic joins
             // not rendered to SQL. Both match Hibernate's hasRealJoins() semantics.
             if (!joinedGroup.isInitialized() || joinedGroup.isVirtual()) {
                 continue;
@@ -2624,9 +2624,15 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                                     "TODO-HIBERNATE-163 https://jira.mongodb.org/browse/HIBERNATE-163");
                     };
 
-            if (!joinedGroup.getNestedTableGroupJoins().isEmpty()) {
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-168 https://jira.mongodb.org/browse/HIBERNATE-168");
+            // An ON predicate referencing the joined entity's embeddable id makes Hibernate add a
+            // StandardVirtualTableGroup to the joined group's nested table-group joins: it contributes no stage and
+            // exists only for column resolution, so allow it. A real nested group is implicit association
+            // navigation inside the ON clause — unsupported.
+            for (var nestedTableGroupJoin : joinedGroup.getNestedTableGroupJoins()) {
+                if (!nestedTableGroupJoin.getJoinedGroup().isVirtual()) {
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-168 https://jira.mongodb.org/browse/HIBERNATE-168");
+                }
             }
 
             var primaryRef = joinedGroup.getPrimaryTableReference();
