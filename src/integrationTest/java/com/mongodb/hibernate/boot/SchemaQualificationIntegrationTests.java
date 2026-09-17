@@ -21,6 +21,7 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hibernate.cfg.AvailableSettings.DEFAULT_CATALOG;
+import static org.hibernate.cfg.AvailableSettings.DEFAULT_SCHEMA;
 import static org.hibernate.cfg.AvailableSettings.JAKARTA_JDBC_URL;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -319,6 +320,23 @@ class SchemaQualificationIntegrationTests extends AbstractQueryIntegrationTests 
                                 .addAnnotatedClass(NoQualifier.class)
                                 .buildMetadata())
                         .hasMessageContaining("Catalog is not supported");
+            } finally {
+                StandardServiceRegistryBuilder.destroy(registry);
+            }
+        }
+
+        @Test
+        void dottedDefaultSchemaRejectedAtBoot() {
+            var url = new Configuration().getProperties().getProperty(JAKARTA_JDBC_URL);
+            var registry = new StandardServiceRegistryBuilder()
+                    .applySetting(JAKARTA_JDBC_URL, url)
+                    .applySetting(DEFAULT_SCHEMA, "a.b")
+                    .build();
+            try {
+                assertThatThrownBy(() -> new MetadataSources(registry)
+                                .addAnnotatedClass(NoQualifier.class)
+                                .buildMetadata())
+                        .hasMessageContaining("The character [.] in a schema name is not supported");
             } finally {
                 StandardServiceRegistryBuilder.destroy(registry);
             }

@@ -24,12 +24,13 @@ import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
-import com.mongodb.hibernate.internal.EmbeddedIdColumnName;
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.MongoDialect;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.JoinColumns;
+import java.lang.reflect.AnnotatedElement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -149,6 +150,8 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             checkColumnNames(persistentClass);
             forbidStructIdentifier(persistentClass);
             forbidNonScalarIdComponent(persistentClass);
+            forbidJoinColumnOverrideOnCompositeForeignKey(metadata, persistentClass);
+            setCompositeForeignKeyColumnNames(metadata, persistentClass);
             forbidDerivedIdentity(persistentClass);
             forbidJdbcTypeCodeAnnotation(persistentClass);
             forbidColumnFragmentAnnotations(persistentClass);
@@ -156,6 +159,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             materializeUniqueColumns(persistentClass);
         });
         forbidCatalog(metadata, buildingContext);
+        forbidDottedDefaultSchema(buildingContext);
         forbidDottedTableQualifiers(metadata);
     }
 
@@ -208,6 +212,23 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 "Catalog is not supported: [%s]. A MongoDB database is the analog of a SQL catalog; use a separate"
                         + " SessionFactory per database.",
                 catalog));
+    }
+
+    /**
+     * Like {@link #forbidCatalog}, {@code hibernate.default_schema} is applied only at SQL-render time (see
+     * {@link org.hibernate.boot.model.relational.SqlStringGenerationContext}), so it never surfaces in a namespace
+     * here, and is read from configuration instead.
+     */
+    private static void forbidDottedDefaultSchema(MetadataBuildingContext buildingContext) {
+        var defaultSchema = buildingContext
+                .getBootstrapContext()
+                .getServiceRegistry()
+                .requireService(ConfigurationService.class)
+                .getSettings()
+                .get(AvailableSettings.DEFAULT_SCHEMA);
+        if (defaultSchema != null) {
+            forbidDot(defaultSchema.toString(), "schema");
+        }
     }
 
     /**
@@ -419,7 +440,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             for (var property : idComponent.getProperties()) {
                 var componentColumns = property.getValue().getColumns();
                 assertTrue(componentColumns.size() == 1);
-                componentColumns.get(0).setName(EmbeddedIdColumnName.forComponent(property.getName()));
+                componentColumns.get(0).setName(ID_FIELD_NAME + "." + property.getName());
             }
             return;
         }
@@ -439,5 +460,61 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             }
         }
         idColumn.setName(ID_FIELD_NAME);
+    }
+
+    /**
+     * Renames the foreign-key columns of a ToOne association whose target entity has a composite @EmbeddedId to
+     * {@code <association>.<component>}, the dot-path of the foreign key sub-document, in the target id's component
+     * order. The binding-time default is {@code <association>_<component>} (derived from the target id component's
+     * column, always flat), which would store the foreign key as sibling columns rather than the sub-document layout
+     * the _id side uses.
+     */
+    private static void setCompositeForeignKeyColumnNames(
+            InFlightMetadataCollector metadata, PersistentClass persistentClass) {
+        for (var property : persistentClass.getProperties()) {
+            if (!(property.getValue() instanceof ToOne toOne) || toOne.hasFormula()) {
+                continue;
+            }
+            if (!(metadata.getEntityBinding(toOne.getReferencedEntityName()).getIdentifier()
+                    instanceof Component targetId)) {
+                continue;
+            }
+            var foreignKeyColumns = toOne.getColumns();
+            if (foreignKeyColumns.isEmpty()) {
+                // An inverse-side ToOne owns no foreign key columns; there is nothing to rename.
+                continue;
+            }
+            var idComponents = targetId.getProperties();
+            assertTrue(foreignKeyColumns.size() == idComponents.size());
+            for (var i = 0; i < idComponents.size(); i++) {
+                foreignKeyColumns
+                        .get(i)
+                        .setName(property.getName() + "." + idComponents.get(i).getName());
+            }
+        }
+    }
+
+    /**
+     * Refuses a {@code @JoinColumn} override on a ToOne association whose target entity has a composite
+     * {@code @EmbeddedId}: the sub-document layout requires the {@code <association>.<component>} names, so the rename
+     * would discard the override's names.
+     */
+    private static void forbidJoinColumnOverrideOnCompositeForeignKey(
+            InFlightMetadataCollector metadata, PersistentClass persistentClass) {
+        for (var property : persistentClass.getProperties()) {
+            if (property.getGetter(persistentClass.getMappedClass()).getMember()
+                            instanceof AnnotatedElement annotatedElement
+                    && annotatedElement.isAnnotationPresent(JoinColumns.class)
+                    && property.getValue() instanceof ToOne toOne
+                    && !toOne.getColumns().isEmpty()
+                    && metadata.getEntityBinding(toOne.getReferencedEntityName())
+                                    .getIdentifier()
+                            instanceof Component) {
+                throw new FeatureNotSupportedException(format(
+                        "%s: a @JoinColumn on an association whose target has a composite key is not supported;"
+                                + " the foreign key is stored as a sub-document named after the association",
+                        persistentClass));
+            }
+        }
     }
 }
