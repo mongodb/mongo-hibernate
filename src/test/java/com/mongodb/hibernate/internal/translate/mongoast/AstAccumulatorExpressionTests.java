@@ -1,0 +1,68 @@
+/*
+ * Copyright 2026-present MongoDB, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.mongodb.hibernate.internal.translate.mongoast;
+
+import static com.mongodb.hibernate.internal.translate.mongoast.AstMapChildrenAssertions.assertMapsChildren;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstNodeAssertions.assertExpressionRendering;
+import static com.mongodb.hibernate.internal.translate.mongoast.AstStructuralKeyAssertions.assertStructuralKey;
+
+import java.util.List;
+import org.bson.BsonInt32;
+import org.junit.jupiter.api.Test;
+
+class AstAccumulatorExpressionTests {
+
+    @Test
+    void testRendering() {
+        assertExpressionRendering(
+                """
+                {"": {"$sum": "$x"}}\
+                """,
+                new AstAccumulatorExpression(AstAccumulatorOperator.SUM, new AstFieldPathExpression("x")));
+    }
+
+    @Test
+    void testRenderingWithConvertedArgument() {
+        // The translator casts the argument rather than the accumulator, because MongoDB requires the accumulator
+        // to be the outermost operator of a `$group` specification.
+        var toLong = new AstUnaryOperatorExpression(
+                AstConversionExpressionOperator.TO_LONG, new AstValueExpression(new AstLiteral(new BsonInt32(1))));
+        assertExpressionRendering(
+                """
+                {"": {"$sum": {"$toLong": {"$numberInt": "1"}}}}\
+                """,
+                new AstAccumulatorExpression(AstAccumulatorOperator.SUM, toLong));
+    }
+
+    @Test
+    void testMapChildren() {
+        assertMapsChildren(new AstAccumulatorExpression(AstAccumulatorOperator.AVG, new AstFieldPathExpression("f")));
+    }
+
+    @Test
+    void testStructuralKey() {
+        // The key is what makes the same aggregate written in two clauses share one `$group` accumulator, so both
+        // components have to reach it: a differing operator and a differing argument must both change the key.
+        assertStructuralKey(
+                new AstAccumulatorExpression(AstAccumulatorOperator.SUM, new AstFieldPathExpression("a")),
+                new StructuralKey("Accumulator", List.of(AstAccumulatorOperator.SUM, new AstFieldPathExpression("a"))),
+                new AstAccumulatorExpression(AstAccumulatorOperator.AVG, new AstFieldPathExpression("a")),
+                new AstAccumulatorExpression(AstAccumulatorOperator.MIN, new AstFieldPathExpression("a")),
+                new AstAccumulatorExpression(AstAccumulatorOperator.MAX, new AstFieldPathExpression("a")),
+                new AstAccumulatorExpression(AstAccumulatorOperator.SUM, new AstFieldPathExpression("b")));
+    }
+}

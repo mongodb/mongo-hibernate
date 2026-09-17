@@ -27,6 +27,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSo
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFilter;
 import java.util.Map;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,16 +38,23 @@ import org.jspecify.annotations.Nullable;
  * <p>Any raw field-path leaf that survives without matching a GROUP BY key is a stray — a SELECT/HAVING/ORDER BY
  * reference to a column that is neither in GROUP BY nor inside an aggregate function. The rule throws
  * {@link FeatureNotSupportedException} in that case rather than emit a post-{@code $group} pipeline that references a
- * non-existent field. Extend the whitelist here when accumulator support lands.
+ * non-existent field.
+ *
+ * <p>The exception is a field path naming an accumulator the {@code $group} stage produced (see
+ * {@code AbstractMqlTranslator.registerAccumulator}). Such a path is a legitimate post-{@code $group} reference: it is
+ * neither a stray nor a GROUP BY key, so it is left alone in every position the rule would otherwise substitute.
  */
 public final class GroupBySubstitutionRule implements RewriteRule {
 
     private final Map<Integer, String> groupKeyVN;
     private final VNRegistry vnRegistry;
+    private final Set<String> accumulatorFields;
 
-    public GroupBySubstitutionRule(Map<Integer, String> groupKeyVN, VNRegistry vnRegistry) {
+    public GroupBySubstitutionRule(
+            Map<Integer, String> groupKeyVN, VNRegistry vnRegistry, Set<String> accumulatorFields) {
         this.groupKeyVN = groupKeyVN;
         this.vnRegistry = vnRegistry;
+        this.accumulatorFields = accumulatorFields;
     }
 
     @Override
@@ -56,6 +64,9 @@ public final class GroupBySubstitutionRule implements RewriteRule {
             return new AstFieldPathExpression("_id." + subKey);
         }
         if (node instanceof AstFieldPathExpression fp) {
+            if (accumulatorFields.contains(fp.fieldPath())) {
+                return null;
+            }
             throw strayColumn(fp.fieldPath());
         }
         return null;
@@ -64,13 +75,19 @@ public final class GroupBySubstitutionRule implements RewriteRule {
     @Override
     public @Nullable AstFilter tryMatch(AstFilter node) {
         if (node instanceof AstFieldOperationFilter fof) {
+            if (accumulatorFields.contains(fof.fieldPath())) {
+                return null;
+            }
             return new AstFieldOperationFilter(subKeyOrThrow(fof.fieldPath()), fof.filterOperation());
         }
         return null;
     }
 
     @Override
-    public AstSortField tryMatch(AstSortField node) {
+    public @Nullable AstSortField tryMatch(AstSortField node) {
+        if (accumulatorFields.contains(node.path())) {
+            return null;
+        }
         return new AstSortField(subKeyOrThrow(node.path()), node.order());
     }
 
@@ -85,7 +102,10 @@ public final class GroupBySubstitutionRule implements RewriteRule {
         return null;
     }
 
-    private AstProjectStageFieldPathSpecification idSpecification(String fieldPath) {
+    private @Nullable AstProjectStageFieldPathSpecification idSpecification(String fieldPath) {
+        if (accumulatorFields.contains(fieldPath)) {
+            return null;
+        }
         String subKey = lookupByFieldPath(fieldPath);
         if (subKey == null) {
             throw strayColumn(fieldPath);

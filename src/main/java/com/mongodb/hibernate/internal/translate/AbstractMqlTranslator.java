@@ -60,6 +60,8 @@ import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.internal.dialect.function.ExpressionFunction;
 import com.mongodb.hibernate.internal.dialect.function.array.MongoUnnestFunction;
 import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState;
+import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorExpression;
+import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
@@ -94,6 +96,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateComman
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLimitStage;
@@ -138,6 +141,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -181,6 +185,7 @@ import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.cte.CteContainer;
 import org.hibernate.sql.ast.tree.delete.DeleteStatement;
 import org.hibernate.sql.ast.tree.expression.AggregateColumnWriteExpression;
+import org.hibernate.sql.ast.tree.expression.AggregateFunctionExpression;
 import org.hibernate.sql.ast.tree.expression.Any;
 import org.hibernate.sql.ast.tree.expression.BinaryArithmeticExpression;
 import org.hibernate.sql.ast.tree.expression.CaseSearchedExpression;
@@ -422,13 +427,26 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private @Nullable AstRewriter astRewriter;
 
     /**
-     * Per-query GROUP BY state: the VN registry and the group-key-to-sub-key map. Created by {@link #createGroupStage}
-     * when the query has a GROUP BY clause; {@code null} otherwise. When sub-queries are supported, this should be
-     * pushed/popped on a stack.
+     * Per-query GROUP BY state: the VN registry, the group-key-to-sub-key map, and the accumulators registered while
+     * translating SELECT/HAVING/ORDER BY. Created by {@link #prepareGroupBy} when the query has a GROUP BY clause;
+     * {@code null} otherwise.
      */
     static final class GroupByContext {
         final VNRegistry vnRegistry = new VNRegistry();
         final Map<Integer, String> registeredGroupKeyByVN = new HashMap<>();
+
+        /**
+         * Registered accumulators keyed by the value number of the {@link AstAccumulatorExpression}, which is what
+         * makes the same aggregate function appearing in both SELECT and HAVING resolve to one {@code $group} field.
+         *
+         * <p>Insertion-ordered on purpose: {@code $group} renders these in registration order, so the emitted pipeline
+         * is deterministic and can be asserted verbatim.
+         */
+        final LinkedHashMap<Integer, AstGroupStageAccumulatorSpecification> registeredAccumulatorsByVN =
+                new LinkedHashMap<>();
+
+        /** The names of the registered accumulators, for {@link GroupBySubstitutionRule}'s whitelist. */
+        final Set<String> accumulatorFieldNames = new HashSet<>();
     }
 
     // Per-query counter for naming $lookup `let` variables; see nextLetVariableName.
@@ -694,30 +712,34 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         stages.addAll(buildJoinStages(root));
 
         createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
-        var groupStage = createGroupStage(querySpec);
+        var groupIdSpecs = prepareGroupBy(querySpec);
 
-        if (groupStage.isPresent()) {
+        // SELECT, HAVING and ORDER BY are translated before `$group` is assembled, even though `$group` precedes all
+        // three in the pipeline: an aggregate function in any of them registers an accumulator on the GROUP BY
+        // context, and `$group` has to render every accumulator they introduced. Translation order is therefore not
+        // stage order here; the stages are appended below in stage order regardless.
+        AstStage projectStage = createProjectStage(querySpec.getSelectClause());
+        Optional<? extends AstStage> havingStage = createMatchStage(querySpec.getHavingClauseRestrictions());
+        Optional<? extends AstStage> sortStage = createSortStage(querySpec);
+
+        if (groupIdSpecs != null) {
             var ctx = assertNotNull(groupByContext);
+            stages.add(new AstGroupStage(groupIdSpecs, List.copyOf(ctx.registeredAccumulatorsByVN.values())));
             astRewriter = new AstRewriter(
-                    new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry),
+                    new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry, ctx.accumulatorFieldNames),
                     new ExprToMatchDowngradeRule());
+            havingStage = havingStage.map(astRewriter::rewrite);
+            sortStage = sortStage.map(astRewriter::rewrite);
+            projectStage = astRewriter.rewrite(projectStage);
         }
-        groupStage.ifPresent(stages::add);
-        createMatchStage(querySpec.getHavingClauseRestrictions())
-                .map(ms -> astRewriter != null ? astRewriter.rewrite(ms) : ms)
-                .ifPresent(stages::add);
-        createSortStage(querySpec)
-                .map(ss -> astRewriter != null ? astRewriter.rewrite(ss) : ss)
-                .ifPresent(stages::add);
+
+        havingStage.ifPresent(stages::add);
+        sortStage.ifPresent(stages::add);
 
         var skipLimitStagesAndJdbcParams =
                 assertNotNull(queryOptionsLimit).createSkipLimitStagesAndJdbcParams(querySpec);
         stages.addAll(skipLimitStagesAndJdbcParams.stages());
 
-        AstStage projectStage = createProjectStage(querySpec.getSelectClause());
-        if (astRewriter != null) {
-            projectStage = astRewriter.rewrite(projectStage);
-        }
         stages.add(projectStage);
 
         astVisitorValueHolder.yield(
@@ -729,9 +751,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         skipLimitStagesAndJdbcParams.limit()));
     }
 
-    private Optional<AstGroupStage> createGroupStage(final QuerySpec querySpec) {
+    /**
+     * Establishes the GROUP BY context and translates the GROUP BY keys into the {@code _id} sub-key specifications,
+     * returning them for {@link #visitQuerySpec} to combine with the accumulators registered afterwards. Returns
+     * {@code null} when the query has no GROUP BY clause.
+     */
+    private @Nullable List<AstGroupStageSpecification> prepareGroupBy(final QuerySpec querySpec) {
         if (querySpec.getGroupByClauseExpressions().isEmpty()) {
-            return Optional.empty();
+            return null;
         }
         var ctx = new GroupByContext();
         groupByContext = ctx;
@@ -748,12 +775,21 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 specs.add(new AstGroupStageSpecification(groupKey, fieldPathExpr));
             } else {
                 var groupKey = "k" + i;
+                var accumulatorsBefore = ctx.registeredAccumulatorsByVN.size();
                 var expr = acceptAndYieldExpression(groupByClauseExpression);
+                // Hibernate ORM lets an aggregate function through in GROUP BY, which SQL does not allow. Translating
+                // it would register an accumulator and make the key reference that accumulator's field --- but `_id`
+                // is computed from the stage's input documents, where a field `$group` is about to produce does not
+                // exist, so the key would silently be null for every document and collapse the whole collection into
+                // one group. Refuse instead.
+                if (ctx.registeredAccumulatorsByVN.size() != accumulatorsBefore) {
+                    throw new FeatureNotSupportedException("An aggregate function is not allowed in GROUP BY");
+                }
                 ctx.registeredGroupKeyByVN.put(ctx.vnRegistry.valueNumber(expr), groupKey);
                 specs.add(new AstGroupStageSpecification(groupKey, expr));
             }
         }
-        return Optional.of(new AstGroupStage(specs));
+        return specs;
     }
 
     private Optional<AstMatchStage> createMatchStage(@Nullable Predicate restrictions) {
@@ -1263,7 +1299,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     private AstSortField createAstSortField(Expression sortExpression, AstSortOrder astSortOrder) {
-        if (!isFieldPathExpression(sortExpression)) {
+        var resolved = resolveSelectedExpression(sortExpression);
+        if (!isFieldPathExpression(resolved)) {
+            // An aggregate function is orderable under a GROUP BY: it resolves to the accumulator field $group
+            // computes, shared with SELECT/HAVING when they name the same function, so nothing is recomputed here.
+            if (resolved instanceof SelfRenderingFunctionSqlAstExpression<?> function) {
+                var accumulatorReference = tryRegisterAccumulator(function);
+                if (accumulatorReference != null) {
+                    return new AstSortField(accumulatorReference.fieldPath(), astSortOrder);
+                }
+            }
             // Under a GROUP BY, an expression $group has already computed is orderable in principle; with no GROUP BY
             // nothing has computed it, which is the wider problem.
             throw new FeatureNotSupportedException(
@@ -1271,8 +1316,25 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                             ? "TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251"
                             : "TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
         }
-        var fieldPath = acceptAndYield(sortExpression, FIELD_PATH);
+        var fieldPath = acceptAndYield(resolved, FIELD_PATH);
         return new AstSortField(fieldPath, astSortOrder);
+    }
+
+    /**
+     * Unwraps an ORDER BY item that names a select item by alias or by ordinal, which Hibernate ORM models as a
+     * {@link SqlSelectionExpression} around the selected expression, to that expression.
+     *
+     * <p>This has to happen before the sort target is classified, because {@link #isFieldPathExpression} treats the
+     * wrapper itself as a field path. Left wrapped, {@code ORDER BY total} over {@code sum(x) as total} would take the
+     * field-path branch, where the aggregate is visited with {@code FIELD_PATH} expected instead of {@code EXPRESSION},
+     * so it would never be offered to {@link #tryRegisterAccumulator} and would fail without a diagnostic. Unwrapping
+     * changes nothing for an alias or ordinal that names a plain column: the wrapper's only behaviour is to delegate to
+     * the same expression.
+     */
+    private static Expression resolveSelectedExpression(Expression expression) {
+        return expression instanceof SqlSelectionExpression selection
+                ? selection.getSelection().getExpression()
+                : expression;
     }
 
     @Override
@@ -1739,14 +1801,136 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (selfRenderingExpression instanceof SelfRenderingFunctionSqlAstExpression<?> sqlAstExpression) {
             if (astVisitorValueHolder.expects(EXPRESSION)
                     && !(sqlAstExpression.getFunctionRenderer() instanceof ExpressionFunction)) {
-                // a function call as an operand within an aggregation expression is not yet supported
-                throw new FeatureNotSupportedException(
-                        "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
+                var accumulatorReference = tryRegisterAccumulator(sqlAstExpression);
+                if (accumulatorReference != null) {
+                    astVisitorValueHolder.yield(EXPRESSION, accumulatorReference);
+                } else {
+                    // a function call as an operand within an aggregation expression is not yet supported
+                    throw new FeatureNotSupportedException(
+                            "TODO-HIBERNATE-196 https://jira.mongodb.org/browse/HIBERNATE-196");
+                }
+            } else {
+                selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
             }
-            selfRenderingExpression.renderToSql(FeatureNotSupportedSqlAppender.INSTANCE, this, sessionFactory);
         } else {
             throw new FeatureNotSupportedException("Only function expressions are supported");
         }
+    }
+
+    /** The prefix of a {@code $group} accumulator output field; {@code #} cannot occur in a mapped column name. */
+    private static final String ACCUMULATOR_FIELD_PREFIX = "#acc_";
+
+    /**
+     * HQL's statistical aggregate functions, which we do not translate yet.
+     *
+     * <p>Hibernate does not model these as {@link AggregateFunctionExpression}s the way it does {@code sum} and
+     * friends, so they reach {@link #tryRegisterAccumulator} as ordinary self-rendering functions and would otherwise
+     * fall through to the generic unsupported-function error.
+     */
+    private static final Set<String> STATISTICAL_AGGREGATE_FUNCTION_NAMES =
+            Set.of("stddev", "stddev_pop", "stddev_samp", "variance", "var_pop", "var_samp");
+
+    /**
+     * Recognizes an aggregate function in SELECT, HAVING or ORDER BY under a GROUP BY, registers it as an accumulator
+     * on the GROUP BY context, and returns a reference to the {@code $group} output field holding its value — the form
+     * in which every later stage of the pipeline refers to it.
+     *
+     * <p>Registration is keyed by the accumulator's value number, so the same aggregate function written in two clauses
+     * shares one {@code $group} field. An aggregate appearing only in HAVING is thereby computed for the filter without
+     * ever being projected: {@code $project} lists only what SELECT asked for, and its inclusion semantics drop the
+     * rest.
+     *
+     * <p>Returns {@code null} when the expression is not an aggregate function this translator supports, or when the
+     * query has no GROUP BY clause for the accumulator to belong to, leaving the caller to raise its own
+     * unsupported-feature error.
+     */
+    private @Nullable AstFieldPathExpression tryRegisterAccumulator(SelfRenderingFunctionSqlAstExpression<?> function) {
+        // Checked before anything else so that the diagnostic is the same with or without a GROUP BY clause: the
+        // function itself is the blocker either way.
+        if (STATISTICAL_AGGREGATE_FUNCTION_NAMES.contains(
+                function.getFunctionName().toLowerCase(Locale.ROOT))) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-257 https://jira.mongodb.org/browse/HIBERNATE-257");
+        }
+        if (!(function instanceof AggregateFunctionExpression aggregate)) {
+            // Not an aggregate at all, so the caller's function-as-operand error is the accurate one.
+            return null;
+        }
+        var ctx = groupByContext;
+        if (ctx == null) {
+            // An aggregate with no GROUP BY groups the whole collection, which `$group` expresses with a null `_id`;
+            // not implemented yet, so it is refused here rather than reported as an unsupported function.
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-262 https://jira.mongodb.org/browse/HIBERNATE-262");
+        }
+        // HQL's FILTER (WHERE ...) restricts which rows an aggregate sees. A `$group` accumulator has no filter of
+        // its own, but the same effect is reachable by making the argument yield nothing for the excluded rows, since
+        // every accumulator ignores nulls; not implemented yet. There is no arity check alongside this, because
+        // Hibernate ORM validates the argument count of these functions itself, before translation.
+        if (aggregate.getFilter() != null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-260 https://jira.mongodb.org/browse/HIBERNATE-260");
+        }
+        var argument = function.getArguments().get(0);
+        if (argument instanceof Distinct) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-259 https://jira.mongodb.org/browse/HIBERNATE-259");
+        }
+        var accumulator =
+                switch (function.getFunctionName().toLowerCase(Locale.ROOT)) {
+                    case "count" -> new AstAccumulatorExpression(AstAccumulatorOperator.SUM, countedValue(argument));
+                    case "sum" ->
+                        new AstAccumulatorExpression(AstAccumulatorOperator.SUM, acceptAndYieldArgument(argument));
+                    case "avg" ->
+                        new AstAccumulatorExpression(AstAccumulatorOperator.AVG, acceptAndYieldArgument(argument));
+                    case "min" ->
+                        new AstAccumulatorExpression(AstAccumulatorOperator.MIN, acceptAndYieldArgument(argument));
+                    case "max" ->
+                        new AstAccumulatorExpression(AstAccumulatorOperator.MAX, acceptAndYieldArgument(argument));
+                    // HQL's `some` is a synonym of `any`, and arrives under that name. Both are translatable ---
+                    // `$max`/`$min` over the predicate's boolean value would do it --- but are not implemented.
+                    case "every", "any" ->
+                        throw new FeatureNotSupportedException(
+                                "TODO-HIBERNATE-261 https://jira.mongodb.org/browse/HIBERNATE-261");
+                    // Anything else Hibernate ORM models as an aggregate function: nothing is promised for these,
+                    // so the message names the function rather than a ticket.
+                    default ->
+                        throw new FeatureNotSupportedException(
+                                "Aggregate function is not supported: " + function.getFunctionName());
+                };
+        return new AstFieldPathExpression(registerAccumulator(ctx, accumulator));
+    }
+
+    private AstExpression acceptAndYieldArgument(SqlAstNode argument) {
+        return acceptAndYieldExpression(assertInstanceOf(argument, Expression.class));
+    }
+
+    /**
+     * The per-document contribution to a {@code COUNT}: {@code 1} for {@code COUNT(*)}, and for {@code COUNT(x)} the
+     * {@code 1} that SQL counts only when {@code x} is not null. A missing field compares equal to {@code null} in an
+     * aggregation expression, so one comparison covers both absent and explicitly null.
+     */
+    private AstExpression countedValue(SqlAstNode argument) {
+        var one = new AstValueExpression(new AstLiteral(new BsonInt32(1)));
+        if (argument instanceof Star) {
+            return one;
+        }
+        var isNull = new AstBinaryOperatorExpression(
+                AstComparisonExpressionOperator.EQ,
+                acceptAndYieldArgument(argument),
+                new AstValueExpression(new AstLiteral(BsonNull.VALUE)));
+        return new AstSwitchExpression(
+                List.of(new AstSwitchCase(isNull, new AstValueExpression(new AstLiteral(new BsonInt32(0))))), one);
+    }
+
+    /** Returns the {@code $group} output field name of {@code accumulator}, registering it if it is new. */
+    private static String registerAccumulator(GroupByContext ctx, AstAccumulatorExpression accumulator) {
+        var valueNumber = ctx.vnRegistry.valueNumber(accumulator);
+        var registered = ctx.registeredAccumulatorsByVN.get(valueNumber);
+        if (registered != null) {
+            return registered.key();
+        }
+        var fieldName = ACCUMULATOR_FIELD_PREFIX + ctx.registeredAccumulatorsByVN.size();
+        ctx.registeredAccumulatorsByVN.put(
+                valueNumber, new AstGroupStageAccumulatorSpecification(fieldName, accumulator));
+        ctx.accumulatorFieldNames.add(fieldName);
+        return fieldName;
     }
 
     @Override
