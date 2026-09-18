@@ -1347,7 +1347,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (rewritten instanceof AstFieldPathExpression fieldPath) {
             return fieldPath.fieldPath();
         }
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
     }
 
     /**
