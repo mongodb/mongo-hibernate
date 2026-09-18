@@ -1348,16 +1348,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         return sortPathOf(assertNotNull(astRewriter).rewrite(sortKey));
     }
 
-    /**
-     * The field {@code $sort} should name for an already-resolved sort key, which has to be a field path because
-     * {@code $sort} can only name a field.
-     *
-     * <p>Two shapes survive resolution as something else, and both want the same missing feature --- an
-     * {@code $addFields} stage materializing the value into a field for {@code $sort} to name, which is what
-     * HIBERNATE-79 describes. An expression computed over an accumulator, {@code ORDER BY avg(x) + 1}, keeps the
-     * arithmetic {@code $group} did not do. A DISTINCT aggregate resolves to the expression reducing its
-     * {@code $addToSet} array rather than to a {@code $group} output field.
-     */
+    /** The field {@code $sort} should name for an already-resolved sort key. */
     private static String sortPathOf(AstExpression sortKey) {
         if (sortKey instanceof AstFieldPathExpression fieldPath) {
             return fieldPath.fieldPath();
