@@ -1875,6 +1875,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private static final Set<String> STATISTICAL_AGGREGATE_FUNCTION_NAMES =
             Set.of("stddev", "stddev_pop", "stddev_samp", "variance", "var_pop", "var_samp");
 
+    private static final Set<String> DISTINCT_REDUCIBLE_AGGREGATE_FUNCTION_NAMES = Set.of("count", "sum", "avg");
+
     /**
      * Recognizes an aggregate function in SELECT, HAVING or ORDER BY under a GROUP BY, registers it as an accumulator
      * on the GROUP BY context, and returns a reference to the {@code $group} output field holding its value — the form
@@ -1959,35 +1961,21 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             new AstValueExpression(new AstLiteral(new BsonArray(List.of(BsonNull.VALUE))));
 
     /**
-     * Registers the {@code $addToSet} accumulator collecting a group's distinct argument values, and returns the
-     * expression that reduces that array to the aggregate's result.
+     * Collects a group's distinct argument values with {@code $addToSet} and returns the expression reducing that array
+     * to the aggregate's result --- two steps, because no {@code $group} accumulator de-duplicates on its own. The
+     * accumulator is registered by value number like any other, so {@code count(distinct x)} and {@code sum(distinct
+     * x)} share one array. Only {@code count} needs {@link #NULL_SET} subtracted; {@code $sum} and {@code $avg} already
+     * skip a {@code null} element.
      *
-     * <p>No {@code $group} accumulator de-duplicates on its own, so a DISTINCT aggregate takes two steps:
-     * {@code $group} collects the distinct values, and the reduction happens in whichever later stage refers to the
-     * aggregate. Registration is by value number as usual, so {@code count(distinct x)} and {@code sum(distinct x)}
-     * over the same argument share one array rather than collecting it twice.
-     *
-     * <p>Only {@code $size} needs the {@link #NULL_SET} subtraction: {@code $sum} and {@code $avg} already skip a
-     * {@code null} element, so subtracting it first would be a no-op.
-     *
-     * <p>Returns {@code null} for every other aggregate, leaving the caller to translate it as though DISTINCT were
-     * absent. For {@code min} and {@code max} that is exactly right: the minimum and maximum of a set equal those of
-     * the multiset, so the quantifier cannot change the result, and SQL permits it on these two and ignores it as well.
-     * Taking the streaming {@code $min}/{@code $max} accumulator rather than materializing the array also keeps them
-     * clear of {@code $addToSet}'s per-group memory limit, which for a high-cardinality argument is the difference
-     * between a query that runs and one that does not. Anything else is unsupported with or without the quantifier, and
-     * the caller reports that more precisely than this method could.
+     * <p>Returns {@code null} outside {@link #DISTINCT_REDUCIBLE_AGGREGATE_FUNCTION_NAMES}, leaving the caller to
+     * translate with the quantifier dropped. For {@code min} and {@code max} that is exact --- a set cannot change
+     * their result, and SQL ignores the quantifier on them too --- and it spares them {@code $addToSet}'s per-group
+     * memory limit.
      */
     private @Nullable AstExpression tryRegisterDistinctAccumulator(
             GroupByContext ctx, String functionName, Expression argument) {
-        switch (functionName) {
-            case "count", "sum", "avg" -> {}
-            // MIN and MAX are unaffected by the quantifier, and every remaining aggregate is unsupported with or
-            // without it --- the caller's switch names the function or its ticket, which is more precise than a
-            // DISTINCT-specific message would be. Both are left to the caller.
-            default -> {
-                return null;
-            }
+        if (!DISTINCT_REDUCIBLE_AGGREGATE_FUNCTION_NAMES.contains(functionName)) {
+            return null;
         }
         var distinctValues = new AstFieldPathExpression(registerAccumulator(
                 ctx,
