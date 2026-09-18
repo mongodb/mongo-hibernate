@@ -412,7 +412,7 @@ class SequenceGeneratedIdIntegrationTests {
     }
 
     @Test
-    void persistsWithASequenceDeclaredOnAMappedSuperclass() {
+    void persistsWithASequenceDeclaredOnMappedSuperclass() {
         var run = inRegistry(SequenceSuperItem.class, session -> {
             session.getTransaction().begin();
             var item = new SequenceSuperItem();
