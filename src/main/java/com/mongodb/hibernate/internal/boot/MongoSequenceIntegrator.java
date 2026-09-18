@@ -16,7 +16,7 @@
 
 package com.mongodb.hibernate.internal.boot;
 
-import static com.mongodb.hibernate.internal.boot.NameChecks.forbidDot;
+import static com.mongodb.hibernate.internal.boot.NameChecks.forbidDotInQualifiedName;
 import static java.lang.String.format;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
@@ -56,9 +56,9 @@ public final class MongoSequenceIntegrator implements Integrator {
                 forbidCatalog(name);
                 var schema = name.getSchemaName();
                 if (schema != null) {
-                    forbidDot(schema.getText(), "sequence schema");
+                    forbidDotInQualifiedName(schema.getText(), "sequence schema");
                 }
-                forbidDot(name.getSequenceName().getText(), "sequence");
+                forbidDotInQualifiedName(name.getSequenceName().getText(), "sequence");
             }
         }
     }

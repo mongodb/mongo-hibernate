@@ -23,7 +23,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.SEQUENCE_COLLECTION_NAME;
-import static com.mongodb.hibernate.internal.boot.NameChecks.forbidDot;
+import static com.mongodb.hibernate.internal.boot.NameChecks.forbidDotInQualifiedName;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
@@ -242,19 +242,19 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
                 .getSettings()
                 .get(AvailableSettings.DEFAULT_SCHEMA);
         if (defaultSchema != null) {
-            forbidDot(defaultSchema.toString(), "schema");
+            forbidDotInQualifiedName(defaultSchema.toString(), "schema");
         }
     }
 
-    /** @see NameChecks#forbidDot(String, String) */
+    /** @see NameChecks#forbidDotInQualifiedName(String, String) */
     private static void forbidDottedTableQualifiers(InFlightMetadataCollector metadata) {
         for (var namespace : metadata.getDatabase().getNamespaces()) {
             var schema = namespace.getName().schema();
             if (schema != null) {
-                forbidDot(schema.getText(), "schema");
+                forbidDotInQualifiedName(schema.getText(), "schema");
             }
             for (var table : namespace.getTables()) {
-                forbidDot(table.getName(), "table");
+                forbidDotInQualifiedName(table.getName(), "table");
             }
         }
     }

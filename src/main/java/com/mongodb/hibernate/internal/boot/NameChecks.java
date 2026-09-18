@@ -30,7 +30,7 @@ final class NameChecks {
      * {@code @Table(schema = "a", name = "b")} and {@code @Table(name = "a.b")} would resolve to the same collection,
      * and nothing downstream could tell the two qualifiers apart.
      */
-    static void forbidDot(String name, String kind) {
+    static void forbidDotInQualifiedName(String name, String kind) {
         if (name.contains(".")) {
             throw new FeatureNotSupportedException(format(
                     "The character [.] in a %s name is not supported, but is present in [%s]. A schema folds into the"
