@@ -470,7 +470,7 @@ class SequenceGeneratedIdIntegrationTests {
     }
 
     @Test
-    void reExportDoesNotResetALiveSequence() {
+    void reExportDoesNotResetLiveSequence() {
         sequences.insertOne(
                 BsonDocument.parse(
                         """
