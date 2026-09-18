@@ -450,6 +450,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         if (memberDetails == null) {
             return;
         }
+        forbidUnsupportedGeneratorDeclarations(persistentClass, memberDetails, metadata);
         // getDirectAnnotationUsage returns null when the annotation is absent, though it is declared without
         // @Nullable, so an IDE reports this check as always false. Removing it would run the switch below on every
         // entity, including the ones with no @GeneratedValue at all.
@@ -457,7 +458,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         if (generatedValue == null) {
             return;
         }
-        forbidUnintrospectableGenerator(persistentClass, memberDetails, generatedValue, metadata);
+        forbidUnintrospectableGeneratorName(persistentClass, generatedValue, metadata);
         switch (generatedValue.strategy()) {
             case AUTO, SEQUENCE -> forbidUnsupportedGeneratedIdentifierType(persistentClass, identifier);
             case IDENTITY -> throw identityGenerationNotSupported(persistentClass);
@@ -467,25 +468,28 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
     }
 
     /**
-     * Rejects the annotation combinations that resolve, via Hibernate's own generator lookup, to a generator other than
-     * a MongoDB-backed sequence: a {@link TableGenerator} or {@link GenericGenerator} localized on the identifier
-     * member or on the entity class or one of its superclasses (a {@code @MappedSuperclass} can carry the generator), a
-     * meta-annotation annotated with {@link IdGeneratorType}, and a non-blank {@code generator()} that names none of
-     * {@code @SequenceGenerator} localized on the member/class or declared globally in the metadata.
+     * A generator declared on the identifier member or on the entity class or one of its superclasses (a
+     * {@code @MappedSuperclass} can carry the generator) is forbidden because it registers into the global generator
+     * namespace, which another entity's {@code @GeneratedValue(generator = "...")} can reference.
      */
-    private static void forbidUnintrospectableGenerator(
-            PersistentClass persistentClass,
-            MemberDetails idMember,
-            GeneratedValue generatedValue,
-            InFlightMetadataCollector metadata) {
+    private static void forbidUnsupportedGeneratorDeclarations(
+            PersistentClass persistentClass, MemberDetails idMember, InFlightMetadataCollector metadata) {
         var modelsContext = metadata.getBootstrapContext().getModelsContext();
-
         forbidUnsupportedGeneratorAnnotations(idMember, persistentClass, modelsContext);
         metadata.getClassDetailsRegistry()
                 .getClassDetails(persistentClass.getClassName())
                 .forSelfAndEachSuper(classDetails ->
                         forbidUnsupportedGeneratorAnnotations(classDetails, persistentClass, modelsContext));
+    }
 
+    /**
+     * Rejects a non-blank {@code generator()} that resolves, via Hibernate's own generator lookup, to a generator other
+     * than a MongoDB-backed sequence: a legacy non-sequence name, or a globally registered {@link GenericGenerator}. A
+     * declared {@code @SequenceGenerator} is not looked up here because generator names are global: an entity may name
+     * one declared on a different entity.
+     */
+    private static void forbidUnintrospectableGeneratorName(
+            PersistentClass persistentClass, GeneratedValue generatedValue, InFlightMetadataCollector metadata) {
         var generatorName = generatedValue.generator();
         if (!generatorName.isBlank() && isNonSequenceGeneratorName(generatorName, metadata)) {
             throw nonSequenceGenerator(persistentClass, generatorName);
@@ -502,7 +506,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
             throw unsupportedGenerator(
                     persistentClass, format("a [@%s] identifier generator", GenericGenerator.class.getSimpleName()));
         }
-        if (!target.getMetaAnnotated(IdGeneratorType.class, modelsContext).isEmpty()) {
+        // @ObjectIdGenerator is itself meta-annotated with @IdGeneratorType, and is the one supported custom generator.
+        if (target.getMetaAnnotated(IdGeneratorType.class, modelsContext).stream()
+                .anyMatch(annotation -> annotation.annotationType() != ObjectIdGenerator.class)) {
             throw unsupportedGenerator(
                     persistentClass,
                     format(

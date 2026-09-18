@@ -823,6 +823,14 @@ class SequenceGeneratedIdIntegrationTests {
         @Table(name = "memberTableGeneratorSuperItems")
         static class MemberTableGeneratorSuperItem extends MemberTableGeneratorSuper {}
 
+        @Entity(name = "GlobalTableGenDeclarer")
+        @Table(name = "globalTableGenDeclarers")
+        @TableGenerator(name = "globalTableGen", table = "global_table_gen", allocationSize = 1)
+        static class GlobalTableGenDeclarer {
+            @Id
+            Long id;
+        }
+
         @Entity(name = "IdentityNamedGeneratorItem")
         @Table(name = "identityNamedGeneratorItems")
         static class IdentityNamedGeneratorItem {
@@ -937,6 +945,18 @@ class SequenceGeneratedIdIntegrationTests {
         @Test
         void tableGeneratorOnMappedSuperclassIdMemberIsRejected() {
             assertThatThrownBy(() -> inRegistry(MemberTableGeneratorSuperItem.class, session -> null))
+                    .isInstanceOf(FeatureNotSupportedException.class)
+                    .hasMessageContaining("TODO-HIBERNATE-252");
+        }
+
+        /**
+         * The declarer's own id has no {@code @GeneratedValue} and nothing references the generator, so only the
+         * declaration check can reject it: no resolveable {@code generator()} name exists for a consumer-side check to
+         * fire on.
+         */
+        @Test
+        void tableGeneratorDeclarationWithoutGeneratedValueIsRejected() {
+            assertThatThrownBy(() -> inRegistry(GlobalTableGenDeclarer.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("TODO-HIBERNATE-252");
         }
