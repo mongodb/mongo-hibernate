@@ -499,7 +499,7 @@ class SequenceGeneratedIdIntegrationTests {
     }
 
     @Test
-    void allocationSurvivesARolledBackTransaction() {
+    void allocationSurvivesRolledBackTransaction() {
         record Result(long id, long bookCount, long nextValue) {}
 
         // Read while the SessionFactory is still open: create-drop drops the "books" collection and deletes the
