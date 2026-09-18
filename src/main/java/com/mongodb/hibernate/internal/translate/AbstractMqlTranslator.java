@@ -1340,14 +1340,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      *
      * <p>{@code $sort} can only name a field, so a key that survives as anything other than a field path is not
      * sortable. {@code ORDER BY avg(x) + 1} is the shape that reaches this: {@code $group} computed {@code avg(x)}, but
-     * not the arithmetic wrapped around it.
+     * not the arithmetic wrapped around it. That is HIBERNATE-79's territory rather than HIBERNATE-251's --- 251 was
+     * the GROUP BY expression key, which resolves above, while making a computed sort key orderable needs the
+     * {@code $addFields} stage 79 describes.
      */
     private String resolveGroupedSortPath(AstExpression sortKey) {
         var rewritten = assertNotNull(astRewriter).rewrite(sortKey);
         if (rewritten instanceof AstFieldPathExpression fieldPath) {
             return fieldPath.fieldPath();
         }
-        throw new FeatureNotSupportedException("TODO-HIBERNATE-251 https://jira.mongodb.org/browse/HIBERNATE-251");
+        throw new FeatureNotSupportedException("TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
     }
 
     /**

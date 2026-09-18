@@ -2775,13 +2775,14 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         /**
-         * Ordering by an expression is unsupported however it is named, but it must now fail with a ticket rather than
-         * with the message-less exception an unresolved alias used to produce.
+         * Ordering by an expression computed over an aggregate is unsupported however it is named. The ticket is
+         * HIBERNATE-79, which covers making a non-field-path sort key orderable with an {@code $addFields} stage; the
+         * GROUP BY expression key that HIBERNATE-251 covered is supported and ordered by above.
          */
         @ParameterizedTest(name = "[{index}] {0}")
         @MethodSource("orderByExpressionQueries")
         void orderByExpressionIsRejected(String hql) {
-            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-251");
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-79");
         }
 
         static Stream<String> orderByExpressionQueries() {
