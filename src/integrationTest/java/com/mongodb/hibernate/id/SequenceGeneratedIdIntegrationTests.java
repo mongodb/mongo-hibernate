@@ -900,7 +900,7 @@ class SequenceGeneratedIdIntegrationTests {
         }
 
         @Test
-        void entityMappedToTheSequenceCollectionIsRejected() {
+        void entityMappedToSequenceCollectionIsRejected() {
             assertThatThrownBy(() -> inRegistry(SequenceCollectionItem.class, session -> null))
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining("hibernate_sequences");
