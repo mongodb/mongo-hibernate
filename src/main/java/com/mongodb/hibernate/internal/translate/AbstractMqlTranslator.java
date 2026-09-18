@@ -1952,16 +1952,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             new AstValueExpression(new AstLiteral(new BsonArray(List.of(BsonNull.VALUE))));
 
     /**
-     * Collects a group's distinct argument values with {@code $addToSet} and returns the expression reducing that array
-     * to the aggregate's result --- two steps, because no {@code $group} accumulator de-duplicates on its own. The
-     * accumulator is registered by value number like any other, so {@code count(distinct x)} and {@code sum(distinct
-     * x)} share one array. Only {@code count} needs {@link #NULL_SET} subtracted; {@code $sum} and {@code $avg} already
-     * skip a {@code null} element.
+     * Adds the {@code $addToSet} accumulator collecting a group's distinct argument values, and returns the expression
+     * reducing that array to the aggregate's result Only {@code count} needs {@link #NULL_SET} subtracted; {@code $sum}
+     * and {@code $avg} already skip a {@code null} element.
      *
-     * <p>Returns {@code null} outside {@link #DISTINCT_REDUCIBLE_AGGREGATE_FUNCTION_NAMES}, leaving the caller to
-     * translate with the quantifier dropped. For {@code min} and {@code max} that is exact --- a set cannot change
-     * their result, and SQL ignores the quantifier on them too --- and it spares them {@code $addToSet}'s per-group
-     * memory limit.
+     * <p>Distinct for {@code min} and {@code max} doesn't change the result
      */
     private @Nullable AstExpression tryRegisterDistinctAccumulator(
             GroupByContext ctx, String functionName, Expression argument) {
