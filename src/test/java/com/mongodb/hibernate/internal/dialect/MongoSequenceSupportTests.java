@@ -81,20 +81,11 @@ class MongoSequenceSupportTests {
     }
 
     @Test
-    void restartSetsNextValueDirectly() {
-        assertThat(BsonDocument.parse(sequenceSupport.getRestartSequenceString("books_SEQ", 500)))
-                .isEqualTo(
-                        BsonDocument.parse(
-                                """
-                                {
-                                  "update": "hibernate_sequences",
-                                  "updates": [
-                                    {
-                                      "q": {"_id": "books_SEQ"},
-                                      "u": {"$set": {"next_value": {"$numberLong": "500"}}}
-                                    }
-                                  ]
-                                }"""));
+    void restartIsRejected() {
+        assertThatThrownBy(() -> sequenceSupport.getRestartSequenceString("books_SEQ", 500))
+                .isInstanceOf(FeatureNotSupportedException.class)
+                .hasMessageContaining("books_SEQ")
+                .hasMessageContaining("update");
     }
 
     @Test

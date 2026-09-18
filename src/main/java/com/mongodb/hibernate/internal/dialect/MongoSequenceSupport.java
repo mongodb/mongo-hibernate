@@ -37,8 +37,8 @@ import org.jspecify.annotations.Nullable;
  * Backs Hibernate ORM sequences with one document per sequence in the
  * {@value com.mongodb.hibernate.internal.MongoConstants#SEQUENCE_COLLECTION_NAME} collection, keyed by sequence name.
  *
- * <p>The document holds the value the next allocation will hand out, so the seed and a restart store their target
- * verbatim and only the allocation does arithmetic.
+ * <p>The document holds the value the next allocation will hand out, so the seed stores its target verbatim and only
+ * the allocation does arithmetic.
  *
  * <p>The increment is stored in the document because {@code SequenceStructure} only ever calls
  * {@link #getSequenceNextValString(String)}, which has no increment parameter.
@@ -109,12 +109,16 @@ public final class MongoSequenceSupport implements SequenceSupport {
                 true);
     }
 
+    /**
+     * Reached only by the unsupported {@code update} (migrate) and {@code truncate} schema flows, neither of which the
+     * JDBC adapter implements.
+     */
     @Override
     public String getRestartSequenceString(String sequenceName, long startWith) {
-        return updateCommand(
-                sequenceName,
-                new BsonDocument("$set", new BsonDocument(NEXT_VALUE_FIELD_NAME, new BsonInt64(startWith))),
-                false);
+        throw new FeatureNotSupportedException(format(
+                "Restarting sequence [%s] is not supported: a restart is issued only by the [update] (migrate)"
+                        + " and [truncate] schema flows, which are not implemented.",
+                sequenceName));
     }
 
     @Override
