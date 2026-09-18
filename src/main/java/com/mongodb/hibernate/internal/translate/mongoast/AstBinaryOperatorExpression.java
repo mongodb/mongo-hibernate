@@ -36,6 +36,10 @@ public record AstBinaryOperatorExpression(String operator, AstExpression left, A
         this(operator.getOperatorName(), left, right);
     }
 
+    public AstBinaryOperatorExpression(AstArrayExpressionOperator operator, AstExpression left, AstExpression right) {
+        this(operator.getOperatorName(), left, right);
+    }
+
     @Override
     public StructuralKey structuralKey() {
         return new StructuralKey("BinaryOperator", List.of(operator, left, right));
