@@ -38,7 +38,15 @@ public enum AstAccumulatorOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/min/">{@code $min}</a>. */
     MIN("$min"),
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/max/">{@code $max}</a>. */
-    MAX("$max");
+    MAX("$max"),
+    /**
+     * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/addToSet/">{@code $addToSet}</a>.
+     *
+     * <p>Unlike the other operators here this one does not reduce a group to a scalar: it collects the group's distinct
+     * argument values into an array, which a later stage reduces. That is how HQL's {@code DISTINCT} quantifier is
+     * expressed, since no {@code $group} accumulator de-duplicates on its own.
+     */
+    ADD_TO_SET("$addToSet");
 
     AstAccumulatorOperator(String operatorName) {
         this.operatorName = operatorName;

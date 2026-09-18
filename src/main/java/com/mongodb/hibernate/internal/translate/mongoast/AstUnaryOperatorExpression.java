@@ -29,6 +29,10 @@ public record AstUnaryOperatorExpression(String operator, AstExpression operand)
         this(operator.getOperatorName(), operand);
     }
 
+    public AstUnaryOperatorExpression(AstArrayExpressionOperator operator, AstExpression operand) {
+        this(operator.getOperatorName(), operand);
+    }
+
     @Override
     public StructuralKey structuralKey() {
         return new StructuralKey("UnaryOperator", List.of(operator, operand));

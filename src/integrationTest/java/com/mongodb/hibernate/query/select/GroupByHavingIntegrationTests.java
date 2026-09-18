@@ -2781,7 +2781,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         @ParameterizedTest(name = "[{index}] {0}")
         @MethodSource("orderByExpressionQueries")
         void orderByExpressionIsRejected(String hql) {
-            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-251");
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-79");
         }
 
         static Stream<String> orderByExpressionQueries() {
@@ -2886,17 +2886,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         @MethodSource("aggregateWithFilterQueries")
         void aggregateWithFilterIsRejected(String hql) {
             assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "TODO-HIBERNATE-260");
-        }
-
-        /** Hibernate ORM accepts {@code distinct} on every aggregate we translate, not only on {@code count}. */
-        @ParameterizedTest(name = "[{index}] {0}(distinct ...)")
-        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
-        void distinctWithinAggregateIsRejected(String function) {
-            assertSelectQueryFailure(
-                    "select b.string, " + function + "(distinct b.primitiveInt) from Item as b GROUP BY b.string",
-                    Object[].class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-259");
         }
     }
 
@@ -3226,6 +3215,416 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessageContaining(expectedStrayColumn)
                     .hasMessageContaining("not a GROUP BY key");
+        }
+    }
+
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class DistinctAccumulators extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                List.of(
+                                // string "a": primitiveInt 1, 1, 2 --- a duplicate to collapse
+                                new Item(1, 1, "a", true, new ItemStruct(1)),
+                                new Item(2, 1, "a", true, new ItemStruct(1)),
+                                new Item(3, 2, "a", true, new ItemStruct(2)),
+                                // string "b": a single value, repeated
+                                new Item(4, 5, "b", false, new ItemStruct(5)),
+                                new Item(5, 5, "b", false, new ItemStruct(5)))
+                        .forEach(session::persist);
+            });
+        }
+
+        @Test
+        void countDistinct() {
+            assertSelectionQuery(
+                    "select b.string, count(distinct b.primitiveInt) from Item as b"
+                            + " GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_0",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2L}, new Object[] {"b", 1L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void sumAndAvgDistinct() {
+            assertSelectionQuery(
+                    "select b.string, sum(distinct b.primitiveInt), avg(distinct b.primitiveInt) from Item as b"
+                            + " GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {"$sum": "$#acc_0"},
+                            "#c_3": {"$avg": "$#acc_0"},
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 3L, 1.5d}, new Object[] {"b", 5L, 5.0d}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void minAndMaxDistinctDropTheQuantifier() {
+            assertSelectionQuery(
+                    "select b.string, min(distinct b.primitiveInt), max(distinct b.primitiveInt) from Item as b"
+                            + " GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$min": "$primitiveInt"
+                            },
+                            "#acc_1": {
+                              "$max": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": "$#acc_0",
+                            "#c_3": "$#acc_1",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1, 2}, new Object[] {"b", 5, 5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countDistinctAndSumDistinctShareOneSet() {
+            assertSelectionQuery(
+                    "select b.string, count(distinct b.primitiveInt), sum(distinct b.primitiveInt) from Item as b"
+                            + " GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_0",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "#c_3": {"$sum": "$#acc_0"},
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2L, 3L}, new Object[] {"b", 1L, 5L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * Ordering by a DISTINCT aggregate is not supported: it resolves to an expression reducing the
+         * {@code $addToSet} array rather than to a {@code $group} output field, and {@code $sort} can only name a
+         * field. Materializing it would need an extra {@code $addFields} stage.
+         */
+        @Test
+        void orderByADistinctAggregateIsRejected() {
+            assertSelectQueryFailure(
+                    "select b.string, count(distinct b.primitiveInt) from Item as b GROUP BY b.string"
+                            + " ORDER BY count(distinct b.primitiveInt)",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
+        }
+
+        @Test
+        void havingOnCountDistinct() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string"
+                            + " HAVING count(distinct b.primitiveInt) > 1 ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$expr": {
+                              "$gt": [
+                                {
+                                  "$size": {
+                                    "$setDifference": [
+                                      "$#acc_0",
+                                      [null]
+                                    ]
+                                  }
+                                },
+                                1
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of("a"),
+                    Set.of(COLLECTION_NAME));
+        }
+    }
+
+    /**
+     * {@code $addToSet} skips a missing field but keeps an explicit {@code null}, while SQL's {@code COUNT(DISTINCT x)}
+     * counts neither --- hence the {@code $setDifference} against {@code [null]}. Without it the second group below
+     * would report 2 and the third 1.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class DistinctNullSemantics extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                List.of(
+                                // primitiveInt 1: two distinct non-null strings, one repeated
+                                new Item(1, 1, "x", true, new ItemStruct(1)),
+                                new Item(2, 1, "x", true, new ItemStruct(1)),
+                                new Item(3, 1, "y", true, new ItemStruct(1)),
+                                // primitiveInt 2: one null alongside one value
+                                new Item(4, 2, null, true, new ItemStruct(2)),
+                                new Item(5, 2, "z", true, new ItemStruct(2)),
+                                // primitiveInt 3: every string null
+                                new Item(6, 3, null, false, new ItemStruct(3)),
+                                new Item(7, 3, null, false, new ItemStruct(3)))
+                        .forEach(session::persist);
+            });
+        }
+
+        @Test
+        void countDistinctExcludesNulls() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, count(distinct b.string) from Item as b"
+                            + " GROUP BY b.primitiveInt ORDER BY b.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$string"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.primitiveInt": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_0",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {1, 2L}, new Object[] {2, 1L}, new Object[] {3, 0L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /** {@code count(x)} counts rows with a non-null value; {@code count(distinct x)} counts values. */
+        @Test
+        void countDistinctDiffersFromPlainCount() {
+            assertSelectionQuery(
+                    "select b.primitiveInt, count(b.string), count(distinct b.string) from Item as b"
+                            + " GROUP BY b.primitiveInt ORDER BY b.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "primitiveInt": "$primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {"$eq": ["$string", null]},
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            },
+                            "#acc_1": {
+                              "$addToSet": "$string"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.primitiveInt": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#primitiveInt": "$_id.primitiveInt",
+                            "#c_2": "$#acc_0",
+                            "#c_3": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_1",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(
+                                    new Object[] {1, 3L, 2L}, new Object[] {2, 1L, 1L}, new Object[] {3, 0L, 0L}),
+                    Set.of(COLLECTION_NAME));
         }
     }
 }
