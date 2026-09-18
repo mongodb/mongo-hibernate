@@ -2776,8 +2776,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
 
         /**
          * Ordering by an expression computed over an aggregate is unsupported however it is named. The ticket is
-         * HIBERNATE-79, which covers making a non-field-path sort key orderable with an {@code $addFields} stage; the
-         * GROUP BY expression key that HIBERNATE-251 covered is supported and ordered by above.
+         * HIBERNATE-79, which covers making a non-field-path sort key orderable with an {@code $addFields} stage
          */
         @ParameterizedTest(name = "[{index}] {0}")
         @MethodSource("orderByExpressionQueries")
