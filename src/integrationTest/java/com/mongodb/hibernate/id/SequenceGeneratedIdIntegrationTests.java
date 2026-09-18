@@ -214,7 +214,7 @@ class SequenceGeneratedIdIntegrationTests {
     }
 
     @Test
-    void persistsAndReloadsWithAGeneratedIdentifier() {
+    void persistsAndReloadsWithGeneratedIdentifier() {
         var run = inRegistry(Book.class, session -> {
             session.getTransaction().begin();
             var book = new Book();
