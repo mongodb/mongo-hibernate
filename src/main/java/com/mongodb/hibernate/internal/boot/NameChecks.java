@@ -34,7 +34,7 @@ final class NameChecks {
         if (name.contains(".")) {
             throw new FeatureNotSupportedException(format(
                     "The character [.] in a %s name is not supported, but is present in [%s]. A schema folds into the"
-                            + " name as [schema.name], so a '.' written by the user would make the folded name"
+                            + " name as [schema.name], so a '.' in the provided name would make the folded name"
                             + " ambiguous.",
                     kind, name));
         }
