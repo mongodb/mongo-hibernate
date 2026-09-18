@@ -98,7 +98,7 @@ class MongoSequenceSupportTests {
     }
 
     @Test
-    void dropRemovesOnlyTheSequenceDocument() {
+    void dropRemovesOnlySequenceDocument() {
         assertThat(onlyCommand(sequenceSupport.getDropSequenceStrings("books_SEQ")))
                 .isEqualTo(
                         BsonDocument.parse(
