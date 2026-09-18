@@ -637,7 +637,7 @@ class SequenceGeneratedIdIntegrationTests {
     }
 
     @Test
-    void allocationWithoutASeededCounterFails() {
+    void allocationWithoutSeededCounterFails() {
         assertThatThrownBy(() -> inRegistry(
                         Book.class,
                         Map.of("jakarta.persistence.schema-generation.database.action", "none"),
