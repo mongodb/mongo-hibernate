@@ -299,7 +299,7 @@ class SequenceGeneratedIdIntegrationTests {
     }
 
     @Test
-    void persistsWithAPrimitiveGeneratedIdentifier() {
+    void persistsWithPrimitiveGeneratedIdentifier() {
         var run = inRegistry(Pamphlet.class, session -> {
             session.getTransaction().begin();
             var pamphlet = new Pamphlet();
