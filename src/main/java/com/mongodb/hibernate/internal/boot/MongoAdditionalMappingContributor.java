@@ -585,7 +585,7 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
         }
         throw new FeatureNotSupportedException(format(
                 "%s: a generated identifier of type [%s] is not supported;"
-                        + " supported types are [short], [int] and [long] and their boxed forms",
+                        + " supported types are [int] and [long] and their boxed forms",
                 persistentClass, identifierType.getTypeName()));
     }
 
