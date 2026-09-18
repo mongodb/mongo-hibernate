@@ -575,7 +575,7 @@ class SequenceGeneratedIdIntegrationTests {
      */
     @ParameterizedTest
     @MethodSource("malformedCounterDocuments")
-    void allocationFromAMalformedCounterFails(String counterDocument, String expectedMessage) {
+    void allocationFromMalformedCounterFails(String counterDocument, String expectedMessage) {
         sequences.insertOne(BsonDocument.parse(counterDocument));
 
         assertThatThrownBy(() -> inRegistry(
