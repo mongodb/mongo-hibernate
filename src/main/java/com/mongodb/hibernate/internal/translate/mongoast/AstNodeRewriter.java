@@ -18,6 +18,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
 
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
@@ -48,6 +49,10 @@ public interface AstNodeRewriter {
     AstProjectStageSpecification rewrite(AstProjectStageSpecification node);
 
     AstGroupStageSpecification rewrite(AstGroupStageSpecification node);
+
+    AstGroupStageAccumulatorSpecification rewrite(AstGroupStageAccumulatorSpecification node);
+
+    AstAccumulatorExpression rewrite(AstAccumulatorExpression node);
 
     AstLetVariable rewrite(AstLetVariable node);
 

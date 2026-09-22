@@ -16,6 +16,7 @@
 
 package com.mongodb.hibernate.internal.translate.rewrite;
 
+import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -25,6 +26,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstSwitchCase;
 import com.mongodb.hibernate.internal.translate.mongoast.AstValue;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstLetVariable;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
@@ -76,6 +78,14 @@ public interface RewriteRule {
     }
 
     default @Nullable AstGroupStageSpecification tryMatch(AstGroupStageSpecification node) {
+        return null;
+    }
+
+    default @Nullable AstGroupStageAccumulatorSpecification tryMatch(AstGroupStageAccumulatorSpecification node) {
+        return null;
+    }
+
+    default @Nullable AstAccumulatorExpression tryMatch(AstAccumulatorExpression node) {
         return null;
     }
 

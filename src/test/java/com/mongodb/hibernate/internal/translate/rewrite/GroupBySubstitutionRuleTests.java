@@ -29,15 +29,17 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstLiteralExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.VNRegistry;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperation;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstComparisonFilterOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstEmptyFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstExprFilter;
+import com.mongodb.hibernate.internal.translate.mongoast.filter.AstFieldOperationFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilter;
 import com.mongodb.hibernate.internal.translate.mongoast.filter.AstLogicalFilterOperator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.Test;
 
@@ -67,8 +69,12 @@ class GroupBySubstitutionRuleTests {
     }
 
     private AstRewriter rewriterWithKeys(Map<AstExpression, String> keys) {
+        return rewriterWithKeysAndAccumulators(keys, Set.of());
+    }
+
+    private AstRewriter rewriterWithKeysAndAccumulators(Map<AstExpression, String> keys, Set<String> accumulators) {
         keys.forEach((expression, subKey) -> groupKeyVN.put(vn.valueNumber(expression), subKey));
-        return new AstRewriter(new GroupBySubstitutionRule(groupKeyVN, vn), null);
+        return new AstRewriter(new GroupBySubstitutionRule(groupKeyVN, vn, accumulators), null);
     }
 
     @Test
@@ -120,14 +126,6 @@ class GroupBySubstitutionRuleTests {
     }
 
     @Test
-    void sortFieldOverAKeyIsSubstituted() {
-        var rewriter = rewriterWithKeys(Map.of(x(), "x"));
-
-        assertThat(rewriter.rewrite(new AstSortField("x", AstSortOrder.ASC)))
-                .isEqualTo(new AstSortField("_id.x", AstSortOrder.ASC));
-    }
-
-    @Test
     void projectIncludeOfAKeyBecomesAFieldPathSpecification() {
         var rewriter = rewriterWithKeys(Map.of(x(), "x"));
 
@@ -144,12 +142,47 @@ class GroupBySubstitutionRuleTests {
                 .withMessageContaining("column 'x'");
     }
 
+    /**
+     * A field naming an accumulator that {@code $group} produced is neither a GROUP BY key nor a stray: it is a
+     * legitimate post-{@code $group} reference and has to survive substitution untouched. One test per position the
+     * rule would otherwise rewrite or reject.
+     */
     @Test
-    void straySortFieldThrows() {
-        var rewriter = rewriterWithKeys(Map.of(y(), "y"));
+    void accumulatorExpressionSurvives() {
+        var rewriter = rewriterWithKeysAndAccumulators(Map.of(x(), "x"), Set.of("#acc_0"));
+        var accumulatorReference = new AstFieldPathExpression("#acc_0");
+
+        assertThat(rewriter.rewrite(accumulatorReference)).isEqualTo(accumulatorReference);
+        assertThat(rewriter.rewrite(add(accumulatorReference, lit(1)))).isEqualTo(add(accumulatorReference, lit(1)));
+    }
+
+    @Test
+    void accumulatorFilterSurvives() {
+        var rewriter = rewriterWithKeysAndAccumulators(Map.of(x(), "x"), Set.of("#acc_0"));
+        var input = new AstFieldOperationFilter(
+                "#acc_0",
+                new AstComparisonFilterOperation(AstComparisonFilterOperator.GT, new AstLiteral(new BsonInt32(4))));
+
+        assertThat(rewriter.rewrite(input)).isEqualTo(input);
+    }
+
+    @Test
+    void accumulatorProjectSpecificationSurvives() {
+        var rewriter = rewriterWithKeysAndAccumulators(Map.of(x(), "x"), Set.of("#acc_0"));
+
+        assertThat(rewriter.rewrite(new AstProjectStageIncludeSpecification("#acc_0")))
+                .isEqualTo(new AstProjectStageIncludeSpecification("#acc_0"));
+        assertThat(rewriter.rewrite(new AstProjectStageFieldPathSpecification("#c_2", "#acc_0")))
+                .isEqualTo(new AstProjectStageFieldPathSpecification("#c_2", "#acc_0"));
+    }
+
+    /** The whitelist must admit only the registered names, not every field that looks generated. */
+    @Test
+    void anUnregisteredAccumulatorLikeNameIsStillAStray() {
+        var rewriter = rewriterWithKeysAndAccumulators(Map.of(x(), "x"), Set.of("#acc_0"));
 
         assertThatExceptionOfType(FeatureNotSupportedException.class)
-                .isThrownBy(() -> rewriter.rewrite(new AstSortField("x", AstSortOrder.ASC)))
-                .withMessageContaining("column 'x'");
+                .isThrownBy(() -> rewriter.rewrite(new AstFieldPathExpression("#acc_1")))
+                .withMessageContaining("column '#acc_1'");
     }
 }

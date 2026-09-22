@@ -32,6 +32,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.function.Function;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
@@ -41,7 +42,9 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonInvalidOperationException;
 import org.bson.BsonNull;
+import org.bson.BsonNumber;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonValue;
@@ -53,6 +56,18 @@ import org.jspecify.annotations.Nullable;
  * Provides conversion methods between {@link BsonValue}s, which our {@link PreparedStatement}/{@link ResultSet}
  * implementation uses under the hood and rarely exposes, and domain values we usually use when setting parameter values
  * on our {@link PreparedStatement}, or retrieving column values from a {@link ResultSet}.
+ *
+ * <h2>Numeric reads</h2>
+ *
+ * JDBC expects a numeric getter to convert between numeric types: <a
+ * href="https://docs.oracle.com/javase/1.5.0/docs/guide/jdbc/getstart/mapping.html">Table 8.6, "Conversions by
+ * {@code ResultSet.getXXX} Methods"</a> marks every numeric getter as able to retrieve every numeric type, with only
+ * the natural pairing marked as recommended. {@link #toLongDomainValue}, {@link #toDoubleDomainValue} and
+ * {@link #toBigDecimalDomainValue} accordingly accept any BSON numeric type.
+ *
+ * <p>They are stricter than that expectation in two places. {@link #toLongDomainValue} throws on a {@code double} or
+ * {@code decimal128} with a fractional part rather than truncating it, for example {@code 3.1415} is refused while
+ * {@code 3.0} converts.
  *
  * @hidden
  */
@@ -232,32 +247,72 @@ public final class ValueConversions {
         return toDomainValue(value.asInt32());
     }
 
-    private static int toDomainValue(BsonInt32 value) {
-        return value.intValue();
+    public static long toLongDomainValue(BsonValue value) {
+        return exactIntegralValue(value, BigDecimal::longValueExact);
     }
 
-    public static long toLongDomainValue(BsonValue value) {
-        return toDomainValue(value.asInt64());
+    public static double toDoubleDomainValue(BsonValue value) {
+        return asNumber(value).doubleValue();
+    }
+
+    public static BigDecimal toBigDecimalDomainValue(BsonValue value) {
+        return decimalValueOf(asNumber(value));
+    }
+
+    /**
+     * Converts to an integral type, refusing a value the target cannot represent exactly, as the driver's own codecs
+     * do; see {@code org.bson.internal.NumberCodecHelper}.
+     */
+    private static <T> T exactIntegralValue(BsonValue value, Function<BigDecimal, T> narrow) {
+        var decimal = decimalValueOf(asNumber(value));
+        try {
+            return narrow.apply(decimal);
+        } catch (ArithmeticException e) {
+            throw new BsonInvalidOperationException(
+                    format("Value %s cannot be represented exactly by the mapped type", decimal), e);
+        }
+    }
+
+    /** Every BSON numeric type converts to a {@link BigDecimal} without loss, which is what makes it the pivot. */
+    private static BigDecimal decimalValueOf(BsonNumber number) {
+        return switch (number.getBsonType()) {
+            case INT32, INT64 -> BigDecimal.valueOf(number.longValue());
+            // The shortest decimal that round-trips, rather than the exact binary expansion, so that a
+            // `double` 0.1 reads back as 0.1 rather than 0.1000000000000000055511151231257827.
+            case DOUBLE -> BigDecimal.valueOf(number.doubleValue());
+            case DECIMAL128 -> number.decimal128Value().bigDecimalValue();
+            default ->
+                throw new BsonInvalidOperationException(
+                        format("Unexpected numeric BSON type %s", number.getBsonType()));
+        };
+    }
+
+    // The natural Java type for each numeric BSON type, for the untyped `toDomainValue(BsonValue, Class)` dispatch
+    // above. Distinct from the getters, which widen: an untyped read reports what is stored, a typed read converts
+    // to what was asked for.
+
+    private static int toDomainValue(BsonInt32 value) {
+        return value.intValue();
     }
 
     private static long toDomainValue(BsonInt64 value) {
         return value.longValue();
     }
 
-    public static double toDoubleDomainValue(BsonValue value) {
-        return toDomainValue(value.asDouble());
-    }
-
     private static double toDomainValue(BsonDouble value) {
         return value.getValue();
     }
 
-    public static BigDecimal toBigDecimalDomainValue(BsonValue value) {
-        return toDomainValue(value.asDecimal128());
-    }
-
     private static BigDecimal toDomainValue(BsonDecimal128 value) {
         return value.decimal128Value().bigDecimalValue();
+    }
+
+    private static BsonNumber asNumber(BsonValue value) {
+        if (!value.isNumber()) {
+            throw new BsonInvalidOperationException(
+                    format("Value expected to be numeric is of unexpected type %s", value.getBsonType()));
+        }
+        return value.asNumber();
     }
 
     public static String toStringDomainValue(BsonValue value) throws SQLFeatureNotSupportedException {

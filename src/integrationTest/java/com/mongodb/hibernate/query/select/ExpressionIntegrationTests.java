@@ -1017,15 +1017,6 @@ class ExpressionIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         @Test
-        void testCaseInGroupByIsUnsupported() {
-            assertSelectQueryFailure(
-                    "select count(id) from Item group by case when y > 5 then 1 else 0 end",
-                    Long.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-196");
-        }
-
-        @Test
         void testCaseAsInListTestExpressionIsUnsupported() {
             assertSelectQueryFailure(
                     "from Item where (case when y > 5 then 1 else 0 end) in (1, 2)",

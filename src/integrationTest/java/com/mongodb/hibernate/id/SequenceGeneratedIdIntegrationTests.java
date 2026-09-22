@@ -569,9 +569,8 @@ class SequenceGeneratedIdIntegrationTests {
      *
      * <p>Each shape is caught in a different place, which is why each asserts its own message. A missing
      * {@code increment} reads back as {@code 0} during Hibernate ORM's boot-time increment-mismatch check and fails
-     * there. A wrong BSON type fails in the same check, while reading the value. A missing {@code next_value} leaves
-     * {@code increment} matching {@code allocationSize}, so boot succeeds and the allocation's own shape guard catches
-     * it instead.
+     * there. A missing {@code next_value} leaves {@code increment} matching {@code allocationSize}, so boot succeeds
+     * and the allocation's own shape guard catches it instead.
      */
     @ParameterizedTest
     @MethodSource("malformedCounterDocuments")
@@ -606,11 +605,7 @@ class SequenceGeneratedIdIntegrationTests {
                 arguments(
                         """
                         {"_id": "books_SEQ", "increment": {"$numberLong": "50"}}""",
-                        "matched no document"),
-                arguments(
-                        """
-                        {"_id": "books_SEQ", "next_value": 1, "increment": 50}""",
-                        "Value expected to be of type INT64 is of unexpected type INT32"));
+                        "matched no document"));
     }
 
     /**

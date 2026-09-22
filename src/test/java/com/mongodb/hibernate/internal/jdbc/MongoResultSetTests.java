@@ -134,11 +134,14 @@ class MongoResultSetTests {
             assertAll(
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
+                    // Both refuse it, for different reasons: getInt takes an int32 only, while
+                    // getLong takes any numeric type but only an exactly representable value, and 3.1415 has no
+                    // integral equivalent
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
                     () -> assertEquals(3.1415, mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBytes(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)),
+                    () -> assertEquals(new BigDecimal("3.1415"), mongoResultSet.getBigDecimal(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getObject(1, ObjectId.class)),
                     () -> assertFalse(mongoResultSet.wasNull()));
         }
@@ -150,10 +153,11 @@ class MongoResultSetTests {
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getString(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
                     () -> assertEquals(120, mongoResultSet.getInt(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    // widening from int32 loses nothing, so the numeric getters accept it
+                    () -> assertEquals(120L, mongoResultSet.getLong(1)),
+                    () -> assertEquals(120d, mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBytes(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)),
+                    () -> assertEquals(new BigDecimal("120"), mongoResultSet.getBigDecimal(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getObject(1, ObjectId.class)),
                     () -> assertFalse(mongoResultSet.wasNull()));
         }
@@ -166,9 +170,9 @@ class MongoResultSetTests {
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertEquals(12345678L, mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertEquals(12345678d, mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBytes(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)),
+                    () -> assertEquals(new BigDecimal("12345678"), mongoResultSet.getBigDecimal(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getObject(1, ObjectId.class)),
                     () -> assertFalse(mongoResultSet.wasNull()));
         }
@@ -198,11 +202,48 @@ class MongoResultSetTests {
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBoolean(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
-                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    // rounding into a double is permitted; HQL types avg() as Double whatever the column is
+                    () -> assertEquals(1.0692467440017111E13, mongoResultSet.getDouble(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBytes(1)),
                     () -> assertEquals(bigDecimalValue, mongoResultSet.getBigDecimal(1)),
                     () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getObject(1, ObjectId.class)),
                     () -> assertFalse(mongoResultSet.wasNull()));
+        }
+
+        /**
+         * The shape that made this latitude necessary: {@code $sum} over a group with nothing to add returns an
+         * {@code int32} whatever type the mapped column is.
+         */
+        @Test
+        void testEmptyAccumulatorResultReadsAsAnyNumericType() throws SQLException {
+            createResultSetWith(new BsonInt32(0));
+            assertAll(
+                    () -> assertEquals(0L, mongoResultSet.getLong(1)),
+                    () -> assertEquals(0d, mongoResultSet.getDouble(1)),
+                    () -> assertEquals(new BigDecimal("0"), mongoResultSet.getBigDecimal(1)));
+        }
+
+        /**
+         * The same BSON type and a value that is exactly representable: {@code getLong} converts it, {@code getInt}
+         * still refuses it. What each getter accepts is the difference, not the value.
+         */
+        @Test
+        void testGetLongAcceptsAnExactlyRepresentableDouble() throws SQLException {
+            createResultSetWith(new BsonDouble(2.0));
+            assertAll(
+                    () -> assertEquals(2L, mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)));
+        }
+
+        /** A non-numeric value is still refused by every numeric getter. */
+        @Test
+        void testNumericGettersRefuseANonNumericValue() throws SQLException {
+            createResultSetWith(new BsonString("x"));
+            assertAll(
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getInt(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getLong(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getDouble(1)),
+                    () -> assertThrowsTypeMismatchException(() -> mongoResultSet.getBigDecimal(1)));
         }
 
         @Test
