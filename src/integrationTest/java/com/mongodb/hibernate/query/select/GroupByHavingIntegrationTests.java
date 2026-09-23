@@ -3442,6 +3442,64 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         /**
+         * The DISTINCT argument need not be a bare column. The {@code $addToSet} operand is whatever the argument
+         * translates to, so de-duplication happens over the computed values: group "a" holds {@code 1, 1, 2}, whose
+         * incremented distinct values are {@code 2, 3}.
+         */
+        @Test
+        void distinctOverAComputedArgument() {
+            assertSelectionQuery(
+                    "select b.string, count(distinct b.primitiveInt + 1), sum(distinct b.primitiveInt + 1)"
+                            + " from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": {
+                                "$add": [
+                                  "$primitiveInt",
+                                  1
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_0",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "#c_3": {"$sum": "$#acc_0"},
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2L, 5L}, new Object[] {"b", 1L, 6L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
          * Two DISTINCT aggregates over <em>different</em> arguments need a {@code $addToSet} each. Contrast
          * {@link #countDistinctAndSumDistinctShareOneSet}, where the shared argument collapses them to one.
          */

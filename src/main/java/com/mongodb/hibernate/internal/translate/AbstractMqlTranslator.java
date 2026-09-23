@@ -1868,8 +1868,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     /**
      * Recognizes an aggregate function in SELECT, HAVING or ORDER BY under a GROUP BY, registers it as an accumulator
-     * on the GROUP BY context, and returns a reference to the {@code $group} output field holding its value — the form
-     * in which every later stage of the pipeline refers to it.
+     * on the GROUP BY context, and returns the expression every later stage uses to refer to its value.
+     *
+     * <p>That expression takes one of two forms. Ordinarily it is an {@link AstFieldPathExpression} naming the
+     * {@code $group} output field, which {@code $sort} can name directly. For a DISTINCT aggregate it is instead the
+     * expression reducing the {@code $addToSet} array that {@code $group} collected. Callers needing a field name
+     * rather than a value, i.e. sorting, have to handle the second form, see {@link #sortPathOf}.
      *
      * <p>Registration is keyed by the accumulator's value number, so the same aggregate function written in two clauses
      * shares one {@code $group} field. An aggregate appearing only in HAVING is thereby computed for the filter without
