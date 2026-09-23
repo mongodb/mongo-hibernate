@@ -3286,10 +3286,9 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
-        void sumAndAvgDistinct() {
+        void sumDistinct() {
             assertSelectionQuery(
-                    "select b.string, sum(distinct b.primitiveInt), avg(distinct b.primitiveInt) from Item as b"
-                            + " GROUP BY b.string ORDER BY b.string",
+                    "select b.string, sum(distinct b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
                     Object[].class,
                     """
                     {
@@ -3314,7 +3313,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                           "$project": {
                             "_id#string": "$_id.string",
                             "#c_2": {"$sum": "$#acc_0"},
-                            "#c_3": {"$avg": "$#acc_0"},
                             "_id": 0
                           }
                         }
@@ -3322,7 +3320,186 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     }
                     """,
                     results -> assertThat((Iterable<Object[]>) results)
-                            .containsExactly(new Object[] {"a", 3L, 1.5d}, new Object[] {"b", 5L, 5.0d}),
+                            .containsExactly(new Object[] {"a", 3L}, new Object[] {"b", 5L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void avgDistinct() {
+            assertSelectionQuery(
+                    "select b.string, avg(distinct b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {"$avg": "$#acc_0"},
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1.5d}, new Object[] {"b", 5.0d}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void minDistinct() {
+            assertSelectionQuery(
+                    "select b.string, min(distinct b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$min": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 1}, new Object[] {"b", 5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void maxDistinct() {
+            assertSelectionQuery(
+                    "select b.string, max(distinct b.primitiveInt) from Item as b GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$max": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2}, new Object[] {"b", 5}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * Two DISTINCT aggregates over <em>different</em> arguments need a {@code $addToSet} each. Contrast
+         * {@link #countDistinctAndSumDistinctShareOneSet}, where the shared argument collapses them to one.
+         */
+        @Test
+        void distinctOverDifferentArgumentsGetsASetEach() {
+            assertSelectionQuery(
+                    "select b.string, count(distinct b.primitiveInt), count(distinct b.string) from Item as b"
+                            + " GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            },
+                            "#acc_1": {
+                              "$addToSet": "$string"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_0",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "#c_3": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_1",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2L, 1L}, new Object[] {"b", 1L, 1L}),
                     Set.of(COLLECTION_NAME));
         }
 
