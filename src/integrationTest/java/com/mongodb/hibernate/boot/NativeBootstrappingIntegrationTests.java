@@ -25,7 +25,6 @@ import com.mongodb.hibernate.junit.MongoExtension;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -130,16 +129,6 @@ class NativeBootstrappingIntegrationTests extends AbstractQueryIntegrationTests
             Instant version;
         }
 
-        @Entity(name = "ItemWithGeneratedValue")
-        @Table(name = "ItemWithGeneratedValue")
-        static class ItemWithGeneratedValue {
-            @Id
-            @GeneratedValue
-            int id;
-
-            String string;
-        }
-
         @Test
         void testForbidCurrentTimestampSourceDbAnnotation() {
             assertBootstrapThrows(() -> new MetadataSources()
@@ -161,18 +150,6 @@ class NativeBootstrappingIntegrationTests extends AbstractQueryIntegrationTests
                     .isInstanceOf(FeatureNotSupportedException.class)
                     .hasMessage(
                             "Field version of class com.mongodb.hibernate.boot.NativeBootstrappingIntegrationTests.Unsupported.ItemWithGenerated is not supported: Annotation org.hibernate.annotations.Generated is forbidden");
-        }
-
-        @Test
-        void testForbidGeneratedValueAnnotation() {
-            assertBootstrapThrows(() -> new MetadataSources()
-                            .addAnnotatedClass(
-                                    NativeBootstrappingIntegrationTests.Unsupported.ItemWithGeneratedValue.class)
-                            .buildMetadata(new StandardServiceRegistryBuilder().build())
-                            .buildSessionFactory())
-                    .isInstanceOf(FeatureNotSupportedException.class)
-                    .hasMessage(
-                            "Field id of class com.mongodb.hibernate.boot.NativeBootstrappingIntegrationTests.Unsupported.ItemWithGeneratedValue is not supported: Annotation jakarta.persistence.GeneratedValue is forbidden");
         }
 
         @Test

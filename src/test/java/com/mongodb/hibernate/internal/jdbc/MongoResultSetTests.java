@@ -67,7 +67,7 @@ class MongoResultSetTests {
 
     @BeforeEach
     void beforeEach() {
-        mongoResultSet = new MongoResultSet(mongoCursor, FIELDS);
+        mongoResultSet = MongoResultSet.forCursor(mongoCursor, FIELDS);
     }
 
     @Test
@@ -94,7 +94,7 @@ class MongoResultSetTests {
 
             doReturn(true).when(mongoCursor).hasNext();
             doReturn(bsonDocument).when(mongoCursor).next();
-            mongoResultSet = new MongoResultSet(mongoCursor, singletonList("field"));
+            mongoResultSet = MongoResultSet.forCursor(mongoCursor, singletonList("field"));
             assertTrue(mongoResultSet.next());
         }
 

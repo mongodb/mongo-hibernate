@@ -45,6 +45,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import org.bson.BsonDocument;
@@ -54,7 +55,9 @@ import org.jspecify.annotations.Nullable;
 
 final class MongoResultSet implements ResultSetAdapter {
 
-    private final MongoCursor<BsonDocument> mongoCursor;
+    private final Iterator<BsonDocument> documents;
+
+    private final Runnable closer;
 
     private final List<String> fieldNames;
 
@@ -64,17 +67,26 @@ final class MongoResultSet implements ResultSetAdapter {
 
     private boolean closed;
 
-    MongoResultSet(MongoCursor<BsonDocument> mongoCursor, List<String> fieldNames) {
+    static MongoResultSet forCursor(MongoCursor<BsonDocument> cursor, List<String> fieldNames) {
+        return new MongoResultSet(cursor, cursor::close, fieldNames);
+    }
+
+    static MongoResultSet forDocument(BsonDocument document, List<String> fieldNames) {
+        return new MongoResultSet(List.of(document).iterator(), () -> {}, fieldNames);
+    }
+
+    private MongoResultSet(Iterator<BsonDocument> documents, Runnable closer, List<String> fieldNames) {
         assertFalse(fieldNames.isEmpty());
-        this.mongoCursor = mongoCursor;
+        this.documents = documents;
+        this.closer = closer;
         this.fieldNames = fieldNames;
     }
 
     @Override
     public boolean next() throws SQLException {
         checkClosed();
-        if (mongoCursor.hasNext()) {
-            currentDocument = mongoCursor.next();
+        if (documents.hasNext()) {
+            currentDocument = documents.next();
             return true;
         } else {
             return false;
@@ -86,10 +98,9 @@ final class MongoResultSet implements ResultSetAdapter {
         if (!closed) {
             closed = true;
             try {
-                mongoCursor.close();
+                closer.run();
             } catch (RuntimeException e) {
-                throw new SQLException(
-                        format("Failed to close %s", mongoCursor.getClass().getSimpleName()), e);
+                throw new SQLException("Failed to close the result set", e);
             }
         }
     }
