@@ -26,17 +26,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 public record AstBinaryOperatorExpression(String operator, AstExpression left, AstExpression right)
         implements AstExpression {
 
-    public AstBinaryOperatorExpression(
-            AstComparisonExpressionOperator operator, AstExpression left, AstExpression right) {
-        this(operator.getOperatorName(), left, right);
-    }
-
-    public AstBinaryOperatorExpression(
-            AstArithmeticExpressionOperator operator, AstExpression left, AstExpression right) {
-        this(operator.getOperatorName(), left, right);
-    }
-
-    public AstBinaryOperatorExpression(AstArrayExpressionOperator operator, AstExpression left, AstExpression right) {
+    public AstBinaryOperatorExpression(AstExpressionOperator operator, AstExpression left, AstExpression right) {
         this(operator.getOperatorName(), left, right);
     }
 

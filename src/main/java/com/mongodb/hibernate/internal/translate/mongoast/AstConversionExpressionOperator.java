@@ -24,7 +24,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public enum AstConversionExpressionOperator {
+public enum AstConversionExpressionOperator implements AstExpressionOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/toInt/">{@code $toInt}</a>. */
     TO_INT("$toInt"),
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/toLong/">{@code $toLong}</a>. */
@@ -34,7 +34,8 @@ public enum AstConversionExpressionOperator {
         this.operatorName = operatorName;
     }
 
-    String getOperatorName() {
+    @Override
+    public String getOperatorName() {
         return operatorName;
     }
 

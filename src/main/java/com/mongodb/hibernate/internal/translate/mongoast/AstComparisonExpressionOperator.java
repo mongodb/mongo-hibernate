@@ -24,7 +24,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public enum AstComparisonExpressionOperator {
+public enum AstComparisonExpressionOperator implements AstExpressionOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/eq/">{@code $eq}</a>. */
     EQ("$eq"),
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/gt/">{@code $gt}</a>. */
@@ -42,6 +42,7 @@ public enum AstComparisonExpressionOperator {
         this.operatorName = operatorName;
     }
 
+    @Override
     public String getOperatorName() {
         return operatorName;
     }

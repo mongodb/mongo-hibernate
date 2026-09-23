@@ -25,7 +25,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public enum AstArrayExpressionOperator {
+public enum AstArrayExpressionOperator implements AstExpressionOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/size/">{@code $size}</a>. */
     SIZE("$size"),
     /**
@@ -48,7 +48,8 @@ public enum AstArrayExpressionOperator {
         this.operatorName = operatorName;
     }
 
-    String getOperatorName() {
+    @Override
+    public String getOperatorName() {
         return operatorName;
     }
 

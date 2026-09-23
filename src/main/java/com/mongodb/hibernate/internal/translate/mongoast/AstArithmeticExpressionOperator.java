@@ -23,7 +23,7 @@ package com.mongodb.hibernate.internal.translate.mongoast;
  * @hidden
  */
 @SuppressWarnings("MissingSummary")
-public enum AstArithmeticExpressionOperator {
+public enum AstArithmeticExpressionOperator implements AstExpressionOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/add/">{@code $add}</a>. */
     ADD("$add"),
     /**
@@ -43,7 +43,8 @@ public enum AstArithmeticExpressionOperator {
         this.operatorName = operatorName;
     }
 
-    String getOperatorName() {
+    @Override
+    public String getOperatorName() {
         return operatorName;
     }
 
