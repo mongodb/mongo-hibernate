@@ -487,9 +487,9 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
 
     /**
      * Rejects a non-blank {@code generator()} that resolves, via Hibernate's own generator lookup, to a generator other
-     * than a MongoDB-backed sequence: a legacy non-sequence name, or a globally registered {@link GenericGenerator}. A
-     * declared {@code @SequenceGenerator} is not looked up here because generator names are global: an entity may name
-     * one declared on a different entity.
+     * than a MongoDB-backed sequence: a legacy non-sequence name, or a globally registered {code @GenericGenerator}. 
+     * A {@link @SequenceGenerator} is not looked up here; invalid {@code @SequenceGenerator} declarations are already 
+     * rejected in {@link #forbidUnsupportedGeneratorDeclarations}.
      */
     private static void forbidUnintrospectableGeneratorName(
             PersistentClass persistentClass, GeneratedValue generatedValue, InFlightMetadataCollector metadata) {
