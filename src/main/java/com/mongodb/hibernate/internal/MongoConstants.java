@@ -41,6 +41,18 @@ public final class MongoConstants {
     public static final String MONGO_JDBC_DRIVER_NAME = MONGO_DBMS_NAME + " Java Driver JDBC Adapter";
     public static final String ID_FIELD_NAME = "_id";
 
+    /**
+     * A JDBC-adapter field, not a MongoDB command field. When {@code true}, {@code MongoStatement} runs the command
+     * without a {@code ClientSession} and without starting a transaction. {@code findAndModify} is the only command
+     * that reads this field, and {@code MongoStatement} requires it there: a {@code findAndModify} that omits it is
+     * refused. No other command consults it. Stated in the command so that it is visible in generated MQL rather than
+     * being an implicit rule about one command name.
+     */
+    public static final String NON_TRANSACTIONAL_COMMAND_FIELD_NAME = "nonTransactional";
+
+    /** The fixed, non-configurable collection backing every Hibernate sequence counter. */
+    public static final String SEQUENCE_COLLECTION_NAME = "hibernate_sequences";
+
     public static final String MONGO_DIALECT_SHORT_NAME = "MongoDB";
 
     /**
