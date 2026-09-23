@@ -53,6 +53,8 @@ import java.util.Date;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
 import org.bson.Document;
@@ -419,18 +421,13 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
      * which resolves through {@code Dialect#getNativeIdentifierGeneratorStrategy} to {@code sequence} for a dialect
      * without identity columns.
      */
-    private static final Set<String> NON_SEQUENCE_LEGACY_GENERATOR_NAMES = Set.of(
-            "assigned",
-            "foreign",
-            "select",
-            "increment",
-            "identity",
-            "table",
-            "enhanced-table",
-            "uuid",
-            "uuid.hex",
-            "uuid2",
-            "guid");
+    private static final Set<String> NON_SEQUENCE_LEGACY_GENERATOR_NAMES = Stream.of(
+                    Set.of("assigned", "foreign", "select", "increment"),
+                    IDENTITY_FLAVORED_LEGACY_GENERATOR_NAMES,
+                    TABLE_FLAVORED_LEGACY_GENERATOR_NAMES,
+                    UUID_FLAVORED_LEGACY_GENERATOR_NAMES)
+            .flatMap(Set::stream)
+            .collect(Collectors.toUnmodifiableSet());
 
     /**
      * Only sequence-backed generation is supported, and only for the identifier types Hibernate ORM reads with
@@ -487,8 +484,8 @@ public final class MongoAdditionalMappingContributor implements AdditionalMappin
 
     /**
      * Rejects a non-blank {@code generator()} that resolves, via Hibernate's own generator lookup, to a generator other
-     * than a MongoDB-backed sequence: a legacy non-sequence name, or a globally registered {code @GenericGenerator}. 
-     * A {@link @SequenceGenerator} is not looked up here; invalid {@code @SequenceGenerator} declarations are already 
+     * than a MongoDB-backed sequence: a legacy non-sequence name, or a globally registered {@code @GenericGenerator}. A
+     * {@link SequenceGenerator} is not looked up here; invalid {@code @SequenceGenerator} declarations are already
      * rejected in {@link #forbidUnsupportedGeneratorDeclarations}.
      */
     private static void forbidUnintrospectableGeneratorName(
