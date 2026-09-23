@@ -17,8 +17,8 @@
 package com.mongodb.hibernate.internal.translate.mongoast;
 
 /**
- * An operator over an array-valued operand, used to reduce the array a {@code $addToSet} accumulator collects for a
- * {@code DISTINCT} aggregate.
+ * An operator over an array-valued operand in aggregation-expression position, whether that array is a field, a
+ * literal, or the output of an accumulator.
  *
  * @see AstUnaryOperatorExpression
  * @see AstBinaryOperatorExpression
