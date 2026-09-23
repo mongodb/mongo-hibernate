@@ -3419,6 +3419,21 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         /**
+         * DISTINCT is dropped only for {@code min} and {@code max}, whose result a set cannot change. Any other
+         * aggregate has to fail rather than quietly return the non-distinct result --- these two are unsupported in
+         * their own right, but the guard is what stops a future aggregate from silently losing the quantifier.
+         */
+        @ParameterizedTest(name = "[{index}] {0}(distinct ...)")
+        @ValueSource(strings = {"every", "any"})
+        void distinctOnAnAggregateWithNoSetReductionIsRejected(String function) {
+            assertSelectQueryFailure(
+                    "select b.string, " + function + "(distinct b.primitiveBoolean) from Item as b GROUP BY b.string",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "DISTINCT is not supported for aggregate function: " + function);
+        }
+
+        /**
          * Ordering by a DISTINCT aggregate is not supported: it resolves to an expression reducing the
          * {@code $addToSet} array rather than to a {@code $group} output field, and {@code $sort} can only name a
          * field. Materializing it would need an extra {@code $addFields} stage.

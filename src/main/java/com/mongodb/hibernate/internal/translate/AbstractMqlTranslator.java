@@ -1866,8 +1866,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     private static final Set<String> STATISTICAL_AGGREGATE_FUNCTION_NAMES =
             Set.of("stddev", "stddev_pop", "stddev_samp", "variance", "var_pop", "var_samp");
 
-    private static final Set<String> DISTINCT_REDUCIBLE_AGGREGATE_FUNCTION_NAMES = Set.of("count", "sum", "avg");
-
     /**
      * Recognizes an aggregate function in SELECT, HAVING or ORDER BY under a GROUP BY, registers it as an accumulator
      * on the GROUP BY context, and returns a reference to the {@code $group} output field holding its value — the form
@@ -1953,15 +1951,22 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     /**
      * Adds the {@code $addToSet} accumulator collecting a group's distinct argument values, and returns the expression
-     * reducing that array to the aggregate's result Only {@code count} needs {@link #NULL_SET} subtracted; {@code $sum}
-     * and {@code $avg} already skip a {@code null} element.
+     * reducing that array to the aggregate's result. Only {@code count} needs {@link #NULL_SET} subtracted;
+     * {@code $sum} and {@code $avg} already skip a {@code null} element.
      *
-     * <p>Distinct for {@code min} and {@code max} doesn't change the result
+     * <p>Returns {@code null} only for {@code min} and {@code max}, whose result a set cannot change, so the caller
+     * translates them with the quantifier dropped. Every other aggregate throws
      */
     private @Nullable AstExpression tryRegisterDistinctAccumulator(
             GroupByContext ctx, String functionName, Expression argument) {
-        if (!DISTINCT_REDUCIBLE_AGGREGATE_FUNCTION_NAMES.contains(functionName)) {
-            return null;
+        switch (functionName) {
+            case "count", "sum", "avg" -> {}
+            case "min", "max" -> {
+                return null;
+            }
+            default ->
+                throw new FeatureNotSupportedException(
+                        "DISTINCT is not supported for aggregate function: " + functionName);
         }
         var distinctValues = new AstFieldPathExpression(registerAccumulator(
                 ctx,
