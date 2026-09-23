@@ -3679,6 +3679,102 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     List.of("a"),
                     Set.of(COLLECTION_NAME));
         }
+
+        @Test
+        void havingOnSumDistinct() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string"
+                            + " HAVING sum(distinct b.primitiveInt) > 3 ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$expr": {
+                              "$gt": [
+                                {"$sum": "$#acc_0"},
+                                3
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of("b"),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void havingOnAvgDistinct() {
+            assertSelectionQuery(
+                    "select b.string from Item as b GROUP BY b.string"
+                            + " HAVING avg(distinct b.primitiveInt) > 2 ORDER BY b.string",
+                    Object.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$match": {
+                            "$expr": {
+                              "$gt": [
+                                {"$avg": "$#acc_0"},
+                                2
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of("b"),
+                    Set.of(COLLECTION_NAME));
+        }
     }
 
     /**
