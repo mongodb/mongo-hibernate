@@ -3654,6 +3654,76 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         /**
+         * A path into a {@code @Struct} embeddable is an ordinary scalar argument, so it de-duplicates like any other.
+         * Contrast {@link #aggregateOverAWholeStructIsRejected}.
+         */
+        @Test
+        void countDistinctOverAStructField() {
+            assertSelectionQuery(
+                    "select b.string, count(distinct b.itemStruct.primitiveInt) from Item as b"
+                            + " GROUP BY b.string ORDER BY b.string",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "string": "$string"
+                            },
+                            "#acc_0": {
+                              "$addToSet": "$itemStruct.primitiveInt"
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.string": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#string": "$_id.string",
+                            "#c_2": {
+                              "$size": {
+                                "$setDifference": [
+                                  "$#acc_0",
+                                  [null]
+                                ]
+                              }
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {"a", 2L}, new Object[] {"b", 1L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * A whole {@code @Struct} embeddable arrives as a tuple, which no accumulator can yield as a single expression.
+         * Both forms report the tracked gap rather than tripping the visitor's descriptor assertion; the plain form is
+         * unrelated to DISTINCT and failed the same way before this feature existed.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(
+                strings = {
+                    "select b.string, count(b.itemStruct) from Item as b GROUP BY b.string",
+                    "select b.string, count(distinct b.itemStruct) from Item as b GROUP BY b.string"
+                })
+        void aggregateOverAWholeStructIsRejected(String hql) {
+            assertSelectQueryFailure(
+                    hql,
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "TODO-HIBERNATE-267 https://jira.mongodb.org/browse/HIBERNATE-267");
+        }
+
+        /**
          * DISTINCT is dropped only for {@code min} and {@code max}, whose result a set cannot change. Any other
          * aggregate has to fail rather than quietly return the non-distinct result --- these two are unsupported in
          * their own right, but the guard is what stops a future aggregate from silently losing the quantifier.

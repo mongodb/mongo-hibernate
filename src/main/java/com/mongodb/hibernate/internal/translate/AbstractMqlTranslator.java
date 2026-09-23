@@ -1909,15 +1909,20 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             throw new FeatureNotSupportedException("TODO-HIBERNATE-260 https://jira.mongodb.org/browse/HIBERNATE-260");
         }
         var functionName = function.getFunctionName().toLowerCase(Locale.ROOT);
-        var argument = function.getArguments().get(0);
-        if (argument instanceof Distinct distinct) {
-            var distinctReference = tryRegisterDistinctAccumulator(ctx, functionName, distinct.getExpression());
+        var rawArgument = function.getArguments().get(0);
+        var isDistinct = rawArgument instanceof Distinct;
+        var argument = isDistinct ? ((Distinct) rawArgument).getExpression() : rawArgument;
+        // A whole @Struct embeddable comes as a SqlTuple.
+        if (getSqlTuple(argument) != null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-267 https://jira.mongodb.org/browse/HIBERNATE-267");
+        }
+        if (isDistinct) {
+            var distinctReference = tryRegisterDistinctAccumulator(ctx, functionName, (Expression) argument);
             if (distinctReference != null) {
                 return distinctReference;
             }
             // MIN and MAX are the aggregates DISTINCT cannot affect, so they carry on below with the quantifier
             // dropped; see tryRegisterDistinctAccumulator.
-            argument = distinct.getExpression();
         }
         var accumulator =
                 switch (functionName) {
