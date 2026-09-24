@@ -115,7 +115,7 @@ public final class ValueConversions {
 
     /**
      * <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-character">
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#basic-character">
      * Hibernate ORM maps {@code char}/{@link Character} to {@link JDBCType#CHAR} by default</a>.
      *
      * @see #toDomainValue(String)
@@ -146,7 +146,7 @@ public final class ValueConversions {
 
     /**
      * <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-bytearray">
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#basic-bytearray">
      * Hibernate ORM maps {@code byte[]} to {@link java.sql.JDBCType#VARBINARY} by default</a>.
      *
      * @see #toByteArrayDomainValue(BsonValue)
@@ -158,7 +158,7 @@ public final class ValueConversions {
 
     /**
      * <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic-chararray">
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#basic-chararray">
      * Hibernate ORM maps {@code char[]} to {@link java.sql.JDBCType#VARCHAR} by default</a>.
      *
      * @see #toDomainValue(BsonString)

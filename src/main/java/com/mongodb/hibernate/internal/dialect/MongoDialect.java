@@ -256,34 +256,34 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
      *     <tbody>
      *         <tr>
      *             <td>
-     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
+     *                 <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
      *                     {@code array}, {@code array_list}</a>
      *             </td>
      *             <td>
      *                 Is allowed only in a
-     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                 <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
      *                     {@code where} clause</a>.
      *             </td>
      *         </tr>
      *         <tr>
      *             <td>
-     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
+     *                 <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
      *                     {@code array_contains}, {@code array_contains_nullable}</a>
      *             </td>
      *             <td>
      *                 Is allowed only in a
-     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                 <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
      *                     {@code where} clause</a>.
      *                 <ul>
      *                     <li>
      *                         The first argument must be an
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions">HQL path expression</a>
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions">HQL path expression</a>
      *                         (see also
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-case-sensitivity">HQL identifiers</a>
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-case-sensitivity">HQL identifiers</a>
      *                         ), and not an
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-literals">HQL literal</a>
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-literals">HQL literal</a>
      *                         or any other
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-expressions">HQL expression</a>,
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-expressions">HQL expression</a>,
      *                         despite Hibernate ORM seemingly not having such a limitation.
      *                     </li>
      *                     <li>
@@ -292,7 +292,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
      *                     </li>
      *                     <li>
      *                         Is allowed only in a
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
      *                             {@code where} clause</a>.
      *                     </li>
      *                 </ul>
@@ -300,23 +300,23 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
      *         </tr>
      *         <tr>
      *             <td>
-     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
+     *                 <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
      *                     {@code array_includes}, {@code array_includes_nullable}</a>
      *             </td>
      *             <td>
      *                 Is allowed only in a
-     *                 <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
+     *                 <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-where-clause">
      *                     {@code where} clause</a>.
      *                 <ul>
      *                     <li>
      *                         The first argument must be an
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions">HQL path expression</a>
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions">HQL path expression</a>
      *                         (see also
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-case-sensitivity">HQL identifiers</a>
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-case-sensitivity">HQL identifiers</a>
      *                         ), and not an
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-literals">HQL literal</a>
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-literals">HQL literal</a>
      *                         or any other
-     *                         <a href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-expressions">HQL expression</a>,
+     *                         <a href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-expressions">HQL expression</a>,
      *                         despite Hibernate ORM seemingly not having such a limitation.
      *                     </li>
      *                     <li>
