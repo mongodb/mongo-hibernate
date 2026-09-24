@@ -109,7 +109,7 @@ import org.hibernate.service.spi.ServiceContributor;
  *     </tr>
  *     <tr>
  *       <td>{@link java.sql.Struct} <a
- *           href="https://docs.hibernate.org/orm/6.6/userguide/html_single/#embeddable-mapping-aggregate">aggregate
+ *           href="https://docs.hibernate.org/orm/7.4/userguide/html_single/#embeddable-mapping-aggregate">aggregate
  *           embeddable</a></td>
  *       <td>BSON {@code Object} — field values are mapped as per this table.</td>
  *     </tr>

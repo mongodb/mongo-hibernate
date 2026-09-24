@@ -50,7 +50,7 @@ import org.hibernate.type.spi.TypeConfiguration;
 
 /**
  * Implements <a
- * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
+ * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions">
  * {@code array_contains}, {@code array_contains_nullable}</a>.
  *
  * <p>See <a href="https://www.mongodb.com/docs/manual/tutorial/query-arrays/">Query an Array</a>.
@@ -82,10 +82,10 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
             // In Hibernate ORM 6.5, the function allowed a plural second argument, see
             // https://docs.jboss.org/hibernate/orm/6.5/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions.
             // This was changed in Hibernate ORM 6.6, see
-            // https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions.
+            // https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions.
             // To allow for a graceful transition, the function still accepts a plural second argument with a warning,
             // see
-            // https://docs.jboss.org/hibernate/orm/6.6/migration-guide/migration-guide.html#array-contains-array-deprecation.
+            // https://docs.jboss.org/hibernate/orm/7.4/migration-guide/migration-guide.html#array-contains-array-deprecation.
             // We, however, are free to require the argument to be singular,
             // since there was no version of our product having the old behavior.
             //
@@ -131,7 +131,7 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
                 || haystackExpression.getExpressionType() instanceof BasicPluralType
                 || haystackExpression instanceof SqmParameterInterpretation) {
             // We do not support anything but an HQL path expression, see
-            // https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions,
+            // https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-path-expressions,
             // as the first argument, due to a lacking MQL equivalent.
             //
             // The error wording is taken partially from
