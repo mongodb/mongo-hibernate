@@ -251,7 +251,7 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     /**
      * See <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-entity-query">Entity
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#sql-entity-query">Entity
      * queries</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
      *
      * @see Unsupported#testEntityWithAggregateEmbeddableValue()
@@ -318,7 +318,7 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     /**
      * See <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-scalar-query">Scalar
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#sql-scalar-query">Scalar
      * queries</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
      */
     @Test
@@ -399,7 +399,7 @@ class NativeQueryIntegrationTests extends AbstractQueryIntegrationTests {
 
     /**
      * See <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#sql-dto-query">
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#sql-dto-query">
      * Returning DTOs (Data Transfer Objects)</a>, {@link QueryProducer#createNativeQuery(String, Class)}.
      */
     @Nested
