@@ -3705,6 +3705,106 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         /**
+         * {@code count(*)} passes a {@code Star} rather than a column, so the guard rejecting a whole {@code @Struct}
+         * embeddable never sees it. Grouping by a path into the embeddable also pins the {@code .}-to-{@code #} sub-key
+         * naming.
+         */
+        @Test
+        void countStarGroupedByStructField() {
+            assertSelectionQuery(
+                    "select b.itemStruct.primitiveInt, count(*) from Item as b"
+                            + " GROUP BY b.itemStruct.primitiveInt ORDER BY b.itemStruct.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": 1
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.itemStruct#primitiveInt": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                            "#c_2": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {1, 2L}, new Object[] {2, 1L}, new Object[] {5, 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * A path into a {@code @Struct} embeddable is an ordinary scalar argument. Counterpart to
+         * {@link #countDistinctOverStructField}, and the non-distinct half of what the whole-embeddable guard leaves
+         * alone.
+         */
+        @Test
+        void countOverStructField() {
+            assertSelectionQuery(
+                    "select b.itemStruct.primitiveInt, count(b.itemStruct.primitiveInt) from Item as b"
+                            + " GROUP BY b.itemStruct.primitiveInt ORDER BY b.itemStruct.primitiveInt",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": {
+                              "itemStruct#primitiveInt": "$itemStruct.primitiveInt"
+                            },
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {
+                                      "case": {"$eq": ["$itemStruct.primitiveInt", null]},
+                                      "then": 0
+                                    }
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$sort": {
+                            "_id.itemStruct#primitiveInt": 1
+                          }
+                        },
+                        {
+                          "$project": {
+                            "_id#itemStruct#primitiveInt": "$_id.itemStruct#primitiveInt",
+                            "#c_2": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {1, 2L}, new Object[] {2, 1L}, new Object[] {5, 2L}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
          * A whole {@code @Struct} embeddable arrives as a tuple, which no accumulator can yield as a single expression.
          * Both forms report the tracked gap rather than tripping the visitor's descriptor assertion; the plain form is
          * unrelated to DISTINCT and failed the same way before this feature existed.
