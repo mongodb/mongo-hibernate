@@ -82,26 +82,26 @@ class UuidAsIdIntegrationTests implements SessionFactoryScopeAware, MongoService
     @Test
     void insert() {
         var item = new ItemGenerated();
-        item.token = UUID.randomUUID();
+        item.value = UUID.randomUUID();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         assertNotNull(item.id);
         var expectedId = new BsonBinary(BsonBinarySubType.UUID_STANDARD, uuidToStandardBytes(item.id));
-        var expectedToken = new BsonBinary(BsonBinarySubType.UUID_STANDARD, uuidToStandardBytes(item.token));
+        var expectedValue = new BsonBinary(BsonBinarySubType.UUID_STANDARD, uuidToStandardBytes(item.value));
         assertThat(mongoCollection.find())
-                .containsExactly(new BsonDocument(ID_FIELD_NAME, expectedId).append("token", expectedToken));
+                .containsExactly(new BsonDocument(ID_FIELD_NAME, expectedId).append("value", expectedValue));
     }
 
     @Test
     void query() {
         var item = new ItemGenerated();
-        item.token = UUID.randomUUID();
+        item.value = UUID.randomUUID();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.createQuery("from ItemGenerated where id = :id", ItemGenerated.class)
                         .setParameter("id", item.id)
                         .uniqueResult());
         assertEquals(item.id, loadedItem.id);
-        assertEquals(item.token, loadedItem.token);
+        assertEquals(item.value, loadedItem.value);
     }
 
     @Test
@@ -115,17 +115,17 @@ class UuidAsIdIntegrationTests implements SessionFactoryScopeAware, MongoService
     }
 
     @Test
-    void queryByToken() {
-        var token = UUID.randomUUID();
+    void queryByValue() {
+        var value = UUID.randomUUID();
         var item = new ItemGenerated();
-        item.token = token;
+        item.value = value;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(
-                session -> session.createQuery("from ItemGenerated where token = :token", ItemGenerated.class)
-                        .setParameter("token", token)
+                session -> session.createQuery("from ItemGenerated where value = :value", ItemGenerated.class)
+                        .setParameter("value", value)
                         .uniqueResult());
         assertEquals(item.id, loadedItem.id);
-        assertEquals(token, loadedItem.token);
+        assertEquals(value, loadedItem.value);
     }
 
     @Test
@@ -170,44 +170,44 @@ class UuidAsIdIntegrationTests implements SessionFactoryScopeAware, MongoService
     }
 
     @Test
-    void updateToken() {
+    void updateValue() {
         var item = new ItemGenerated();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        var token = UUID.randomUUID();
+        var value = UUID.randomUUID();
         sessionFactoryScope.inTransaction(
-                session -> session.createMutationQuery("update ItemGenerated set token = :token where id = :id")
-                        .setParameter("token", token)
+                session -> session.createMutationQuery("update ItemGenerated set value = :value where id = :id")
+                        .setParameter("value", value)
                         .setParameter("id", item.id)
                         .executeUpdate());
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.createQuery("from ItemGenerated where id = :id", ItemGenerated.class)
                         .setParameter("id", item.id)
                         .uniqueResult());
-        assertEquals(token, loadedItem.token);
+        assertEquals(value, loadedItem.value);
     }
 
     @Test
-    void selectTokenScalar() {
-        var token = UUID.randomUUID();
+    void selectValueScalar() {
+        var value = UUID.randomUUID();
         var item = new ItemGenerated();
-        item.token = token;
+        item.value = value;
         sessionFactoryScope.inTransaction(session -> session.persist(item));
-        var loadedToken = sessionFactoryScope.fromTransaction(
-                session -> session.createQuery("select i.token from ItemGenerated i where i.id = :id", UUID.class)
+        var loadedValue = sessionFactoryScope.fromTransaction(
+                session -> session.createQuery("select i.value from ItemGenerated i where i.id = :id", UUID.class)
                         .setParameter("id", item.id)
                         .uniqueResult());
-        assertEquals(token, loadedToken);
+        assertEquals(value, loadedValue);
     }
 
     @Test
-    void nullTokenRoundTrip() {
+    void nullValueRoundTrip() {
         var item = new ItemGenerated();
         sessionFactoryScope.inTransaction(session -> session.persist(item));
         var loadedItem = sessionFactoryScope.fromTransaction(
                 session -> session.createQuery("from ItemGenerated where id = :id", ItemGenerated.class)
                         .setParameter("id", item.id)
                         .uniqueResult());
-        assertNull(loadedItem.token);
+        assertNull(loadedItem.value);
     }
 
     @Test
@@ -255,7 +255,7 @@ class UuidAsIdIntegrationTests implements SessionFactoryScopeAware, MongoService
         @UuidGenerator
         UUID id;
 
-        UUID token;
+        UUID value;
     }
 
     @Entity(name = "ItemGeneratedValue")
