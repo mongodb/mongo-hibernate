@@ -83,9 +83,7 @@ public final class MongoArrayContainsFunction extends AbstractArrayContainsFunct
             // https://docs.jboss.org/hibernate/orm/6.5/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions.
             // This was changed in Hibernate ORM 6.6, see
             // https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-contains-functions.
-            // To allow for a graceful transition, the function still accepts a plural second argument with a warning,
-            // see
-            // https://docs.jboss.org/hibernate/orm/7.4/migration-guide/migration-guide.html#array-contains-array-deprecation.
+            // To allow for a graceful transition, the function still accepts a plural second argument with a warning.
             // We, however, are free to require the argument to be singular,
             // since there was no version of our product having the old behavior.
             //
