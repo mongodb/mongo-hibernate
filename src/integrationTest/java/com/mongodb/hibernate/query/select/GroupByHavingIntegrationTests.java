@@ -3447,7 +3447,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
          * incremented distinct values are {@code 2, 3}.
          */
         @Test
-        void distinctOverAComputedArgument() {
+        void distinctOverComputedArgument() {
             assertSelectionQuery(
                     "select b.string, count(distinct b.primitiveInt + 1), sum(distinct b.primitiveInt + 1)"
                             + " from Item as b GROUP BY b.string ORDER BY b.string",
@@ -3504,7 +3504,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
          * {@link #countDistinctAndSumDistinctShareOneSet}, where the shared argument collapses them to one.
          */
         @Test
-        void distinctOverDifferentArgumentsGetsASetEach() {
+        void distinctOverDifferentArgumentsGetsSetEach() {
             assertSelectionQuery(
                     "select b.string, count(distinct b.primitiveInt), count(distinct b.string) from Item as b"
                             + " GROUP BY b.string ORDER BY b.string",
@@ -3562,7 +3562,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         }
 
         @Test
-        void minAndMaxDistinctDropTheQuantifier() {
+        void minAndMaxDistinctDropQuantifier() {
             assertSelectionQuery(
                     "select b.string, min(distinct b.primitiveInt), max(distinct b.primitiveInt) from Item as b"
                             + " GROUP BY b.string ORDER BY b.string",
@@ -3655,10 +3655,10 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
 
         /**
          * A path into a {@code @Struct} embeddable is an ordinary scalar argument, so it de-duplicates like any other.
-         * Contrast {@link #aggregateOverAWholeStructIsRejected}.
+         * Contrast {@link #aggregateOverWholeStructIsRejected}.
          */
         @Test
-        void countDistinctOverAStructField() {
+        void countDistinctOverStructField() {
             assertSelectionQuery(
                     "select b.string, count(distinct b.itemStruct.primitiveInt) from Item as b"
                             + " GROUP BY b.string ORDER BY b.string",
@@ -3715,7 +3715,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     "select b.string, count(b.itemStruct) from Item as b GROUP BY b.string",
                     "select b.string, count(distinct b.itemStruct) from Item as b GROUP BY b.string"
                 })
-        void aggregateOverAWholeStructIsRejected(String hql) {
+        void aggregateOverWholeStructIsRejected(String hql) {
             assertSelectQueryFailure(
                     hql,
                     Object[].class,
@@ -3730,7 +3730,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
          */
         @ParameterizedTest(name = "[{index}] {0}(distinct ...)")
         @ValueSource(strings = {"every", "any"})
-        void distinctOnAnAggregateWithNoSetReductionIsRejected(String function) {
+        void distinctOnAggregateWithNoSetReductionIsRejected(String function) {
             assertSelectQueryFailure(
                     "select b.string, " + function + "(distinct b.primitiveBoolean) from Item as b GROUP BY b.string",
                     Object[].class,
@@ -3744,7 +3744,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
          * field. Materializing it would need an extra {@code $addFields} stage.
          */
         @Test
-        void orderByADistinctAggregateIsRejected() {
+        void orderByDistinctAggregateIsRejected() {
             assertSelectQueryFailure(
                     "select b.string, count(distinct b.primitiveInt) from Item as b GROUP BY b.string"
                             + " ORDER BY count(distinct b.primitiveInt)",
