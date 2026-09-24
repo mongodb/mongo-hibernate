@@ -25,7 +25,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
 @SuppressWarnings("MissingSummary")
 public record AstUnaryOperatorExpression(String operator, AstExpression operand) implements AstExpression {
 
-    public AstUnaryOperatorExpression(AstConversionExpressionOperator operator, AstExpression operand) {
+    public AstUnaryOperatorExpression(AstExpressionOperator operator, AstExpression operand) {
         this(operator.getOperatorName(), operand);
     }
 

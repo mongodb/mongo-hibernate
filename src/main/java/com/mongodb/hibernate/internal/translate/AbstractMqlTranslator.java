@@ -63,6 +63,7 @@ import com.mongodb.hibernate.internal.service.StandardServiceRegistryScopedState
 import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstAccumulatorOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstArithmeticExpressionOperator;
+import com.mongodb.hibernate.internal.translate.mongoast.AstArrayExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
@@ -149,6 +150,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
+import org.bson.BsonArray;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.bson.BsonString;
@@ -1318,7 +1320,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (resolved instanceof SelfRenderingFunctionSqlAstExpression<?> function) {
             var accumulatorReference = tryRegisterAccumulator(function);
             if (accumulatorReference != null) {
-                return new AstSortField(accumulatorReference.fieldPath(), astSortOrder);
+                return new AstSortField(sortPathOf(accumulatorReference), astSortOrder);
             }
         }
         if (groupByContext == null) {
@@ -1343,8 +1345,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * not the arithmetic wrapped around it.
      */
     private String resolveGroupedSortPath(AstExpression sortKey) {
-        var rewritten = assertNotNull(astRewriter).rewrite(sortKey);
-        if (rewritten instanceof AstFieldPathExpression fieldPath) {
+        return sortPathOf(assertNotNull(astRewriter).rewrite(sortKey));
+    }
+
+    /** The field {@code $sort} should name for an already-resolved sort key. */
+    private static String sortPathOf(AstExpression sortKey) {
+        if (sortKey instanceof AstFieldPathExpression fieldPath) {
             return fieldPath.fieldPath();
         }
         throw new FeatureNotSupportedException("TODO-HIBERNATE-79 https://jira.mongodb.org/browse/HIBERNATE-79");
@@ -1862,8 +1868,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     /**
      * Recognizes an aggregate function in SELECT, HAVING or ORDER BY under a GROUP BY, registers it as an accumulator
-     * on the GROUP BY context, and returns a reference to the {@code $group} output field holding its value — the form
-     * in which every later stage of the pipeline refers to it.
+     * on the GROUP BY context, and returns the expression every later stage uses to refer to its value.
+     *
+     * <p>That expression takes one of two forms. Ordinarily it is an {@link AstFieldPathExpression} naming the
+     * {@code $group} output field, which {@code $sort} can name directly. For a DISTINCT aggregate it is instead the
+     * expression reducing the {@code $addToSet} array that {@code $group} collected. Callers needing a field name
+     * rather than a value, i.e. sorting, have to handle the second form, see {@link #sortPathOf}.
      *
      * <p>Registration is keyed by the accumulator's value number, so the same aggregate function written in two clauses
      * shares one {@code $group} field. An aggregate appearing only in HAVING is thereby computed for the filter without
@@ -1874,7 +1884,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * query has no GROUP BY clause for the accumulator to belong to, leaving the caller to raise its own
      * unsupported-feature error.
      */
-    private @Nullable AstFieldPathExpression tryRegisterAccumulator(SelfRenderingFunctionSqlAstExpression<?> function) {
+    private @Nullable AstExpression tryRegisterAccumulator(SelfRenderingFunctionSqlAstExpression<?> function) {
         // Checked before anything else so that the diagnostic is the same with or without a GROUP BY clause: the
         // function itself is the blocker either way.
         if (STATISTICAL_AGGREGATE_FUNCTION_NAMES.contains(
@@ -1898,12 +1908,22 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (aggregate.getFilter() != null) {
             throw new FeatureNotSupportedException("TODO-HIBERNATE-260 https://jira.mongodb.org/browse/HIBERNATE-260");
         }
-        var argument = function.getArguments().get(0);
-        if (argument instanceof Distinct) {
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-259 https://jira.mongodb.org/browse/HIBERNATE-259");
+        var functionName = function.getFunctionName().toLowerCase(Locale.ROOT);
+        var rawArgument = function.getArguments().get(0);
+        var isDistinct = rawArgument instanceof Distinct;
+        var argument = isDistinct ? ((Distinct) rawArgument).getExpression() : rawArgument;
+        // A whole @Struct embeddable comes as a SqlTuple.
+        if (getSqlTuple(argument) != null) {
+            throw new FeatureNotSupportedException("TODO-HIBERNATE-267 https://jira.mongodb.org/browse/HIBERNATE-267");
+        }
+        if (isDistinct) {
+            var distinctReference = tryRegisterDistinctAccumulator(ctx, functionName, (Expression) argument);
+            if (distinctReference != null) {
+                return distinctReference;
+            }
         }
         var accumulator =
-                switch (function.getFunctionName().toLowerCase(Locale.ROOT)) {
+                switch (functionName) {
                     case "count" -> new AstAccumulatorExpression(AstAccumulatorOperator.SUM, countedValue(argument));
                     case "sum" ->
                         new AstAccumulatorExpression(AstAccumulatorOperator.SUM, acceptAndYieldArgument(argument));
@@ -1925,6 +1945,49 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                                 "Aggregate function is not supported: " + function.getFunctionName());
                 };
         return new AstFieldPathExpression(registerAccumulator(ctx, accumulator));
+    }
+
+    /**
+     * A literal {@code [null]}, the operand that removes {@code null} from a {@code $addToSet} array.
+     *
+     * <p>{@code $addToSet} skips a missing field but keeps an explicit {@code null}, whereas SQL's
+     * {@code COUNT(DISTINCT x)} counts neither. Subtracting this set is what reconciles the two.
+     */
+    private static final AstExpression NULL_SET =
+            new AstValueExpression(new AstLiteral(new BsonArray(List.of(BsonNull.VALUE))));
+
+    /**
+     * Adds the {@code $addToSet} accumulator collecting a group's distinct argument values, and returns the expression
+     * reducing that array to the aggregate's result. Only {@code count} needs {@link #NULL_SET} subtracted;
+     * {@code $sum} and {@code $avg} already skip a {@code null} element.
+     *
+     * <p>Returns {@code null} only for {@code min} and {@code max}, whose result a set cannot change, so the caller
+     * translates them with the quantifier dropped. Every other aggregate throws
+     */
+    private @Nullable AstExpression tryRegisterDistinctAccumulator(
+            GroupByContext ctx, String functionName, Expression argument) {
+        switch (functionName) {
+            case "count", "sum", "avg" -> {}
+            case "min", "max" -> {
+                return null;
+            }
+            default ->
+                throw new FeatureNotSupportedException(
+                        "DISTINCT is not supported for aggregate function: " + functionName);
+        }
+        var distinctValues = new AstFieldPathExpression(registerAccumulator(
+                ctx,
+                new AstAccumulatorExpression(AstAccumulatorOperator.ADD_TO_SET, acceptAndYieldExpression(argument))));
+        return switch (functionName) {
+            case "count" ->
+                new AstUnaryOperatorExpression(
+                        AstArrayExpressionOperator.SIZE,
+                        new AstBinaryOperatorExpression(
+                                AstArrayExpressionOperator.SET_DIFFERENCE, distinctValues, NULL_SET));
+            case "sum" -> new AstUnaryOperatorExpression(AstArrayExpressionOperator.SUM, distinctValues);
+            case "avg" -> new AstUnaryOperatorExpression(AstArrayExpressionOperator.AVG, distinctValues);
+            default -> throw fail();
+        };
     }
 
     private AstExpression acceptAndYieldArgument(SqlAstNode argument) {

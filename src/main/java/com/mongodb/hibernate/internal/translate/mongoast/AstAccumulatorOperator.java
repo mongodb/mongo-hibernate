@@ -38,7 +38,11 @@ public enum AstAccumulatorOperator {
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/min/">{@code $min}</a>. */
     MIN("$min"),
     /** See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/max/">{@code $max}</a>. */
-    MAX("$max");
+    MAX("$max"),
+    /**
+     * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/addToSet/">{@code $addToSet}</a>.
+     */
+    ADD_TO_SET("$addToSet");
 
     AstAccumulatorOperator(String operatorName) {
         this.operatorName = operatorName;
