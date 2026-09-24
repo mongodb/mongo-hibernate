@@ -38,6 +38,7 @@ import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -155,6 +156,20 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
         checkClosed();
         checkParameterIndex(parameterIndex);
         setParameter(parameterIndex, toBsonValue(x));
+    }
+
+    @Override
+    public void setObject(int parameterIndex, Object x) throws SQLException {
+        checkClosed();
+        checkParameterIndex(parameterIndex);
+        // This method is only called by org.hibernate.type.descriptor.jdbc.UUIDJdbcType,
+        // so that's the only supported type
+        if (!(x instanceof UUID uuid)) {
+            throw new SQLFeatureNotSupportedException(format(
+                    "Parameter value [%s] of type [%s] with index [%d] is not supported",
+                    x, x == null ? "null" : x.getClass().getTypeName(), parameterIndex));
+        }
+        setParameter(parameterIndex, toBsonValue(uuid));
     }
 
     @Override

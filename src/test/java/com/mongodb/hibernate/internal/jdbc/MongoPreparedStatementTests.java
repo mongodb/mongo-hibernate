@@ -59,23 +59,29 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.WriteModel;
+import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Types;
+import java.time.Instant;
 import java.util.Calendar;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.assertj.core.api.ThrowingConsumer;
 import org.bson.BSONException;
 import org.bson.BsonArray;
+import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
@@ -131,7 +137,10 @@ class MongoPreparedStatementTests {
                            { $undefined: true },
                            { $undefined: true }
                        ]
-                       objectId: { $undefined: true }
+                       objectId: { $undefined: true },
+                       uuidValue: { $undefined: true },
+                       structValue: { $undefined: true },
+                       instantValue: { $undefined: true }
                    }
                ]
             }
@@ -152,6 +161,9 @@ class MongoPreparedStatementTests {
             doReturn(bulkWriteResult).when(mongoCollection).bulkWrite(eq(clientSession), anyList());
             doReturn(1).when(bulkWriteResult).getInsertedCount();
 
+            var structDoc = new BsonDocument("nested", new BsonInt32(1));
+            var instant = Instant.parse("2026-01-01T00:00:00Z");
+            var uuid = UUID.randomUUID();
             try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
 
                 preparedStatement.setString(1, "s1");
@@ -161,6 +173,9 @@ class MongoPreparedStatementTests {
                 preparedStatement.setString(5, "array element");
                 preparedStatement.setObject(6, new ObjectId(1, 2), ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber());
                 preparedStatement.setObject(7, new ObjectId(2, 0), ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(8, uuid);
+                preparedStatement.setObject(9, structDoc, MongoStructJdbcType.JDBC_TYPE.getVendorTypeNumber());
+                preparedStatement.setObject(10, instant, JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber());
 
                 preparedStatement.executeUpdate();
 
@@ -176,9 +191,32 @@ class MongoPreparedStatementTests {
                                 "stringAndObjectId",
                                 new BsonArray(
                                         List.of(new BsonString("array element"), new BsonObjectId(new ObjectId(1, 2)))))
-                        .append("objectId", new BsonObjectId(new ObjectId(2, 0)));
+                        .append("objectId", new BsonObjectId(new ObjectId(2, 0)))
+                        .append("uuidValue", new BsonBinary(uuid))
+                        .append("structValue", structDoc)
+                        .append("instantValue", new BsonDateTime(instant.toEpochMilli()));
                 var insertOneModel = assertInstanceOf(InsertOneModel.class, writeModels.get(0));
                 assertEquals(expectedDoc, insertOneModel.getDocument());
+            }
+        }
+
+        @Test
+        @DisplayName("Three-arg setObject rejects an unsupported target SQL type")
+        void testSetObjectWithTypeRejectsUnsupportedTargetSqlType() throws SQLException {
+            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
+                assertThatThrownBy(() -> preparedStatement.setObject(1, "value", Types.OTHER))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessageContaining("is not supported");
+            }
+        }
+
+        @Test
+        @DisplayName("Two-arg setObject rejects a non-UUID value")
+        void testSetObjectRejectsNonUuid() throws SQLException {
+            try (var preparedStatement = createMongoPreparedStatement(EXAMPLE_MQL)) {
+                assertThatThrownBy(() -> preparedStatement.setObject(1, "not a uuid"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessageContaining("is not supported");
             }
         }
     }
@@ -830,7 +868,7 @@ class MongoPreparedStatementTests {
     @Test
     void testParameterIndexOverflow() throws SQLSyntaxErrorException {
         var mongoPreparedStatement = createMongoPreparedStatement(EXAMPLE_MQL);
-        checkSetterMethods(mongoPreparedStatement, 8, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
+        checkSetterMethods(mongoPreparedStatement, 11, MongoPreparedStatementTests::assertThrowsOutOfRangeException);
     }
 
     @Nested
@@ -924,6 +962,7 @@ class MongoPreparedStatementTests {
                 () -> asserter.accept(() -> mongoPreparedStatement.setBytes(parameterIndex, "".getBytes())),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setObject(parameterIndex, Mockito.mock(Array.class), Types.OTHER)),
+                () -> asserter.accept(() -> mongoPreparedStatement.setObject(parameterIndex, "")),
                 () -> asserter.accept(
                         () -> mongoPreparedStatement.setArray(parameterIndex, Mockito.mock(Array.class))));
     }

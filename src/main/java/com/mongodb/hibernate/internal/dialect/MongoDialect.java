@@ -97,6 +97,7 @@ import org.hibernate.tool.schema.spi.Exporter;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
+import org.hibernate.type.descriptor.jdbc.UUIDJdbcType;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
@@ -159,6 +160,7 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         typeContributions.contributeJdbcTypeConstructor(MongoArrayJdbcType.Constructor.INSTANCE);
         typeContributions.contributeJdbcType(MongoStructJdbcType.INSTANCE);
         contributeInstantType(typeContributions);
+        contributeUuidType(typeContributions);
     }
 
     private void contributeObjectIdType(TypeContributions typeContributions) {
@@ -185,6 +187,23 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
     private static void contributeInstantType(TypeContributions typeContributions) {
         var jdbcTypeRegistry = typeContributions.getTypeConfiguration().getJdbcTypeRegistry();
         jdbcTypeRegistry.addDescriptor(SqlTypes.TIMESTAMP_UTC, TimestampUtcAsInstantJdbcType.INSTANCE);
+    }
+
+    /**
+     * Registers the built-in {@code UUIDJdbcType} whose binder runs through the adapter's two-arg {@code setObject}.
+     * The baseline registry has no descriptor for {@code SqlTypes.UUID}.
+     */
+    private void contributeUuidType(TypeContributions typeContributions) {
+        typeContributions.contributeJdbcType(UUIDJdbcType.INSTANCE);
+        typeContributions
+                .getTypeConfiguration()
+                .getDdlTypeRegistry()
+                .addDescriptorIfAbsent(new DdlTypeImpl(
+                        SqlTypes.UUID,
+                        format(
+                                "unused from %s.contributeUuidType for SQL type code [%d]",
+                                MongoDialect.class.getSimpleName(), SqlTypes.UUID),
+                        this));
     }
 
     @Override

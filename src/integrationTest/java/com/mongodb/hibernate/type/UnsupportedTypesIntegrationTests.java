@@ -20,13 +20,9 @@ import static com.mongodb.hibernate.type.UnsupportedTypeAssertions.assertNotSupp
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.hibernate.internal.FeatureNotSupportedException;
-import jakarta.persistence.AttributeConverter;
-import jakarta.persistence.Convert;
-import jakarta.persistence.Converter;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import java.util.Collection;
 import java.util.UUID;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentWrapper;
@@ -42,16 +38,10 @@ import org.bson.types.Decimal128;
 import org.bson.types.MaxKey;
 import org.bson.types.MinKey;
 import org.bson.types.Symbol;
-import org.hibernate.annotations.Struct;
 import org.hibernate.boot.MetadataSources;
 import org.junit.jupiter.api.Test;
 
 class UnsupportedTypesIntegrationTests {
-
-    @Test
-    void uuidBasicAttributeNotSupported() {
-        assertNotSupported(UuidItem.class);
-    }
 
     @Test
     void bsonTimestampBasicAttributeNotSupported() {
@@ -232,94 +222,6 @@ class UnsupportedTypesIntegrationTests {
     }
 
     @Test
-    void uuidAsIdNotSupported() {
-        assertNotSupported(UuidIdItem.class);
-    }
-
-    @Test
-    void uuidInCollectionNotSupported() {
-        assertNotSupported(UuidCollectionItem.class);
-    }
-
-    @Test
-    void uuidInFlattenedEmbeddableNotSupported() {
-        assertNotSupported(UuidFlattenedEmbeddableItem.class);
-    }
-
-    @Test
-    void uuidInAggregateEmbeddableNotSupported() {
-        assertNotSupported(UuidAggregateEmbeddableItem.class);
-    }
-
-    @Entity
-    static class UuidIdItem {
-        @Id
-        UUID id;
-    }
-
-    @Entity
-    static class UuidCollectionItem {
-        @Id
-        int id;
-
-        Collection<UUID> v;
-    }
-
-    @Embeddable
-    static class UuidFlattenedEmbeddable {
-        UUID v;
-    }
-
-    @Entity
-    static class UuidFlattenedEmbeddableItem {
-        @Id
-        int id;
-
-        UuidFlattenedEmbeddable v;
-    }
-
-    @Struct(name = "UnsupportedUuidAggregate")
-    @Embeddable
-    static class UuidAggregateEmbeddable {
-        UUID v;
-    }
-
-    @Entity
-    static class UuidAggregateEmbeddableItem {
-        @Id
-        int id;
-
-        UuidAggregateEmbeddable v;
-    }
-
-    @Test
-    void uuidWithAttributeConverterStillNotSupported() {
-        assertNotSupported(UuidConvertedItem.class);
-    }
-
-    @Converter
-    static class UuidToStringConverter implements AttributeConverter<UUID, String> {
-        @Override
-        public String convertToDatabaseColumn(UUID attribute) {
-            return attribute == null ? null : attribute.toString();
-        }
-
-        @Override
-        public UUID convertToEntityAttribute(String dbData) {
-            return dbData == null ? null : UUID.fromString(dbData);
-        }
-    }
-
-    @Entity
-    static class UuidConvertedItem {
-        @Id
-        int id;
-
-        @Convert(converter = UuidToStringConverter.class)
-        UUID v;
-    }
-
-    @Test
     void nonSerializableBsonValueTypeFailsAtBoot() {
         assertThatThrownBy(() -> new MetadataSources()
                         .addAnnotatedClass(BsonInt32Item.class)
@@ -334,5 +236,21 @@ class UnsupportedTypesIntegrationTests {
         int id;
 
         BsonInt32 v;
+    }
+
+    @Test
+    void legacyUuidGeneratorNameNotSupported() {
+        assertThatThrownBy(() -> new MetadataSources()
+                        .addAnnotatedClass(LegacyUuidGeneratorItem.class)
+                        .buildMetadata())
+                .isInstanceOf(FeatureNotSupportedException.class)
+                .hasMessageContaining("legacy identifier generator name [uuid2]");
+    }
+
+    @Entity
+    static class LegacyUuidGeneratorItem {
+        @Id
+        @GeneratedValue(generator = "uuid2")
+        UUID id;
     }
 }
