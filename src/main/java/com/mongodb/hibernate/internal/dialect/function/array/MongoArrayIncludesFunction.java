@@ -43,7 +43,7 @@ import org.hibernate.type.spi.TypeConfiguration;
 
 /**
  * Implements <a
- * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
+ * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-includes-functions">
  * {@code array_includes}, {@code array_includes_nullable}</a>.
  *
  * <p>See <a href="https://www.mongodb.com/docs/manual/tutorial/query-arrays/">Query an Array</a>.

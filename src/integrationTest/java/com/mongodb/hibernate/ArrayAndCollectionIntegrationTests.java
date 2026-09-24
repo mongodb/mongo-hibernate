@@ -968,7 +968,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
         /**
          * <a
-         * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#collections">
+         * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#collections">
          * Collections cannot be nested, meaning Hibernate does not support mapping {@code List<List<?>>}, for
          * example.</a>
          */
@@ -983,7 +983,7 @@ public class ArrayAndCollectionIntegrationTests implements SessionFactoryScopeAw
 
         /**
          * <a
-         * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#collections">
+         * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#collections">
          * Collections cannot be nested, meaning Hibernate does not support mapping {@code List<List<?>>}, for
          * example.</a>
          */

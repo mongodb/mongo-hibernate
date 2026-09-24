@@ -30,7 +30,7 @@ import org.hibernate.sql.ast.tree.SqlAstNode;
 
 /**
  * Implements <a
- * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
+ * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#hql-array-constructor-functions">
  * {@code array}, {@code array_list}</a>.
  *
  * @hidden

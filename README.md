@@ -4,8 +4,8 @@
   <a href="https://docs.oracle.com/en/java/javase/17/">
     <img src="https://img.shields.io/badge/Java_SE-17+-E49639.svg?labelColor=32728B"
         alt="Java SE requirement"/></a>
-  <a href="https://hibernate.org/orm/documentation/6.6/">
-    <img src="https://img.shields.io/badge/Hibernate_ORM-6.6-BAAE80.svg?labelColor=5C656C"
+  <a href="https://hibernate.org/orm/documentation/7.4/">
+    <img src="https://img.shields.io/badge/Hibernate_ORM-7.4-BAAE80.svg?labelColor=5C656C"
         alt="Hibernate ORM requirement"/></a>
   <a href="https://www.mongodb.com/docs/manual/">
     <img src="https://img.shields.io/badge/MongoDB_-7.0+-00ED64.svg?labelColor=001E2B"
@@ -22,9 +22,9 @@ instead of SQL. This product works by:
 
 - Creating a JDBC adapter using [MongoDB Java Driver](https://www.mongodb.com/docs/drivers/java-drivers/),
   which has to be plugged into Hibernate ORM via a custom
-  [`ConnectionProvider`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html).
+  [`ConnectionProvider`](https://docs.jboss.org/hibernate/orm/7.4/javadocs/org/hibernate/engine/jdbc/connections/spi/ConnectionProvider.html).
 - Translating Hibernate's internal SQL AST into MQL by means of a custom
-  [`Dialect`](https://docs.jboss.org/hibernate/orm/6.6/javadocs/org/hibernate/dialect/Dialect.html),
+  [`Dialect`](https://docs.jboss.org/hibernate/orm/7.4/javadocs/org/hibernate/dialect/Dialect.html),
   which has to be plugged into Hibernate ORM.
 
 ## User Documentation
@@ -213,7 +213,7 @@ The integration tests require a MongoDB deployment that
 
 - is accessible at `localhost:27017`;
   - You may change the [MongoDB connection string](https://www.mongodb.com/docs/manual/reference/connection-string/)
-    via the [`jakarta.persistence.jdbc.url`](https://docs.hibernate.org/orm/6.6/userguide/html_single/#settings-jakarta.persistence.jdbc.url)
+    via the [`jakarta.persistence.jdbc.url`](https://docs.hibernate.org/orm/7.4/userguide/html_single/#settings-jakarta.persistence.jdbc.url)
     configuration property
     in [`./src/integrationTest/resources/hibernate.properties`](src/integrationTest/resources/hibernate.properties). 
 - has test commands enabled.

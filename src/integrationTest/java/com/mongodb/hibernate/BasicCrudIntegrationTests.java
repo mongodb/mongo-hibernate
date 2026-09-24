@@ -387,7 +387,7 @@ public class BasicCrudIntegrationTests implements SessionFactoryScopeAware, Mong
 
     /**
      * This class should have persistent attributes of all the <a
-     * href="https://docs.jboss.org/hibernate/orm/6.6/userguide/html_single/Hibernate_User_Guide.html#basic">basic
+     * href="https://docs.jboss.org/hibernate/orm/7.4/userguide/html_single/Hibernate_User_Guide.html#basic">basic
      * types</a> we support. When adding more persistent attributes to this class, we should do similar changes to
      * {@link EmbeddableIntegrationTests.Plural}/{@link StructAggregateEmbeddableIntegrationTests.Plural},
      * {@link EmbeddableIntegrationTests.ArraysAndCollections}/{@link StructAggregateEmbeddableIntegrationTests.ArraysAndCollections},
