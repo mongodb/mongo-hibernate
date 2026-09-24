@@ -1921,8 +1921,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             if (distinctReference != null) {
                 return distinctReference;
             }
-            // MIN and MAX are the aggregates DISTINCT cannot affect, so they carry on below with the quantifier
-            // dropped; see tryRegisterDistinctAccumulator.
         }
         var accumulator =
                 switch (functionName) {
