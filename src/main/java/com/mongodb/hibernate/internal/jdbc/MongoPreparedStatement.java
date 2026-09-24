@@ -25,7 +25,6 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
-import com.mongodb.hibernate.internal.type.UuidJdbcType;
 import java.math.BigDecimal;
 import java.sql.Array;
 import java.sql.BatchUpdateException;
@@ -160,6 +159,20 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
     }
 
     @Override
+    public void setObject(int parameterIndex, Object x) throws SQLException {
+        checkClosed();
+        checkParameterIndex(parameterIndex);
+        // This method is only called by org.hibernate.type.descriptor.jdbc.UUIDJdbcType,
+        // so that's the only supported type
+        if (!(x instanceof UUID uuid)) {
+            throw new SQLFeatureNotSupportedException(format(
+                    "Parameter value [%s] of type [%s] with index [%d] is not supported",
+                    x, x == null ? "null" : x.getClass().getTypeName(), parameterIndex));
+        }
+        setParameter(parameterIndex, toBsonValue(uuid));
+    }
+
+    @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
         checkClosed();
         checkParameterIndex(parameterIndex);
@@ -168,8 +181,6 @@ final class MongoPreparedStatement extends MongoStatement implements PreparedSta
             value = assertInstanceOf(x, BsonDocument.class);
         } else if (targetSqlType == ObjectIdJdbcType.SQL_TYPE.getVendorTypeNumber()) {
             value = toBsonValue(assertInstanceOf(x, ObjectId.class));
-        } else if (targetSqlType == UuidJdbcType.HIBERNATE_SQL_TYPE) {
-            value = toBsonValue(assertInstanceOf(x, UUID.class));
         } else if (targetSqlType == JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber()
                 && x instanceof Instant instant) {
             value = toBsonValue(instant);

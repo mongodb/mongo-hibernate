@@ -48,7 +48,6 @@ import com.mongodb.hibernate.internal.type.MongoArrayJdbcType;
 import com.mongodb.hibernate.internal.type.MongoStructJdbcType;
 import com.mongodb.hibernate.internal.type.ObjectIdJavaType;
 import com.mongodb.hibernate.internal.type.ObjectIdJdbcType;
-import com.mongodb.hibernate.internal.type.UuidJdbcType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
@@ -98,6 +97,7 @@ import org.hibernate.tool.schema.spi.Exporter;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.jdbc.TimestampUtcAsInstantJdbcType;
+import org.hibernate.type.descriptor.jdbc.UUIDJdbcType;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.jspecify.annotations.Nullable;
 
@@ -189,17 +189,20 @@ public sealed class MongoDialect extends Dialect permits TestMongoDialect {
         jdbcTypeRegistry.addDescriptor(SqlTypes.TIMESTAMP_UTC, TimestampUtcAsInstantJdbcType.INSTANCE);
     }
 
+    /**
+     * Registers the built-in {@code UUIDJdbcType} whose binder runs through the adapter's two-arg {@code setObject}.
+     * The baseline registry has no descriptor for {@code SqlTypes.UUID}.
+     */
     private void contributeUuidType(TypeContributions typeContributions) {
-        typeContributions.contributeJdbcType(UuidJdbcType.INSTANCE);
-        var uuidTypeCode = UuidJdbcType.HIBERNATE_SQL_TYPE;
+        typeContributions.contributeJdbcType(UUIDJdbcType.INSTANCE);
         typeContributions
                 .getTypeConfiguration()
                 .getDdlTypeRegistry()
                 .addDescriptorIfAbsent(new DdlTypeImpl(
-                        uuidTypeCode,
+                        SqlTypes.UUID,
                         format(
                                 "unused from %s.contributeUuidType for SQL type code [%d]",
-                                MongoDialect.class.getSimpleName(), uuidTypeCode),
+                                MongoDialect.class.getSimpleName(), SqlTypes.UUID),
                         this));
     }
 
