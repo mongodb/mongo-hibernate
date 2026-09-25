@@ -134,6 +134,18 @@ jobs:
           if [[ "$INPUTS_VERSION" =~ (alpha|beta|rc) ]]; then
             PRERELEASE="--prerelease --latest=false"
           fi
+          cat > release-notes.md <<'EOF'
+
+          ## Verifying artifact signatures
+
+          Please refer to https://www.mongodb.com/docs/languages/java/mongodb-hibernate/current/security/validate-signatures/ for the full procedure.
+
+          To download and import the public key for verifying signatures, execute:
+
+          ```bash
+          gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 1a75005e142192223d6a7c3b76e0008d166740a8
+          ```
+          EOF
           echo "RELEASE_URL=$(\
           gh release create "r${RELEASE_VERSION}" \
             ${PRERELEASE} \
@@ -142,6 +154,9 @@ jobs:
             --generate-notes \
             --draft\
           )" >> "$GITHUB_ENV"
+          gh release view "r${RELEASE_VERSION}" --json body --jq .body > generated-notes.md
+          cat generated-notes.md release-notes.md > final-notes.md
+          gh release edit "r${RELEASE_VERSION}" --notes-file final-notes.md
 
       - name: "Set summary"
         run: |
