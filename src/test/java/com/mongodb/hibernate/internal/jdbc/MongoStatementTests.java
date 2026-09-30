@@ -50,6 +50,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.function.BiConsumer;
+import org.bson.BSONException;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.junit.jupiter.api.BeforeEach;
@@ -294,6 +295,67 @@ class MongoStatementTests {
         mongoStatement.execute(seed);
 
         verify(mongoCollection).bulkWrite(eq(clientSession), anyList());
+    }
+
+    @Test
+    void executeRejectsUnsupportedCreateCommandField() {
+        assertThatThrownBy(() -> mongoStatement.execute("{\"create\": \"books\", \"capped\": true}"))
+                .isInstanceOf(SQLFeatureNotSupportedException.class)
+                .hasMessage("Unsupported field in [create] command: [capped]");
+    }
+
+    @Test
+    void executeRejectsUnsupportedCreateIndexesCommandField() {
+        assertThatThrownBy(() ->
+                        mongoStatement.execute("{\"createIndexes\": \"books\", \"indexes\": [], \"maxTimeMS\": 1}"))
+                .isInstanceOf(SQLFeatureNotSupportedException.class)
+                .hasMessage("Unsupported field in [createIndexes] command: [maxTimeMS]");
+    }
+
+    @Test
+    void executeRejectsUnsupportedIndexField() {
+        assertThatThrownBy(() -> mongoStatement.execute(
+                        "{\"createIndexes\": \"books\", \"indexes\": [{\"key\": {\"a\": 1}, \"name\": \"i\", \"unique\":"
+                                + " true, \"sparse\": true}]}"))
+                .isInstanceOf(SQLFeatureNotSupportedException.class)
+                .hasMessage("Unsupported field in [createIndexes] statement: [sparse]");
+    }
+
+    @Test
+    void executeReportsWrongTypedCommandValueAsSyntaxError() {
+        assertThatThrownBy(() -> mongoStatement.execute("{\"create\": 5}"))
+                .isInstanceOf(SQLSyntaxErrorException.class)
+                .hasMessageContaining("Invalid MQL")
+                .hasMessageContaining("create")
+                .hasCauseInstanceOf(BSONException.class);
+    }
+
+    @Test
+    void executeQueryRejectsAdminCommands() {
+        assertAll(
+                () -> assertThatThrownBy(() -> mongoStatement.executeQuery("{\"create\": \"books\"}"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported command for executeQuery: create"),
+                () -> assertThatThrownBy(() -> mongoStatement.executeQuery("{\"createIndexes\": \"books\"}"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported command for executeQuery: createIndexes"),
+                () -> assertThatThrownBy(() -> mongoStatement.executeQuery("{\"drop\": \"books\"}"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported command for executeQuery: drop"));
+    }
+
+    @Test
+    void executeUpdateRejectsAdminCommands() {
+        assertAll(
+                () -> assertThatThrownBy(() -> mongoStatement.executeUpdate("{\"create\": \"books\"}"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported command for executeUpdate: create"),
+                () -> assertThatThrownBy(() -> mongoStatement.executeUpdate("{\"createIndexes\": \"books\"}"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported command for executeUpdate: createIndexes"),
+                () -> assertThatThrownBy(() -> mongoStatement.executeUpdate("{\"drop\": \"books\"}"))
+                        .isInstanceOf(SQLFeatureNotSupportedException.class)
+                        .hasMessage("Unsupported command for executeUpdate: drop"));
     }
 
     @Nested

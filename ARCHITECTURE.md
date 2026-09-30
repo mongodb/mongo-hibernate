@@ -26,7 +26,7 @@ than forwarding it verbatim.
   and carried as the statement string, then executed by `MongoStatement` / `MongoPreparedStatement`.
 - Schema DDL: an `Exporter` produces the same kind of string. `MongoStatement.execute(String)` parses it,
   routes a write command name to `executeUpdate(BsonDocument)`, and otherwise decodes it as an
-  `AdminCommand`.
+  `Command`.
 
 Two consequences worth internalizing. A statement string that looks like valid MQL is not proof the
 feature works --- something still has to parse it on the far side. And "the server accepted it" is a

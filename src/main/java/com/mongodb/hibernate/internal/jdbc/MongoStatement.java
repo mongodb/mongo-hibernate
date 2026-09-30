@@ -24,7 +24,7 @@ import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER
 import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.NON_TRANSACTIONAL_COMMAND_FIELD_NAME;
 import static com.mongodb.hibernate.internal.VisibleForTesting.AccessModifier.PRIVATE;
-import static com.mongodb.hibernate.internal.jdbc.MongoStatement.CommandDescription.FIND_AND_MODIFY;
+import static com.mongodb.hibernate.internal.jdbc.CommandDescription.FIND_AND_MODIFY;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toCollection;
 import static org.bson.BsonBoolean.FALSE;
@@ -61,11 +61,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import org.bson.BSONException;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -80,14 +78,8 @@ class MongoStatement implements StatementAdapter {
     private static final String EXCEPTION_MESSAGE_OPERATION_FAILED = "Failed to execute operation";
     private static final String EXCEPTION_MESSAGE_OPERATION_TIMED_OUT =
             "Timeout while waiting for operation to complete";
-    private static final String UNSUPPORTED_MESSAGE_TEMPLATE_STATEMENT_FIELD =
-            "Unsupported field in [%s] statement: [%s]";
-    private static final String UNSUPPORTED_MESSAGE_TEMPLATE_COMMAND_FIELD = "Unsupported field in [%s] command: [%s]";
     static final int NO_ERROR_CODE = 0;
     static final int[] EMPTY_UPDATE_COUNTS = new int[0];
-
-    private static final Set<String> SUPPORTED_FIND_AND_MODIFY_COMMAND_FIELDS =
-            Set.of("query", "update", "new", "fields", NON_TRANSACTIONAL_COMMAND_FIELD_NAME);
 
     static final @Nullable String NULL_SQL_STATE = null;
 
@@ -159,7 +151,7 @@ class MongoStatement implements StatementAdapter {
 
     private ResultSet executeFindAndModify(BsonDocument command) throws SQLException {
         try {
-            checkCommandFields(command, FIND_AND_MODIFY, SUPPORTED_FIND_AND_MODIFY_COMMAND_FIELDS);
+            FIND_AND_MODIFY.checkCommandFields(command);
             if (!command.getBoolean(NON_TRANSACTIONAL_COMMAND_FIELD_NAME, FALSE).getValue()) {
                 throw new SQLFeatureNotSupportedException(format(
                         "[%s] is supported only with [%s: true]: it exists to allocate sequence values, which must not"
@@ -303,13 +295,22 @@ class MongoStatement implements StatementAdapter {
         checkClosed();
         closeLastOpenResultSet();
         var parsedCommand = parse(mql);
-        var commandDescription = CommandDescription.find(getCommandName(parsedCommand));
-        if (commandDescription != null && commandDescription.isUpdate()) {
+        var commandDescription = getCommandDescription(parsedCommand);
+        if (commandDescription.isUpdate()) {
             executeUpdate(parsedCommand);
         } else {
-            var command = AdminCommand.toAdminCommand(mql);
             try {
-                command.execute(mongoDatabase);
+                (switch (commandDescription) {
+                            case CREATE -> new CreateCollectionCommand(parsedCommand);
+                            case CREATE_INDEXES -> new CreateIndexesCommand(parsedCommand);
+                            case DROP -> new DropCollectionCommand(parsedCommand);
+                            default ->
+                                throw new SQLFeatureNotSupportedException("Unsupported command for execute: %s"
+                                        .formatted(commandDescription.getCommandName()));
+                        })
+                        .execute(mongoDatabase);
+            } catch (BSONException bsonException) {
+                throw createSyntaxErrorException("%s: [%s]", parsedCommand, bsonException);
             } catch (RuntimeException exception) {
                 throw handleExecuteQueryOrUpdateException(exception);
             }
@@ -361,7 +362,7 @@ class MongoStatement implements StatementAdapter {
     static void checkSupportedQueryCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         var commandDescription = getCommandDescription(command);
-        if (commandDescription.isUpdate()) {
+        if (!commandDescription.isQuery()) {
             throw new SQLFeatureNotSupportedException(
                     "Unsupported command for executeQuery: %s".formatted(commandDescription.getCommandName()));
         }
@@ -370,42 +371,9 @@ class MongoStatement implements StatementAdapter {
     static void checkSupportedUpdateCommand(BsonDocument command)
             throws SQLFeatureNotSupportedException, SQLSyntaxErrorException {
         CommandDescription commandDescription = getCommandDescription(command);
-        if (commandDescription.isQuery()) {
+        if (!commandDescription.isUpdate()) {
             throw new SQLFeatureNotSupportedException(
                     "Unsupported command for executeUpdate: %s".formatted(commandDescription.getCommandName()));
-        }
-    }
-
-    private static void checkStatementFields(
-            BsonDocument statement, CommandDescription commandDescription, Set<String> supportedStatementFields)
-            throws SQLFeatureNotSupportedException {
-        checkFields(
-                commandDescription,
-                UNSUPPORTED_MESSAGE_TEMPLATE_STATEMENT_FIELD,
-                supportedStatementFields,
-                statement.keySet().iterator());
-    }
-
-    private static void checkCommandFields(
-            BsonDocument command, CommandDescription commandDescription, Set<String> supportedCommandFields)
-            throws SQLFeatureNotSupportedException {
-        var iterator = command.keySet().iterator();
-        iterator.next(); // skip the command name
-        checkFields(commandDescription, UNSUPPORTED_MESSAGE_TEMPLATE_COMMAND_FIELD, supportedCommandFields, iterator);
-    }
-
-    private static void checkFields(
-            CommandDescription commandDescription,
-            String exceptionMessageTemplate,
-            Set<String> supportedCommandFields,
-            Iterator<String> fieldNameIterator)
-            throws SQLFeatureNotSupportedException {
-        while (fieldNameIterator.hasNext()) {
-            var field = fieldNameIterator.next();
-            if (!supportedCommandFields.contains(field)) {
-                throw new SQLFeatureNotSupportedException(
-                        exceptionMessageTemplate.formatted(commandDescription.getCommandName(), field));
-            }
         }
     }
 
@@ -563,84 +531,7 @@ class MongoStatement implements StatementAdapter {
                 || exception instanceof MongoTimeoutException;
     }
 
-    enum CommandDescription {
-        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/insert/">{@code insert}</a>. */
-        INSERT("insert", false, true),
-        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/update/">{@code update}</a>. */
-        UPDATE("update", false, true),
-        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/delete/">{@code delete}</a>. */
-        DELETE("delete", false, true),
-        /** See <a href="https://www.mongodb.com/docs/manual/reference/command/aggregate/">{@code aggregate}</a>. */
-        AGGREGATE("aggregate", true, false),
-        /**
-         * See <a href="https://www.mongodb.com/docs/manual/reference/command/findAndModify/">{@code findAndModify}</a>.
-         *
-         * <p>A write that Hibernate ORM submits through {@code executeQuery}, because that is how it reads an allocated
-         * sequence value. The flags below say which JDBC method may carry a command, not whether it mutates.
-         */
-        FIND_AND_MODIFY("findAndModify", true, false);
-
-        private final String commandName;
-        private final boolean isQuery;
-        private final boolean isUpdate;
-
-        CommandDescription(String commandName, boolean isQuery, boolean isUpdate) {
-            this.commandName = commandName;
-            this.isQuery = isQuery;
-            this.isUpdate = isUpdate;
-        }
-
-        String getCommandName() {
-            return commandName;
-        }
-
-        /**
-         * Indicates whether the command may be used in {@code executeUpdate(...)} or {@code executeBatch()} methods.
-         *
-         * @return true if the command may be used in update operations.
-         */
-        boolean isUpdate() {
-            return isUpdate;
-        }
-
-        /**
-         * Indicates whether the command may be used in {@code executeQuery(...)} methods.
-         *
-         * @return true if the command may be used in query operations.
-         */
-        boolean isQuery() {
-            return isQuery;
-        }
-
-        static CommandDescription of(String commandName) throws SQLFeatureNotSupportedException {
-            var commandDescription = find(commandName);
-            if (commandDescription == null) {
-                throw new SQLFeatureNotSupportedException("Unsupported command: %s".formatted(commandName));
-            }
-            return commandDescription;
-        }
-
-        static @Nullable CommandDescription find(String commandName) {
-            return switch (commandName) {
-                case "insert" -> INSERT;
-                case "update" -> UPDATE;
-                case "delete" -> DELETE;
-                case "aggregate" -> AGGREGATE;
-                case "findAndModify" -> FIND_AND_MODIFY;
-                default -> null;
-            };
-        }
-    }
-
     private static class WriteModelConverter {
-        private static final Set<String> SUPPORTED_INSERT_COMMAND_FIELDS = Set.of("documents");
-
-        private static final Set<String> SUPPORTED_UPDATE_COMMAND_FIELDS = Set.of("updates");
-        private static final Set<String> SUPPORTED_UPDATE_STATEMENT_FIELDS = Set.of("q", "u", "multi", "upsert");
-
-        private static final Set<String> SUPPORTED_DELETE_COMMAND_FIELDS = Set.of("deletes");
-        private static final Set<String> SUPPORTED_DELETE_STATEMENT_FIELDS = Set.of("q", "limit");
-
         private WriteModelConverter() {}
 
         static void convertToWriteModels(
@@ -651,21 +542,21 @@ class MongoStatement implements StatementAdapter {
             try {
                 switch (commandDescription) {
                     case INSERT -> {
-                        checkCommandFields(command, commandDescription, SUPPORTED_INSERT_COMMAND_FIELDS);
+                        commandDescription.checkCommandFields(command);
                         var documentsToInsert = command.getArray("documents");
                         for (var documentToInsert : documentsToInsert) {
                             writeModels.add(createInsertModel(documentToInsert.asDocument()));
                         }
                     }
                     case UPDATE -> {
-                        checkCommandFields(command, commandDescription, SUPPORTED_UPDATE_COMMAND_FIELDS);
+                        commandDescription.checkCommandFields(command);
                         var updateStatements = command.getArray("updates");
                         for (var updateStatement : updateStatements) {
                             writeModels.add(createUpdateModel(updateStatement.asDocument(), commandDescription));
                         }
                     }
                     case DELETE -> {
-                        checkCommandFields(command, commandDescription, SUPPORTED_DELETE_COMMAND_FIELDS);
+                        commandDescription.checkCommandFields(command);
                         var deleteStatements = command.getArray("deletes");
                         for (var deleteStatement : deleteStatements) {
                             writeModels.add(createDeleteModel(deleteStatement.asDocument(), commandDescription));
@@ -685,7 +576,7 @@ class MongoStatement implements StatementAdapter {
         private static WriteModel<BsonDocument> createUpdateModel(
                 BsonDocument updateStatement, CommandDescription commandDescription)
                 throws SQLFeatureNotSupportedException {
-            checkStatementFields(updateStatement, commandDescription, SUPPORTED_UPDATE_STATEMENT_FIELDS);
+            commandDescription.checkStatementFields(updateStatement);
             var isMulti = updateStatement.getBoolean("multi", FALSE).getValue();
             var options = new UpdateOptions()
                     .upsert(updateStatement.getBoolean("upsert", FALSE).getValue());
@@ -714,7 +605,7 @@ class MongoStatement implements StatementAdapter {
         private static WriteModel<BsonDocument> createDeleteModel(
                 BsonDocument deleteStatement, CommandDescription commandDescription)
                 throws SQLFeatureNotSupportedException {
-            checkStatementFields(deleteStatement, commandDescription, SUPPORTED_DELETE_STATEMENT_FIELDS);
+            commandDescription.checkStatementFields(deleteStatement);
             var isSingleDelete = deleteStatement.getNumber("limit").intValue() == 1;
             var filter = deleteStatement.getDocument("q");
 
