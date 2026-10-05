@@ -34,6 +34,11 @@ public enum AstArrayExpressionOperator implements AstExpressionOperator {
      */
     SET_DIFFERENCE("$setDifference"),
     /**
+     * See <a
+     * href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/arrayElemAt/">{@code $arrayElemAt}</a>.
+     */
+    ARRAY_ELEM_AT("$arrayElemAt"),
+    /**
      * See <a href="https://www.mongodb.com/docs/manual/reference/operator/aggregation/sum/">{@code $sum}</a>, which in
      * expression position sums the elements of an array rather than accumulating over a group.
      */

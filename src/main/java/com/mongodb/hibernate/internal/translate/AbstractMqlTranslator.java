@@ -23,6 +23,7 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
+import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
@@ -67,6 +68,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstArrayExpressionOpera
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
+import com.mongodb.hibernate.internal.translate.mongoast.AstConditionalExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstConversionExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -96,6 +98,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstFacetStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
@@ -109,6 +112,7 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstPr
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
+import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstReplaceWithStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSkipStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
@@ -151,6 +155,7 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.bson.BsonArray;
+import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.bson.BsonString;
@@ -716,16 +721,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
         var groupIdSpecs = prepareGroupBy(querySpec);
 
-        if (groupIdSpecs != null) {
-            var ctx = assertNotNull(groupByContext);
-            // Built before the three clauses are translated, because `createAstSortField` resolves a sort key through
-            // it as it goes. The rule holds live references to the context's maps, so accumulators registered while
-            // translating SELECT and HAVING are still visible to the rewrites below.
-            astRewriter = new AstRewriter(
-                    new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry, ctx.accumulatorFieldNames),
-                    new ExprToMatchDowngradeRule());
-        }
-
         // SELECT, HAVING and ORDER BY are translated before `$group` is assembled, even though `$group` precedes all
         // three in the pipeline: an aggregate function in any of them registers an accumulator on the GROUP BY
         // context, and `$group` has to render every accumulator they introduced. Translation order is therefore not
@@ -734,9 +729,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         Optional<? extends AstStage> havingStage = createMatchStage(querySpec.getHavingClauseRestrictions());
         Optional<? extends AstStage> sortStage = createSortStage(querySpec);
 
-        if (groupIdSpecs != null) {
-            var ctx = assertNotNull(groupByContext);
-            stages.add(new AstGroupStage(groupIdSpecs, List.copyOf(ctx.registeredAccumulatorsByVN.values())));
+        // with no GROUP BY clause the context is created lazily by the
+        // first aggregate
+        var ctx = groupByContext;
+        if (ctx != null) {
+            var accumulators = List.copyOf(ctx.registeredAccumulatorsByVN.values());
+            if (groupIdSpecs == null) {
+                stages.addAll(wholeCollectionGroupStages(accumulators));
+            } else {
+                stages.add(new AstGroupStage(groupIdSpecs, accumulators));
+            }
             var rewriter = assertNotNull(astRewriter);
             havingStage = havingStage.map(rewriter::rewrite);
             projectStage = rewriter.rewrite(projectStage);
@@ -760,6 +762,63 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         skipLimitStagesAndJdbcParams.limit()));
     }
 
+    /** The {@code $facet} output field holding the whole-collection {@code $group}'s single document. */
+    private static final String WHOLE_COLLECTION_GROUP_FIELD = "#group";
+
+    /**
+     * The stages expressing an aggregate over the whole collection, which has no GROUP BY key and so groups every
+     * document under a null {@code _id}.
+     *
+     * <p>{@code $group} alone yields no rows for empty collections while SQL returns one. {@code $facet} is the only
+     * stage that emits exactly one document regardless of its input, so the {@code $group} goes inside it and
+     * {@code $replaceWith} then unwraps the single element back out, falling back to the values an empty group would
+     * have had.
+     */
+    private static List<AstStage> wholeCollectionGroupStages(List<AstGroupStageAccumulatorSpecification> accumulators) {
+        var emptyGroup = new BsonDocument(ID_FIELD_NAME, BsonNull.VALUE);
+        accumulators.forEach(accumulator -> emptyGroup.append(
+                accumulator.key(), emptyGroupValue(accumulator.accumulator().operator())));
+        var soleDocument = new AstBinaryOperatorExpression(
+                AstArrayExpressionOperator.ARRAY_ELEM_AT,
+                new AstFieldPathExpression(WHOLE_COLLECTION_GROUP_FIELD),
+                new AstValueExpression(new AstLiteral(new BsonInt32(0))));
+        return List.of(
+                new AstFacetStage(WHOLE_COLLECTION_GROUP_FIELD, List.of(new AstGroupStage(List.of(), accumulators))),
+                new AstReplaceWithStage(new AstBinaryOperatorExpression(
+                        AstConditionalExpressionOperator.IF_NULL,
+                        soleDocument,
+                        new AstLiteralExpression(new AstLiteral(emptyGroup)))));
+    }
+
+    /**
+     * The value an accumulator would hold for a group with no documents, which is what the whole-collection fallback
+     * substitutes. Derived from the operator rather than from the HQL function, which keeps it consistent with what a
+     * group that exists but contributes no values already produces: {@code $sum} is 0 there too.
+     */
+    private static BsonValue emptyGroupValue(AstAccumulatorOperator operator) {
+        return switch (operator) {
+            case SUM -> new BsonInt32(0);
+            case AVG, MIN, MAX -> BsonNull.VALUE;
+            case ADD_TO_SET -> new BsonArray();
+        };
+    }
+
+    /**
+     * Establishes the GROUP BY context and the substitution rewriter over it, and returns the context.
+     *
+     * <p>The rewriter is built here rather than once the {@code $group} stage is assembled, because
+     * {@link #createAstSortField} resolves a sort key through it as it goes. Both hold live references to the context's
+     * maps, so accumulators registered later are still visible to the rewrites in {@link #visitQuerySpec}.
+     */
+    private GroupByContext beginGroupBy() {
+        var ctx = new GroupByContext();
+        groupByContext = ctx;
+        astRewriter = new AstRewriter(
+                new GroupBySubstitutionRule(ctx.registeredGroupKeyByVN, ctx.vnRegistry, ctx.accumulatorFieldNames),
+                new ExprToMatchDowngradeRule());
+        return ctx;
+    }
+
     /**
      * Establishes the GROUP BY context and translates the GROUP BY keys into the {@code _id} sub-key specifications,
      * returning them for {@link #visitQuerySpec} to combine with the accumulators registered afterwards. Returns
@@ -769,8 +828,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         if (querySpec.getGroupByClauseExpressions().isEmpty()) {
             return null;
         }
-        var ctx = new GroupByContext();
-        groupByContext = ctx;
+        var ctx = beginGroupBy();
         List<AstGroupStageSpecification> specs = new ArrayList<>();
         var groupByExpressions = querySpec.getGroupByClauseExpressions();
         for (int i = 0; i < groupByExpressions.size(); i++) {
@@ -1895,11 +1953,12 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
             // Not an aggregate at all, so the caller's function-as-operand error is the accurate one.
             return null;
         }
+        // An aggregate with no GROUP BY clause groups the whole collection, which `$group` expresses with a null
+        // `_id`. The context is created here rather than up front so that a query with neither a GROUP BY clause nor
+        // an aggregate keeps no context at all, and is translated without a `$group` stage or a substitution pass.
         var ctx = groupByContext;
         if (ctx == null) {
-            // An aggregate with no GROUP BY groups the whole collection, which `$group` expresses with a null `_id`;
-            // not implemented yet, so it is refused here rather than reported as an unsupported function.
-            throw new FeatureNotSupportedException("TODO-HIBERNATE-262 https://jira.mongodb.org/browse/HIBERNATE-262");
+            ctx = beginGroupBy();
         }
         // HQL's FILTER (WHERE ...) restricts which rows an aggregate sees. A `$group` accumulator has no filter of
         // its own, but the same effect is reachable by making the argument yield nothing for the excluded rows, since

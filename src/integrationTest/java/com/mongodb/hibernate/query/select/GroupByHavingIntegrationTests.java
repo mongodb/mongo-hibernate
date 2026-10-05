@@ -2815,27 +2815,11 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     hql, Object[].class, FeatureNotSupportedException.class, "not allowed in GROUP BY");
         }
 
-        /** Grouping the whole collection is a `$group` with a null `_id`; not implemented yet. */
-        @ParameterizedTest(name = "[{index}] {0}")
-        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
-        void aggregateWithoutGroupByIsRejected(String function) {
-            assertSelectQueryFailure(
-                    "select " + function + "(b.primitiveInt) from Item as b",
-                    Object.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-262");
-        }
-
-        /** {@code count(*)} takes the same path, through a {@code Star} argument rather than a column. */
-        @Test
-        void countStarWithoutGroupByIsRejected() {
-            assertSelectQueryFailure(
-                    "select count(*) from Item as b",
-                    Object.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-262");
-        }
-
+        /**
+         * HQL's statistical aggregates are not translated yet. They are rejected by name rather than by falling through
+         * the generic unsupported-function path, so the message names the ticket that tracks them; see <a
+         * href="https://jira.mongodb.org/browse/HIBERNATE-257">HIBERNATE-257</a>.
+         */
         static Stream<Arguments> statisticalAggregateQueries() {
             return Stream.of("stddev_pop", "stddev_samp", "var_pop", "var_samp", "stddev", "variance")
                     .flatMap(function -> Stream.of(
@@ -2846,11 +2830,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             Arguments.of(function, "select " + function + "(b.primitiveInt) from Item as b")));
         }
 
-        /**
-         * HQL's statistical aggregates are not translated yet. They are rejected by name rather than by falling through
-         * the generic unsupported-function path, so the message names the ticket that tracks them; see <a
-         * href="https://jira.mongodb.org/browse/HIBERNATE-257">HIBERNATE-257</a>.
-         */
         @ParameterizedTest(name = "[{index}] {0}: {1}")
         @MethodSource("statisticalAggregateQueries")
         void statisticalAggregateIsRejected(String function, String hql) {
@@ -4141,6 +4120,346 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             .containsExactly(
                                     new Object[] {1, 3L, 2L}, new Object[] {2, 1L, 1L}, new Object[] {3, 0L, 0L}),
                     Set.of(COLLECTION_NAME));
+        }
+    }
+
+    /**
+     * An aggregate with no GROUP BY clause groups the whole collection. MQL expresses that with a null {@code _id}, but
+     * a {@code $group} emits nothing for an empty input where SQL returns one row, so the stage is wrapped in a
+     * {@code $facet} --- the one stage that always emits exactly one document --- and unwrapped by
+     * {@code $replaceWith}.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class WholeCollectionAggregates extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                List.of(
+                                new Item(1, 1, "a", true, new ItemStruct(1)),
+                                new Item(2, 2, null, false, new ItemStruct(2)),
+                                new Item(3, 3, "c", true, new ItemStruct(3)),
+                                new Item(4, 4, "d", false, new ItemStruct(4)))
+                        .forEach(session::persist);
+            });
+        }
+
+        @Test
+        void countStar() {
+            assertSelectionQuery(
+                    "select count(*) from Item as b",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$facet": {
+                            "#group": [
+                              {
+                                "$group": {
+                                  "_id": null,
+                                  "#acc_0": {"$sum": 1}
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$replaceWith": {
+                            "$ifNull": [
+                              {"$arrayElemAt": ["$#group", 0]},
+                              {"$literal": {"_id": null, "#acc_0": 0}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(4L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void everyAggregate() {
+            assertSelectionQuery(
+                    "select count(*), sum(b.primitiveInt), avg(b.primitiveInt), min(b.primitiveInt),"
+                            + " max(b.primitiveInt) from Item as b",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$facet": {
+                            "#group": [
+                              {
+                                "$group": {
+                                  "_id": null,
+                                  "#acc_0": {"$sum": 1},
+                                  "#acc_1": {"$sum": "$primitiveInt"},
+                                  "#acc_2": {"$avg": "$primitiveInt"},
+                                  "#acc_3": {"$min": "$primitiveInt"},
+                                  "#acc_4": {"$max": "$primitiveInt"}
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$replaceWith": {
+                            "$ifNull": [
+                              {"$arrayElemAt": ["$#group", 0]},
+                              {"$literal": {"_id": null, "#acc_0": 0, "#acc_1": 0, "#acc_2": null, "#acc_3": null, "#acc_4": null}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "#c_2": "$#acc_1",
+                            "#c_3": "$#acc_2",
+                            "#c_4": "$#acc_3",
+                            "#c_5": "$#acc_4",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {4L, 10L, 2.5d, 1, 4}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateWithWhere() {
+            assertSelectionQuery(
+                    "select sum(b.primitiveInt) from Item as b where b.primitiveInt > 1",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$match": {"primitiveInt": {"$gt": 1}}},
+                        {
+                          "$facet": {
+                            "#group": [
+                              {
+                                "$group": {
+                                  "_id": null,
+                                  "#acc_0": {"$sum": "$primitiveInt"}
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$replaceWith": {
+                            "$ifNull": [
+                              {"$arrayElemAt": ["$#group", 0]},
+                              {"$literal": {"_id": null, "#acc_0": 0}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(9L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countOfNullableColumnExcludesNulls() {
+            assertSelectionQuery(
+                    "select count(b.string) from Item as b",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$facet": {
+                            "#group": [
+                              {
+                                "$group": {
+                                  "_id": null,
+                                  "#acc_0": {
+                                    "$sum": {
+                                      "$switch": {
+                                        "branches": [
+                                          {"case": {"$eq": ["$string", null]}, "then": 0}
+                                        ],
+                                        "default": 1
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$replaceWith": {
+                            "$ifNull": [
+                              {"$arrayElemAt": ["$#group", 0]},
+                              {"$literal": {"_id": null, "#acc_0": 0}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(3L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countDistinct() {
+            assertSelectionQuery(
+                    "select count(distinct b.primitiveInt) from Item as b",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$facet": {
+                            "#group": [
+                              {
+                                "$group": {
+                                  "_id": null,
+                                  "#acc_0": {"$addToSet": "$primitiveInt"}
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$replaceWith": {
+                            "$ifNull": [
+                              {"$arrayElemAt": ["$#group", 0]},
+                              {"$literal": {"_id": null, "#acc_0": []}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$size": {"$setDifference": ["$#acc_0", [null]]}
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(4L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /** A predicate matching nothing still yields one row, as SQL requires. */
+        @Test
+        void whereMatchingNothingStillYieldsOneRow() {
+            assertSelectionQuery(
+                    "select count(*), avg(b.primitiveInt) from Item as b where b.primitiveInt > 999",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$match": {"primitiveInt": {"$gt": 999}}},
+                        {
+                          "$facet": {
+                            "#group": [
+                              {
+                                "$group": {
+                                  "_id": null,
+                                  "#acc_0": {"$sum": 1},
+                                  "#acc_1": {"$avg": "$primitiveInt"}
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "$replaceWith": {
+                            "$ifNull": [
+                              {"$arrayElemAt": ["$#group", 0]},
+                              {"$literal": {"_id": null, "#acc_0": 0, "#acc_1": null}}
+                            ]
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "#c_2": "$#acc_1",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {0L, null}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * An empty collection yields one row too, which is the whole reason for the {@code $facet}: the {@code $group}
+         * inside it produces no document at all, so the {@code $replaceWith} fallback supplies the values an empty
+         * group would have had.
+         */
+        @Test
+        void emptyCollectionStillYieldsOneRow() {
+            getSessionFactoryScope().inTransaction(session -> session.createMutationQuery("delete from Item")
+                    .executeUpdate());
+            getSessionFactoryScope().inTransaction(session -> assertThat(session.createSelectionQuery(
+                                    "select count(*), sum(b.primitiveInt), avg(b.primitiveInt),"
+                                            + " min(b.primitiveInt), max(b.primitiveInt) from Item as b",
+                                    Object[].class)
+                            .getResultList())
+                    .containsExactly(new Object[] {0L, 0L, null, null, null}));
+        }
+
+        /** A {@code count} over an empty collection is a single {@code 0}, not an empty result. */
+        @Test
+        void countOverEmptyCollectionIsSingleResultZero() {
+            getSessionFactoryScope().inTransaction(session -> session.createMutationQuery("delete from Item")
+                    .executeUpdate());
+            getSessionFactoryScope().inTransaction(session -> assertThat(
+                            session.createSelectionQuery("select count(*) from Item as b", Long.class)
+                                    .getSingleResult())
+                    .isEqualTo(0L));
+        }
+
+        /** Without a GROUP BY key, a bare column in SELECT is a stray exactly as it is with one. */
+        @Test
+        void bareColumnAlongsideAggregateIsRejected() {
+            assertSelectQueryFailure(
+                    "select b.string, count(*) from Item as b",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "not a GROUP BY key");
         }
     }
 }
