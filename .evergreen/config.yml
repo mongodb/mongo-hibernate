@@ -52,8 +52,9 @@ functions:
           - MONGODB_VERSION
           - MONGODB_BINARIES
         args:
-          - ${DRIVERS_TOOLS}/.evergreen/run-orchestration.sh
-    # run-orchestration generates expansion file with the MONGODB_URI for the cluster
+          - ${DRIVERS_TOOLS}/.evergreen/run-mongodb.sh
+          - start
+    # run-mongodb.sh generates expansion file with the MONGODB_URI for the cluster
     - command: expansions.update
       type: test
       params:
@@ -64,7 +65,8 @@ functions:
       params:
         binary: bash
         args:
-          - ${DRIVERS_TOOLS}/.evergreen/stop-orchestration.sh
+          - ${DRIVERS_TOOLS}/.evergreen/run-mongodb.sh
+          - stop
 
   trace-artifacts:
     - command: subprocess.exec
