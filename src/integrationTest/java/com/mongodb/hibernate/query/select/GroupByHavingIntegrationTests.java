@@ -4323,17 +4323,9 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
     }
 
     /**
-     * What callers observe when nothing reaches the {@code $group}: no row, where SQL returns one holding the aggregate
-     * over zero rows.
-     *
-     * <p>These assert a deliberate divergence rather than desired behaviour. {@code $group} emits one document per
-     * group and an empty input has no groups, so the aggregate returns an empty result and {@code getSingleResult()}
-     * throws. Restoring the SQL row needs the {@code $group} wrapped in a {@code $facet}, which costs roughly 2--3x on
-     * an unfiltered whole-collection aggregate; the team chose the faster pipeline.
-     *
-     * <p>The practical consequence reaches Spring Data: {@code JpaRepository.count()} and {@code existsById(absentId)}
-     * are implemented as ungrouped {@code count(*)} queries over {@code getSingleResult()}, so both throw.
-     * {@code existsById} does so whenever the entity is absent, on a populated collection as much as an empty one.
+     * When nothing reaches the {@code $group} MQL returns no rows, where SQL returns one holding the aggregate over
+     * zero rows. Hibernate assums SQL semantics and call {@code getSingleResult} on the query, which throws an
+     * exception when no rows are returned.
      */
     @Nested
     @DomainModel(annotatedClasses = {Item.class})
