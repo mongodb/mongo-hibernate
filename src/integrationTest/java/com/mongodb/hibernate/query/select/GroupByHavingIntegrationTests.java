@@ -18,6 +18,7 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.query.select.GroupByHavingIntegrationTests.Item.COLLECTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
@@ -33,6 +34,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NoResultException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
@@ -4124,10 +4126,11 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
     }
 
     /**
-     * An aggregate with no GROUP BY clause groups the whole collection. MQL expresses that with a null {@code _id}, but
-     * a {@code $group} emits nothing for an empty input where SQL returns one row, so the stage is wrapped in a
-     * {@code $facet} --- the one stage that always emits exactly one document --- and unwrapped by
-     * {@code $replaceWith}.
+     * An aggregate with no GROUP BY clause groups the whole collection, which MQL expresses as {@code $group} with a
+     * null {@code _id}.
+     *
+     * <p>{@code $group} emits one document per group, so an input with no documents produces no groups and therefore no
+     * rows while SQL returns one.
      */
     @Nested
     @DomainModel(annotatedClasses = {Item.class})
@@ -4156,23 +4159,9 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {
-                          "$facet": {
-                            "#group": [
-                              {
-                                "$group": {
-                                  "_id": null,
-                                  "#acc_0": {"$sum": 1}
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$replaceWith": {
-                            "$ifNull": [
-                              {"$arrayElemAt": ["$#group", 0]},
-                              {"$literal": {"_id": null, "#acc_0": 0}}
-                            ]
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": 1}
                           }
                         },
                         {
@@ -4199,27 +4188,13 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {
-                          "$facet": {
-                            "#group": [
-                              {
-                                "$group": {
-                                  "_id": null,
-                                  "#acc_0": {"$sum": 1},
-                                  "#acc_1": {"$sum": "$primitiveInt"},
-                                  "#acc_2": {"$avg": "$primitiveInt"},
-                                  "#acc_3": {"$min": "$primitiveInt"},
-                                  "#acc_4": {"$max": "$primitiveInt"}
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$replaceWith": {
-                            "$ifNull": [
-                              {"$arrayElemAt": ["$#group", 0]},
-                              {"$literal": {"_id": null, "#acc_0": 0, "#acc_1": 0, "#acc_2": null, "#acc_3": null, "#acc_4": null}}
-                            ]
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": 1},
+                            "#acc_1": {"$sum": "$primitiveInt"},
+                            "#acc_2": {"$avg": "$primitiveInt"},
+                            "#acc_3": {"$min": "$primitiveInt"},
+                            "#acc_4": {"$max": "$primitiveInt"}
                           }
                         },
                         {
@@ -4251,23 +4226,9 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "pipeline": [
                         {"$match": {"primitiveInt": {"$gt": 1}}},
                         {
-                          "$facet": {
-                            "#group": [
-                              {
-                                "$group": {
-                                  "_id": null,
-                                  "#acc_0": {"$sum": "$primitiveInt"}
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$replaceWith": {
-                            "$ifNull": [
-                              {"$arrayElemAt": ["$#group", 0]},
-                              {"$literal": {"_id": null, "#acc_0": 0}}
-                            ]
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": "$primitiveInt"}
                           }
                         },
                         {
@@ -4293,32 +4254,18 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {
-                          "$facet": {
-                            "#group": [
-                              {
-                                "$group": {
-                                  "_id": null,
-                                  "#acc_0": {
-                                    "$sum": {
-                                      "$switch": {
-                                        "branches": [
-                                          {"case": {"$eq": ["$string", null]}, "then": 0}
-                                        ],
-                                        "default": 1
-                                      }
-                                    }
-                                  }
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {"case": {"$eq": ["$string", null]}, "then": 0}
+                                  ],
+                                  "default": 1
                                 }
                               }
-                            ]
-                          }
-                        },
-                        {
-                          "$replaceWith": {
-                            "$ifNull": [
-                              {"$arrayElemAt": ["$#group", 0]},
-                              {"$literal": {"_id": null, "#acc_0": 0}}
-                            ]
+                            }
                           }
                         },
                         {
@@ -4344,23 +4291,9 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                       "aggregate": "Item",
                       "pipeline": [
                         {
-                          "$facet": {
-                            "#group": [
-                              {
-                                "$group": {
-                                  "_id": null,
-                                  "#acc_0": {"$addToSet": "$primitiveInt"}
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$replaceWith": {
-                            "$ifNull": [
-                              {"$arrayElemAt": ["$#group", 0]},
-                              {"$literal": {"_id": null, "#acc_0": []}}
-                            ]
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$addToSet": "$primitiveInt"}
                           }
                         },
                         {
@@ -4378,80 +4311,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     Set.of(COLLECTION_NAME));
         }
 
-        /** A predicate matching nothing still yields one row, as SQL requires. */
-        @Test
-        void whereMatchingNothingStillYieldsOneRow() {
-            assertSelectionQuery(
-                    "select count(*), avg(b.primitiveInt) from Item as b where b.primitiveInt > 999",
-                    Object[].class,
-                    """
-                    {
-                      "aggregate": "Item",
-                      "pipeline": [
-                        {"$match": {"primitiveInt": {"$gt": 999}}},
-                        {
-                          "$facet": {
-                            "#group": [
-                              {
-                                "$group": {
-                                  "_id": null,
-                                  "#acc_0": {"$sum": 1},
-                                  "#acc_1": {"$avg": "$primitiveInt"}
-                                }
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "$replaceWith": {
-                            "$ifNull": [
-                              {"$arrayElemAt": ["$#group", 0]},
-                              {"$literal": {"_id": null, "#acc_0": 0, "#acc_1": null}}
-                            ]
-                          }
-                        },
-                        {
-                          "$project": {
-                            "#c_1": "$#acc_0",
-                            "#c_2": "$#acc_1",
-                            "_id": 0
-                          }
-                        }
-                      ]
-                    }
-                    """,
-                    results -> assertThat((Iterable<Object[]>) results).containsExactly(new Object[] {0L, null}),
-                    Set.of(COLLECTION_NAME));
-        }
-
-        /**
-         * An empty collection yields one row too, which is the whole reason for the {@code $facet}: the {@code $group}
-         * inside it produces no document at all, so the {@code $replaceWith} fallback supplies the values an empty
-         * group would have had.
-         */
-        @Test
-        void emptyCollectionStillYieldsOneRow() {
-            getSessionFactoryScope().inTransaction(session -> session.createMutationQuery("delete from Item")
-                    .executeUpdate());
-            getSessionFactoryScope().inTransaction(session -> assertThat(session.createSelectionQuery(
-                                    "select count(*), sum(b.primitiveInt), avg(b.primitiveInt),"
-                                            + " min(b.primitiveInt), max(b.primitiveInt) from Item as b",
-                                    Object[].class)
-                            .getResultList())
-                    .containsExactly(new Object[] {0L, 0L, null, null, null}));
-        }
-
-        /** A {@code count} over an empty collection is a single {@code 0}, not an empty result. */
-        @Test
-        void countOverEmptyCollectionIsSingleResultZero() {
-            getSessionFactoryScope().inTransaction(session -> session.createMutationQuery("delete from Item")
-                    .executeUpdate());
-            getSessionFactoryScope().inTransaction(session -> assertThat(
-                            session.createSelectionQuery("select count(*) from Item as b", Long.class)
-                                    .getSingleResult())
-                    .isEqualTo(0L));
-        }
-
         /** Without a GROUP BY key, a bare column in SELECT is a stray exactly as it is with one. */
         @Test
         void bareColumnAlongsideAggregateIsRejected() {
@@ -4460,6 +4319,60 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     Object[].class,
                     FeatureNotSupportedException.class,
                     "not a GROUP BY key");
+        }
+    }
+
+    /**
+     * What callers observe when nothing reaches the {@code $group}: no row, where SQL returns one holding the aggregate
+     * over zero rows.
+     *
+     * <p>These assert a deliberate divergence rather than desired behaviour. {@code $group} emits one document per
+     * group and an empty input has no groups, so the aggregate returns an empty result and {@code getSingleResult()}
+     * throws. Restoring the SQL row needs the {@code $group} wrapped in a {@code $facet}, which costs roughly 2--3x on
+     * an unfiltered whole-collection aggregate; the team chose the faster pipeline.
+     *
+     * <p>The practical consequence reaches Spring Data: {@code JpaRepository.count()} and {@code existsById(absentId)}
+     * are implemented as ungrouped {@code count(*)} queries over {@code getSingleResult()}, so both throw.
+     * {@code existsById} does so whenever the entity is absent, on a populated collection as much as an empty one.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class WholeCollectionAggregatesOverEmptyInput extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> session.createMutationQuery("delete from Item")
+                    .executeUpdate());
+        }
+
+        @Test
+        void emptyCollectionYieldsNoRow() {
+            getSessionFactoryScope().inTransaction(session -> assertThat(session.createSelectionQuery(
+                                    "select count(*), sum(b.primitiveInt), avg(b.primitiveInt) from Item as b",
+                                    Object[].class)
+                            .getResultList())
+                    .isEmpty());
+        }
+
+        /** SQL would return 0 here; Hibernate reports the absent row as {@link NoResultException}. */
+        @Test
+        void countOverEmptyCollectionThrowsOnGetSingleResult() {
+            getSessionFactoryScope().inTransaction(session -> assertThatExceptionOfType(NoResultException.class)
+                    .isThrownBy(() -> session.createSelectionQuery("select count(*) from Item as b", Long.class)
+                            .getSingleResult()));
+        }
+
+        /** A predicate matching nothing empties the input just as an empty collection does. */
+        @Test
+        void whereMatchingNothingYieldsNoRow() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.persist(new Item(1, 1, "a", true, new ItemStruct(1)));
+                session.flush();
+                assertThat(session.createSelectionQuery(
+                                        "select count(*) from Item as b where b.primitiveInt > 999", Long.class)
+                                .getResultList())
+                        .isEmpty();
+            });
         }
     }
 }

@@ -23,7 +23,6 @@ import static com.mongodb.hibernate.internal.MongoAssertions.assertNull;
 import static com.mongodb.hibernate.internal.MongoAssertions.assertTrue;
 import static com.mongodb.hibernate.internal.MongoAssertions.fail;
 import static com.mongodb.hibernate.internal.MongoConstants.EXTENDED_JSON_WRITER_SETTINGS;
-import static com.mongodb.hibernate.internal.MongoConstants.ID_FIELD_NAME;
 import static com.mongodb.hibernate.internal.MongoConstants.MONGO_DBMS_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.COLLECTION_NAME;
 import static com.mongodb.hibernate.internal.translate.AstVisitorValueDescriptor.EXPRESSION;
@@ -68,7 +67,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.AstArrayExpressionOpera
 import com.mongodb.hibernate.internal.translate.mongoast.AstBinaryOperatorExpression;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComparisonExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstComputedFieldUpdate;
-import com.mongodb.hibernate.internal.translate.mongoast.AstConditionalExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstConversionExpressionOperator;
 import com.mongodb.hibernate.internal.translate.mongoast.AstDocument;
 import com.mongodb.hibernate.internal.translate.mongoast.AstElement;
@@ -98,7 +96,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdate;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateCommand;
 import com.mongodb.hibernate.internal.translate.mongoast.command.AstUpdateStatement;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstAggregateCommand;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstFacetStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageAccumulatorSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstGroupStageSpecification;
@@ -112,7 +109,6 @@ import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstPr
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageFieldPathSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageIncludeSpecification;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstProjectStageSpecification;
-import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstReplaceWithStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSkipStage;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortField;
 import com.mongodb.hibernate.internal.translate.mongoast.command.aggregate.AstSortOrder;
@@ -155,7 +151,6 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.bson.BsonArray;
-import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.bson.BsonString;
@@ -733,12 +728,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         // first aggregate
         var ctx = groupByContext;
         if (ctx != null) {
-            var accumulators = List.copyOf(ctx.registeredAccumulatorsByVN.values());
-            if (groupIdSpecs == null) {
-                stages.addAll(wholeCollectionGroupStages(accumulators));
-            } else {
-                stages.add(new AstGroupStage(groupIdSpecs, accumulators));
-            }
+            // A null `groupIdSpecs` means no GROUP BY clause, which `AstGroupStage` renders as `"_id"
+            stages.add(new AstGroupStage(
+                    groupIdSpecs == null ? List.of() : groupIdSpecs,
+                    List.copyOf(ctx.registeredAccumulatorsByVN.values())));
             var rewriter = assertNotNull(astRewriter);
             havingStage = havingStage.map(rewriter::rewrite);
             projectStage = rewriter.rewrite(projectStage);
@@ -760,47 +753,6 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                         affectedTableNames,
                         skipLimitStagesAndJdbcParams.offset(),
                         skipLimitStagesAndJdbcParams.limit()));
-    }
-
-    /** The {@code $facet} output field holding the whole-collection {@code $group}'s single document. */
-    private static final String WHOLE_COLLECTION_GROUP_FIELD = "#group";
-
-    /**
-     * The stages expressing an aggregate over the whole collection, which has no GROUP BY key and so groups every
-     * document under a null {@code _id}.
-     *
-     * <p>{@code $group} alone yields no rows for empty collections while SQL returns one. {@code $facet} is the only
-     * stage that emits exactly one document regardless of its input, so the {@code $group} goes inside it and
-     * {@code $replaceWith} then unwraps the single element back out, falling back to the values an empty group would
-     * have had.
-     */
-    private static List<AstStage> wholeCollectionGroupStages(List<AstGroupStageAccumulatorSpecification> accumulators) {
-        var emptyGroup = new BsonDocument(ID_FIELD_NAME, BsonNull.VALUE);
-        accumulators.forEach(accumulator -> emptyGroup.append(
-                accumulator.key(), emptyGroupValue(accumulator.accumulator().operator())));
-        var soleDocument = new AstBinaryOperatorExpression(
-                AstArrayExpressionOperator.ARRAY_ELEM_AT,
-                new AstFieldPathExpression(WHOLE_COLLECTION_GROUP_FIELD),
-                new AstValueExpression(new AstLiteral(new BsonInt32(0))));
-        return List.of(
-                new AstFacetStage(WHOLE_COLLECTION_GROUP_FIELD, List.of(new AstGroupStage(List.of(), accumulators))),
-                new AstReplaceWithStage(new AstBinaryOperatorExpression(
-                        AstConditionalExpressionOperator.IF_NULL,
-                        soleDocument,
-                        new AstLiteralExpression(new AstLiteral(emptyGroup)))));
-    }
-
-    /**
-     * The value an accumulator would hold for a group with no documents, which is what the whole-collection fallback
-     * substitutes. Derived from the operator rather than from the HQL function, which keeps it consistent with what a
-     * group that exists but contributes no values already produces: {@code $sum} is 0 there too.
-     */
-    private static BsonValue emptyGroupValue(AstAccumulatorOperator operator) {
-        return switch (operator) {
-            case SUM -> new BsonInt32(0);
-            case AVG, MIN, MAX -> BsonNull.VALUE;
-            case ADD_TO_SET -> new BsonArray();
-        };
     }
 
     /**
