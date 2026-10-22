@@ -63,6 +63,36 @@ class AstGroupStageTests {
         assertRendering(expectedJson, astGroupStage);
     }
 
+    /**
+     * No GROUP BY key renders {@code "_id": null} rather than an empty document, which is how MQL expresses one group
+     * holding the whole collection.
+     */
+    @Test
+    void testRenderingNoKeysGroupsWholeCollection() {
+        var astGroupStage = new AstGroupStage(List.of());
+
+        var expectedJson = """
+                           {"$group": {"_id": null}}\
+                           """;
+        assertRendering(expectedJson, astGroupStage);
+    }
+
+    @Test
+    void testRenderingNoKeysWithAccumulators() {
+        var astGroupStage = new AstGroupStage(
+                List.of(),
+                List.of(new AstGroupStageAccumulatorSpecification(
+                        "#acc_0",
+                        new AstAccumulatorExpression(
+                                AstAccumulatorOperator.SUM, new AstFieldPathExpression("sales")))));
+
+        var expectedJson =
+                """
+                {"$group": {"_id": null, "#acc_0": {"$sum": "$sales"}}}\
+                """;
+        assertRendering(expectedJson, astGroupStage);
+    }
+
     @Test
     void testRenderingWithAccumulators() {
         var astGroupStage = new AstGroupStage(
@@ -93,6 +123,21 @@ class AstGroupStageTests {
                 List.of(
                         new AstGroupStageSpecification("k", new AstFieldPathExpression("a")),
                         new AstGroupStageSpecification("l", new AstFieldPathExpression("b"))),
+                List.of(
+                        new AstGroupStageAccumulatorSpecification(
+                                "#acc_0",
+                                new AstAccumulatorExpression(
+                                        AstAccumulatorOperator.SUM, new AstFieldPathExpression("c"))),
+                        new AstGroupStageAccumulatorSpecification(
+                                "#acc_1",
+                                new AstAccumulatorExpression(
+                                        AstAccumulatorOperator.AVG, new AstFieldPathExpression("d"))))));
+    }
+
+    @Test
+    void testMapChildrenWithoutKeys() {
+        assertMapsChildren(new AstGroupStage(
+                List.of(),
                 List.of(
                         new AstGroupStageAccumulatorSpecification(
                                 "#acc_0",

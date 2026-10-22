@@ -18,6 +18,7 @@ package com.mongodb.hibernate.query.select;
 
 import static com.mongodb.hibernate.query.select.GroupByHavingIntegrationTests.Item.COLLECTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.mongodb.client.MongoCollection;
@@ -33,6 +34,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NoResultException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
@@ -2815,27 +2817,11 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     hql, Object[].class, FeatureNotSupportedException.class, "not allowed in GROUP BY");
         }
 
-        /** Grouping the whole collection is a `$group` with a null `_id`; not implemented yet. */
-        @ParameterizedTest(name = "[{index}] {0}")
-        @ValueSource(strings = {"count", "sum", "avg", "min", "max"})
-        void aggregateWithoutGroupByIsRejected(String function) {
-            assertSelectQueryFailure(
-                    "select " + function + "(b.primitiveInt) from Item as b",
-                    Object.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-262");
-        }
-
-        /** {@code count(*)} takes the same path, through a {@code Star} argument rather than a column. */
-        @Test
-        void countStarWithoutGroupByIsRejected() {
-            assertSelectQueryFailure(
-                    "select count(*) from Item as b",
-                    Object.class,
-                    FeatureNotSupportedException.class,
-                    "TODO-HIBERNATE-262");
-        }
-
+        /**
+         * HQL's statistical aggregates are not translated yet. They are rejected by name rather than by falling through
+         * the generic unsupported-function path, so the message names the ticket that tracks them; see <a
+         * href="https://jira.mongodb.org/browse/HIBERNATE-257">HIBERNATE-257</a>.
+         */
         static Stream<Arguments> statisticalAggregateQueries() {
             return Stream.of("stddev_pop", "stddev_samp", "var_pop", "var_samp", "stddev", "variance")
                     .flatMap(function -> Stream.of(
@@ -2846,11 +2832,6 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             Arguments.of(function, "select " + function + "(b.primitiveInt) from Item as b")));
         }
 
-        /**
-         * HQL's statistical aggregates are not translated yet. They are rejected by name rather than by falling through
-         * the generic unsupported-function path, so the message names the ticket that tracks them; see <a
-         * href="https://jira.mongodb.org/browse/HIBERNATE-257">HIBERNATE-257</a>.
-         */
         @ParameterizedTest(name = "[{index}] {0}: {1}")
         @MethodSource("statisticalAggregateQueries")
         void statisticalAggregateIsRejected(String function, String hql) {
@@ -4141,6 +4122,293 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                             .containsExactly(
                                     new Object[] {1, 3L, 2L}, new Object[] {2, 1L, 1L}, new Object[] {3, 0L, 0L}),
                     Set.of(COLLECTION_NAME));
+        }
+    }
+
+    /**
+     * An aggregate with no GROUP BY clause groups the whole collection, which MQL expresses as {@code $group} with a
+     * null {@code _id}.
+     *
+     * <p>{@code $group} emits one document per group, so an input with no documents produces no groups and therefore no
+     * rows while SQL returns one.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class WholeCollectionAggregates extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.createMutationQuery("delete from Item").executeUpdate();
+                List.of(
+                                new Item(1, 1, "a", true, new ItemStruct(1)),
+                                new Item(2, 2, null, false, new ItemStruct(2)),
+                                new Item(3, 3, "c", true, new ItemStruct(3)),
+                                new Item(4, 4, "d", false, new ItemStruct(4)))
+                        .forEach(session::persist);
+            });
+        }
+
+        @Test
+        void countStar() {
+            assertSelectionQuery(
+                    "select count(*) from Item as b",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": 1}
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(4L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void everyAggregate() {
+            assertSelectionQuery(
+                    "select count(*), sum(b.primitiveInt), avg(b.primitiveInt), min(b.primitiveInt),"
+                            + " max(b.primitiveInt) from Item as b",
+                    Object[].class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": 1},
+                            "#acc_1": {"$sum": "$primitiveInt"},
+                            "#acc_2": {"$avg": "$primitiveInt"},
+                            "#acc_3": {"$min": "$primitiveInt"},
+                            "#acc_4": {"$max": "$primitiveInt"}
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "#c_2": "$#acc_1",
+                            "#c_3": "$#acc_2",
+                            "#c_4": "$#acc_3",
+                            "#c_5": "$#acc_4",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    results -> assertThat((Iterable<Object[]>) results)
+                            .containsExactly(new Object[] {4L, 10L, 2.5d, 1, 4}),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void aggregateWithWhere() {
+            assertSelectionQuery(
+                    "select sum(b.primitiveInt) from Item as b where b.primitiveInt > 1",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {"$match": {"primitiveInt": {"$gt": 1}}},
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": "$primitiveInt"}
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(9L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countOfNullableColumnExcludesNulls() {
+            assertSelectionQuery(
+                    "select count(b.string) from Item as b",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {
+                              "$sum": {
+                                "$switch": {
+                                  "branches": [
+                                    {"case": {"$eq": ["$string", null]}, "then": 0}
+                                  ],
+                                  "default": 1
+                                }
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": "$#acc_0",
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(3L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        @Test
+        void countDistinct() {
+            assertSelectionQuery(
+                    "select count(distinct b.primitiveInt) from Item as b",
+                    Long.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$addToSet": "$primitiveInt"}
+                          }
+                        },
+                        {
+                          "$project": {
+                            "#c_1": {
+                              "$size": {"$setDifference": ["$#acc_0", [null]]}
+                            },
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(4L),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /** The first aggregate may appear in ORDER BY, after SELECT has been translated without a GROUP BY context. */
+        @Test
+        void aggregateOnlyInOrderBy() {
+            assertSelectionQuery(
+                    "select 1 from Item as b order by count(*)",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": 1}
+                          }
+                        },
+                        {"$sort": {"#acc_0": 1}},
+                        {
+                          "$project": {
+                            "#c_1": {"$literal": 1},
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * A bare column in ORDER BY is a stray whether it precedes or follows the aggregate that groups the whole
+         * collection.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(
+                strings = {
+                    "select 1 from Item as b order by b.string, count(*)",
+                    "select 1 from Item as b order by count(*), b.string"
+                })
+        void bareColumnInOrderByAlongsideAggregateIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Integer.class, FeatureNotSupportedException.class, "not a GROUP BY key");
+        }
+
+        /** Without a GROUP BY key, a bare column in SELECT is a stray exactly as it is with one. */
+        @Test
+        void bareColumnAlongsideAggregateIsRejected() {
+            assertSelectQueryFailure(
+                    "select b.string, count(*) from Item as b",
+                    Object[].class,
+                    FeatureNotSupportedException.class,
+                    "not a GROUP BY key");
+        }
+    }
+
+    /**
+     * When nothing reaches the {@code $group} MQL returns no rows, where SQL returns one holding the aggregate over
+     * zero rows. Hibernate assumes SQL semantics, so {@code getSingleResult} throws an exception when no rows are
+     * returned.
+     */
+    @Nested
+    @DomainModel(annotatedClasses = {Item.class})
+    class WholeCollectionAggregatesOverEmptyInput extends AbstractQueryIntegrationTests {
+
+        @BeforeEach
+        void beforeEach() {
+            getSessionFactoryScope().inTransaction(session -> session.createMutationQuery("delete from Item")
+                    .executeUpdate());
+        }
+
+        @Test
+        void emptyCollectionYieldsNoRow() {
+            getSessionFactoryScope().inTransaction(session -> assertThat(session.createSelectionQuery(
+                                    "select count(*), sum(b.primitiveInt), avg(b.primitiveInt) from Item as b",
+                                    Object[].class)
+                            .getResultList())
+                    .isEmpty());
+        }
+
+        /** SQL would return 0 here; Hibernate reports the absent row as {@link NoResultException}. */
+        @Test
+        void countOverEmptyCollectionThrowsOnGetSingleResult() {
+            getSessionFactoryScope().inTransaction(session -> assertThatExceptionOfType(NoResultException.class)
+                    .isThrownBy(() -> session.createSelectionQuery("select count(*) from Item as b", Long.class)
+                            .getSingleResult()));
+        }
+
+        /** A predicate matching nothing empties the input just as an empty collection does. */
+        @Test
+        void whereMatchingNothingYieldsNoRow() {
+            getSessionFactoryScope().inTransaction(session -> {
+                session.persist(new Item(1, 1, "a", true, new ItemStruct(1)));
+                session.flush();
+                assertThat(session.createSelectionQuery(
+                                        "select count(*) from Item as b where b.primitiveInt > 999", Long.class)
+                                .getResultList())
+                        .isEmpty();
+            });
         }
     }
 }
