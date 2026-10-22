@@ -4311,6 +4311,50 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     Set.of(COLLECTION_NAME));
         }
 
+        /** The first aggregate may appear in ORDER BY, after SELECT has been translated without a GROUP BY context. */
+        @Test
+        void aggregateOnlyInOrderBy() {
+            assertSelectionQuery(
+                    "select 1 from Item as b order by count(*)",
+                    Integer.class,
+                    """
+                    {
+                      "aggregate": "Item",
+                      "pipeline": [
+                        {
+                          "$group": {
+                            "_id": null,
+                            "#acc_0": {"$sum": 1}
+                          }
+                        },
+                        {"$sort": {"#acc_0": 1}},
+                        {
+                          "$project": {
+                            "#c_1": {"$literal": 1},
+                            "_id": 0
+                          }
+                        }
+                      ]
+                    }
+                    """,
+                    List.of(1),
+                    Set.of(COLLECTION_NAME));
+        }
+
+        /**
+         * A bare column in ORDER BY is a stray whether it precedes or follows the aggregate that groups the whole
+         * collection.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(
+                strings = {
+                    "select 1 from Item as b order by b.string, count(*)",
+                    "select 1 from Item as b order by count(*), b.string"
+                })
+        void bareColumnInOrderByAlongsideAggregateIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Integer.class, FeatureNotSupportedException.class, "not a GROUP BY key");
+        }
+
         /** Without a GROUP BY key, a bare column in SELECT is a stray exactly as it is with one. */
         @Test
         void bareColumnAlongsideAggregateIsRejected() {
@@ -4324,8 +4368,8 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
 
     /**
      * When nothing reaches the {@code $group} MQL returns no rows, where SQL returns one holding the aggregate over
-     * zero rows. Hibernate assums SQL semantics and call {@code getSingleResult} on the query, which throws an
-     * exception when no rows are returned.
+     * zero rows. Hibernate assumes SQL semantics, so {@code getSingleResult} throws an exception when no rows are
+     * returned.
      */
     @Nested
     @DomainModel(annotatedClasses = {Item.class})

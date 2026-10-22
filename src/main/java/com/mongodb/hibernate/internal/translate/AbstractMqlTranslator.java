@@ -724,11 +724,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         Optional<? extends AstStage> havingStage = createMatchStage(querySpec.getHavingClauseRestrictions());
         Optional<? extends AstStage> sortStage = createSortStage(querySpec);
 
-        // with no GROUP BY clause the context is created lazily by the
-        // first aggregate
+        // With no GROUP BY the context is created lazily, by the first aggregate, so it exists here exactly
+        // when the query has a GROUP BY clause or an aggregate.
         var ctx = groupByContext;
         if (ctx != null) {
-            // A null `groupIdSpecs` means no GROUP BY clause, which `AstGroupStage` renders as `"_id"
+            // A null `groupIdSpecs` means no GROUP BY clause, which `AstGroupStage` renders as `"_id": null`.
             stages.add(new AstGroupStage(
                     groupIdSpecs == null ? List.of() : groupIdSpecs,
                     List.copyOf(ctx.registeredAccumulatorsByVN.values())));
@@ -821,6 +821,17 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
 
     private Optional<AstSortStage> createSortStage(QuerySpec querySpec) {
         if (querySpec.hasSortSpecifications()) {
+            // Sort keys are resolved against the GROUP BY context one at a time, as they are translated, rather than
+            // over the assembled stage. With no GROUP BY clause the context is created by the first aggregate, so a
+            // key preceding it would be translated without one and escape the stray-column check, as in
+            // `ORDER BY b.string, count(*)`. Creating the context up front makes the outcome independent of key order.
+            if (groupByContext == null
+                    && querySpec.getSortSpecifications().stream()
+                            .anyMatch(sortSpecification ->
+                                    resolveSelectedExpression(sortSpecification.getSortExpression())
+                                            instanceof AggregateFunctionExpression)) {
+                beginGroupBy();
+            }
             var sortFields = new ArrayList<AstSortField>(
                     querySpec.getSortSpecifications().size());
             for (var sortSpecification : querySpec.getSortSpecifications()) {
@@ -1890,9 +1901,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * ever being projected: {@code $project} lists only what SELECT asked for, and its inclusion semantics drop the
      * rest.
      *
-     * <p>Returns {@code null} when the expression is not an aggregate function this translator supports, or when the
-     * query has no GROUP BY clause for the accumulator to belong to, leaving the caller to raise its own
-     * unsupported-feature error.
+     * <p>With no GROUP BY clause, the first aggregate creates the GROUP BY context, so that the accumulator groups the
+     * whole collection.
+     *
+     * <p>Returns {@code null} when the expression is not an aggregate function this translator supports, leaving the
+     * caller to raise its own unsupported-feature error.
      */
     private @Nullable AstExpression tryRegisterAccumulator(SelfRenderingFunctionSqlAstExpression<?> function) {
         // Checked before anything else so that the diagnostic is the same with or without a GROUP BY clause: the
