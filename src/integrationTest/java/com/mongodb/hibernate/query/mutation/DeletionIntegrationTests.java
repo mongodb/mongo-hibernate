@@ -230,9 +230,8 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     /**
-     * A delete is a single {@code delete} command with no {@code $group} stage, so an aggregate in WHERE would leave
-     * {@code q} referring to a {@code $group} output field nothing produces. MQL reads that missing field as null
-     * instead of failing, so the delete would silently remove the wrong documents rather than error.
+     * Aggregate function is where is not a valid sql. This test makes sure that the exception is thrown before the
+     * query is sent to MongoDB.
      */
     @ParameterizedTest(name = "[{index}] {0}")
     @ValueSource(
@@ -240,7 +239,7 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                 "delete from Book b where count(*) > 1",
                 "delete from Book b where b.publishYear > 3000 or count(*) > 1"
             })
-    void testAggregateInWhere(String hql) {
+    void testAggregateInWhereThrows(String hql) {
         assertMutationQueryFailure(
                 hql, query -> {}, FeatureNotSupportedException.class, "An aggregate function is not allowed in WHERE");
     }

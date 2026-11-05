@@ -530,10 +530,8 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
         }
 
         /**
-         * An update is a single {@code update} command with no {@code $group} stage anywhere, so an aggregate in either
-         * clause would leave the command referring to a {@code $group} output field nothing produces. MQL reads that
-         * missing field as null instead of failing, so the update would match or assign silently wrong values rather
-         * than error.
+         * Aggregate function is where is not a valid sql. This test makes sure that the exception is thrown before the
+         * query is sent to MongoDB.
          */
         @ParameterizedTest(name = "[{index}] {0}")
         @ValueSource(
@@ -541,7 +539,7 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
                     "update Book b set b.publishYear = 1 where count(*) > 1",
                     "update Book b set b.publishYear = 1 where max(b.publishYear) > 1"
                 })
-        void testAggregateInWhere(String hql) {
+        void testAggregateInWhereThrows(String hql) {
             assertMutationQueryFailure(
                     hql,
                     query -> {},
