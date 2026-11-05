@@ -16,8 +16,6 @@
 
 package com.mongodb.hibernate.internal.translate.mongoast.command.aggregate;
 
-import static com.mongodb.hibernate.internal.MongoAssertions.assertFalse;
-
 import com.mongodb.hibernate.internal.translate.mongoast.AstNodeRewriter;
 import java.util.Collection;
 import java.util.List;
@@ -43,7 +41,8 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * }
  * </pre>
  *
- * @param specifications the {@code _id} sub-key specifications, one per GROUP BY key; must be non-empty
+ * @param specifications the {@code _id} sub-key specifications, one per GROUP BY key, and Empty when the query has no
+ *     GROUP BY, which renders {@code "_id": null}
  * @param accumulatorSpecifications the accumulator specifications, rendered as siblings of {@code _id}; may be empty.
  *     Typed separately from {@code specifications} so the two slots cannot be confused; see
  *     {@link AstGroupStageAccumulatorSpecification}.
@@ -53,10 +52,6 @@ public record AstGroupStage(
         Collection<? extends AstGroupStageSpecification> specifications,
         Collection<? extends AstGroupStageAccumulatorSpecification> accumulatorSpecifications)
         implements AstStage {
-
-    public AstGroupStage {
-        assertFalse(specifications.isEmpty());
-    }
 
     public AstGroupStage(Collection<? extends AstGroupStageSpecification> specifications) {
         this(specifications, List.of());
@@ -77,11 +72,16 @@ public record AstGroupStage(
             writer.writeStartDocument();
             {
                 writer.writeName("_id");
-                writer.writeStartDocument();
-                {
-                    specifications.forEach(specification -> specification.render(writer, binderConsumer));
+                if (specifications.isEmpty()) {
+                    // No GROUP BY key: a null `_id` puts every input document in one group.
+                    writer.writeNull();
+                } else {
+                    writer.writeStartDocument();
+                    {
+                        specifications.forEach(specification -> specification.render(writer, binderConsumer));
+                    }
+                    writer.writeEndDocument();
                 }
-                writer.writeEndDocument();
                 accumulatorSpecifications.forEach(specification -> specification.render(writer, binderConsumer));
             }
             writer.writeEndDocument();
