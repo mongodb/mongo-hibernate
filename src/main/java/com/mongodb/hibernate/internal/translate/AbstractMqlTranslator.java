@@ -149,6 +149,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import org.bson.BsonArray;
 import org.bson.BsonInt32;
@@ -711,9 +712,14 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
         var stages = new ArrayList<AstStage>();
 
         var root = querySpec.getFromClause().getRoots().get(0);
-        stages.addAll(buildJoinStages(root));
+        // A join ON predicate becomes a `$lookup` restriction, emitted ahead of `$group` just as WHERE is, so an
+        // aggregate here has the same nothing-produced-it problem. SQL does not allow one in ON either.
+        stages.addAll(rejectingAggregates("ON", () -> buildJoinStages(root)));
 
-        createMatchStage(querySpec.getWhereClauseRestrictions()).ifPresent(stages::add);
+        // WHERE is translated before `$group` is assembled and filters the documents going into it, so an aggregate
+        // here could only refer to a `$group` output field that does not exist yet. SQL does not allow one either.
+        rejectingAggregates("WHERE", () -> createMatchStage(querySpec.getWhereClauseRestrictions()))
+                .ifPresent(stages::add);
         var groupIdSpecs = prepareGroupBy(querySpec);
 
         // SELECT, HAVING and ORDER BY are translated before `$group` is assembled, even though `$group` precedes all
@@ -772,6 +778,31 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     }
 
     /**
+     * Translates one clause that no {@code $group} stage renders accumulators for, and refuses it if the translation
+     * registered any.
+     *
+     * <p>Hibernate ORM lets an aggregate function through in clauses where SQL does not allow one, and in mutation
+     * statements, which have no {@code $group} stage at all. {@link #tryRegisterAccumulator} would register it and hand
+     * back a reference to a {@code $group} output field that nothing produces --- and MQL reads a missing field as null
+     * rather than failing, so the statement would quietly match, project or assign the wrong thing. Refuse instead,
+     * naming {@code clause} so the diagnostic points at the offending one.
+     */
+    private <R> R rejectingAggregates(String clause, Supplier<R> translation) {
+        var contextBefore = groupByContext;
+        var accumulatorsBefore = contextBefore == null ? 0 : contextBefore.registeredAccumulatorsByVN.size();
+        var translated = translation.get();
+        var contextAfter = groupByContext;
+        // An aggregate either registers on the context the clause found, or --- with no GROUP BY clause, where the
+        // context is created lazily by the first aggregate --- brings the context into being itself.
+        if (contextAfter != null
+                && (contextAfter != contextBefore
+                        || contextAfter.registeredAccumulatorsByVN.size() != accumulatorsBefore)) {
+            throw new FeatureNotSupportedException("An aggregate function is not allowed in " + clause);
+        }
+        return translated;
+    }
+
+    /**
      * Establishes the GROUP BY context and translates the GROUP BY keys into the {@code _id} sub-key specifications,
      * returning them for {@link #visitQuerySpec} to combine with the accumulators registered afterwards. Returns
      * {@code null} when the query has no GROUP BY clause.
@@ -794,16 +825,10 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
                 specs.add(new AstGroupStageSpecification(groupKey, fieldPathExpr));
             } else {
                 var groupKey = "k" + i;
-                var accumulatorsBefore = ctx.registeredAccumulatorsByVN.size();
-                var expr = acceptAndYieldExpression(groupByClauseExpression);
-                // Hibernate ORM lets an aggregate function through in GROUP BY, which SQL does not allow. Translating
-                // it would register an accumulator and make the key reference that accumulator's field --- but `_id`
-                // is computed from the stage's input documents, where a field `$group` is about to produce does not
-                // exist, so the key would silently be null for every document and collapse the whole collection into
-                // one group. Refuse instead.
-                if (ctx.registeredAccumulatorsByVN.size() != accumulatorsBefore) {
-                    throw new FeatureNotSupportedException("An aggregate function is not allowed in GROUP BY");
-                }
+                // `_id` is computed from the stage's input documents, where a field `$group` is about to produce does
+                // not exist, so an aggregate key would silently be null for every document and collapse the whole
+                // collection into one group.
+                var expr = rejectingAggregates("GROUP BY", () -> acceptAndYieldExpression(groupByClauseExpression));
                 ctx.registeredGroupKeyByVN.put(ctx.vnRegistry.valueNumber(expr), groupKey);
                 specs.add(new AstGroupStageSpecification(groupKey, expr));
             }
@@ -1411,7 +1436,7 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitDeleteStatement(DeleteStatement deleteStatement) {
         checkMutationStatementSupportability(deleteStatement);
         var collection = addToAffectedTableNames(deleteStatement.getTargetTable());
-        var filter = createAstFilter(deleteStatement);
+        var filter = rejectingAggregates("WHERE", () -> createAstFilter(deleteStatement));
 
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
@@ -1422,10 +1447,11 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
     public void visitUpdateStatement(UpdateStatement updateStatement) {
         checkMutationStatementSupportability(updateStatement);
         var collection = addToAffectedTableNames(updateStatement.getTargetTable());
-        var filter = createAstFilter(updateStatement);
+        var filter = rejectingAggregates("WHERE", () -> createAstFilter(updateStatement));
         var assignments = updateStatement.getAssignments();
         var allValues = assignments.stream().allMatch(assignment -> isValueExpression(assignment.getAssignedValue()));
-        AstUpdate update = allValues ? buildDocumentUpdate(assignments) : buildPipelineUpdate(assignments);
+        AstUpdate update = rejectingAggregates(
+                "SET", () -> allValues ? buildDocumentUpdate(assignments) : buildPipelineUpdate(assignments));
         astVisitorValueHolder.yield(
                 MUTATION_RESULT,
                 new MutationMqlTranslator.Result(
@@ -1902,7 +1928,8 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * rest.
      *
      * <p>With no GROUP BY clause, the first aggregate creates the GROUP BY context, so that the accumulator groups the
-     * whole collection.
+     * whole collection. Registration is therefore no longer proof that a {@code $group} stage will render what it
+     * registered; the clauses that no {@code $group} covers guard themselves with {@link #rejectingAggregates}.
      *
      * <p>Returns {@code null} when the expression is not an aggregate function this translator supports, leaving the
      * caller to raise its own unsupported-feature error.

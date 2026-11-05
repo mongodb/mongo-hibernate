@@ -596,6 +596,24 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     Set.of("ItemA", "ItemB"));
         }
 
+        static Stream<String> aggregateInJoinOnQueries() {
+            return Stream.of(
+                    "select a.id from ItemA as a JOIN a.itemB as b ON count(*) > 1",
+                    "select count(*) from ItemA as a JOIN a.itemB as b ON count(*) > 1",
+                    "select a.id from ItemA as a JOIN a.itemB as b WITH sum(b.primitiveInt) > 1",
+                    "select a.id from ItemA as a JOIN ItemB as b ON count(*) > 1");
+        }
+
+        /**
+         * An ON predicate becomes a {@code $lookup} restriction, which precedes the {@code $group} an aggregate there
+         * would refer to, so it would read a field no stage has produced. SQL does not allow an aggregate in ON either.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @MethodSource("aggregateInJoinOnQueries")
+        void aggregateInJoinOnIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Object.class, FeatureNotSupportedException.class, "not allowed in ON");
+        }
+
         @Entity(name = "ItemB")
         static class ItemB {
             @Id
@@ -2815,6 +2833,25 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
         void aggregateInGroupByIsRejected(String hql) {
             assertSelectQueryFailure(
                     hql, Object[].class, FeatureNotSupportedException.class, "not allowed in GROUP BY");
+        }
+
+        static Stream<String> aggregateInWhereQueries() {
+            return Stream.of(
+                    "select count(*) from Item as b where count(*) > 1",
+                    "select b.string, count(*) from Item as b where count(*) > 1 GROUP BY b.string",
+                    "select count(*) from Item as b where b.primitiveInt > 100 or count(*) > 1",
+                    "select sum(b.primitiveInt) from Item as b where sum(b.primitiveInt) > 1");
+        }
+
+        /**
+         * SQL restricts aggregates to HAVING, but Hibernate ORM passes one in WHERE through. {@code $match} precedes
+         * the {@code $group} it would refer to, so the filter would compare a field no stage has produced --- a missing
+         * field, which MQL reads as null rather than failing.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @MethodSource("aggregateInWhereQueries")
+        void aggregateInWhereIsRejected(String hql) {
+            assertSelectQueryFailure(hql, Object[].class, FeatureNotSupportedException.class, "not allowed in WHERE");
         }
 
         /**

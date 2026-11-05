@@ -21,6 +21,7 @@ import static java.util.Collections.emptyList;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.hibernate.embeddable.StructAggregateEmbeddableIntegrationTests;
+import com.mongodb.hibernate.internal.FeatureNotSupportedException;
 import com.mongodb.hibernate.junit.InjectMongoCollection;
 import com.mongodb.hibernate.junit.MongoServiceRegistryProducer;
 import com.mongodb.hibernate.query.AbstractQueryIntegrationTests;
@@ -35,6 +36,8 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(annotatedClasses = {Book.class, DeletionIntegrationTests.ItemWithNestedValue.class})
 class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
@@ -224,6 +227,22 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
                 booksCollection,
                 emptyList(),
                 Set.of(Book.COLLECTION_NAME));
+    }
+
+    /**
+     * A delete is a single {@code delete} command with no {@code $group} stage, so an aggregate in WHERE would leave
+     * {@code q} referring to a {@code $group} output field nothing produces. MQL reads that missing field as null
+     * instead of failing, so the delete would silently remove the wrong documents rather than error.
+     */
+    @ParameterizedTest(name = "[{index}] {0}")
+    @ValueSource(
+            strings = {
+                "delete from Book b where count(*) > 1",
+                "delete from Book b where b.publishYear > 3000 or count(*) > 1"
+            })
+    void testAggregateInWhere(String hql) {
+        assertMutationQueryFailure(
+                hql, query -> {}, FeatureNotSupportedException.class, "An aggregate function is not allowed in WHERE");
     }
 
     @Nested
