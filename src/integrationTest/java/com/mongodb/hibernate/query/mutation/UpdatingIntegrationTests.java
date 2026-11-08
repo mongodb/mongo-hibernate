@@ -40,6 +40,8 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DomainModel(
         annotatedClasses = {
@@ -525,6 +527,38 @@ class UpdatingIntegrationTests extends AbstractQueryIntegrationTests {
         void testScalarSubqueryAssignment() {
             var hql = "update Book b set b.publishYear = (select max(b2.publishYear) from Book b2) where b.id = 1";
             assertMutationQueryFailure(hql, query -> {}, FeatureNotSupportedException.class, "Subquery not supported");
+        }
+
+        /**
+         * Aggregate function in where is not a valid sql. This test makes sure that the exception is thrown before the
+         * query is sent to MongoDB.
+         */
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(
+                strings = {
+                    "update Book b set b.publishYear = 1 where count(*) > 1",
+                    "update Book b set b.publishYear = 1 where max(b.publishYear) > 1"
+                })
+        void testAggregateInWhereThrows(String hql) {
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "An aggregate function is not allowed in WHERE");
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ValueSource(
+                strings = {
+                    "update Book b set b.publishYear = count(*)",
+                    "update Book b set b.publishYear = sum(b.publishYear)"
+                })
+        void testAggregateInSet(String hql) {
+            assertMutationQueryFailure(
+                    hql,
+                    query -> {},
+                    FeatureNotSupportedException.class,
+                    "An aggregate function is not allowed in SET");
         }
     }
 
