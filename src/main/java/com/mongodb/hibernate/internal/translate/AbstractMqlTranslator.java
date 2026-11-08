@@ -781,19 +781,16 @@ public abstract class AbstractMqlTranslator<T extends JdbcOperation> implements 
      * Translates one clause that no {@code $group} stage renders accumulators for, and refuses it if the translation
      * registered any.
      *
-     * <p>Hibernate ORM lets an aggregate function through in clauses where SQL does not allow one, and in mutation
-     * statements, which have no {@code $group} stage at all. {@link #tryRegisterAccumulator} would register it and hand
-     * back a reference to a {@code $group} output field that nothing produces --- and MQL reads a missing field as null
-     * rather than failing, so the statement would quietly match, project or assign the wrong thing. Refuse instead,
-     * naming {@code clause} so the diagnostic points at the offending one.
+     * <p>Hibernate lets an aggregate function through in clauses where SQL does not allow one (e.g. WHERE, ON), so we
+     * have to check for that and throw an exception if it happens.
+     *
+     * @param clause statement clause name, for the exception message
      */
     private <R> R rejectingAggregates(String clause, Supplier<R> translation) {
         var contextBefore = groupByContext;
         var accumulatorsBefore = contextBefore == null ? 0 : contextBefore.registeredAccumulatorsByVN.size();
         var translated = translation.get();
         var contextAfter = groupByContext;
-        // An aggregate either registers on the context the clause found, or --- with no GROUP BY clause, where the
-        // context is created lazily by the first aggregate --- brings the context into being itself.
         if (contextAfter != null
                 && (contextAfter != contextBefore
                         || contextAfter.registeredAccumulatorsByVN.size() != accumulatorsBefore)) {

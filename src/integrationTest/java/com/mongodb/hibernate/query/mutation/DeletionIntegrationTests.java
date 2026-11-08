@@ -230,7 +230,7 @@ class DeletionIntegrationTests extends AbstractQueryIntegrationTests {
     }
 
     /**
-     * Aggregate function is where is not a valid sql. This test makes sure that the exception is thrown before the
+     * Aggregate function in where is not a valid sql. This test makes sure that the exception is thrown before the
      * query is sent to MongoDB.
      */
     @ParameterizedTest(name = "[{index}] {0}")

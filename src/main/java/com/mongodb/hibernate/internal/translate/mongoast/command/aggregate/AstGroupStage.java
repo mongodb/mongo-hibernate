@@ -41,7 +41,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBinder;
  * }
  * </pre>
  *
- * @param specifications the {@code _id} sub-key specifications, one per GROUP BY key, and Empty when the query has no
+ * @param specifications the {@code _id} sub-key specifications, one per GROUP BY key, and empty when the query has no
  *     GROUP BY, which renders {@code "_id": null}
  * @param accumulatorSpecifications the accumulator specifications, rendered as siblings of {@code _id}; may be empty.
  *     Typed separately from {@code specifications} so the two slots cannot be confused; see

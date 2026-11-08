@@ -604,10 +604,7 @@ public class GroupByHavingIntegrationTests extends AbstractQueryIntegrationTests
                     "select a.id from ItemA as a JOIN ItemB as b ON count(*) > 1");
         }
 
-        /**
-         * An ON predicate becomes a {@code $lookup} restriction, which precedes the {@code $group} an aggregate there
-         * would refer to, so it would read a field no stage has produced. SQL does not allow an aggregate in ON either.
-         */
+        /** Aggregates within ON are not valid SQL; we verify the failure happens before reaching out to MongoDB. */
         @ParameterizedTest(name = "[{index}] {0}")
         @MethodSource("aggregateInJoinOnQueries")
         void aggregateInJoinOnIsRejected(String hql) {
